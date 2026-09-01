@@ -1,0 +1,671 @@
+import { jsPDF } from 'jspdf';
+import { PatientCase, FullClinicalAnalysis } from '../types';
+
+export type PDFExportCategory = 'all' | 'falldaten' | 'redFlags' | 'differential' | 'homoeopathie' | 'medikamente' | 'empfehlungen';
+
+interface PDFContext {
+  doc: jsPDF;
+  pageWidth: number;
+  pageHeight: number;
+  margin: number;
+  contentWidth: number;
+  currentY: number;
+  patientName: string;
+  anamneseDatum: string;
+  documentTitle: string;
+}
+
+// Colors (RGB)
+const COLORS = {
+  primary: [15, 118, 110] as [number, number, number], // Teal 700
+  primaryDark: [19, 78, 74] as [number, number, number], // Teal 900
+  primaryLight: [204, 251, 241] as [number, number, number], // Teal 100
+  textDark: [15, 23, 42] as [number, number, number], // Slate 900
+  textMuted: [100, 116, 139] as [number, number, number], // Slate 500
+  border: [226, 232, 240] as [number, number, number], // Slate 200
+  bgLight: [248, 250, 252] as [number, number, number], // Slate 50
+  amber: [217, 119, 6] as [number, number, number], // Amber 600
+  amberBg: [254, 243, 199] as [number, number, number], // Amber 100
+  rose: [225, 29, 72] as [number, number, number], // Rose 600
+  roseBg: [255, 228, 230] as [number, number, number], // Rose 100
+  emerald: [5, 150, 105] as [number, number, number], // Emerald 600
+  emeraldBg: [209, 250, 229] as [number, number, number], // Emerald 100
+};
+
+// Helper: Ensure room on page or add page
+function checkPageBreak(ctx: PDFContext, neededHeight: number, categoryHeader?: string): void {
+  if (ctx.currentY + neededHeight > ctx.pageHeight - 20) {
+    ctx.doc.addPage();
+    ctx.currentY = 22;
+    drawPageHeader(ctx, categoryHeader || ctx.documentTitle);
+  }
+}
+
+// Helper: Header on each page
+function drawPageHeader(ctx: PDFContext, sectionName: string) {
+  const { doc, pageWidth, margin } = ctx;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(...COLORS.primary);
+  doc.text('HOMÖOPATHISCHE PRAXIS & FALLANALYSE', margin, 12);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(...COLORS.textMuted);
+  const infoText = `Patient: ${ctx.patientName} | Datum: ${ctx.anamneseDatum}`;
+  const infoWidth = doc.getTextWidth(infoText);
+  doc.text(infoText, pageWidth - margin - infoWidth, 12);
+
+  // Line
+  doc.setDrawColor(...COLORS.border);
+  doc.setLineWidth(0.3);
+  doc.line(margin, 15, pageWidth - margin, 15);
+
+  ctx.currentY = Math.max(ctx.currentY, 22);
+}
+
+// Helper: Section Banner
+function drawSectionHeader(ctx: PDFContext, title: string, subtitle?: string, badgeColor: [number, number, number] = COLORS.primary) {
+  checkPageBreak(ctx, 22);
+  const { doc, margin, contentWidth } = ctx;
+
+  // Background box for section header
+  doc.setFillColor(...COLORS.bgLight);
+  doc.setDrawColor(...COLORS.border);
+  doc.roundedRect(margin, ctx.currentY, contentWidth, subtitle ? 16 : 12, 2, 2, 'FD');
+
+  // Colored left accent bar
+  doc.setFillColor(...badgeColor);
+  doc.rect(margin, ctx.currentY, 3, subtitle ? 16 : 12, 'F');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.setTextColor(...COLORS.textDark);
+  doc.text(title, margin + 6, ctx.currentY + 7);
+
+  if (subtitle) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(...COLORS.textMuted);
+    doc.text(subtitle, margin + 6, ctx.currentY + 13);
+    ctx.currentY += 21;
+  } else {
+    ctx.currentY += 17;
+  }
+}
+
+// Helper: Draw label/value line
+function drawLabelValue(ctx: PDFContext, label: string, value: string, indent: number = 0) {
+  if (!value || value.trim() === '') return;
+  const { doc, margin, contentWidth } = ctx;
+  const effectiveWidth = contentWidth - indent;
+  const startX = margin + indent;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(...COLORS.textDark);
+  const labelWidth = doc.getTextWidth(label + ': ');
+
+  // Split value text
+  const valueWidth = effectiveWidth - labelWidth;
+  const wrappedLines = doc.splitTextToSize(value, Math.max(valueWidth, 60));
+  const lineBlockHeight = Math.max(wrappedLines.length * 4.5, 6);
+
+  checkPageBreak(ctx, lineBlockHeight + 2);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(...COLORS.primaryDark);
+  doc.text(label + ':', startX, ctx.currentY);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(...COLORS.textDark);
+
+  if (wrappedLines.length === 1 && labelWidth + doc.getTextWidth(value) <= effectiveWidth) {
+    doc.text(value, startX + labelWidth, ctx.currentY);
+    ctx.currentY += 5.5;
+  } else {
+    const fullTextWrapped = doc.splitTextToSize(value, effectiveWidth - 4);
+    ctx.currentY += 4.5;
+    for (const line of fullTextWrapped) {
+      checkPageBreak(ctx, 5);
+      doc.text(line, startX + 4, ctx.currentY);
+      ctx.currentY += 4.5;
+    }
+    ctx.currentY += 1.5;
+  }
+}
+
+// Helper: Draw Box Card
+function drawCardBox(ctx: PDFContext, title: string, content: string | string[], borderColor: [number, number, number] = COLORS.border, bgColor: [number, number, number] = COLORS.bgLight) {
+  const { doc, margin, contentWidth } = ctx;
+  
+  let lines: string[] = [];
+  if (Array.isArray(content)) {
+    lines = content.flatMap(c => doc.splitTextToSize(`• ${c}`, contentWidth - 8));
+  } else if (content) {
+    lines = doc.splitTextToSize(content, contentWidth - 8);
+  }
+
+  const boxHeight = 8 + (title ? 6 : 0) + lines.length * 4.2;
+  checkPageBreak(ctx, boxHeight + 4);
+
+  doc.setFillColor(...bgColor);
+  doc.setDrawColor(...borderColor);
+  doc.roundedRect(margin, ctx.currentY, contentWidth, boxHeight, 2, 2, 'FD');
+
+  let textY = ctx.currentY + 5;
+
+  if (title) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9.5);
+    doc.setTextColor(...COLORS.textDark);
+    doc.text(title, margin + 4, textY);
+    textY += 5.5;
+  }
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(...COLORS.textDark);
+
+  for (const line of lines) {
+    doc.text(line, margin + 4, textY);
+    textY += 4.2;
+  }
+
+  ctx.currentY += boxHeight + 3.5;
+}
+
+// Helper: Footer with Page numbers
+function drawFooters(doc: jsPDF, patientName: string) {
+  const pageCount = (doc as any).internal.getNumberOfPages();
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(...COLORS.textMuted);
+
+    doc.setDrawColor(...COLORS.border);
+    doc.setLineWidth(0.3);
+    doc.line(15, pageHeight - 12, pageWidth - 15, pageHeight - 12);
+
+    doc.text(`Vertraulicher medizinischer Bericht | ${patientName}`, 15, pageHeight - 7);
+    const pageStr = `Seite ${i} von ${pageCount}`;
+    doc.text(pageStr, pageWidth - 15 - doc.getTextWidth(pageStr), pageHeight - 7);
+  }
+}
+
+// ============================================================================
+// SECTION RENDERERS
+// ============================================================================
+
+// 1. Falldaten Übersicht
+function renderFalldatenSection(ctx: PDFContext, patientCase: PatientCase) {
+  drawSectionHeader(ctx, '1. Erfasste Falldaten & Anamnese', 'Stammdaten, Hauptbeschwerde, Spontanbericht & Befunde');
+
+  // Stammdaten Grid
+  const stammdatenLines: string[] = [
+    `Name: ${patientCase.patientName || 'Unbenannt'}`,
+    `Alter: ${patientCase.patientAge ? `${patientCase.patientAge} Jahre` : '-'}`,
+    `Geschlecht: ${patientCase.patientGender || '-'}`,
+    `Geburtsdatum: ${patientCase.patientBirthDate || '-'}`,
+    `Größe: ${patientCase.patientHeightCm ? `${patientCase.patientHeightCm} cm` : '-'}`,
+    `Gewicht: ${patientCase.patientWeightKg ? `${patientCase.patientWeightKg} kg` : '-'}`,
+    `Familienstand: ${patientCase.patientMaritalStatus || '-'}`,
+    `E-Mail: ${patientCase.patientEmail || '-'}`,
+    `Telefon: ${patientCase.patientPhone || '-'}`,
+    `Kinder: ${patientCase.hasChildren ? `${patientCase.childrenCount || 0} Kind(er)` : 'Keine'}`,
+  ];
+  if (patientCase.isPregnant) {
+    stammdatenLines.push(`Schwangerschaft: Ja (${patientCase.pregnancyMonth || '?'}. Monat)`);
+  }
+  if (patientCase.customStammdaten && patientCase.customStammdaten.length > 0) {
+    patientCase.customStammdaten.forEach(cs => {
+      if (cs.name && (cs.value || cs.name)) {
+        stammdatenLines.push(`${cs.name}: ${cs.value || '-'}`);
+      }
+    });
+  }
+
+  drawCardBox(ctx, 'Patienten-Stammdaten', stammdatenLines);
+
+  // Hauptbeschwerde & Spontanbericht
+  if (patientCase.hauptbeschwerde) {
+    drawCardBox(ctx, 'Hauptbeschwerde', patientCase.hauptbeschwerde, COLORS.primary, COLORS.bgLight);
+  }
+
+  if (patientCase.spontanbericht) {
+    drawCardBox(ctx, 'Spontanbericht des Patienten', patientCase.spontanbericht);
+  }
+
+  // Befragungsfragen (Dynamische Fragen)
+  if (patientCase.anamnesisQuestions && patientCase.anamnesisQuestions.length > 0) {
+    const questionLines = patientCase.anamnesisQuestions.map((q, idx) => {
+      let ans = '';
+      if (q.type === 'scale') {
+        ans = `Aktuell: ${q.answerScaleCurrent || '-'}/4 | Schlimmster Fall: ${q.answerScaleWorst || '-'}/4`;
+      } else if (q.type === 'multi_choice') {
+        ans = q.answerMultiChoice?.join(', ') || 'Keine Auswahl';
+      } else {
+        ans = q.answerChoice || q.answerText || 'Keine Angabe';
+      }
+      return `Frage ${idx + 1}: ${q.question}\nAntwort: ${ans}`;
+    });
+    drawCardBox(ctx, 'Strukturierte Befragung zur Hauptbeschwerde', questionLines);
+  }
+
+  // Modalitäten
+  if (patientCase.modalitaetenBesser || patientCase.modalitaetenSchlechter) {
+    const modLines = [
+      `Besserung durch (>): ${patientCase.modalitaetenBesser || 'Nicht angegeben'}`,
+      `Verschlechterung durch (<): ${patientCase.modalitaetenSchlechter || 'Nicht angegeben'}`
+    ];
+    drawCardBox(ctx, 'Modalitäten (Besserung / Verschlechterung)', modLines, COLORS.primary, COLORS.primaryLight);
+  }
+
+  // Gemüt / Geist / Körper
+  if (patientCase.gemuetPsyche || patientCase.koerperAllgemein || patientCase.lokalsymptome) {
+    const sympLines = [
+      patientCase.gemuetPsyche ? `Gemüt & Psyche: ${patientCase.gemuetPsyche}` : '',
+      patientCase.koerperAllgemein ? `Allgemeinsymptome: ${patientCase.koerperAllgemein}` : '',
+      patientCase.lokalsymptome ? `Lokalsymptome: ${patientCase.lokalsymptome}` : '',
+    ].filter(Boolean);
+    drawCardBox(ctx, 'Ganzheitliche Symptome & Gemüt', sympLines);
+  }
+
+  // Klinischer Befund
+  if (patientCase.befundGewuenscht && patientCase.befundDetails) {
+    const b = patientCase.befundDetails;
+    const befundLines = [
+      b.blutdruck ? `Blutdruck: ${b.blutdruck}` : '',
+      b.puls ? `Puls: ${b.puls}` : '',
+      b.temperatur ? `Temperatur: ${b.temperatur}` : '',
+      b.spo2 ? `SpO2: ${b.spo2}` : '',
+      b.allgemeinzustand ? `Allgemeinzustand: ${b.allgemeinzustand}` : '',
+      b.herzLunge ? `Herz/Lunge: ${b.herzLunge}` : '',
+      b.neurologisch ? `Neurologisch: ${b.neurologisch}` : '',
+      b.gesamtbeurteilung ? `Befundbeurteilung: ${b.gesamtbeurteilung}` : '',
+    ].filter(Boolean);
+    if (befundLines.length > 0) {
+      drawCardBox(ctx, 'Körperlicher Befund & Vitalparameter', befundLines);
+    }
+  }
+
+  // Erfasste Medikamente
+  if (patientCase.nimmtMedikamente && patientCase.medikamenteList && patientCase.medikamenteList.length > 0) {
+    const medLines = patientCase.medikamenteList.map(
+      (m, i) => `${i + 1}. ${m.name || 'Unbenannt'} (Dosis: ${m.dosierung || '-'}, Einnahme: ${m.einnahmeart || '-'})`
+    );
+    drawCardBox(ctx, 'Aktuelle Medikation (Erfassung)', medLines);
+  }
+}
+
+// 2. Warnhinweise & Red Flags
+function renderRedFlagsSection(ctx: PDFContext, analysis: FullClinicalAnalysis) {
+  drawSectionHeader(ctx, '2. Warnhinweise & Red Flags', 'Klinische Risikoeinschätzung & Dringlichkeit', COLORS.amber);
+
+  const redFlags = analysis.redFlags?.warnings || [];
+  if (redFlags.length > 0) {
+    for (const rf of redFlags) {
+      const rfLines = [
+        rf.text,
+        rf.abklaerung ? `Empfohlene Abklärung: ${rf.abklaerung}` : '',
+        rf.status ? `Status: ${rf.status}` : ''
+      ].filter(Boolean);
+
+      drawCardBox(
+        ctx,
+        `⚠️ ${rf.severity || 'WARNUNG'}: Risikofaktor`,
+        rfLines,
+        COLORS.amber,
+        COLORS.amberBg
+      );
+    }
+  } else {
+    drawCardBox(ctx, 'Red Flags Prüfung', 'Keine akuten Warnhinweise oder Notfallsymptome anhand der Angaben dokumentiert.', COLORS.emerald, COLORS.emeraldBg);
+  }
+
+  // Gesamtbewertung & Empfohlene Fachrichtung
+  const bewertungLines = [
+    `Gesamtbewertung: ${analysis.redFlags?.gesamtbewertung || 'Zeitnahe ärztliche Abklärung empfohlen.'}`,
+    `Empfohlene Fachrichtung: ${analysis.redFlags?.empfohleneFachrichtung || 'Allgemeinmedizin / Hausarzt'}`,
+    analysis.arztfallEntscheidung ? `Arztfall-Status: ${analysis.arztfallEntscheidung.status} (${analysis.arztfallEntscheidung.begruendung})` : ''
+  ].filter(Boolean);
+
+  drawCardBox(ctx, 'Dringlichkeitseinstufung & Facharzt-Empfehlung', bewertungLines, COLORS.primary, COLORS.bgLight);
+}
+
+// 3. Medikamente
+function renderMedikamenteSection(ctx: PDFContext, analysis: FullClinicalAnalysis) {
+  drawSectionHeader(ctx, '3. Medikamenten- & Interaktionsanalyse', 'Wirkungen, Nebenwirkungen & Wechselwirkungen', COLORS.primary);
+
+  // Warnhinweis
+  if (analysis.medikamente?.warnhinweis) {
+    drawCardBox(ctx, 'Wichtiger Hinweis', analysis.medikamente.warnhinweis, COLORS.amber, COLORS.amberBg);
+  }
+
+  if (analysis.medikamente?.zusammenfassung) {
+    drawCardBox(ctx, 'Zusammenfassung der Medikation', analysis.medikamente.zusammenfassung);
+  }
+
+  // Detaillierte Medikamente
+  const meds = analysis.medikamente?.details || [];
+  meds.forEach((med, idx) => {
+    checkPageBreak(ctx, 30);
+    const medLines: string[] = [
+      med.dosierung ? `Dosierung: ${med.dosierung}` : '',
+      med.einnahme ? `Einnahme: ${med.einnahme}` : '',
+      med.wirkung ? `Wirkung: ${med.wirkung}` : '',
+    ].filter(Boolean);
+
+    if (med.nebenwirkungen && med.nebenwirkungen.length > 0) {
+      medLines.push('Mögliche Nebenwirkungen:');
+      med.nebenwirkungen.forEach(nw => medLines.push(`  • ${nw}`));
+    }
+
+    if (med.zusammenhaenge && med.zusammenhaenge.length > 0) {
+      medLines.push('Zusammenhänge mit den Beschwerden:');
+      med.zusammenhaenge.forEach(zh => medLines.push(`  • ${zh}`));
+    }
+
+    if (med.uebergebrauchBeurteilung) {
+      medLines.push(`Übergebrauch-Beurteilung: ${med.uebergebrauchBeurteilung}`);
+    }
+
+    drawCardBox(ctx, `${idx + 1}. ${med.name}`, medLines, COLORS.primary, COLORS.bgLight);
+  });
+
+  // Fehlende Informationen
+  if (analysis.fehlendeInformationen && analysis.fehlendeInformationen.length > 0) {
+    drawCardBox(ctx, 'Für eine sichere Beurteilung noch relevante Angaben', analysis.fehlendeInformationen);
+  }
+
+  // Nächste Schritte
+  if (analysis.gesamtAuswertung?.naechsteSchritte && analysis.gesamtAuswertung.naechsteSchritte.length > 0) {
+    drawCardBox(ctx, 'Empfohlene nächste Therapieschritte', analysis.gesamtAuswertung.naechsteSchritte, COLORS.primaryDark, COLORS.primaryLight);
+  }
+}
+
+// 4. Medizinische Differenzialdiagnostik
+function renderDifferentialSection(ctx: PDFContext, analysis: FullClinicalAnalysis) {
+  drawSectionHeader(ctx, '4. Medizinische Differenzialdiagnostik', 'Systematischer Vergleich und klinische Abklärung', COLORS.primary);
+
+  if (analysis.differentialdiagnostik?.dringlichkeitHeader) {
+    drawCardBox(ctx, 'Dringlichkeitsstufe', analysis.differentialdiagnostik.dringlichkeitHeader, COLORS.amber, COLORS.amberBg);
+  }
+
+  const items = analysis.differentialdiagnostik?.items || [];
+  items.forEach((dd, idx) => {
+    checkPageBreak(ctx, 35);
+    const ddLines: string[] = [];
+
+    if (dd.pro && dd.pro.length > 0) {
+      ddLines.push('✓ Dafür spricht:');
+      dd.pro.forEach(p => ddLines.push(`  • ${p}`));
+    }
+
+    if (dd.contra && dd.contra.length > 0) {
+      ddLines.push('⚠ Dagegen spricht:');
+      dd.contra.forEach(c => ddLines.push(`  • ${c}`));
+    }
+
+    if (dd.offeneFragen && dd.offeneFragen.length > 0) {
+      ddLines.push('💡 Offene Fragen / Diagnostik:');
+      dd.offeneFragen.forEach(q => ddLines.push(`  • ${q}`));
+    }
+
+    if (dd.diagnostik) {
+      ddLines.push(`Empfohlene diagnostische Schritte: ${dd.diagnostik}`);
+    }
+
+    drawCardBox(ctx, `${idx + 1}. ${dd.title}`, ddLines, COLORS.primary, COLORS.bgLight);
+  });
+}
+
+// 5. Homöopathische Fallauswertung
+function renderHomoeopathieSection(ctx: PDFContext, analysis: FullClinicalAnalysis) {
+  drawSectionHeader(ctx, '5. Homöopathische Fallauswertung', 'Repertorisation, Symptomhierarchie & Mittel-Rangliste', COLORS.primary);
+
+  // Symptomen Hierarchie
+  if (analysis.homoeopathie?.symptomHierarchie) {
+    const sh = analysis.homoeopathie.symptomHierarchie;
+    const hierLines = [
+      `1. Leitsymptome: ${sh.leitsymptome?.join(', ') || '-'}`,
+      `2. Gemüt & Psyche: ${sh.gemuetsymptome?.join(', ') || '-'}`,
+      `3. Modalitäten (> / <): ${sh.modalitaeten?.join(', ') || '-'}`,
+      `4. Allgemeinsymptome: ${sh.allgemeinsymptome?.join(', ') || '-'}`,
+      `5. Lokalsymptome: ${sh.lokalsymptome?.join(', ') || '-'}`,
+      `6. Begleitsymptome: ${sh.begleitsymptome?.join(', ') || '-'}`,
+    ];
+    drawCardBox(ctx, 'Klassische Symptomen-Hierarchisierung', hierLines, COLORS.primary, COLORS.primaryLight);
+  }
+
+  // Mittel Rangliste
+  const mittel = analysis.homoeopathie?.mittel || [];
+  mittel.forEach((m, idx) => {
+    checkPageBreak(ctx, 45);
+    const mLines: string[] = [
+      `Potenz: ${m.potenz || m.dosierungPotenz || 'C30'}`,
+      m.tagesdosis ? `Tagesdosis: ${m.tagesdosis}` : '',
+      m.haeufigkeit ? `Häufigkeit (wie oft): ${m.haeufigkeit}` : '',
+      m.anwendungsdauer ? `Anwendungsdauer (wie lange): ${m.anwendungsdauer}` : '',
+      m.zeitraum ? `Zeitraum / Phase: ${m.zeitraum}` : '',
+      m.einnahmehinweis ? `Einnahmehinweis: ${m.einnahmehinweis}` : '',
+      `Begründung der Wahl: ${m.rangBegruendung}`,
+    ].filter(Boolean);
+
+    if (m.passungSymptome && m.passungSymptome.length > 0) {
+      mLines.push('✓ Gut passende Symptome:');
+      m.passungSymptome.forEach(p => mLines.push(`  • ${p}`));
+    }
+
+    if (m.contraNichtPassend && m.contraNichtPassend.length > 0) {
+      mLines.push('⚠ Zu beachten / Modalitäten-Differenz:');
+      m.contraNichtPassend.forEach(c => mLines.push(`  • ${c}`));
+    }
+
+    drawCardBox(ctx, `Rang ${idx + 1}: ${m.name}`, mLines, COLORS.primary, COLORS.bgLight);
+  });
+
+  // Dreiteilung
+  if (analysis.homoeopathie?.trennung) {
+    const t = analysis.homoeopathie.trennung;
+    const trennLines = [
+      `Medizinische Maßnahmen: ${t.medizinisch?.join('; ') || '-'}`,
+      `Komplementäre Maßnahmen: ${t.komplementaer?.join('; ') || '-'}`,
+      `Homöopathische Begleitung: ${t.homoeopathisch?.join('; ') || '-'}`,
+    ];
+    drawCardBox(ctx, 'Ganzheitliche Maßnahmen-Aufteilung', trennLines);
+  }
+}
+
+// ============================================================================
+// 6. EMPFEHLUNGEN & VERORDNUNGSPLAN
+// ============================================================================
+function renderEmpfehlungenSection(
+  ctx: PDFContext,
+  patientCase: PatientCase,
+  analysis?: FullClinicalAnalysis | null
+) {
+  drawSectionHeader(ctx, '6. Therapie- & Praxisempfehlungen', 'Ärztliche Abklärung, homöopathische Verordnung und Einnahmeplan');
+
+  const recs = patientCase.therapyRecommendations;
+
+  // 1. Doctor consultation box
+  const doctorUrgent = recs?.doctorConsultationUrgency === 'Notfall' || recs?.doctorConsultationUrgency === 'Dringend';
+  const docLines: string[] = [
+    `Status: ${recs?.doctorConsultationRequired ? 'Ärztliche / fachärztliche Abklärung empfohlen' : 'Keine akute Notfallindikation'}`,
+    recs?.doctorConsultationUrgency ? `Dringlichkeitsstufe: ${recs.doctorConsultationUrgency}` : '',
+    recs?.doctorConsultationSpecialty ? `Empfohlene Fachrichtung: ${recs.doctorConsultationSpecialty}` : '',
+    recs?.doctorConsultationReason ? `Befundbasis / Auslöser: ${recs.doctorConsultationReason}` : '',
+    recs?.doctorConsultationNotes ? `Überweisungshinweis / Notiz an Patienten: ${recs.doctorConsultationNotes}` : '',
+  ].filter(Boolean);
+
+  drawCardBox(
+    ctx,
+    'Ärztliche & Fachärztliche Abklärung (Red Flags)',
+    docLines,
+    doctorUrgent ? COLORS.rose : COLORS.primary,
+    doctorUrgent ? COLORS.roseBg : COLORS.bgLight
+  );
+
+  // 2. Homöopathische Mittel
+  const remedies = recs?.remedies || (analysis?.homoeopathie?.mittel || []).map((m) => ({
+    id: m.name,
+    name: m.name,
+    potency: m.potenz || m.dosierungPotenz || 'C30',
+    tagesdosis: m.tagesdosis || '1 bis 2 Gaben à 3–5 Globuli',
+    haeufigkeit: m.haeufigkeit || '1- bis 2-mal täglich',
+    anwendungsdauer: m.anwendungsdauer || '3 bis maximal 5 Tage',
+    zeitraum: m.zeitraum || 'Akut- und Initialphase',
+    therapistNotes: m.einnahmehinweis || '',
+    isSelected: true,
+  }));
+
+  const selectedRemedies = remedies.filter(r => r.isSelected !== false);
+  const remedyListToDraw = selectedRemedies.length > 0 ? selectedRemedies : remedies;
+
+  remedyListToDraw.forEach((r, idx) => {
+    checkPageBreak(ctx, 42);
+    const rLines: string[] = [
+      `Potenz: ${r.potency}`,
+      `Empfohlene Dosis am Tag: ${r.tagesdosis}`,
+      `Wie oft (Häufigkeit): ${r.haeufigkeit}`,
+      `Wie lange (Dauer): ${r.anwendungsdauer}`,
+      `Zeitraum / Anwendungsphase: ${r.zeitraum}`,
+      r.therapistNotes ? `Anmerkung / Einnahmehinweis: ${r.therapistNotes}` : '',
+    ].filter(Boolean);
+
+    drawCardBox(
+      ctx,
+      `Verordnung ${idx + 1}: ${r.name} (${r.potency})`,
+      rLines,
+      COLORS.primary,
+      COLORS.bgLight
+    );
+  });
+
+  // 3. General therapy notes
+  if (recs?.generalTherapyNotes) {
+    checkPageBreak(ctx, 25);
+    drawCardBox(ctx, 'Allgemeine Verordnungs- & Lebensstil-Hinweise', [recs.generalTherapyNotes]);
+  }
+}
+
+// ============================================================================
+// MAIN EXPORT FUNCTIONS
+// ============================================================================
+
+export function exportCategoryPDF(
+  category: PDFExportCategory,
+  patientCase: PatientCase,
+  analysis?: FullClinicalAnalysis | null
+): void {
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
+  });
+
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 15;
+  const contentWidth = pageWidth - margin * 2;
+
+  const patientName = patientCase.patientName || 'Patient';
+  const anamneseDatum = patientCase.anamneseDatum || new Date().toLocaleDateString('de-DE');
+
+  let title = 'Ganzheitliche Fallanalyse';
+  if (category === 'falldaten') title = 'Falldaten & Anamneseübersicht';
+  else if (category === 'redFlags') title = 'Warnhinweise & Red Flags';
+  else if (category === 'differential') title = 'Medizinische Differenzialdiagnostik';
+  else if (category === 'homoeopathie') title = 'Homöopathische Fallauswertung';
+  else if (category === 'medikamente') title = 'Medikamenten- & Interaktionsanalyse';
+  else if (category === 'empfehlungen') title = 'Therapie- & Praxisempfehlungen';
+
+  const ctx: PDFContext = {
+    doc,
+    pageWidth,
+    pageHeight,
+    margin,
+    contentWidth,
+    currentY: 22,
+    patientName,
+    anamneseDatum,
+    documentTitle: title,
+  };
+
+  drawPageHeader(ctx, title);
+
+  if (category === 'falldaten') {
+    renderFalldatenSection(ctx, patientCase);
+  } else if (category === 'redFlags') {
+    if (analysis) renderRedFlagsSection(ctx, analysis);
+  } else if (category === 'differential') {
+    if (analysis) renderDifferentialSection(ctx, analysis);
+  } else if (category === 'homoeopathie') {
+    if (analysis) renderHomoeopathieSection(ctx, analysis);
+  } else if (category === 'medikamente') {
+    if (analysis) renderMedikamenteSection(ctx, analysis);
+  } else if (category === 'empfehlungen') {
+    renderEmpfehlungenSection(ctx, patientCase, analysis);
+  } else if (category === 'all') {
+    // 1. Falldaten
+    renderFalldatenSection(ctx, patientCase);
+
+    // 2. Red Flags on separate page
+    if (analysis) {
+      doc.addPage();
+      ctx.currentY = 22;
+      drawPageHeader(ctx, 'Warnhinweise & Red Flags');
+      renderRedFlagsSection(ctx, analysis);
+
+      // 3. Medikamente on separate page
+      doc.addPage();
+      ctx.currentY = 22;
+      drawPageHeader(ctx, 'Medikamentenanalyse');
+      renderMedikamenteSection(ctx, analysis);
+
+      // 4. Differenzialdiagnostik on separate page
+      doc.addPage();
+      ctx.currentY = 22;
+      drawPageHeader(ctx, 'Medizinische Differenzialdiagnostik');
+      renderDifferentialSection(ctx, analysis);
+
+      // 5. Homöopathische Fallauswertung on separate page
+      doc.addPage();
+      ctx.currentY = 22;
+      drawPageHeader(ctx, 'Homöopathische Fallauswertung');
+      renderHomoeopathieSection(ctx, analysis);
+
+      // 6. Empfehlungen & Verordnungsplan on separate page
+      doc.addPage();
+      ctx.currentY = 22;
+      drawPageHeader(ctx, 'Therapie- & Praxisempfehlungen');
+      renderEmpfehlungenSection(ctx, patientCase, analysis);
+    }
+  }
+
+  // Draw footers on all pages
+  drawFooters(doc, patientName);
+
+  // Download filename
+  const cleanName = (patientCase.patientName || 'Patient').replace(/[^a-zA-Z0-9_-]/g, '_');
+  const dateStr = new Date().toISOString().split('T')[0];
+  const filename = `${cleanName}_${category}_${dateStr}.pdf`;
+
+  doc.save(filename);
+}
+
+export function exportComprehensiveAnalysisToPDF(
+  patientCase: PatientCase,
+  analysis?: FullClinicalAnalysis | null,
+  language?: string,
+  category: PDFExportCategory = 'all'
+): void {
+  exportCategoryPDF(category, patientCase, analysis);
+}
