@@ -1283,7 +1283,7 @@ export const ru = {
   "smtpSenderName": "Имя отправителя (Отображаемое имя)",
   "smtpSenderNamePlaceholder": "напр. HomeoPilot 360",
   "smtpSenderEmail": "Эл. почта отправителя (From)",
-  "smtpSenderEmailPlaceholder": "напр. therapie@homeopilto360.com",
+  "smtpSenderEmailPlaceholder": "напр. therapie@homeopilot360.com",
   "incomingServerImap": "Сервер входящей почты (IMAP)",
   "incomingServerPop3": "Сервер входящей почты (POP3)",
   "imapHostname": "IMAP-сервер / Имя хоста",

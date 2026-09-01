@@ -1289,7 +1289,7 @@ export const en = {
   smtpSenderName: "Sender Name (Display Name)",
   smtpSenderNamePlaceholder: "e.g. HomeoPilot 360",
   smtpSenderEmail: "Sender Email (From)",
-  smtpSenderEmailPlaceholder: "e.g. therapie@homeopilto360.com",
+  smtpSenderEmailPlaceholder: "e.g. therapie@homeopilot360.com",
   incomingServerImap: "Incoming Mail Server (IMAP)",
   incomingServerPop3: "Incoming Mail Server (POP3)",
   imapHostname: "IMAP Server / Hostname",

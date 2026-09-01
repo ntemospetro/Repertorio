@@ -77,7 +77,7 @@ export const AdminConfigEditor: React.FC<AdminConfigEditorProps> = ({ onShowToas
   const [popSecure, setPopSecure] = useState(emailConfig.popSecure !== undefined ? emailConfig.popSecure : true);
 
   // Email Testing State
-  const [testRecipient, setTestRecipient] = useState(adminCreds.email || 'therapie@homeopilto360.com');
+  const [testRecipient, setTestRecipient] = useState(adminCreds.email || 'therapie@homeopilot360.com');
   const [isTestingSmtp, setIsTestingSmtp] = useState(false);
   const [isSendingTestEmail, setIsSendingTestEmail] = useState(false);
   const [testSuccessMessage, setTestSuccessMessage] = useState<string | null>(null);
@@ -318,7 +318,19 @@ export const AdminConfigEditor: React.FC<AdminConfigEditorProps> = ({ onShowToas
         }),
       });
 
-      const data = await response.json();
+      let data: any = {};
+      const responseText = await response.text();
+      try {
+        data = JSON.parse(responseText);
+      } catch {
+        data = {
+          success: false,
+          error: response.ok
+            ? 'Unerwartetes Server-Antwortformat.'
+            : `Serverfehler (${response.status}): Bitte prüfen Sie, ob der Backend-Dienst aktiv ist.`,
+        };
+      }
+
       if (response.ok && data.success) {
         setTestSuccessMessage(data.message || (sendEmail ? t('testEmailSentSuccess') : t('connectionTestSuccess')));
         onShowToast(sendEmail ? t('testEmailSentSuccess') : t('connectionTestSuccess'));
@@ -840,7 +852,7 @@ export const AdminConfigEditor: React.FC<AdminConfigEditorProps> = ({ onShowToas
                       value={smtpUser}
                       onChange={(e) => setSmtpUser(e.target.value)}
                       required
-                      placeholder="therapie@homeopilto360.com"
+                      placeholder="therapie@homeopilot360.com"
                       className="w-full pl-10 pr-3.5 py-2.5 rounded-lg border border-slate-300 bg-white text-xs font-mono text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-teal-600 focus:ring-1 focus:ring-teal-600 transition-colors"
                     />
                   </div>

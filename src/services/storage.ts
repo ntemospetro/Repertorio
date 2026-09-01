@@ -11,9 +11,9 @@ export const DEFAULT_EMAIL_CONFIG: EmailConfig = {
   smtpHost: 'smtp.hostinger.com',
   smtpPort: 465,
   smtpSecure: true,
-  smtpUser: 'therapie@homeopilto360.com',
+  smtpUser: 'therapie@homeopilot360.com',
   smtpPassword: 'Othonospet@19071963',
-  fromEmail: 'therapie@homeopilto360.com',
+  fromEmail: 'therapie@homeopilot360.com',
   fromName: 'HomeoPilot 360',
   imapHost: 'imap.hostinger.com',
   imapPort: 993,
@@ -176,13 +176,18 @@ export function getEmailConfig(): EmailConfig {
       return DEFAULT_EMAIL_CONFIG;
     }
     const parsed = JSON.parse(raw);
+    const sanitizeEmail = (email?: string, fallback?: string) => {
+      if (!email) return fallback || '';
+      return email.replace('homeopilto360.com', 'homeopilot360.com');
+    };
+
     return {
       smtpHost: parsed.smtpHost || DEFAULT_EMAIL_CONFIG.smtpHost,
       smtpPort: typeof parsed.smtpPort === 'number' ? parsed.smtpPort : DEFAULT_EMAIL_CONFIG.smtpPort,
       smtpSecure: parsed.smtpSecure !== undefined ? Boolean(parsed.smtpSecure) : DEFAULT_EMAIL_CONFIG.smtpSecure,
-      smtpUser: parsed.smtpUser || DEFAULT_EMAIL_CONFIG.smtpUser,
+      smtpUser: sanitizeEmail(parsed.smtpUser, DEFAULT_EMAIL_CONFIG.smtpUser),
       smtpPassword: parsed.smtpPassword !== undefined ? parsed.smtpPassword : DEFAULT_EMAIL_CONFIG.smtpPassword,
-      fromEmail: parsed.fromEmail || parsed.smtpUser || DEFAULT_EMAIL_CONFIG.fromEmail,
+      fromEmail: sanitizeEmail(parsed.fromEmail || parsed.smtpUser, DEFAULT_EMAIL_CONFIG.fromEmail),
       fromName: parsed.fromName || DEFAULT_EMAIL_CONFIG.fromName,
       imapHost: parsed.imapHost || DEFAULT_EMAIL_CONFIG.imapHost,
       imapPort: typeof parsed.imapPort === 'number' ? parsed.imapPort : DEFAULT_EMAIL_CONFIG.imapPort,

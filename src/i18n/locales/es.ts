@@ -1283,7 +1283,7 @@ export const es = {
   "smtpSenderName": "Nombre del remitente (Nombre para mostrar)",
   "smtpSenderNamePlaceholder": "ej. HomeoPilot 360",
   "smtpSenderEmail": "Correo del remitente (From)",
-  "smtpSenderEmailPlaceholder": "ej. therapie@homeopilto360.com",
+  "smtpSenderEmailPlaceholder": "ej. therapie@homeopilot360.com",
   "incomingServerImap": "Servidor de Entrada (IMAP)",
   "incomingServerPop3": "Servidor de Entrada (POP3)",
   "imapHostname": "Servidor IMAP / Hostname",
