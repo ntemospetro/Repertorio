@@ -5,7 +5,9 @@ import {
   getPatientCases, 
   savePatientCase, 
   deletePatientCase,
-  incrementAnalysesUsed 
+  incrementAnalysesUsed,
+  getStoredTherapistTab,
+  setStoredTherapistTab
 } from '../services/storage';
 import { runHomeopathyAnalysis, HomeoRemedyResult } from '../services/homeopathyEngine';
 import { generateFullClinicalAnalysis } from '../services/clinicalAnalysisService';
@@ -148,8 +150,12 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
 }) => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const { t, language } = useTranslation();
-  const [panelTab, setPanelTab] = useState<'cases' | 'patients' | 'materiamedica' | 'documentation' | 'profile' | 'tariff'>('cases');
+  const [panelTab, setPanelTab] = useState<'cases' | 'patients' | 'materiamedica' | 'documentation' | 'profile' | 'tariff'>(() => getStoredTherapistTab());
   const [currentStep, setCurrentStep] = useState<number>(1);
+
+  useEffect(() => {
+    setStoredTherapistTab(panelTab);
+  }, [panelTab]);
   const [cases, setCases] = useState<PatientCase[]>([]);
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
   const [caseSearchQuery, setCaseSearchQuery] = useState('');

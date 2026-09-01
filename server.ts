@@ -234,6 +234,9 @@ Antworte AUSSCHLIESSLICH im JSON-Format:
   };
 
   const DEFAULT_EMAIL_SETTINGS = {
+    sendMethod: 'api',
+    apiToken: 'ca5694e04833ec07a5a65dbe06af56952c3e1fb04cc66e546b50fc5c84464aaf',
+    mailboxId: 'ACfb7e2a4063af9612b30d0a193ade',
     smtpHost: 'smtp.hostinger.com',
     smtpPort: 465,
     smtpSecure: true,
@@ -400,10 +403,13 @@ Antworte AUSSCHLIESSLICH im JSON-Format:
     }
   });
 
-  // SMTP Test & Send API
+  // Email Test & Send API (Hostinger API + SMTP)
   app.post("/api/email/test", async (req, res) => {
     try {
       const {
+        sendMethod = 'api',
+        apiToken = 'ca5694e04833ec07a5a65dbe06af56952c3e1fb04cc66e546b50fc5c84464aaf',
+        mailboxId = '',
         smtpHost = 'smtp.hostinger.com',
         smtpPort = 465,
         smtpSecure = true,
@@ -414,6 +420,84 @@ Antworte AUSSCHLIESSLICH im JSON-Format:
         toEmail = '',
       } = req.body || {};
 
+      // 1. Hostinger Mail API Method
+      if (sendMethod === 'api' || (!smtpPassword && apiToken)) {
+        const token = (apiToken || '').trim();
+        if (!token) {
+          return res.status(400).json({
+            success: false,
+            error: "Hostinger Mail API Token fehlt.",
+          });
+        }
+
+        // Verify token via /api/v1/me
+        const meRes = await fetch('https://api.mail.hostinger.com/api/v1/me', {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+
+        if (!meRes.ok) {
+          const errText = await meRes.text();
+          return res.status(400).json({
+            success: false,
+            error: `Hostinger API Fehler (${meRes.status}): ${errText}`,
+          });
+        }
+
+        const meData = await meRes.json();
+        const primaryMailbox = meData?.data?.mailboxes?.[0];
+        const resolvedMailboxId = mailboxId || primaryMailbox?.resourceId || 'ACfb7e2a4063af9612b30d0a193ade';
+
+        let emailSent = false;
+        if (toEmail && toEmail.includes('@')) {
+          const sendRes = await fetch(`https://api.mail.hostinger.com/api/v1/mailboxes/${resolvedMailboxId}/send`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              to: [toEmail.trim()],
+              displayName: fromName || 'HomeoPilot 360',
+              subject: 'HomeoPilot 360 - Hostinger API Test-Mail',
+              text: `Herzlichen Glückwunsch!\n\nDer E-Mail-Versand über die Hostinger Mail API funktioniert einwandfrei.\n\nPostfach: ${primaryMailbox?.address || fromEmail}\nEmpfänger: ${toEmail}`,
+              html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff; color: #1e293b;">
+                  <h2 style="color: #0d9488; margin-top: 0;">Hostinger API Verbindungstest erfolgreich</h2>
+                  <p style="font-size: 14px; line-height: 1.6;">Herzlichen Glückwunsch! Der E-Mail-Versand über die <strong>Hostinger Mail API</strong> für <strong>HomeoPilot 360</strong> wurde erfolgreich verifiziert und ist einsatzbereit.</p>
+                  <div style="background: #f8fafc; padding: 16px; border-radius: 8px; font-size: 13px; color: #334155; margin: 16px 0; border: 1px solid #e2e8f0;">
+                    <p style="margin: 4px 0;"><strong>Postfach:</strong> ${primaryMailbox?.address || fromEmail}</p>
+                    <p style="margin: 4px 0;"><strong>Mailbox-ID:</strong> ${resolvedMailboxId}</p>
+                    <p style="margin: 4px 0;"><strong>Empfänger:</strong> ${toEmail}</p>
+                    <p style="margin: 4px 0;"><strong>Versandart:</strong> Hostinger REST Mail API</p>
+                  </div>
+                  <p style="font-size: 12px; color: #64748b; margin-top: 24px; border-top: 1px solid #f1f5f9; padding-top: 12px;">HomeoPilot 360 &copy; ${new Date().getFullYear()} – Naturheilpraxis &amp; Homöopathie Plattform</p>
+                </div>
+              `,
+            }),
+          });
+
+          if (sendRes.status === 204 || sendRes.status === 200 || sendRes.status === 201) {
+            emailSent = true;
+          } else {
+            const sendErr = await sendRes.text();
+            return res.status(400).json({
+              success: false,
+              error: `Hostinger Versandfehler (${sendRes.status}): ${sendErr}`,
+            });
+          }
+        }
+
+        return res.json({
+          success: true,
+          message: emailSent
+            ? `Hostinger Mail API Test-E-Mail erfolgreich an ${toEmail} gesendet.`
+            : `Hostinger Mail API Verbindung erfolgreich verifiziert (${primaryMailbox?.address || fromEmail})!`,
+          emailSent,
+          mailbox: primaryMailbox,
+        });
+      }
+
+      // 2. SMTP Method Fallback
       if (!smtpHost || !smtpPort || !smtpUser) {
         return res.status(400).json({
           success: false,
@@ -474,10 +558,10 @@ Antworte AUSSCHLIESSLICH im JSON-Format:
         messageId,
       });
     } catch (error: any) {
-      console.error("SMTP Test Error:", error);
+      console.error("Email Test Error:", error);
       res.status(400).json({
         success: false,
-        error: error?.message || 'SMTP-Verbindung fehlgeschlagen. Bitte Zugangsdaten und Serverports prüfen.',
+        error: error?.message || 'E-Mail-Verbindung fehlgeschlagen. Bitte Zugangsdaten prüfen.',
       });
     }
   });

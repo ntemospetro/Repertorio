@@ -13,6 +13,7 @@ import {
   syncEmailConfigFromServer,
 } from '../services/storage';
 import { EmailConfig } from '../types';
+import { executeEmailTest } from '../services/emailService';
 import { useTranslation } from '../i18n/LanguageContext';
 import { 
   KeyRound, 
@@ -33,7 +34,9 @@ import {
   Send,
   Sliders,
   Shield,
-  Check
+  Check,
+  Zap,
+  Radio
 } from 'lucide-react';
 
 interface AdminConfigEditorProps {
@@ -59,6 +62,11 @@ export const AdminConfigEditor: React.FC<AdminConfigEditorProps> = ({ onShowToas
   const [faviconUrl, setFaviconUrl] = useState(siteConfig.faviconUrl || '');
 
   // Email / SMTP State
+  const [sendMethod, setSendMethod] = useState<'api' | 'smtp'>(emailConfig.sendMethod || 'api');
+  const [apiToken, setApiToken] = useState(emailConfig.apiToken || 'ca5694e04833ec07a5a65dbe06af56952c3e1fb04cc66e546b50fc5c84464aaf');
+  const [showApiToken, setShowApiToken] = useState(false);
+  const [mailboxId, setMailboxId] = useState(emailConfig.mailboxId || 'ACfb7e2a4063af9612b30d0a193ade');
+
   const [smtpHost, setSmtpHost] = useState(emailConfig.smtpHost);
   const [smtpPort, setSmtpPort] = useState(emailConfig.smtpPort);
   const [smtpSecure, setSmtpSecure] = useState(emailConfig.smtpSecure);
@@ -105,6 +113,9 @@ export const AdminConfigEditor: React.FC<AdminConfigEditorProps> = ({ onShowToas
 
     const eConfig = getEmailConfig();
     setEmailConfigState(eConfig);
+    setSendMethod(eConfig.sendMethod || 'api');
+    setApiToken(eConfig.apiToken || 'ca5694e04833ec07a5a65dbe06af56952c3e1fb04cc66e546b50fc5c84464aaf');
+    setMailboxId(eConfig.mailboxId || 'ACfb7e2a4063af9612b30d0a193ade');
     setSmtpHost(eConfig.smtpHost);
     setSmtpPort(eConfig.smtpPort);
     setSmtpSecure(eConfig.smtpSecure);
@@ -225,28 +236,38 @@ export const AdminConfigEditor: React.FC<AdminConfigEditorProps> = ({ onShowToas
     const cleanSmtpHost = smtpHost.trim();
     const cleanUser = smtpUser.trim();
 
-    if (!cleanSmtpHost) {
-      setEmailErrorMessage('Bitte geben Sie einen gültigen SMTP-Server (Hostname) an.');
-      return;
-    }
-    if (!smtpPort || smtpPort <= 0) {
-      setEmailErrorMessage('Bitte geben Sie einen gültigen Port an (z.B. 465).');
-      return;
-    }
-    if (!cleanUser) {
-      setEmailErrorMessage('Bitte geben Sie einen Benutzernamen bzw. eine E-Mail-Adresse an.');
-      return;
+    if (sendMethod === 'smtp') {
+      if (!cleanSmtpHost) {
+        setEmailErrorMessage('Bitte geben Sie einen gültigen SMTP-Server (Hostname) an.');
+        return;
+      }
+      if (!smtpPort || smtpPort <= 0) {
+        setEmailErrorMessage('Bitte geben Sie einen gültigen Port an (z.B. 465).');
+        return;
+      }
+      if (!cleanUser) {
+        setEmailErrorMessage('Bitte geben Sie einen Benutzernamen bzw. eine E-Mail-Adresse an.');
+        return;
+      }
+    } else {
+      if (!apiToken.trim()) {
+        setEmailErrorMessage('Bitte geben Sie einen gültigen Hostinger Mail API Token ein.');
+        return;
+      }
     }
 
     setIsSavingEmail(true);
     setTimeout(() => {
       const updated = saveEmailConfig({
-        smtpHost: cleanSmtpHost,
-        smtpPort: Number(smtpPort),
+        sendMethod,
+        apiToken: apiToken.trim(),
+        mailboxId: mailboxId.trim(),
+        smtpHost: cleanSmtpHost || 'smtp.hostinger.com',
+        smtpPort: Number(smtpPort) || 465,
         smtpSecure: Boolean(smtpSecure),
-        smtpUser: cleanUser,
+        smtpUser: cleanUser || 'therapie@homeopilot360.com',
         smtpPassword,
-        fromEmail: fromEmail.trim() || cleanUser,
+        fromEmail: fromEmail.trim() || cleanUser || 'therapie@homeopilot360.com',
         fromName: fromName.trim() || 'HomeoPilot 360',
         imapHost: imapHost.trim(),
         imapPort: Number(imapPort),
@@ -268,6 +289,9 @@ export const AdminConfigEditor: React.FC<AdminConfigEditorProps> = ({ onShowToas
     if (window.confirm('Möchten Sie die E-Mail-Einstellungen wirklich auf die Hostinger-Standardwerte zurücksetzen?')) {
       const defaultConf = resetEmailConfig();
       setEmailConfigState(defaultConf);
+      setSendMethod(defaultConf.sendMethod || 'api');
+      setApiToken(defaultConf.apiToken || 'ca5694e04833ec07a5a65dbe06af56952c3e1fb04cc66e546b50fc5c84464aaf');
+      setMailboxId(defaultConf.mailboxId || 'ACfb7e2a4063af9612b30d0a193ade');
       setSmtpHost(defaultConf.smtpHost);
       setSmtpPort(defaultConf.smtpPort);
       setSmtpSecure(defaultConf.smtpSecure);
@@ -287,7 +311,7 @@ export const AdminConfigEditor: React.FC<AdminConfigEditorProps> = ({ onShowToas
     }
   };
 
-  // SMTP Testing
+  // Email Testing (Hostinger API direct or SMTP)
   const handleTestSmtpConnection = async (sendEmail: boolean) => {
     setTestSuccessMessage(null);
     setTestErrorMessage(null);
@@ -303,10 +327,11 @@ export const AdminConfigEditor: React.FC<AdminConfigEditorProps> = ({ onShowToas
     }
 
     try {
-      const response = await fetch('/api/email/test', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const result = await executeEmailTest({
+        config: {
+          sendMethod,
+          apiToken: apiToken.trim(),
+          mailboxId: mailboxId.trim(),
           smtpHost: smtpHost.trim(),
           smtpPort: Number(smtpPort),
           smtpSecure: Boolean(smtpSecure),
@@ -314,28 +339,22 @@ export const AdminConfigEditor: React.FC<AdminConfigEditorProps> = ({ onShowToas
           smtpPassword,
           fromEmail: fromEmail.trim() || smtpUser.trim(),
           fromName: fromName.trim() || 'HomeoPilot 360',
-          toEmail: sendEmail ? testRecipient.trim() : undefined,
-        }),
+          imapHost: imapHost.trim(),
+          imapPort: Number(imapPort),
+          imapSecure: Boolean(imapSecure),
+          popHost: popHost.trim(),
+          popPort: Number(popPort),
+          popSecure: Boolean(popSecure),
+        },
+        recipientEmail: testRecipient.trim(),
+        sendEmail,
       });
 
-      let data: any = {};
-      const responseText = await response.text();
-      try {
-        data = JSON.parse(responseText);
-      } catch {
-        data = {
-          success: false,
-          error: response.ok
-            ? 'Unerwartetes Server-Antwortformat.'
-            : `Serverfehler (${response.status}): Bitte prüfen Sie, ob der Backend-Dienst aktiv ist.`,
-        };
-      }
-
-      if (response.ok && data.success) {
-        setTestSuccessMessage(data.message || (sendEmail ? t('testEmailSentSuccess') : t('connectionTestSuccess')));
+      if (result.success) {
+        setTestSuccessMessage(result.message);
         onShowToast(sendEmail ? t('testEmailSentSuccess') : t('connectionTestSuccess'));
       } else {
-        setTestErrorMessage(data.error || t('connectionTestFailed'));
+        setTestErrorMessage(result.message);
       }
     } catch (err: any) {
       setTestErrorMessage(err?.message || 'Verbindung zum Server fehlgeschlagen.');
@@ -753,6 +772,117 @@ export const AdminConfigEditor: React.FC<AdminConfigEditorProps> = ({ onShowToas
 
           {/* Email Settings Form */}
           <form onSubmit={handleSaveEmailConfig} className="space-y-6" id="admin-email-config-form">
+            {/* Section 0: Versandmethode (Send Method Selection) */}
+            <div className="p-4 sm:p-5 rounded-xl border border-slate-200 bg-white space-y-4">
+              <div className="border-b border-slate-100 pb-3">
+                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-teal-600" />
+                  <span>{t('sendMethod')}</span>
+                </h4>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Wählen Sie die bevorzugte Übertragungsart für den automatischen E-Mail-Versand.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <label className={`flex items-start gap-3 p-3.5 rounded-xl border text-xs cursor-pointer transition-all ${
+                  sendMethod === 'api'
+                    ? 'border-teal-600 bg-teal-50/50 text-teal-950 ring-1 ring-teal-600 font-medium shadow-xs'
+                    : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100/80'
+                }`}>
+                  <input
+                    type="radio"
+                    name="sendMethod"
+                    value="api"
+                    checked={sendMethod === 'api'}
+                    onChange={() => setSendMethod('api')}
+                    className="mt-0.5 text-teal-600 focus:ring-teal-500"
+                  />
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-1.5 font-bold text-slate-900">
+                      <span>{t('sendMethodApi')}</span>
+                      <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold">Empfohlen</span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 leading-relaxed font-normal">
+                      Direkter Versand über Hostinger REST API (HTTPS). Ideal für Webhosting und statisches Deployment.
+                    </p>
+                  </div>
+                </label>
+
+                <label className={`flex items-start gap-3 p-3.5 rounded-xl border text-xs cursor-pointer transition-all ${
+                  sendMethod === 'smtp'
+                    ? 'border-teal-600 bg-teal-50/50 text-teal-950 ring-1 ring-teal-600 font-medium shadow-xs'
+                    : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100/80'
+                }`}>
+                  <input
+                    type="radio"
+                    name="sendMethod"
+                    value="smtp"
+                    checked={sendMethod === 'smtp'}
+                    onChange={() => setSendMethod('smtp')}
+                    className="mt-0.5 text-teal-600 focus:ring-teal-500"
+                  />
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-1.5 font-bold text-slate-900">
+                      <span>{t('sendMethodSmtp')}</span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 leading-relaxed font-normal">
+                      Klassischer SMTP-Handshake über einen aktiven Node.js-Backend-Dienst.
+                    </p>
+                  </div>
+                </label>
+              </div>
+
+              {/* Hostinger API Specific Inputs */}
+              <div className="p-3.5 bg-slate-50/70 border border-slate-200 rounded-lg space-y-3 pt-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Hostinger API Token */}
+                  <div className="space-y-1">
+                    <label htmlFor="email-api-token" className="text-xs font-bold text-slate-700 block">
+                      {t('hostingerApiToken')} {sendMethod === 'api' ? '*' : ''}
+                    </label>
+                    <div className="relative">
+                      <KeyRound className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                      <input
+                        id="email-api-token"
+                        type={showApiToken ? 'text' : 'password'}
+                        value={apiToken}
+                        onChange={(e) => setApiToken(e.target.value)}
+                        placeholder={t('hostingerApiTokenPlaceholder')}
+                        className="w-full pl-10 pr-10 py-2.5 rounded-lg border border-slate-300 bg-white text-xs font-mono text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-teal-600 focus:ring-1 focus:ring-teal-600 transition-colors"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowApiToken(!showApiToken)}
+                        className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 cursor-pointer"
+                        title="Token anzeigen/ausblenden"
+                      >
+                        {showApiToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Mailbox Resource ID */}
+                  <div className="space-y-1">
+                    <label htmlFor="email-mailbox-id" className="text-xs font-bold text-slate-700 block">
+                      {t('hostingerMailboxId')}
+                    </label>
+                    <div className="relative">
+                      <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                      <input
+                        id="email-mailbox-id"
+                        type="text"
+                        value={mailboxId}
+                        onChange={(e) => setMailboxId(e.target.value)}
+                        placeholder={t('hostingerMailboxIdPlaceholder')}
+                        className="w-full pl-10 pr-3.5 py-2.5 rounded-lg border border-slate-300 bg-white text-xs font-mono text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-teal-600 focus:ring-1 focus:ring-teal-600 transition-colors"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Section 1: SMTP Outgoing Server */}
             <div className="p-4 sm:p-5 rounded-xl border border-slate-200 bg-white space-y-4">
               <div className="border-b border-slate-100 pb-3">

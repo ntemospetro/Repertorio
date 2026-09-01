@@ -7,7 +7,9 @@ import {
   getActiveTherapistId,
   setActiveTherapistId,
   getTherapists,
-  getSiteConfig
+  getSiteConfig,
+  getStoredActiveView,
+  setStoredActiveView
 } from './services/storage';
 import { LanguageProvider, useTranslation } from './i18n/LanguageContext';
 import { Header } from './components/Header';
@@ -19,7 +21,7 @@ import { AdminLogin } from './components/AdminLogin';
 import { LandingPage } from './components/LandingPage';
 
 function AppContent() {
-  const [currentView, setCurrentView] = useState<ActiveView>('landing');
+  const [currentView, setCurrentView] = useState<ActiveView>(() => getStoredActiveView());
   const [activeTherapist, setActiveTherapist] = useState<Therapist | null>(getActiveTherapist());
   const [isAdmin, setIsAdmin] = useState<boolean>(isAdminLoggedIn());
   const { t } = useTranslation();
@@ -28,6 +30,10 @@ function AppContent() {
     setActiveTherapist(getActiveTherapist());
     setIsAdmin(isAdminLoggedIn());
   };
+
+  useEffect(() => {
+    setStoredActiveView(currentView);
+  }, [currentView]);
 
   useEffect(() => {
     syncState();

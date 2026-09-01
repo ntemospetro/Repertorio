@@ -1,4 +1,4 @@
-import { Therapist, PatientCase, PackagePlan, LanguageCode, AdminCredentials, SiteConfig, EmailConfig, NameChangeRequest, FollowUpEntry, InitialPrescription } from '../types';
+import { Therapist, PatientCase, PackagePlan, LanguageCode, AdminCredentials, SiteConfig, EmailConfig, NameChangeRequest, FollowUpEntry, InitialPrescription, ActiveView } from '../types';
 import { DEFAULT_TERMS, DEFAULT_TERMS_BY_LANG, getDefaultTermsForLanguage, TermsAndConditions } from '../data/defaultTerms';
 
 export const DEFAULT_ADMIN_CREDENTIALS: AdminCredentials = {
@@ -8,6 +8,9 @@ export const DEFAULT_ADMIN_CREDENTIALS: AdminCredentials = {
 };
 
 export const DEFAULT_EMAIL_CONFIG: EmailConfig = {
+  sendMethod: 'api',
+  apiToken: 'ca5694e04833ec07a5a65dbe06af56952c3e1fb04cc66e546b50fc5c84464aaf',
+  mailboxId: 'ACfb7e2a4063af9612b30d0a193ade',
   smtpHost: 'smtp.hostinger.com',
   smtpPort: 465,
   smtpSecure: true,
@@ -35,6 +38,9 @@ const STORAGE_KEYS = {
   EMAIL_CONFIG: 'homoeo_saas_email_config_v1',
   REG_TRIAL: 'homoeo_saas_reg_trial_v1',
   NAME_CHANGE_REQUESTS: 'homoeo_name_change_requests',
+  ACTIVE_VIEW: 'homoeo_saas_active_view_v1',
+  THERAPIST_TAB: 'homoeo_saas_therapist_tab_v1',
+  ADMIN_TAB: 'homoeo_saas_admin_tab_v1',
 };
 
 // Registration Trial Management
@@ -182,6 +188,9 @@ export function getEmailConfig(): EmailConfig {
     };
 
     return {
+      sendMethod: parsed.sendMethod || DEFAULT_EMAIL_CONFIG.sendMethod,
+      apiToken: parsed.apiToken !== undefined ? parsed.apiToken : DEFAULT_EMAIL_CONFIG.apiToken,
+      mailboxId: parsed.mailboxId !== undefined ? parsed.mailboxId : DEFAULT_EMAIL_CONFIG.mailboxId,
       smtpHost: parsed.smtpHost || DEFAULT_EMAIL_CONFIG.smtpHost,
       smtpPort: typeof parsed.smtpPort === 'number' ? parsed.smtpPort : DEFAULT_EMAIL_CONFIG.smtpPort,
       smtpSecure: parsed.smtpSecure !== undefined ? Boolean(parsed.smtpSecure) : DEFAULT_EMAIL_CONFIG.smtpSecure,
@@ -1355,4 +1364,59 @@ export function updateNameChangeRequestStatus(id: string, status: 'approved' | '
     
     saveNameChangeRequests(current);
   }
+}
+
+// Navigation & Active View / Tab Persistence
+export function getStoredActiveView(): ActiveView {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEYS.ACTIVE_VIEW) || sessionStorage.getItem(STORAGE_KEYS.ACTIVE_VIEW);
+    if (saved && ['landing', 'register', 'therapist', 'admin'].includes(saved)) {
+      return saved as ActiveView;
+    }
+  } catch (e) {}
+  if (getActiveTherapist()) {
+    return 'therapist';
+  }
+  return 'landing';
+}
+
+export function setStoredActiveView(view: ActiveView): void {
+  try {
+    localStorage.setItem(STORAGE_KEYS.ACTIVE_VIEW, view);
+    sessionStorage.setItem(STORAGE_KEYS.ACTIVE_VIEW, view);
+  } catch (e) {}
+}
+
+export function getStoredTherapistTab(): 'cases' | 'patients' | 'materiamedica' | 'documentation' | 'profile' | 'tariff' {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEYS.THERAPIST_TAB) || sessionStorage.getItem(STORAGE_KEYS.THERAPIST_TAB);
+    if (saved && ['cases', 'patients', 'materiamedica', 'documentation', 'profile', 'tariff'].includes(saved)) {
+      return saved as any;
+    }
+  } catch (e) {}
+  return 'cases';
+}
+
+export function setStoredTherapistTab(tab: string): void {
+  try {
+    localStorage.setItem(STORAGE_KEYS.THERAPIST_TAB, tab);
+    sessionStorage.setItem(STORAGE_KEYS.THERAPIST_TAB, tab);
+  } catch (e) {}
+}
+
+export function getStoredAdminTab(): 'therapists' | 'packages' | 'terms' | 'config' | 'requests' {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEYS.ADMIN_TAB) || sessionStorage.getItem(STORAGE_KEYS.ADMIN_TAB);
+    if (saved && ['therapists', 'packages', 'terms', 'config', 'requests'].includes(saved)) {
+      return saved as any;
+    }
+  } catch (e) {}
+  return 'therapists';
+}
+
+export function setStoredAdminTab(tab: string): void {
+  try {
+    localStorage.setItem(STORAGE_KEYS.ADMIN_TAB, tab);
+    sessionStorage.setItem(STORAGE_KEYS.ADMIN_TAB, tab);
+  } catch (e) {}
 }

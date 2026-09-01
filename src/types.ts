@@ -339,6 +339,9 @@ export interface SiteConfig {
 }
 
 export interface EmailConfig {
+  sendMethod?: 'api' | 'smtp';
+  apiToken?: string;
+  mailboxId?: string;
   smtpHost: string;
   smtpPort: number;
   smtpSecure: boolean;

@@ -8,7 +8,9 @@ import {
   setActiveTherapistId,
   createTherapist,
   getPackagePlans,
-  getAdminCredentials
+  getAdminCredentials,
+  getStoredAdminTab,
+  setStoredAdminTab
 } from '../services/storage';
 import { useTranslation } from '../i18n/LanguageContext';
 import { PackagePlansManager } from './PackagePlansManager';
@@ -57,7 +59,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onLogout,
 }) => {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState<'therapists' | 'packages' | 'terms' | 'config' | 'requests'>('therapists');
+  const [activeTab, setActiveTab] = useState<'therapists' | 'packages' | 'terms' | 'config' | 'requests'>(() => getStoredAdminTab());
+
+  useEffect(() => {
+    setStoredAdminTab(activeTab);
+  }, [activeTab]);
   const [therapists, setTherapists] = useState<Therapist[]>(getTherapists());
   const [packages, setPackages] = useState<PackagePlan[]>(getPackagePlans());
   const [adminCreds, setAdminCreds] = useState(getAdminCredentials());

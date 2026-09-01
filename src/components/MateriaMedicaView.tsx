@@ -145,7 +145,22 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = () => {
   const { t, language } = useTranslation();
   
   // Navigation Tabs
-  const [activeTab, setActiveTab] = useState<'lexicon' | 'quickIntake'>('lexicon');
+  const [activeTab, setActiveTab] = useState<'lexicon' | 'quickIntake'>(() => {
+    try {
+      const saved = localStorage.getItem('homoeo_mm_tab') || sessionStorage.getItem('homoeo_mm_tab');
+      if (saved === 'lexicon' || saved === 'quickIntake') {
+        return saved;
+      }
+    } catch (e) {}
+    return 'lexicon';
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('homoeo_mm_tab', activeTab);
+      sessionStorage.setItem('homoeo_mm_tab', activeTab);
+    } catch (e) {}
+  }, [activeTab]);
   
   // Search and Filter State
   const [searchQuery, setSearchQuery] = useState('');
