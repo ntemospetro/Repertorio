@@ -14,6 +14,7 @@ import {
   authenticateTherapist 
 } from '../services/storage';
 import { useTranslation } from '../i18n/LanguageContext';
+import { ForgotPasswordModal } from './ForgotPasswordModal';
 
 interface TherapistLoginProps {
   onLoginSuccess: (therapist: Therapist) => void;
@@ -30,6 +31,7 @@ export const TherapistLogin: React.FC<TherapistLoginProps> = ({
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isForgotModalOpen, setIsForgotModalOpen] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -134,6 +136,14 @@ export const TherapistLogin: React.FC<TherapistLoginProps> = ({
                 >
                   {t('therapistLoginPasswordLabel')} <span className="text-rose-500">*</span>
                 </label>
+                <button
+                  id="btn-therapist-forgot-password"
+                  type="button"
+                  onClick={() => setIsForgotModalOpen(true)}
+                  className="text-xs text-teal-700 hover:text-teal-800 font-semibold transition-colors cursor-pointer"
+                >
+                  {t('forgotPwLink')}
+                </button>
               </div>
               <div className="relative">
                 <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -198,6 +208,14 @@ export const TherapistLogin: React.FC<TherapistLoginProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Forgot Password Modal */}
+      <ForgotPasswordModal
+        isOpen={isForgotModalOpen}
+        onClose={() => setIsForgotModalOpen(false)}
+        defaultEmail={email}
+      />
     </div>
   );
 };
+

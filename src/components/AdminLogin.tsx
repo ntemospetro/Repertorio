@@ -175,7 +175,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess }) => {
       <ForgotPasswordModal
         isOpen={isForgotModalOpen}
         onClose={() => setIsForgotModalOpen(false)}
-        onAutoFillCredentials={handleAutoFill}
+        defaultEmail={email}
       />
     </div>
   );
