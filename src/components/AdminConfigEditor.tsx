@@ -683,9 +683,15 @@ export const AdminConfigEditor: React.FC<AdminConfigEditorProps> = ({ onShowToas
                     <td className="py-2.5 px-4 text-teal-700 font-semibold">{imapHost}</td>
                     <td className="py-2.5 px-4 text-slate-700">{imapPort}</td>
                     <td className="py-2.5 px-4">
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-sans font-bold">
-                        <Check className="w-3 h-3" /> SSL/TLS
-                      </span>
+                      {imapSecure ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-sans font-bold">
+                          <Check className="w-3 h-3" /> SSL/TLS
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 text-[10px] font-sans">
+                          STARTTLS / Standard
+                        </span>
+                      )}
                     </td>
                   </tr>
                   <tr className="hover:bg-slate-50/80 transition-colors bg-teal-50/20">
@@ -696,9 +702,15 @@ export const AdminConfigEditor: React.FC<AdminConfigEditorProps> = ({ onShowToas
                     <td className="py-2.5 px-4 text-teal-800 font-bold">{smtpHost}</td>
                     <td className="py-2.5 px-4 text-teal-800 font-bold">{smtpPort}</td>
                     <td className="py-2.5 px-4">
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-sans font-bold">
-                        <Check className="w-3 h-3" /> SSL/TLS
-                      </span>
+                      {smtpSecure ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-sans font-bold">
+                          <Check className="w-3 h-3" /> SSL/TLS
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-sans font-bold">
+                          STARTTLS
+                        </span>
+                      )}
                     </td>
                   </tr>
                   <tr className="hover:bg-slate-50/80 transition-colors">
@@ -711,9 +723,15 @@ export const AdminConfigEditor: React.FC<AdminConfigEditorProps> = ({ onShowToas
                     <td className="py-2.5 px-4 text-slate-600">{popHost}</td>
                     <td className="py-2.5 px-4 text-slate-600">{popPort}</td>
                     <td className="py-2.5 px-4">
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 text-[10px] font-sans">
-                        SSL/TLS
-                      </span>
+                      {popSecure ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-sans font-bold">
+                          <Check className="w-3 h-3" /> SSL/TLS
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 text-[10px] font-sans">
+                          STARTTLS / Standard
+                        </span>
+                      )}
                     </td>
                   </tr>
                 </tbody>
@@ -932,12 +950,18 @@ export const AdminConfigEditor: React.FC<AdminConfigEditorProps> = ({ onShowToas
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[11px] font-semibold text-slate-600 block">
+                      <label htmlFor="email-imap-secure" className="text-[11px] font-semibold text-slate-600 block">
                         SSL/TLS
                       </label>
-                      <div className="py-2 px-3 bg-white border border-slate-300 rounded text-xs font-medium text-emerald-700">
-                        Aktiv (993)
-                      </div>
+                      <select
+                        id="email-imap-secure"
+                        value={imapSecure ? 'true' : 'false'}
+                        onChange={(e) => setImapSecure(e.target.value === 'true')}
+                        className="w-full px-2.5 py-2 rounded border border-slate-300 bg-white text-xs font-semibold text-teal-800 focus:outline-none focus:border-teal-600 cursor-pointer"
+                      >
+                        <option value="true">SSL / TLS (993)</option>
+                        <option value="false">STARTTLS / Standard</option>
+                      </select>
                     </div>
                   </div>
                 </div>
@@ -978,12 +1002,18 @@ export const AdminConfigEditor: React.FC<AdminConfigEditorProps> = ({ onShowToas
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[11px] font-semibold text-slate-600 block">
+                      <label htmlFor="email-pop-secure" className="text-[11px] font-semibold text-slate-600 block">
                         SSL/TLS
                       </label>
-                      <div className="py-2 px-3 bg-white border border-slate-300 rounded text-xs font-medium text-slate-700">
-                        Aktiv (995)
-                      </div>
+                      <select
+                        id="email-pop-secure"
+                        value={popSecure ? 'true' : 'false'}
+                        onChange={(e) => setPopSecure(e.target.value === 'true')}
+                        className="w-full px-2.5 py-2 rounded border border-slate-300 bg-white text-xs font-semibold text-slate-800 focus:outline-none focus:border-teal-600 cursor-pointer"
+                      >
+                        <option value="true">SSL / TLS (995)</option>
+                        <option value="false">STARTTLS / Standard</option>
+                      </select>
                     </div>
                   </div>
                 </div>
