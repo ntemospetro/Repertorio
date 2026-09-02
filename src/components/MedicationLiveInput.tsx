@@ -42,15 +42,7 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
 
   // Sync internal query with prop if updated externally
   useEffect(() => {
-    const currentName = (med.name || '').trim();
     setQuery(med.name || '');
-    if (!currentName) {
-      setSelectedSuggestion(null);
-      setIsDetailsExpanded(false);
-      setSuggestions([]);
-      setIsOpen(false);
-      setIsSearching(false);
-    }
   }, [med.name]);
 
   // Click outside to close dropdown
@@ -64,50 +56,24 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const fetchedDetailsRef = useRef<string>('');
-
-  // When medication name is present but research details are missing, fetch them in background
+  // When medication name is present but details are missing, fetch them in background
   useEffect(() => {
-    const trimmedName = (med.name || '').trim();
-    if (
-      trimmedName.length >= 2 &&
-      fetchedDetailsRef.current !== trimmedName.toLowerCase() &&
-      (!med.nebenwirkungen || med.nebenwirkungen.length === 0) &&
-      (!med.wechselwirkungen || med.wechselwirkungen.length === 0)
-    ) {
-      fetchedDetailsRef.current = trimmedName.toLowerCase();
+    if (med.name && med.name.trim().length >= 2 && !med.nebenwirkungen && !med.wechselwirkungen) {
       let isMounted = true;
-      setIsLoadingDetails(true);
-      fetchMedicationDetails(trimmedName)
-        .then(details => {
-          if (isMounted && details) {
-            setSelectedSuggestion(prev => ({
-              ...details,
-              defaultDosages: (prev && prev.defaultDosages && prev.defaultDosages.length > 0)
-                ? prev.defaultDosages
-                : details.defaultDosages,
-            }));
-            onChange({
-              ...med,
-              wirkstoff: med.wirkstoff || details.activeSubstance,
-              kategorie: med.kategorie || details.category,
-              dosierung: med.dosierung || (details.defaultDosages && details.defaultDosages[0]) || '',
-              einnahmeart: med.einnahmeart || details.recommendedIntake || '',
-              nebenwirkungen: details.sideEffects,
-              wechselwirkungen: details.interactions,
-              risiken: details.warnings,
-            });
-          }
-        })
-        .catch(err => {
-          console.warn('Background medication details load error:', err);
-        })
-        .finally(() => {
-          if (isMounted) setIsLoadingDetails(false);
-        });
-      return () => {
-        isMounted = false;
-      };
+      fetchMedicationDetails(med.name).then(details => {
+        if (isMounted && details) {
+          setSelectedSuggestion(details);
+          onChange({
+            ...med,
+            wirkstoff: med.wirkstoff || details.activeSubstance,
+            kategorie: med.kategorie || details.category,
+            nebenwirkungen: med.nebenwirkungen || details.sideEffects,
+            wechselwirkungen: med.wechselwirkungen || details.interactions,
+            risiken: med.risiken || details.warnings,
+          });
+        }
+      });
+      return () => { isMounted = false; };
     }
   }, [med.name]);
 
@@ -133,38 +99,17 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
 
   const handleInputChange = (val: string) => {
     setQuery(val);
+    onChange({ ...med, name: val });
 
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }
 
-    if (!val || val.trim().length === 0) {
-      setSelectedSuggestion(null);
-      setIsDetailsExpanded(false);
-      setSuggestions([]);
-      setIsOpen(false);
-      setIsSearching(false);
-      onChange({
-        name: '',
-        dosierung: '',
-        einnahmeart: '',
-        grund: '',
-        wirkstoff: '',
-        kategorie: '',
-        nebenwirkungen: [],
-        wechselwirkungen: [],
-        risiken: ''
-      });
-      return;
-    }
-
-    onChange({ ...med, name: val });
-
     if (val.trim().length >= 1) {
       setIsSearching(true);
       searchTimeoutRef.current = setTimeout(() => {
         executeSearch(val);
-      }, 200);
+      }, 250);
     } else {
       setSuggestions([]);
       setIsOpen(false);
@@ -172,82 +117,75 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
     }
   };
 
-  const handleSelectMedication = (suggestion: MedicationSuggestion) => {
+  const handleSelectMedication = async (suggestion: MedicationSuggestion) => {
     setQuery(suggestion.name);
     setSelectedSuggestion(suggestion);
     setIsOpen(false);
-    fetchedDetailsRef.current = suggestion.name.toLowerCase();
 
-    // 1. Stufe: Name und Dosierung SOFORT übernehmen
+    // Auto-select first dosage if not set yet
     const newDosage = med.dosierung || (suggestion.defaultDosages && suggestion.defaultDosages.length > 0 ? suggestion.defaultDosages[0] : '');
     const newIntake = med.einnahmeart || suggestion.recommendedIntake || '';
 
-    const initialData: MedicationData = {
-      ...med,
-      name: suggestion.name,
-      dosierung: newDosage,
-      einnahmeart: newIntake,
-      wirkstoff: suggestion.activeSubstance || '',
-      kategorie: suggestion.category || '',
-      nebenwirkungen: suggestion.sideEffects || [],
-      wechselwirkungen: suggestion.interactions || [],
-      risiken: suggestion.warnings || '',
-    };
-    onChange(initialData);
-
-    // Wenn vollständige Recherche-Daten bereits vorliegen (z.B. aus der lokalen Datenbank), fertig
+    // If suggestion already has side effects / interactions, apply immediately
     if (suggestion.sideEffects && suggestion.sideEffects.length > 0) {
-      setIsLoadingDetails(false);
-      return;
-    }
+      onChange({
+        ...med,
+        name: suggestion.name,
+        dosierung: newDosage,
+        einnahmeart: newIntake,
+        wirkstoff: suggestion.activeSubstance || '',
+        kategorie: suggestion.category || '',
+        nebenwirkungen: suggestion.sideEffects || [],
+        wechselwirkungen: suggestion.interactions || [],
+        risiken: suggestion.warnings || '',
+      });
+      setIsDetailsExpanded(true);
+    } else {
+      // Fetch full details online
+      setIsLoadingDetails(true);
+      onChange({
+        ...med,
+        name: suggestion.name,
+        dosierung: newDosage,
+        einnahmeart: newIntake,
+        wirkstoff: suggestion.activeSubstance || '',
+        kategorie: suggestion.category || '',
+      });
 
-    // 2. Stufe: Recherche-Daten (Wirkstoffdetails, Neben- & Wechselwirkungen) asynchron im Hintergrund laden
-    setIsLoadingDetails(true);
-    fetchMedicationDetails(suggestion.name)
-      .then(fullDetails => {
+      try {
+        const fullDetails = await fetchMedicationDetails(suggestion.name);
         if (fullDetails) {
-          setSelectedSuggestion(prev => ({
-            ...suggestion,
-            ...fullDetails,
-            defaultDosages: (suggestion.defaultDosages && suggestion.defaultDosages.length > 0)
-              ? suggestion.defaultDosages
-              : fullDetails.defaultDosages,
-          }));
+          setSelectedSuggestion(fullDetails);
           onChange({
-            ...initialData,
+            ...med,
+            name: suggestion.name,
+            dosierung: newDosage,
+            einnahmeart: newIntake || fullDetails.recommendedIntake || '',
             wirkstoff: fullDetails.activeSubstance || suggestion.activeSubstance || '',
             kategorie: fullDetails.category || suggestion.category || '',
-            einnahmeart: initialData.einnahmeart || fullDetails.recommendedIntake || '',
             nebenwirkungen: fullDetails.sideEffects || [],
             wechselwirkungen: fullDetails.interactions || [],
             risiken: fullDetails.warnings || '',
           });
+          setIsDetailsExpanded(true);
         }
-      })
-      .catch(err => {
-        console.warn('Background research details error:', err);
-      })
-      .finally(() => {
+      } finally {
         setIsLoadingDetails(false);
-      });
+      }
+    }
   };
 
-  // Find matching suggestion from DB or active suggestions list ONLY IF medication name exists
-  const isNameEmpty = !med.name || !med.name.trim();
-  const currentDbMatch = isNameEmpty
-    ? null
-    : (selectedSuggestion || COMMON_MEDICATIONS_DB.find(
-        m => m.name.toLowerCase() === (med.name || '').toLowerCase()
-      ) || suggestions.find(
-        s => s.name.toLowerCase() === (med.name || '').toLowerCase()
-      ));
+  // Find matching suggestion from DB if name already exists
+  const currentDbMatch = selectedSuggestion || COMMON_MEDICATIONS_DB.find(
+    m => m.name.toLowerCase() === (med.name || '').toLowerCase()
+  );
 
-  const activeSubstance = isNameEmpty ? '' : (med.wirkstoff || currentDbMatch?.activeSubstance);
-  const category = isNameEmpty ? '' : (med.kategorie || currentDbMatch?.category);
-  const sideEffects = isNameEmpty ? [] : (med.nebenwirkungen || currentDbMatch?.sideEffects || []);
-  const interactions = isNameEmpty ? [] : (med.wechselwirkungen || currentDbMatch?.interactions || []);
-  const warnings = isNameEmpty ? '' : (med.risiken || currentDbMatch?.warnings);
-  const hasResearchData = !isNameEmpty && Boolean(activeSubstance || (sideEffects && sideEffects.length > 0) || (interactions && interactions.length > 0) || warnings);
+  const activeSubstance = med.wirkstoff || currentDbMatch?.activeSubstance;
+  const category = med.kategorie || currentDbMatch?.category;
+  const sideEffects = med.nebenwirkungen || currentDbMatch?.sideEffects || [];
+  const interactions = med.wechselwirkungen || currentDbMatch?.interactions || [];
+  const warnings = med.risiken || currentDbMatch?.warnings;
+  const hasResearchData = Boolean(activeSubstance || (sideEffects && sideEffects.length > 0) || (interactions && interactions.length > 0) || warnings);
 
   return (
     <div className="p-3.5 bg-white rounded-xl border border-slate-200 shadow-2xs space-y-3 relative group transition-all duration-200 hover:border-teal-300">
@@ -392,29 +330,27 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
             className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 transition-shadow"
           />
 
-          {!isNameEmpty && (
-            <div className="flex flex-wrap gap-1 mt-1.5">
-              {['1x täglich', '2x täglich', 'Bei Bedarf', 'Morgens nüchtern'].map((freq, fIdx) => (
-                <button
-                  key={fIdx}
-                  type="button"
-                  onClick={() => onChange({ ...med, einnahmeart: freq })}
-                  className={`text-[10px] px-1.5 py-0.5 rounded font-medium transition-colors cursor-pointer ${
-                    med.einnahmeart === freq
-                      ? 'bg-teal-100 text-teal-900 border border-teal-300'
-                      : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200'
-                  }`}
-                >
-                  {freq}
-                </button>
-              ))}
-            </div>
-          )}
+          <div className="flex flex-wrap gap-1 mt-1.5">
+            {['1x täglich', '2x täglich', 'Bei Bedarf', 'Morgens nüchtern'].map((freq, fIdx) => (
+              <button
+                key={fIdx}
+                type="button"
+                onClick={() => onChange({ ...med, einnahmeart: freq })}
+                className={`text-[10px] px-1.5 py-0.5 rounded font-medium transition-colors cursor-pointer ${
+                  med.einnahmeart === freq
+                    ? 'bg-teal-100 text-teal-900 border border-teal-300'
+                    : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200'
+                }`}
+              >
+                {freq}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
       {/* Internet Research Toggle & Profile Bar */}
-      {!isNameEmpty && (hasResearchData || isLoadingDetails) && (
+      {(hasResearchData || isLoadingDetails || med.name) && (
         <div className="pt-1 border-t border-slate-100">
           <button
             type="button"
@@ -443,12 +379,6 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
           {/* Expanded Research Details */}
           {isDetailsExpanded && (
             <div className="mt-2.5 p-3.5 rounded-xl bg-slate-50 border border-teal-200/70 space-y-3 animate-in fade-in duration-150">
-              {isLoadingDetails && (
-                <div className="flex items-center gap-2 p-2 rounded-lg bg-teal-50 border border-teal-200/60 text-xs text-teal-800 font-medium">
-                  <Loader2 className="w-3.5 h-3.5 text-teal-600 animate-spin shrink-0" />
-                  <span>{t('medLoadingResearchData' as TranslationKey) || 'Recherchedaten werden im Hintergrund geladen...'}</span>
-                </div>
-              )}
               {/* Active Substance & Category Header */}
               {(activeSubstance || category) && (
                 <div className="flex flex-wrap items-center gap-2 pb-2 border-b border-slate-200/70">

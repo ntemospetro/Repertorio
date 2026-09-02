@@ -1423,5 +1423,4 @@ export const it = {
   "medRecommendedIntake": "Assunzione raccomandata e frequenza",
   "medViewDetails": "Mostra ricerca su Internet (Sostanza, effetti collaterali e interazioni)",
   "medHideDetails": "Comprimi ricerca",
-  "medLoadingResearchData": "Caricamento dei dati di ricerca in background...",
 };

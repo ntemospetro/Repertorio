@@ -315,499 +315,12 @@ export const COMMON_MEDICATIONS_DB: MedicationSuggestion[] = [
       'Ototoxische und nephrotoxische Arzneimittel (Aminoglykoside, Cisplatin)'
     ],
     warnings: 'Regelmäßige Kontrolle von Kalium, Natrium und Nierenwerten erforderlich.'
-  },
-  {
-    name: 'Methylprednisolon',
-    activeSubstance: 'Methylprednisolon',
-    category: 'Glukokortikoide / Systemische Kortikosteroide',
-    defaultDosages: ['4 mg', '8 mg', '16 mg', '32 mg'],
-    commonForms: ['Tablette', 'Kristallsuspension', 'Injektionslösung'],
-    recommendedIntake: 'Morgens zwischen 6 und 8 Uhr (zirkadiane Rhythmik) unzerkaut mit reichlich Flüssigkeit zum Frühstück',
-    sideEffects: [
-      'Cushing-Syndrom (Mondgesicht, Stammfettsucht)',
-      'Hyperglykämie und verminderte Glukosetoleranz',
-      'Hypertonie und Natrium-/Flüssigkeitsretention',
-      'Osteoporose und Muskelatrophie bei Langzeitanwendung',
-      'Erhöhtes Infektionsrisiko und Magen-Darm-Ulcera'
-    ],
-    interactions: [
-      'NSAR (erheblich gesteigertes Magen-Darm-Blutungsrisiko)',
-      'Antidiabetika (Abschwächung der blutzuckersenkenden Wirkung)',
-      'Schleifendiuretika / Thiazide (verstärkter Kaliumverlust / Hypokaliämie)',
-      'CYP3A4-Inhibitoren (z. B. Ketoconazol, Clarithromycin: verstärkte Kortikoidwirkung)'
-    ],
-    warnings: 'Niemals abrupt absetzen; schrittweise ausschleichen, um eine lebensbedrohliche akute Nebennierenrindeninsuffizienz zu vermeiden.'
-  },
-  {
-    name: 'Urbason (Methylprednisolon)',
-    activeSubstance: 'Methylprednisolon',
-    category: 'Glukokortikoide / Systemische Kortikosteroide',
-    defaultDosages: ['4 mg', '8 mg', '16 mg', '40 mg'],
-    commonForms: ['Tablette', 'Injektionsflasche'],
-    recommendedIntake: '1x täglich morgens mit dem Frühstück unzerkaut einnehmen',
-    sideEffects: [
-      'Gewichtszunahme, Mondgesicht, Wasseransammlung',
-      'Blutzucker- und Blutdruckanstieg',
-      'Schlafstörungen, Unruhe, Stimmungsschwankungen',
-      'Magenbeschwerden, Risiko für Schleimhautulzera'
-    ],
-    interactions: [
-      'Schmerzmittel / NSAR (Ibuprofen, Diclofenac)',
-      'Antidiabetika (Insulin, Metformin)',
-      'Entwässerungstabletten (Kaliumverlust)'
-    ],
-    warnings: 'Bei Dauertherapie Magenschutz (z. B. Pantoprazol) und Osteoporose-Prophylaxe (Calcium/Vitamin D) erwägen.'
-  },
-  {
-    name: 'Prednisolon (Decortin H)',
-    activeSubstance: 'Prednisolon',
-    category: 'Glukokortikoide / Systemische Kortikosteroide',
-    defaultDosages: ['5 mg', '10 mg', '20 mg', '50 mg'],
-    commonForms: ['Tablette'],
-    recommendedIntake: '1x täglich morgens zwischen 6 und 8 Uhr nüchtern oder zum Frühstück mit Wasser',
-    sideEffects: [
-      'Gewichtszunahme, Umverteilung des Fettgewebes',
-      'Blutdruck- und Blutzuckeranstieg',
-      'Hautatrophie, Wundheilungsstörungen',
-      'Erhöhte Infektanfälligkeit'
-    ],
-    interactions: [
-      'NSAR (erhöhte Ulkusgefahr)',
-      'Kaliumsenkende Diuretika',
-      'Antikoagulanzien (INR-Schwankungen)'
-    ],
-    warnings: 'Dosis bei längerer Einnahme immer schrittweise reduzieren (Ausschleichen).'
-  },
-  {
-    name: 'Dexamethason (Fortecortin)',
-    activeSubstance: 'Dexamethason',
-    category: 'Stark wirksames Glukokortikoid',
-    defaultDosages: ['0.5 mg', '1.5 mg', '4 mg', '8 mg'],
-    commonForms: ['Tablette', 'Injektionslösung'],
-    recommendedIntake: 'Morgens mit reichlich Flüssigkeit zum Essen einnehmen',
-    sideEffects: [
-      'Schlafstörungen, Euphorie oder Depression',
-      'Glukosetoleranzstörung',
-      'Ödembildung, Muskelschwäche'
-    ],
-    interactions: [
-      'CYP3A4-Induktoren (Phenytoin, Rifampicin: Wirkungsabfall)',
-      'NSAR und Thrombozytenaggregationshemmer'
-    ],
-    warnings: 'Sehr hohe antiinflammatorische Potenz (ca. 7,5x stärker als Prednisolon).'
-  },
-  {
-    name: 'Metoprolol (Beloc-Zok)',
-    activeSubstance: 'Metoprololsuccinat',
-    category: 'Kardioselektiver Beta-1-Rezeptorenblocker',
-    defaultDosages: ['23.75 mg', '47.5 mg', '95 mg', '190 mg'],
-    commonForms: ['Retardtablette'],
-    recommendedIntake: '1x täglich morgens unzerkaut mit einem Glas Wasser einnehmen',
-    sideEffects: [
-      'Bradykardie (verlangsamter Puls), Hypotonie',
-      'Müdigkeit, Schwindelgefühl, Kopfschmerzen',
-      'Kältegefühl in den Extremitäten',
-      'Bronchospasmus bei Asthmapatienten'
-    ],
-    interactions: [
-      'Calciumkanalblocker vom Verapamil- oder Diltiazem-Typ (Gefahr von AV-Block und Asystolie)',
-      'Antiarrhythmika (z. B. Amiodaron)',
-      'Digitalisglykoside (starke Bradykardie)'
-    ],
-    warnings: 'Kontraindiziert bei kardiogenem Schock, AV-Block II. und III. Grades sowie schwerem Asthma bronchiale.'
-  },
-  {
-    name: 'Bisoprolol (Concor)',
-    activeSubstance: 'Bisoprololhemifumarat',
-    category: 'Kardioselektiver Betablocker',
-    defaultDosages: ['2.5 mg', '5 mg', '10 mg'],
-    commonForms: ['Filmtablette'],
-    recommendedIntake: '1x täglich morgens vor, zu oder nach dem Frühstück einnehmen',
-    sideEffects: [
-      'Verlangsamung der Herzfrequenz (Bradykardie)',
-      'Schwindel, Erschöpfung, orthostatische Hypotonie',
-      'Parästhesien oder Kältegefühl an Fingern/Zehen'
-    ],
-    interactions: [
-      'Calciumantagonisten (Verapamil, Diltiazem)',
-      'Zentral wirksame Antihypertensiva (Clonidin)',
-      'NSAR (Abschwächung der Blutdrucksenkung)'
-    ],
-    warnings: 'Nicht abrupt absetzen; Risiko für Rebound-Hypertonie und Tachykardie.'
-  },
-  {
-    name: 'Candesartan (Blopress)',
-    activeSubstance: 'Candesartancilexetil',
-    category: 'Angiotensin-II-Rezeptor-Antagonist (Sartan / AT1-Blocker)',
-    defaultDosages: ['4 mg', '8 mg', '16 mg', '32 mg'],
-    commonForms: ['Tablette'],
-    recommendedIntake: '1x täglich zur gleichen Tageszeit unabhängig von den Mahlzeiten',
-    sideEffects: [
-      'Schwindel, Kopfschmerzen',
-      'Hyperkaliämie (erhöhtes Kalium)',
-      'Renale Funktionseinschränkung bei Nierenarterienstenose',
-      'Hypotonie'
-    ],
-    interactions: [
-      'Kaliumsparende Diuretika, Kaliumpräparate, ACE-Hemmer (Hyperkaliämie)',
-      'Lithium (erhöhte Lithiumkonzentration)',
-      'NSAR (Nierenfunktionsverschlechterung)'
-    ],
-    warnings: 'Kontraindiziert im 2. und 3. Trimester der Schwangerschaft sowie bei schwerer Leberfunktionsstörung.'
-  },
-  {
-    name: 'Valsartan (Diovan)',
-    activeSubstance: 'Valsartan',
-    category: 'AT1-Rezeptorantagonist (Sartan)',
-    defaultDosages: ['80 mg', '160 mg', '320 mg'],
-    commonForms: ['Filmtablette'],
-    recommendedIntake: '1-2x täglich mit etwas Wasser unabhängig vom Essen',
-    sideEffects: [
-      'Schwindel, orthostatische Hypotonie',
-      'Hyperkaliämie, Nierenwertanstieg',
-      'Ermüdung'
-    ],
-    interactions: [
-      'Kaliumpräparate und kaliumsparende Diuretika',
-      'NSAR (Schwächung der Blutdrucksenkung)'
-    ],
-    warnings: 'Schwangerschaftskontraindikation; regelmäßige Kontrolle von Kalium und Kreatinin.'
-  },
-  {
-    name: 'Amlodipin (Norvasc)',
-    activeSubstance: 'Amlodipinbesilat',
-    category: 'Calciumkanalblocker (Dihydropyridin)',
-    defaultDosages: ['5 mg', '10 mg'],
-    commonForms: ['Tablette'],
-    recommendedIntake: '1x täglich morgens mit Wasser unabhängig von Mahlzeiten',
-    sideEffects: [
-      'Knöchelödeme (Flüssigkeitsansammlungen an den Beinen)',
-      'Gesichtsrötung (Flush), Hitzegefühl',
-      'Kopfschmerzen, Schwindel, Müdigkeit'
-    ],
-    interactions: [
-      'CYP3A4-Inhibitoren (Ketoconazol, Erythromycin: erhöhte Amlodipin-Spiegel)',
-      'Grapefruitsaft (verstärkter Blutdruckabfall)',
-      'Simvastatin (Dosis von Simvastatin auf max. 20 mg/Tag begrenzen)'
-    ],
-    warnings: 'Dosis von Simvastatin bei gleichzeitiger Einnahme reduzieren; Vorsicht bei schwerer Aortenstenose.'
-  },
-  {
-    name: 'Simvastatin (Zocor)',
-    activeSubstance: 'Simvastatin',
-    category: 'HMG-CoA-Reduktase-Inhibitor (Statin / Cholesterinsenker)',
-    defaultDosages: ['10 mg', '20 mg', '40 mg'],
-    commonForms: ['Filmtablette'],
-    recommendedIntake: '1x täglich abends mit etwas Wasser einnehmen',
-    sideEffects: [
-      'Myalgie (Muskelschmerzen), Myopathie',
-      'Transaminasenanstieg (Leberwerte)',
-      'Gastrointestinale Beschwerden',
-      'Sehr selten Rhabdomyolyse'
-    ],
-    interactions: [
-      'Starke CYP3A4-Inhibitoren (Itraconazol, Ketoconazol, Clarithromycin: Rhabdomyolysierisiko)',
-      'Grapefruitsaft (starke Wirkungsverstärkung)',
-      'Amlodipin (maximal 20 mg Simvastatin)',
-      'Cumarine (INR-Anstieg)'
-    ],
-    warnings: 'Bei unerklärlichen Muskelschmerzen oder dunklem Urin sofort Arzt konsultieren.'
-  },
-  {
-    name: 'Atorvastatin (Sortis)',
-    activeSubstance: 'Atorvastatin-Calcium',
-    category: 'HMG-CoA-Reduktase-Hemmer (Statin / Lipidsenker)',
-    defaultDosages: ['10 mg', '20 mg', '40 mg', '80 mg'],
-    commonForms: ['Filmtablette'],
-    recommendedIntake: '1x täglich zu jeder Tageszeit mit Wasser einnehmen',
-    sideEffects: [
-      'Muskelschmerzen, Gelenkschmerzen, Muskelkrämpfe',
-      'Leberwerterhöhung',
-      'Kopfschmerzen, Übelkeit, Diarrhö',
-      'Leichter Blutzuckeranstieg'
-    ],
-    interactions: [
-      'CYP3A4-Inhibitoren (Erythromycin, Diltiazem)',
-      'Ciclosporin (stark erhöhte Atorvastatin-Spiegel)',
-      'Clarithromycin (Dosis auf max. 20 mg begrenzen)'
-    ],
-    warnings: 'Kontraindiziert bei aktiver Lebererkrankung und in Schwangerschaft/Stillzeit.'
-  },
-  {
-    name: 'Furosemid (Lasix)',
-    activeSubstance: 'Furosemid',
-    category: 'Schleifendiuretikum (starkes Entwässerungsmittel)',
-    defaultDosages: ['20 mg', '40 mg', '500 mg'],
-    commonForms: ['Tablette', 'Injektionslösung'],
-    recommendedIntake: 'Morgens nüchtern mit ausreichend Flüssigkeit einnehmen',
-    sideEffects: [
-      'Massiver Elektrolytverlust (Hypokaliämie, Hyponatriämie)',
-      'Dehydratation, Hypovolämie und Kreislaufkollaps',
-      'Harnsäureanstieg (Gichtanfälle)',
-      'Ototoxizität (Hörstörungen bei schneller iv-Gabe)'
-    ],
-    interactions: [
-      'Digitalis (Arrhythmien bei Kaliummangel)',
-      'NSAR (verringern diuretische Wirkung)',
-      'Nephrotoxische Antibiotika (Aminoglykoside)'
-    ],
-    warnings: 'Elektrolyte und Kreatinin engmaschig kontrollieren; auf ausreichende Kaliumzufuhr achten.'
-  },
-  {
-    name: 'Spironolacton (Aldactone)',
-    activeSubstance: 'Spironolacton',
-    category: 'Aldosteronantagonist / Kaliumsparendes Diuretikum',
-    defaultDosages: ['25 mg', '50 mg', '100 mg'],
-    commonForms: ['Tablette'],
-    recommendedIntake: '1x täglich morgens mit dem Frühstück einnehmen',
-    sideEffects: [
-      'Hyperkaliämie (lebensgefährlich erhöhter Kaliumspiegel)',
-      'Gynäkomastie und Brustspannen (endokrine Effekte)',
-      'Menstruationsstörungen, Potenzprobleme',
-      'Schwindel, Hypotonie'
-    ],
-    interactions: [
-      'ACE-Hemmer, Sartane, Kaliumpräparate (akute Hyperkaliämiegefahr)',
-      'NSAR (akutes Nierenversagen)',
-      'Digoxin (erhöhte Digoxinspiegel)'
-    ],
-    warnings: 'Kontraindiziert bei Hyperkaliämie (> 5.0 mmol/l) und schwerer Niereninsuffizienz.'
-  },
-  {
-    name: 'Allopurinol (Zyloric)',
-    activeSubstance: 'Allopurinol',
-    category: 'Urikostatikum / Harnsäuresenker (Gichttherapie)',
-    defaultDosages: ['100 mg', '300 mg'],
-    commonForms: ['Tablette'],
-    recommendedIntake: '1x täglich nach einer Mahlzeit mit reichlich Flüssigkeit einnehmen',
-    sideEffects: [
-      'Allergische Hautreaktionen (Ausschlag, Pruritus, selten DRESS/Lyell)',
-      'Zu Beginn der Therapie Auslösung akuter Gichtanfälle',
-      'Gastrointestinale Beschwerden',
-      'Transaminasenanstieg'
-    ],
-    interactions: [
-      'Azathioprin / 6-Mercaptopurin (lebensbedrohliche Knochenmarkstoxizität; Dosis um 75% reduzieren!)',
-      'Amoxicillin / Ampicillin (stark erhöhtes Risiko für Arzneimittelexanthem)',
-      'Cumarine (Wirkungsverstärkung)'
-    ],
-    warnings: 'Bei erstem Auftreten von Hautausschlag Allopurinol sofort dauerhaft absetzen.'
-  },
-  {
-    name: 'Citalopram (Cipramil)',
-    activeSubstance: 'Citalopramhydrobromid',
-    category: 'SSRI / Antidepressivum',
-    defaultDosages: ['10 mg', '20 mg', '40 mg'],
-    commonForms: ['Filmtablette', 'Tropfen'],
-    recommendedIntake: '1x täglich morgens oder abends unabhängig von Mahlzeiten',
-    sideEffects: [
-      'QT-Zeit-Verlängerung im EKG (Torsade de Pointes)',
-      'Übelkeit, Mundtrockenheit, Schlaflosigkeit',
-      'Sexuelle Dysfunktion',
-      'Erhöhtes gastrointestinales Blutungsrisiko'
-    ],
-    interactions: [
-      'MAO-Hemmer (lebensbedrohliches Serotoninsyndrom; 14 Tage Abstand)',
-      'QT-verlängernde Medikamente (Amiodaron, Moxifloxacin)',
-      'NSAR und Thrombozytenhemmer (Blutungsgefahr)'
-    ],
-    warnings: 'Maximale Tagesdosis bei Erwachsenen 40 mg, bei Älteren (> 65 J.) 20 mg wegen QT-Verlängerung.'
-  },
-  {
-    name: 'Escitalopram (Cipralex)',
-    activeSubstance: 'Escitalopramoxalat',
-    category: 'Selektiver Serotonin-Wiederaufnahmehemmer (SSRI)',
-    defaultDosages: ['5 mg', '10 mg', '20 mg'],
-    commonForms: ['Filmtablette', 'Tropfen'],
-    recommendedIntake: '1x täglich morgens oder abends mit oder ohne Nahrung',
-    sideEffects: [
-      'Übelkeit, Diarrhö, Schwitzen, Kopfschmerzen',
-      'QTc-Verlängerung',
-      'Schlafstörungen oder Schläfrigkeit',
-      'Sexuelle Funktionsstörungen'
-    ],
-    interactions: [
-      'MAO-Inhibitoren (Serotoninsyndrom)',
-      'Arzneimittel mit Einfluss auf die Hämostase (NSAR, DOAK, ASS)',
-      'CYP2C19-Inhibitoren (Omeprazol)'
-    ],
-    warnings: 'Bei Absetzen langsam ausschleichen, um Absetzsymptome zu minimieren.'
-  },
-  {
-    name: 'Sertralin (Zoloft)',
-    activeSubstance: 'Sertralinhydrochlorid',
-    category: 'SSRI / Antidepressivum',
-    defaultDosages: ['50 mg', '100 mg'],
-    commonForms: ['Filmtablette'],
-    recommendedIntake: '1x täglich morgens oder abends mit etwas Flüssigkeit',
-    sideEffects: [
-      'Schlaflosigkeit, Schwindel, Schläfrigkeit',
-      'Gastrointestinale Beschwerden (Übelkeit, Durchfall)',
-      'Tremor, Mundtrockenheit',
-      'Sexuelle Dysfunktion'
-    ],
-    interactions: [
-      'MAO-Hemmer',
-      'Pimozid',
-      'Blutverdünner und Thrombozytenhemmer'
-    ],
-    warnings: 'Zu Therapiebeginn engmaschige Überwachung auf Suizidalität bei jungen Erwachsenen.'
-  },
-  {
-    name: 'Venlafaxin (Trevilor)',
-    activeSubstance: 'Venlafaxinhydrochlorid',
-    category: 'SNRI / Selektiver Serotonin-Noradrenalin-Wiederaufnahmehemmer',
-    defaultDosages: ['37.5 mg', '75 mg', '150 mg', '225 mg'],
-    commonForms: ['Retardkapsel'],
-    recommendedIntake: '1x täglich zu den Mahlzeiten morgens oder abends als Retardpräparat',
-    sideEffects: [
-      'Übelkeit, Schwitzen, Mundtrockenheit',
-      'Blutdruckanstieg (dosisabhängig)',
-      'Schlaflosigkeit, Tremor, Schwindel',
-      'Ausgeprägte Absetzsymptome beim Beenden'
-    ],
-    interactions: [
-      'MAO-Hemmer (Serotoninsyndrom)',
-      'Substanzen, die den Blutdruck steigern',
-      'Antikoagulanzien und NSAR'
-    ],
-    warnings: 'Regelmäßige Blutdruckmessung empfohlen; extrem langsames Ausschleichen erforderlich.'
-  },
-  {
-    name: 'Mirtazapin (Remergil)',
-    activeSubstance: 'Mirtazapin',
-    category: 'Noradrenerges und spezifisch serotonerges Antidepressivum (NaSSA)',
-    defaultDosages: ['15 mg', '30 mg', '45 mg'],
-    commonForms: ['Filmtablette', 'Schmelztablette'],
-    recommendedIntake: '1x täglich abends unmittelbar vor dem Schlafengehen',
-    sideEffects: [
-      'Starke Sedierung und Schläfrigkeit',
-      'Appetitsteigerung und deutliche Gewichtszunahme',
-      'Mundtrockenheit, Obstipation',
-      'Sehr selten Agranulozytose'
-    ],
-    interactions: [
-      'Alkohol und ZNS-Dämpfer (verstärkte Sedierung)',
-      'MAO-Hemmer',
-      'CYP3A4-Induktoren (Carbamazepin)'
-    ],
-    warnings: 'Bei Fieber und Halsschmerzen Blutbild kontrollieren (Agranulozytose-Ausschluss).'
-  },
-  {
-    name: 'Tilidin / Naloxon (Valoron N)',
-    activeSubstance: 'Tilidinhydrochlorid / Naloxonhydrochlorid',
-    category: 'Opioid-Analgetikum (WHO-Stufe II) mit Naloxon-Missbrauchsschutz',
-    defaultDosages: ['50/4 mg', '100/8 mg', '150/12 mg', '200/16 mg'],
-    commonForms: ['Retardtablette', 'Tropfen'],
-    recommendedIntake: 'Alle 12 Stunden im festen Zeitschema unzerkaut mit reichlich Wasser',
-    sideEffects: [
-      'Schwindel, Benommenheit, Müdigkeit',
-      'Übelkeit, Erbrechen (besonders zu Beginn)',
-      'Obstipation (Darmträgheit)',
-      'Abhängigkeitspotenzial bei Daueranwendung'
-    ],
-    interactions: [
-      'Alkohol und Beruhigungsmittel (lebensbedrohliche Atemdepression)',
-      'Andere ZNS-Dämpfer (Benzodiazepine)',
-      'MAO-Hemmer'
-    ],
-    warnings: 'Darf nicht zermörsert werden; Naloxon schützt vor Missbrauch. Begleitendes Laxans verordnen.'
-  },
-  {
-    name: 'Tramadol',
-    activeSubstance: 'Tramadolhydrochlorid',
-    category: 'Schwach wirksames Opioid-Analgetikum (WHO-Stufe II)',
-    defaultDosages: ['50 mg', '100 mg retard', '150 mg retard', '200 mg retard'],
-    commonForms: ['Kapsel', 'Retardtablette', 'Tropfen'],
-    recommendedIntake: 'Retardtabletten alle 12 Stunden unzerkaut einnehmen',
-    sideEffects: [
-      'Übelkeit, Erbrechen, Schwindel, Schwitzen',
-      'Obstipation, Mundtrockenheit',
-      'Senkung der Krampfschwelle (epileptische Anfälle)',
-      'Verwirrtheitszustände bei älteren Patienten'
-    ],
-    interactions: [
-      'SSRI, SNRI, Triptane (hohes Risiko für Serotoninsyndrom)',
-      'Arzneimittel, die die Krampfschwelle senken (Antipsychotika, Bupropion)',
-      'Alkohol und Sedativa'
-    ],
-    warnings: 'Vorsicht bei Epilepsie oder krampfgefährdeten Patienten. Nicht mit serotonergen Arzneien kombinieren.'
-  },
-  {
-    name: 'Amoxicillin',
-    activeSubstance: 'Amoxicillin-Trihydrat',
-    category: 'Aminopenicillin / Breitbandantibiotikum',
-    defaultDosages: ['500 mg', '750 mg', '1000 mg'],
-    commonForms: ['Filmtablette', 'Trockensaft'],
-    recommendedIntake: '2-3x täglich im Abstand von 8-12 Stunden vor oder zu den Mahlzeiten mit Wasser',
-    sideEffects: [
-      'Gastrointestinale Beschwerden (Diarrhö, Übelkeit)',
-      'Allergische Hautreaktionen (Exanthem, Urtikaria)',
-      'Pilzinfektionen (Candida) von Mund oder Vagina',
-      'Pseudomembranöse Kolitis'
-    ],
-    interactions: [
-      'Allopurinol (stark erhöhtes Risiko für Hautausschläge)',
-      'Methotrexat (verminderte Ausscheidung / Toxizität)',
-      'Oraler Lebendimpfstoff gegen Typhus'
-    ],
-    warnings: 'Kontraindiziert bei Penicillin-Allergie und infektiöser Mononukleose (Pfeiffer-Drüsenfieber).'
-  },
-  {
-    name: 'Salbutamol (Sultanol)',
-    activeSubstance: 'Salbutamolsulfat',
-    category: 'Beta-2-Sympathomimetikum / Rasch wirksamer Bronchodilatator (SABA)',
-    defaultDosages: ['0.1 mg / Hub (100 µg)'],
-    commonForms: ['Dosieraerosol', 'Inhalationspulver', 'Fertiginhalat'],
-    recommendedIntake: 'Bei akutem Atemnotanfall 1-2 Hübe tief inhalieren, Atem kurz anhalten',
-    sideEffects: [
-      'Tremor (feinschlägiges Händezittern)',
-      'Tachykardie, Herzklopfen, Palpitationen',
-      'Kopfschmerzen, Unruhegefühl',
-      'Hypokaliämie bei Überdosierung'
-    ],
-    interactions: [
-      'Nichtselektive Betablocker (heben Bronchodilatation auf; Bronchospasmus)',
-      'Digitalisglykoside (Arrhythmierisiko bei Hypokaliämie)',
-      'Andere Sympathomimetika'
-    ],
-    warnings: 'Reines Bedarfsmedikament bei Asthma; bei häufigem Gebrauch (> 2x/Woche) antientzündliche Dauertherapie prüfen.'
   }
 ];
 
 // In-memory cache for fast responsive lookups
 const searchCache = new Map<string, MedicationSuggestion[]>();
 const detailsCache = new Map<string, MedicationSuggestion>();
-
-/**
- * Robust live search helper using public Wikipedia API (CORS enabled, no API key needed).
- * Ensures medication lookups succeed anywhere (e.g. GitHub pages, Hostinger static deployments, offline-capable).
- */
-async function searchPublicMedicalApi(query: string): Promise<MedicationSuggestion[]> {
-  try {
-    const url = `https://de.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(query)}&limit=6&namespace=0&format=json&origin=*`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(3500) });
-    if (!res.ok) return [];
-    const data = await res.json();
-    if (Array.isArray(data) && Array.isArray(data[1]) && data[1].length > 0) {
-      const titles: string[] = data[1];
-      return titles.map(title => ({
-        name: title,
-        activeSubstance: title,
-        category: 'Recherchiertes Arzneimittel / Wirkstoff',
-        defaultDosages: ['Standard'],
-        commonForms: ['Tablette'],
-        recommendedIntake: 'Nach ärztlicher Verordnung',
-        sideEffects: ['Siehe Packungsbeilage und Arztberatung'],
-        interactions: ['Vor Kombination mit anderen Medikamenten Arzt oder Apotheker befragen'],
-        warnings: 'Einnahme stets mit dem behandelnden Arzt abstimmen.'
-      }));
-    }
-  } catch {
-    // Graceful fallback on network timeout or failure
-  }
-  return [];
-}
 
 export async function searchMedications(query: string): Promise<MedicationSuggestion[]> {
   if (!query || query.trim().length < 1) return [];
@@ -825,55 +338,13 @@ export async function searchMedications(query: string): Promise<MedicationSugges
     (m.category && m.category.toLowerCase().includes(q))
   );
 
-  // If we already have strong local matches (or exact match), return them right away!
-  // This provides an instant response (< 5ms) for virtually all common medications.
-  const hasExactOrStrongMatch = localMatches.some(m => m.name.toLowerCase() === q || (m.activeSubstance && m.activeSubstance.toLowerCase() === q)) || localMatches.length >= 3;
-
-  if (hasExactOrStrongMatch) {
-    searchCache.set(q, localMatches);
-    // Background server query to enrich cache with additional generics or brand names
-    fetch(`/api/medications/search?q=${encodeURIComponent(query.trim())}`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.results && Array.isArray(data.results) && data.results.length > 0) {
-          const seen = new Set(localMatches.map(m => m.name.toLowerCase().replace(/[^a-z0-9]/g, '')));
-          const enriched = [...localMatches];
-          for (const r of data.results) {
-            const k = (r.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-            if (k && !seen.has(k)) {
-              seen.add(k);
-              enriched.push({
-                name: r.name,
-                activeSubstance: r.activeSubstance || '',
-                category: r.category || '',
-                defaultDosages: Array.isArray(r.dosages) && r.dosages.length > 0 ? r.dosages : ['Standard'],
-                commonForms: Array.isArray(r.commonForms) ? r.commonForms : [],
-                recommendedIntake: r.recommendedIntake || '',
-                sideEffects: Array.isArray(r.sideEffects) ? r.sideEffects : [],
-                interactions: Array.isArray(r.interactions) ? r.interactions : [],
-                warnings: r.warnings || ''
-              });
-            }
-          }
-          searchCache.set(q, enriched);
-        }
-      })
-      .catch(() => {});
-    return localMatches;
-  }
-
-  let liveResults: MedicationSuggestion[] = [];
-
-  // Try server search endpoint first
+  // Always perform a live internet search via the server endpoint
   try {
-    const res = await fetch(`/api/medications/search?q=${encodeURIComponent(query.trim())}`, {
-      signal: AbortSignal.timeout(6000)
-    });
-    const ct = res.headers.get('content-type') || '';
-    if (res.ok && ct.includes('application/json')) {
+    const res = await fetch(`/api/medications/search?q=${encodeURIComponent(query.trim())}`);
+    if (res.ok) {
       const data = await res.json();
       if (data.results && Array.isArray(data.results) && data.results.length > 0) {
-        liveResults = data.results.map((r: any) => ({
+        const liveResults: MedicationSuggestion[] = data.results.map((r: any) => ({
           name: r.name || query,
           activeSubstance: r.activeSubstance || '',
           category: r.category || '',
@@ -884,41 +355,39 @@ export async function searchMedications(query: string): Promise<MedicationSugges
           interactions: Array.isArray(r.interactions) ? r.interactions : [],
           warnings: r.warnings || ''
         }));
+
+        // Merge live results with local matches, deduplicating by normalized name
+        const seenNames = new Set<string>();
+        const merged: MedicationSuggestion[] = [];
+
+        for (const item of liveResults) {
+          const key = item.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+          if (!seenNames.has(key)) {
+            seenNames.add(key);
+            merged.push(item);
+          }
+        }
+
+        for (const item of localMatches) {
+          const key = item.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+          if (!seenNames.has(key)) {
+            seenNames.add(key);
+            merged.push(item);
+          }
+        }
+
+        searchCache.set(q, merged);
+        return merged;
       }
     }
   } catch (err) {
-    console.warn('Server medication search unavailable, using fallbacks:', err);
+    console.warn('Live medication search error, using local database:', err);
   }
 
-  // If server search returned nothing and local matches are few, query public medical open-search
-  if (liveResults.length === 0 && localMatches.length < 2) {
-    const publicResults = await searchPublicMedicalApi(query.trim());
-    liveResults = publicResults;
-  }
-
-  // Merge local matches and live results, putting local matches first
-  const seenNames = new Set<string>();
-  const merged: MedicationSuggestion[] = [];
-
-  for (const item of localMatches) {
-    const key = item.name.toLowerCase().replace(/[^a-z0-9]/g, '');
-    if (!seenNames.has(key)) {
-      seenNames.add(key);
-      merged.push(item);
-    }
-  }
-
-  for (const item of liveResults) {
-    const key = item.name.toLowerCase().replace(/[^a-z0-9]/g, '');
-    if (!seenNames.has(key)) {
-      seenNames.add(key);
-      merged.push(item);
-    }
-  }
-
-  if (merged.length > 0) {
-    searchCache.set(q, merged);
-    return merged;
+  // If live search returned empty or errored, return local matches
+  if (localMatches.length > 0) {
+    searchCache.set(q, localMatches);
+    return localMatches;
   }
 
   return [];
@@ -936,22 +405,12 @@ export async function fetchMedicationDetails(name: string): Promise<MedicationSu
   const localMatch = COMMON_MEDICATIONS_DB.find(m => 
     m.name.toLowerCase() === key ||
     key.includes(m.name.toLowerCase()) ||
-    m.name.toLowerCase().includes(key) ||
-    (m.activeSubstance && (key.includes(m.activeSubstance.toLowerCase()) || m.activeSubstance.toLowerCase().includes(key)))
+    (m.activeSubstance && key.includes(m.activeSubstance.toLowerCase()))
   );
 
-  // If exact local match exists with complete research data, return immediately (0ms)
-  if (localMatch && localMatch.name.toLowerCase() === key && localMatch.sideEffects && localMatch.sideEffects.length > 0) {
-    detailsCache.set(key, localMatch);
-    return localMatch;
-  }
-
   try {
-    const res = await fetch(`/api/medications/details?name=${encodeURIComponent(name.trim())}`, {
-      signal: AbortSignal.timeout(6000)
-    });
-    const ct = res.headers.get('content-type') || '';
-    if (res.ok && ct.includes('application/json')) {
+    const res = await fetch(`/api/medications/details?name=${encodeURIComponent(name.trim())}`);
+    if (res.ok) {
       const data = await res.json();
       if (data.details) {
         const item: MedicationSuggestion = {
@@ -976,39 +435,12 @@ export async function fetchMedicationDetails(name: string): Promise<MedicationSu
       }
     }
   } catch (err) {
-    console.warn('Failed to fetch live medication details from server:', err);
+    console.warn('Failed to fetch live medication details:', err);
   }
 
   if (localMatch) {
     detailsCache.set(key, localMatch);
     return localMatch;
-  }
-
-  // Public Wikipedia summary fallback if on static hosting without server
-  try {
-    const wikiRes = await fetch(`https://de.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(name.trim())}`, {
-      signal: AbortSignal.timeout(3500)
-    });
-    if (wikiRes.ok) {
-      const wikiData = await wikiRes.json();
-      if (wikiData && wikiData.extract) {
-        const fallbackItem: MedicationSuggestion = {
-          name: wikiData.title || name,
-          activeSubstance: name,
-          category: wikiData.description || 'Arzneimittel / Wirkstoff',
-          defaultDosages: ['Standard'],
-          commonForms: ['Tablette'],
-          recommendedIntake: 'Gemäß Packungsbeilage oder Verordnung',
-          sideEffects: [wikiData.extract],
-          interactions: ['Bei Kombinationstherapien ärztliche Rücksprache halten'],
-          warnings: 'Arzneimitteleinnahme sorgfältig überwachen.'
-        };
-        detailsCache.set(key, fallbackItem);
-        return fallbackItem;
-      }
-    }
-  } catch {
-    // Ignore Wikipedia fallback error
   }
 
   return null;
