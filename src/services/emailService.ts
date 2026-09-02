@@ -108,6 +108,194 @@ export async function sendViaHostingerApi(options: SendEmailOptions): Promise<Em
 }
 
 /**
+ * Sendet eine Registrierungs-Bestätigungscode-E-Mail (6-stelliger Code)
+ */
+export async function sendRegistrationVerificationCodeEmail(
+  targetEmail: string,
+  recipientName: string,
+  code: string,
+  lang: string = 'de'
+): Promise<boolean> {
+  const cleanEmail = targetEmail.trim().toLowerCase();
+  if (!cleanEmail || !code) return false;
+
+  const titles: Record<string, { subject: string; title: string; greeting: string; msg: string; codeLabel: string; note: string; footer: string }> = {
+    de: {
+      subject: `HomeoPilot 360 - Ihr 6-stelliger Bestätigungscode: ${code}`,
+      title: 'E-Mail-Bestätigung für Ihre Registrierung',
+      greeting: `Hallo ${recipientName || 'Therapeut'},`,
+      msg: 'vielen Dank für Ihre Registrierung bei HomeoPilot 360. Bitte verwenden Sie den folgenden 6-stelligen Bestätigungscode, um Ihre E-Mail-Adresse zu verifizieren und Ihr Therapeutenkonto zu aktivieren:',
+      codeLabel: 'Ihr Bestätigungscode',
+      note: 'Geben Sie diesen Code in das Registrierungsfenster ein. Der Code ist für Ihre Registrierung gültig. Falls Sie diese Registrierung nicht veranlasst haben, können Sie diese E-Mail ignorieren.',
+      footer: 'HomeoPilot 360 • Klinische Homöopathie & Praxismanagement',
+    },
+    en: {
+      subject: `HomeoPilot 360 - Your 6-digit confirmation code: ${code}`,
+      title: 'Email Verification for Registration',
+      greeting: `Hello ${recipientName || 'Therapist'},`,
+      msg: 'Thank you for registering with HomeoPilot 360. Please use the following 6-digit confirmation code to verify your email address and activate your therapist account:',
+      codeLabel: 'Your Confirmation Code',
+      note: 'Enter this code in the registration popup window. This code is valid for your registration. If you did not request this, please ignore this email.',
+      footer: 'HomeoPilot 360 • Clinical Homeopathy & Practice Management',
+    },
+    es: {
+      subject: `HomeoPilot 360 - Su código de confirmación de 6 dígitos: ${code}`,
+      title: 'Verificación de correo electrónico para el registro',
+      greeting: `Hola ${recipientName || 'Terapeuta'},`,
+      msg: 'Gracias por registrarse en HomeoPilot 360. Utilice el siguiente código de confirmación de 6 dígitos para verificar su correo electrónico y activar su cuenta:',
+      codeLabel: 'Su código de confirmación',
+      note: 'Introduzca este código en la ventana de registro. Si no realizó esta solicitud, puede ignorar este mensaje.',
+      footer: 'HomeoPilot 360 • Homeopatía Clínica y Gestión de Consultas',
+    },
+    fr: {
+      subject: `HomeoPilot 360 - Votre code de confirmation à 6 chiffres : ${code}`,
+      title: 'Vérification de l\'e-mail pour votre inscription',
+      greeting: `Bonjour ${recipientName || 'Thérapeute'},`,
+      msg: 'Merci de vous être inscrit sur HomeoPilot 360. Veuillez utiliser le code de confirmation à 6 chiffres ci-dessous pour valider votre adresse e-mail et activer votre compte :',
+      codeLabel: 'Votre code de confirmation',
+      note: 'Saisissez ce code dans la fenêtre d\'inscription. Si vous n\'êtes pas à l\'origine de cette demande, vous pouvez ignorer cet e-mail.',
+      footer: 'HomeoPilot 360 • Homéopathie Clinique & Gestion de Cabinet',
+    },
+    it: {
+      subject: `HomeoPilot 360 - Il tuo codice di conferma a 6 cifre: ${code}`,
+      title: 'Verifica email per la registrazione',
+      greeting: `Ciao ${recipientName || 'Terapeuta'},`,
+      msg: 'Grazie per esserti registrato su HomeoPilot 360. Utilizza il seguente codice di conferma a 6 cifre per verificare la tua email e attivare il tuo account:',
+      codeLabel: 'Il tuo codice di conferma',
+      note: 'Inserisci questo codice nella finestra di registrazione. Se non hai richiesto tu la registrazione, ignora questa email.',
+      footer: 'HomeoPilot 360 • Omeopatia Clinica e Gestione dello Studio',
+    },
+    el: {
+      subject: `HomeoPilot 360 - Ο 6ψήφιος κωδικός επιβεβαίωσής σας: ${code}`,
+      title: 'Επαλήθευση Email για την Εγγραφή σας',
+      greeting: `Γεια σας ${recipientName || 'Θεραπευτή'},`,
+      msg: 'Σας ευχαριστούμε για την εγγραφή σας στο HomeoPilot 360. Χρησιμοποιήστε τον παρακάτω 6ψήφιο κωδικό επιβεβαίωσης για να επαληθεύσετε το email σας και να ενεργοποιήσετε τον λογαριασμό σας:',
+      codeLabel: 'Ο κωδικός επιβεβαίωσής σας',
+      note: 'Εισαγάγετε αυτόν τον κωδικό στο παράθυρο εγγραφής. Εάν δεν κάνατε εσείς αυτό το αίτημα, παρακαλούμε αγνοήστε αυτό το μήνυμα.',
+      footer: 'HomeoPilot 360 • Κλινική Ομοιοπαθητική & Διαχείριση Ιατρείου',
+    },
+    ru: {
+      subject: `HomeoPilot 360 - Ваш 6-значный код подтверждения: ${code}`,
+      title: 'Подтверждение Email для регистрации',
+      greeting: `Здравствуйте, ${recipientName || 'Терапевт'},`,
+      msg: 'Благодарим вас за регистрацию в HomeoPilot 360. Пожалуйста, используйте следующий 6-значный код для подтверждения вашего адреса электронной почты и активации учетной записи:',
+      codeLabel: 'Ваш код подтверждения',
+      note: 'Введите этот код в окне регистрации. Если вы не запрашивали регистрацию, проигнорируйте это письмо.',
+      footer: 'HomeoPilot 360 • Клиническая Гомеопатия и Управление Практикой',
+    },
+  };
+
+  const textDict = titles[lang] || titles.en;
+
+  const htmlBody = `
+<!DOCTYPE html>
+<html lang="${lang}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${textDict.title}</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 20px; color: #1e293b;">
+  <div style="max-width: 580px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.06);">
+    
+    <!-- Header -->
+    <div style="background: linear-gradient(135deg, #0f172a 0%, #0f766e 100%); padding: 32px 24px; text-align: center; color: #ffffff;">
+      <div style="font-size: 32px; line-height: 1; margin-bottom: 10px;">🛡️</div>
+      <h1 style="font-size: 22px; font-weight: 700; margin: 0; letter-spacing: -0.5px; color: #ffffff;">HomeoPilot 360</h1>
+      <p style="font-size: 13px; color: #99f6e4; margin: 6px 0 0 0; font-weight: 500;">${textDict.title}</p>
+    </div>
+
+    <!-- Content Body -->
+    <div style="padding: 32px 28px;">
+      <h2 style="font-size: 16px; font-weight: 700; color: #0f172a; margin: 0 0 12px 0;">${textDict.greeting}</h2>
+      
+      <p style="font-size: 14px; line-height: 1.6; color: #475569; margin: 0 0 24px 0;">
+        ${textDict.msg}
+      </p>
+
+      <!-- Code Box -->
+      <div style="background-color: #f0fdfa; border: 2px solid #0d9488; border-radius: 12px; padding: 24px 20px; text-align: center; margin-bottom: 24px;">
+        <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #0f766e; margin-bottom: 10px;">
+          ${textDict.codeLabel}
+        </div>
+        <div style="font-family: 'Courier New', Courier, monospace; font-size: 34px; font-weight: 800; letter-spacing: 8px; color: #0f766e; background: #ffffff; padding: 12px 20px; border-radius: 8px; border: 1px solid #99f6e4; display: inline-block;">
+          ${code}
+        </div>
+      </div>
+
+      <!-- Security Notice -->
+      <div style="font-size: 12px; color: #64748b; line-height: 1.5; background: #f8fafc; padding: 14px 16px; border-radius: 8px; border: 1px solid #f1f5f9; margin-bottom: 10px;">
+        <strong style="color: #334155;">Hinweis:</strong> ${textDict.note}
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div style="background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8;">
+      <p style="margin: 0 0 4px 0; font-weight: 600; color: #64748b;">${textDict.footer}</p>
+      <p style="margin: 0;">Automated Security Notification • HomeoPilot 360</p>
+    </div>
+
+  </div>
+</body>
+</html>
+  `;
+
+  const textBody = `${textDict.title}\n\n${textDict.greeting}\n\n${textDict.msg}\n\n${textDict.codeLabel}: ${code}\n\n${textDict.note}\n\n${textDict.footer}`;
+
+  try {
+    const config = getEmailConfig();
+    const isApi = config.sendMethod === 'api' || (!config.sendMethod && (config.apiToken || 'ca5694e04833ec07a5a65dbe06af56952c3e1fb04cc66e546b50fc5c84464aaf'));
+
+    if (isApi) {
+      await sendViaHostingerApi({
+        to: cleanEmail,
+        subject: textDict.subject,
+        html: htmlBody,
+        text: textBody,
+        displayName: config.fromName || 'HomeoPilot 360 Security',
+        config,
+      });
+      return true;
+    } else {
+      // SMTP
+      await fetch('/api/email/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          smtpHost: config.smtpHost,
+          smtpPort: config.smtpPort,
+          smtpSecure: config.smtpSecure,
+          smtpUser: config.smtpUser,
+          smtpPassword: config.smtpPassword,
+          fromEmail: config.fromEmail,
+          fromName: config.fromName || 'HomeoPilot 360 Security',
+          toEmail: cleanEmail,
+          subject: textDict.subject,
+          html: htmlBody,
+          text: textBody,
+        }),
+      });
+      return true;
+    }
+  } catch {
+    try {
+      const fallbackConfig = { ...getEmailConfig(), sendMethod: 'api' as const };
+      await sendViaHostingerApi({
+        to: cleanEmail,
+        subject: textDict.subject,
+        html: htmlBody,
+        text: textBody,
+        displayName: fallbackConfig.fromName || 'HomeoPilot 360 Security',
+        config: fallbackConfig,
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+}
+
+/**
  * Sendet eine Passwort-Wiederherstellungs-E-Mail auf Englisch
  */
 export async function sendPasswordRecoveryEmail(targetEmail: string): Promise<boolean> {

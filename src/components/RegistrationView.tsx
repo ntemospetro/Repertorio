@@ -4,6 +4,8 @@ import { Therapist, RegistrationTrialConfig } from '../types';
 import { useTranslation } from '../i18n/LanguageContext';
 import { TermsModal } from './TermsModal';
 import { SetPasswordModal } from './SetPasswordModal';
+import { VerificationCodeModal } from './VerificationCodeModal';
+import { sendRegistrationVerificationCodeEmail } from '../services/emailService';
 import { getLocalizedCountries, getCountryFlag, getDefaultCountryForLanguage } from '../data/countries';
 import { 
   CheckCircle2, 
@@ -60,6 +62,9 @@ export const RegistrationView: React.FC<RegistrationViewProps> = ({
   const [agreedTerms, setAgreedTerms] = useState(false);
   const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [isVerificationModalOpen, setIsVerificationModalOpen] = useState(false);
+  const [verificationCode, setVerificationCode] = useState('');
+  const [pendingPassword, setPendingPassword] = useState('');
 
   const validate = () => {
     const errs: Record<string, string> = {};
@@ -86,9 +91,49 @@ export const RegistrationView: React.FC<RegistrationViewProps> = ({
     setIsPasswordModalOpen(true);
   };
 
-  const handleConfirmPassword = (password: string) => {
+  const handleConfirmPassword = async (password: string) => {
     setIsSubmitting(true);
+    setPendingPassword(password);
 
+    // Generate 6-digit verification code
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    setVerificationCode(code);
+
+    try {
+      // Send the 6-digit confirmation code via email
+      await sendRegistrationVerificationCodeEmail(
+        formData.email.trim(),
+        `${formData.vorname} ${formData.nachname}`.trim(),
+        code,
+        language
+      );
+    } catch {
+      // Proceed even if email network fluctuates, the code is ready in modal
+    } finally {
+      setIsSubmitting(false);
+      setIsPasswordModalOpen(false);
+      setIsVerificationModalOpen(true);
+    }
+  };
+
+  const handleResendVerificationCode = async (): Promise<string | null> => {
+    const newCode = Math.floor(100000 + Math.random() * 900000).toString();
+    setVerificationCode(newCode);
+
+    try {
+      await sendRegistrationVerificationCodeEmail(
+        formData.email.trim(),
+        `${formData.vorname} ${formData.nachname}`.trim(),
+        newCode,
+        language
+      );
+      return newCode;
+    } catch {
+      return newCode;
+    }
+  };
+
+  const handleVerificationSuccess = () => {
     try {
       const created = createTherapist({
         vorname: formData.vorname.trim(),
@@ -98,18 +143,14 @@ export const RegistrationView: React.FC<RegistrationViewProps> = ({
         land: formData.land.trim(),
         email: formData.email.trim().toLowerCase(),
         telefon: formData.telefon.trim(),
-        password: password.trim(),
+        password: pendingPassword.trim(),
         preferredLanguage: language,
       });
 
-      setTimeout(() => {
-        setIsSubmitting(false);
-        setIsPasswordModalOpen(false);
-        onSuccess(created);
-      }, 300);
+      setIsVerificationModalOpen(false);
+      onSuccess(created);
     } catch {
-      setIsSubmitting(false);
-      alert('Error saving registration');
+      alert('Error creating therapist account');
     }
   };
 
@@ -417,6 +458,16 @@ export const RegistrationView: React.FC<RegistrationViewProps> = ({
         onClose={() => setIsPasswordModalOpen(false)}
         onConfirm={handleConfirmPassword}
         isSubmitting={isSubmitting}
+      />
+
+      {/* 6-Digit Email Verification Code Modal */}
+      <VerificationCodeModal
+        isOpen={isVerificationModalOpen}
+        email={formData.email}
+        expectedCode={verificationCode}
+        onSuccess={handleVerificationSuccess}
+        onResendCode={handleResendVerificationCode}
+        onClose={() => setIsVerificationModalOpen(false)}
       />
     </div>
   );
