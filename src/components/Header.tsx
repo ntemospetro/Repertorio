@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ActiveView, Therapist } from '../types';
 import { isAdminLoggedIn, getSiteConfig } from '../services/storage';
 import { useTranslation } from '../i18n/LanguageContext';
@@ -8,7 +8,10 @@ import {
   UserPlus, 
   Stethoscope, 
   Lock,
-  Home
+  Home,
+  Menu,
+  X,
+  ChevronRight
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -25,6 +28,8 @@ export const Header: React.FC<HeaderProps> = ({
   const isAdmin = isAdminLoggedIn();
   const { t } = useTranslation();
   const [logoUrl, setLogoUrl] = useState(() => getSiteConfig().logoUrl || '');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const updateLogo = () => setLogoUrl(getSiteConfig().logoUrl || '');
@@ -33,18 +38,46 @@ export const Header: React.FC<HeaderProps> = ({
     return () => window.removeEventListener('homoeo_site_config_changed', updateLogo);
   }, []);
 
+  // Close mobile menu whenever view changes
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [currentView]);
+
+  // Click outside and ESC listener to close mobile menu
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node)) {
+        setMobileMenuOpen(false);
+      }
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setMobileMenuOpen(false);
+      }
+    };
+
+    if (mobileMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [mobileMenuOpen]);
+
   const handleAdminClick = () => {
     onViewChange('admin');
   };
 
   return (
     <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6">
         <div className="flex items-center justify-between h-16">
           {/* Logo & Brand */}
           <div 
             onClick={() => onViewChange(activeTherapist ? 'therapist' : 'landing')}
-            className="flex items-center gap-2.5 cursor-pointer group"
+            className="flex items-center gap-2 sm:gap-2.5 cursor-pointer group shrink-0"
           >
             {logoUrl ? (
               <img src={logoUrl} alt="Logo" className="w-8 h-8 object-contain rounded-lg shadow-xs" />
@@ -55,7 +88,7 @@ export const Header: React.FC<HeaderProps> = ({
             )}
             <div>
               <div className="flex items-center gap-1.5">
-                <span className="font-bold text-xl text-teal-900 tracking-tight">
+                <span className="font-bold text-lg sm:text-xl text-teal-900 tracking-tight">
                   {t('brandName')}
                 </span>
                 <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-teal-100 text-teal-800 font-bold uppercase tracking-wider">
@@ -68,8 +101,8 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           </div>
 
-          {/* Navigation Links & Language Switcher */}
-          <nav className="flex items-center gap-2 sm:gap-3">
+          {/* Desktop Navigation Links */}
+          <nav className="hidden md:flex items-center gap-2 sm:gap-3">
             <div className="flex bg-slate-100 rounded-full p-1 border border-slate-200 text-xs font-semibold">
               {/* 1. Registrierung */}
               <button
@@ -96,8 +129,7 @@ export const Header: React.FC<HeaderProps> = ({
                 }`}
               >
                 <Stethoscope className="w-3.5 h-3.5" />
-                <span className="hidden md:inline">{t('navTherapist')}</span>
-                <span className="md:hidden">Panel</span>
+                <span>{t('navTherapist')}</span>
                 {activeTherapist && (
                   <span className={`w-2 h-2 rounded-full ${
                     activeTherapist.usedAnalyses >= activeTherapist.maxAnalyses && activeTherapist.tarif === 'free_trial'
@@ -122,8 +154,7 @@ export const Header: React.FC<HeaderProps> = ({
                 ) : (
                   <Lock className="w-3.5 h-3.5 text-slate-400" />
                 )}
-                <span className="hidden md:inline">{t('navAdmin')}</span>
-                <span className="md:hidden">Admin</span>
+                <span>{t('navAdmin')}</span>
                 {isAdmin && (
                   <span className="text-[9px] bg-teal-100 text-teal-800 font-bold px-1.5 py-0.2 rounded-full">
                     {t('navActive')}
@@ -132,7 +163,7 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
             </div>
 
-            {/* Language Switcher Dropdown (Frontseite & All Views) */}
+            {/* Language Switcher Dropdown */}
             <LanguageSelector variant="dropdown" />
 
             <div className="w-px h-6 bg-slate-200 mx-0.5 hidden lg:block"></div>
@@ -140,8 +171,163 @@ export const Header: React.FC<HeaderProps> = ({
               {activeTherapist ? `${activeTherapist.vorname} ${activeTherapist.nachname}` : t('navPreview')}
             </span>
           </nav>
+
+          {/* Mobile & Tablet Action Bar (Language + Responsive Hamburger Toggle) */}
+          <div className="flex md:hidden items-center gap-1.5 sm:gap-2">
+            <LanguageSelector variant="dropdown" />
+
+            <button
+              type="button"
+              id="header-mobile-menu-toggle"
+              onClick={() => setMobileMenuOpen(prev => !prev)}
+              className="p-2 rounded-xl text-slate-700 hover:text-slate-950 hover:bg-slate-100 border border-slate-200 transition-colors cursor-pointer flex items-center justify-center"
+              aria-label={mobileMenuOpen ? t('navMenuClose') : t('navMenu')}
+              aria-expanded={mobileMenuOpen}
+            >
+              {mobileMenuOpen ? (
+                <X className="w-5 h-5 text-slate-800" />
+              ) : (
+                <Menu className="w-5 h-5 text-slate-800" />
+              )}
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Mobile & Tablet Dropdown Navigation Menu */}
+      {mobileMenuOpen && (
+        <div
+          id="header-mobile-dropdown"
+          ref={mobileMenuRef}
+          className="md:hidden border-t border-slate-200/90 bg-white/98 backdrop-blur-md px-4 py-3 shadow-xl space-y-1 animate-in slide-in-from-top-2 duration-150"
+        >
+          {/* Startseite */}
+          <button
+            type="button"
+            id="mobile-nav-home"
+            onClick={() => {
+              onViewChange('landing');
+              setMobileMenuOpen(false);
+            }}
+            className={`w-full px-3.5 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-between transition-colors cursor-pointer ${
+              currentView === 'landing'
+                ? 'bg-teal-50 text-teal-900 border border-teal-200/70'
+                : 'text-slate-700 hover:bg-slate-100'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <Home className="w-4 h-4 text-slate-500" />
+              <span>{t('navHome')}</span>
+            </div>
+            <ChevronRight className="w-4 h-4 text-slate-400" />
+          </button>
+
+          {/* Registrierung */}
+          <button
+            type="button"
+            id="mobile-nav-register"
+            onClick={() => {
+              onViewChange('register');
+              setMobileMenuOpen(false);
+            }}
+            className={`w-full px-3.5 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-between transition-colors cursor-pointer ${
+              currentView === 'register'
+                ? 'bg-teal-50 text-teal-900 border border-teal-200/70'
+                : 'text-slate-700 hover:bg-slate-100'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <UserPlus className="w-4 h-4 text-teal-600" />
+              <span>{t('navRegister')}</span>
+            </div>
+            <ChevronRight className="w-4 h-4 text-slate-400" />
+          </button>
+
+          {/* Therapeuten-Panel */}
+          <button
+            type="button"
+            id="mobile-nav-therapist"
+            onClick={() => {
+              onViewChange('therapist');
+              setMobileMenuOpen(false);
+            }}
+            className={`w-full px-3.5 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-between transition-colors cursor-pointer ${
+              currentView === 'therapist'
+                ? 'bg-teal-50 text-teal-900 border border-teal-200/70'
+                : 'text-slate-700 hover:bg-slate-100'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <Stethoscope className="w-4 h-4 text-teal-600" />
+              <span>{t('navTherapist')}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              {activeTherapist && (
+                <span className={`w-2 h-2 rounded-full ${
+                  activeTherapist.usedAnalyses >= activeTherapist.maxAnalyses && activeTherapist.tarif === 'free_trial'
+                    ? 'bg-rose-500'
+                    : 'bg-teal-500'
+                }`} />
+              )}
+              <ChevronRight className="w-4 h-4 text-slate-400" />
+            </div>
+          </button>
+
+          {/* Admin-Panel */}
+          <button
+            type="button"
+            id="mobile-nav-admin"
+            onClick={() => {
+              handleAdminClick();
+              setMobileMenuOpen(false);
+            }}
+            className={`w-full px-3.5 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-between transition-colors cursor-pointer ${
+              currentView === 'admin'
+                ? 'bg-slate-900 text-white'
+                : 'text-slate-700 hover:bg-slate-100'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              {isAdmin ? (
+                <ShieldCheck className="w-4 h-4 text-teal-400" />
+              ) : (
+                <Lock className="w-4 h-4 text-slate-400" />
+              )}
+              <span>{t('navAdmin')}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              {isAdmin && (
+                <span className="text-[10px] bg-teal-100 text-teal-800 font-bold px-2 py-0.5 rounded-full">
+                  {t('navActive')}
+                </span>
+              )}
+              <ChevronRight className="w-4 h-4 text-slate-400" />
+            </div>
+          </button>
+
+          {/* Active Therapist Account Banner in Mobile Dropdown */}
+          {activeTherapist && (
+            <div className="pt-2.5 mt-2 border-t border-slate-100 flex items-center justify-between px-2 text-xs text-slate-500">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-6 h-6 rounded-full bg-teal-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0">
+                  {activeTherapist.vorname[0]}{activeTherapist.nachname[0]}
+                </div>
+                <div className="truncate">
+                  <span className="font-semibold text-slate-800 block truncate">
+                    {activeTherapist.vorname} {activeTherapist.nachname}
+                  </span>
+                  <span className="text-[10px] text-slate-400 block truncate">
+                    {activeTherapist.email}
+                  </span>
+                </div>
+              </div>
+              <span className="text-[11px] font-medium text-teal-700 bg-teal-50 px-2 py-0.5 rounded-md shrink-0 border border-teal-100">
+                {activeTherapist.tarif === 'free_trial' ? 'Testphase' : 'Aktiv'}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
     </header>
   );
 };
