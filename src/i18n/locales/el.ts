@@ -1423,4 +1423,5 @@ export const el = {
   "medRecommendedIntake": "Συνιστώμενη λήψη & συχνότητα",
   "medViewDetails": "Προβολή έρευνας διαδικτύου (Ουσία, παρενέργειες & αλληλεπιδράσεις)",
   "medHideDetails": "Σύμπτυξη έρευνας",
+  "medLoadingResearchData": "Φόρτωση δεδομένων έρευνας στο παρασκήνιο...",
 };

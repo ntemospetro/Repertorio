@@ -1429,4 +1429,5 @@ export const en = {
   medRecommendedIntake: "Recommended Intake & Frequency",
   medViewDetails: "View Internet Research (Substance, Side Effects & Interactions)",
   medHideDetails: "Collapse Research",
+  medLoadingResearchData: "Research data is loading in the background...",
 };

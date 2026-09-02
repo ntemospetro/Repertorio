@@ -4,6 +4,10 @@ import { TranslationKey } from '../i18n/translations';
 import { MedicationLiveInput, MedicationData } from './MedicationLiveInput';
 import { X, Plus, Pill, Save, Check } from 'lucide-react';
 
+export interface MedicationItem extends MedicationData {
+  id: string;
+}
+
 interface Props {
   isOpen: boolean;
   onClose: () => void;
@@ -12,6 +16,16 @@ interface Props {
   onSave: (data: { nimmtMedikamente: boolean; medikamenteList: Array<MedicationData> }) => void;
   patientName?: string;
 }
+
+const generateId = () => Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
+
+const createEmptyMedication = (): MedicationItem => ({
+  id: generateId(),
+  name: '',
+  dosierung: '',
+  einnahmeart: '',
+  grund: ''
+});
 
 export const MedicationsWizardModal: React.FC<Props> = ({
   isOpen,
@@ -22,17 +36,20 @@ export const MedicationsWizardModal: React.FC<Props> = ({
   patientName
 }) => {
   const { t } = useLanguage();
-  const [list, setList] = useState<Array<MedicationData>>([]);
+  const [list, setList] = useState<Array<MedicationItem>>([]);
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       if (medikamenteList && medikamenteList.length > 0) {
-        setList([...medikamenteList]);
+        setList(medikamenteList.map(m => ({
+          ...m,
+          id: (m as any).id || generateId()
+        })));
       } else {
         // Beim Öffnen erscheinen bereits die Felder für das erste Medikament
-        setList([{ name: '', dosierung: '', einnahmeart: '', grund: '' }]);
+        setList([createEmptyMedication()]);
       }
       setShowCloseConfirm(false);
       setShowDiscardConfirm(false);
@@ -42,13 +59,15 @@ export const MedicationsWizardModal: React.FC<Props> = ({
   if (!isOpen) return null;
 
   const handleAddMedication = () => {
-    setList(prev => [...prev, { name: '', dosierung: '', einnahmeart: '', grund: '' }]);
+    setList(prev => [...prev, createEmptyMedication()]);
   };
 
   const handleUpdateMedication = (index: number, updated: MedicationData) => {
     setList(prev => {
       const copy = [...prev];
-      copy[index] = updated;
+      if (copy[index]) {
+        copy[index] = { ...copy[index], ...updated };
+      }
       return copy;
     });
   };
@@ -58,7 +77,7 @@ export const MedicationsWizardModal: React.FC<Props> = ({
       const copy = [...prev];
       copy.splice(index, 1);
       if (copy.length === 0) {
-        return [{ name: '', dosierung: '', einnahmeart: '', grund: '' }];
+        return [createEmptyMedication()];
       }
       return copy;
     });
@@ -66,7 +85,9 @@ export const MedicationsWizardModal: React.FC<Props> = ({
 
   const handleSaveAndClose = () => {
     // Wenn alles leer bleibt, nimmt er keine Medikamente ein und es werden keine berücksichtigt
-    const cleanedList = list.filter(m => m.name && m.name.trim() !== '');
+    const cleanedList = list
+      .filter(m => m.name && m.name.trim() !== '')
+      .map(({ id, ...rest }) => rest);
     const finalTakes = cleanedList.length > 0;
     onSave({
       nimmtMedikamente: finalTakes,
@@ -148,7 +169,7 @@ export const MedicationsWizardModal: React.FC<Props> = ({
             <div className="space-y-3">
               {list.map((med, index) => (
                 <MedicationLiveInput
-                  key={index}
+                  key={med.id}
                   index={index}
                   med={med}
                   onChange={(updated) => handleUpdateMedication(index, updated)}

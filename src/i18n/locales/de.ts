@@ -1429,4 +1429,5 @@ export const de = {
   medRecommendedIntake: "Empfohlene Einnahme & Häufigkeit",
   medViewDetails: "Internet-Recherche anzeigen (Wirkstoff, Neben- & Wechselwirkungen)",
   medHideDetails: "Recherche einklappen",
+  medLoadingResearchData: "Recherchedaten werden im Hintergrund geladen...",
 };

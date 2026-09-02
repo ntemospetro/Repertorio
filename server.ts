@@ -5,6 +5,7 @@ import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
 import nodemailer from "nodemailer";
+import { COMMON_MEDICATIONS_DB } from "./src/services/medicationDatabase";
 
 dotenv.config();
 
@@ -322,22 +323,38 @@ oder
         return res.json({ results: medicationSearchCache.get(cacheKey) });
       }
 
-      if (!process.env.GEMINI_API_KEY) {
-        return res.json({ results: [] });
+      const localMatches = COMMON_MEDICATIONS_DB.filter(m =>
+        m.name.toLowerCase().includes(cacheKey) ||
+        (m.activeSubstance && m.activeSubstance.toLowerCase().includes(cacheKey)) ||
+        (m.category && m.category.toLowerCase().includes(cacheKey))
+      ).map(m => ({
+        name: m.name,
+        activeSubstance: m.activeSubstance || '',
+        category: m.category || '',
+        dosages: m.defaultDosages || [],
+        commonForms: m.commonForms || [],
+        recommendedIntake: m.recommendedIntake || '',
+        sideEffects: m.sideEffects || [],
+        interactions: m.interactions || [],
+        warnings: m.warnings || ''
+      }));
+
+      // If strong or exact match exists in local database, return immediately without network latency
+      const hasExactLocal = localMatches.some(m => m.name.toLowerCase() === cacheKey || (m.activeSubstance && m.activeSubstance.toLowerCase() === cacheKey));
+      if (hasExactLocal || localMatches.length >= 3 || !process.env.GEMINI_API_KEY) {
+        medicationSearchCache.set(cacheKey, localMatches);
+        return res.json({ results: localMatches });
       }
 
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      const prompt = `Führe eine vollständige Live-Suche im Internet nach existierenden realen Medikamenten und Präparaten durch, die zur Suchanfrage "${q}" passen (Handelsnamen in Deutschland/Österreich/Schweiz/international, Generika, Wirkstoffe, Fertigarzneimittel).
-Ermittle für bis zu 5 gefundene Medikamente aus dem Internet:
+      const prompt = `Führe eine schnelle Suche nach real existierenden Medikamenten und Präparaten durch, die zur Suchanfrage "${q}" passen (Handelsnamen in DACH/international, Generika, Wirkstoffe).
+Ermittle für bis zu 6 gefundene Treffer NUR die Stammdaten und typischen Dosierungsstärken für die Schnellauswahl (KEINE Nebenwirkungen, KEINE Wechselwirkungen und KEINE Risikotexte generieren, da diese erst separat nachgeladen werden):
 - name: Offizieller Handelsname / Präparatename
 - activeSubstance: Wirkstoff (INN)
-- category: Indikationsgruppe / Wirkstoffklasse
+- category: Indikationsgruppe / Wirkstoffklasse (kurz)
 - dosages: Typische, reale Dosierungsstärken (Array von Strings, z.B. ["200 mg", "400 mg", "600 mg"])
-- commonForms: Darreichungsformen (Array von Strings, z.B. ["Filmtablette", "Kapsel", "Tropfen"])
-- recommendedIntake: Typische Einnahmeart und Einnahmehinweise (z.B. "1-2x täglich mit Wasser nach den Mahlzeiten")
-- sideEffects: Vollständige Liste aller wichtigen und häufigen Nebenwirkungen (Array von kurzen Strings)
-- interactions: Vollständige Liste aller relevanten Wechselwirkungen mit anderen Medikamenten, Nahrungsmitteln oder Alkohol (Array von kurzen Strings)
-- warnings: Kontraindikationen und wichtige Warnhinweise
+- commonForms: Darreichungsformen (Array von Strings, z.B. ["Filmtablette", "Kapsel"])
+- recommendedIntake: Kurze typische Einnahmeempfehlung (z.B. "1-2x täglich mit Wasser")
 
 Antworte AUSSCHLIESSLICH mit einem validen JSON-Array:
 [
@@ -347,36 +364,81 @@ Antworte AUSSCHLIESSLICH mit einem validen JSON-Array:
     "category": "Wirkstoffgruppe",
     "dosages": ["..."],
     "commonForms": ["..."],
-    "recommendedIntake": "...",
-    "sideEffects": ["..."],
-    "interactions": ["..."],
-    "warnings": "..."
+    "recommendedIntake": "..."
   }
 ]`;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-3.8-flash",
-        contents: prompt,
-        config: {
-          tools: [{ googleSearch: {} }],
-        },
-      });
+      let responseText = '';
+      try {
+        const response = await ai.models.generateContent({
+          model: "gemini-3.6-flash",
+          contents: prompt,
+        });
+        responseText = response.text || '';
+      } catch (fastError) {
+        console.warn("Direct fast search failed, trying with web tools:", fastError);
+        try {
+          const fallbackResponse = await ai.models.generateContent({
+            model: "gemini-3.6-flash",
+            contents: prompt,
+            config: {
+              tools: [{ googleSearch: {} }],
+            },
+          });
+          responseText = fallbackResponse.text || '';
+        } catch (e) {
+          console.warn("All live search methods failed:", e);
+        }
+      }
 
-      const parsed = extractJsonFromText(response.text || '');
-      const results = Array.isArray(parsed) ? parsed : [];
-      medicationSearchCache.set(cacheKey, results);
+      const parsed = extractJsonFromText(responseText);
+      const liveResults = Array.isArray(parsed) ? parsed : [];
 
-      // Pre-populate details cache
-      results.forEach((item: any) => {
-        if (item && item.name) {
+      const seen = new Set<string>();
+      const combined: any[] = [];
+      for (const item of liveResults) {
+        const k = (item.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (k && !seen.has(k)) {
+          seen.add(k);
+          combined.push(item);
+        }
+      }
+      for (const item of localMatches) {
+        const k = item.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (k && !seen.has(k)) {
+          seen.add(k);
+          combined.push(item);
+        }
+      }
+
+      medicationSearchCache.set(cacheKey, combined);
+
+      // Pre-populate details cache ONLY for items that already have full details (e.g. from local DB)
+      combined.forEach((item: any) => {
+        if (item && item.name && item.sideEffects && item.sideEffects.length > 0) {
           medicationDetailsCache.set(item.name.toLowerCase(), item);
         }
       });
 
-      res.json({ results });
+      res.json({ results: combined });
     } catch (error) {
       console.error("Gemini Medications Search Error:", error);
-      res.status(500).json({ error: "Search failed" });
+      const cacheKey = (req.query.q as string || '').toLowerCase().trim();
+      const fallbackMatches = COMMON_MEDICATIONS_DB.filter(m =>
+        m.name.toLowerCase().includes(cacheKey) ||
+        (m.activeSubstance && m.activeSubstance.toLowerCase().includes(cacheKey))
+      ).map(m => ({
+        name: m.name,
+        activeSubstance: m.activeSubstance || '',
+        category: m.category || '',
+        dosages: m.defaultDosages || [],
+        commonForms: m.commonForms || [],
+        recommendedIntake: m.recommendedIntake || '',
+        sideEffects: m.sideEffects || [],
+        interactions: m.interactions || [],
+        warnings: m.warnings || ''
+      }));
+      res.json({ results: fallbackMatches });
     }
   });
 
@@ -391,8 +453,26 @@ Antworte AUSSCHLIESSLICH mit einem validen JSON-Array:
         return res.json({ details: medicationDetailsCache.get(cacheKey) });
       }
 
+      const localMatch = COMMON_MEDICATIONS_DB.find(m =>
+        m.name.toLowerCase() === cacheKey ||
+        cacheKey.includes(m.name.toLowerCase()) ||
+        (m.activeSubstance && cacheKey.includes(m.activeSubstance.toLowerCase()))
+      );
+
       if (!process.env.GEMINI_API_KEY) {
-        return res.json({ details: null });
+        return res.json({
+          details: localMatch ? {
+            name: localMatch.name,
+            activeSubstance: localMatch.activeSubstance || '',
+            category: localMatch.category || '',
+            dosages: localMatch.defaultDosages || [],
+            commonForms: localMatch.commonForms || [],
+            recommendedIntake: localMatch.recommendedIntake || '',
+            sideEffects: localMatch.sideEffects || [],
+            interactions: localMatch.interactions || [],
+            warnings: localMatch.warnings || ''
+          } : null
+        });
       }
 
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
@@ -421,23 +501,71 @@ Antworte AUSSCHLIESSLICH als valides JSON-Objekt:
   "warnings": "..."
 }`;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-3.8-flash",
-        contents: prompt,
-        config: {
-          tools: [{ googleSearch: {} }],
-        },
-      });
+      let responseText = '';
+      try {
+        const response = await ai.models.generateContent({
+          model: "gemini-3.6-flash",
+          contents: prompt,
+          config: {
+            tools: [{ googleSearch: {} }],
+          },
+        });
+        responseText = response.text || '';
+      } catch (groundingError) {
+        console.warn("Details live search grounding failed, falling back to direct model knowledge:", groundingError);
+        const fallbackResponse = await ai.models.generateContent({
+          model: "gemini-3.6-flash",
+          contents: prompt,
+        });
+        responseText = fallbackResponse.text || '';
+      }
 
-      const parsed = extractJsonFromText(response.text || '');
+      const parsed = extractJsonFromText(responseText);
       if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
         medicationDetailsCache.set(cacheKey, parsed);
         return res.json({ details: parsed });
       }
 
+      if (localMatch) {
+        return res.json({
+          details: {
+            name: localMatch.name,
+            activeSubstance: localMatch.activeSubstance || '',
+            category: localMatch.category || '',
+            dosages: localMatch.defaultDosages || [],
+            commonForms: localMatch.commonForms || [],
+            recommendedIntake: localMatch.recommendedIntake || '',
+            sideEffects: localMatch.sideEffects || [],
+            interactions: localMatch.interactions || [],
+            warnings: localMatch.warnings || ''
+          }
+        });
+      }
+
       res.json({ details: null });
     } catch (error) {
       console.error("Gemini Medications Details Error:", error);
+      const cacheKey = (req.query.name as string || '').toLowerCase().trim();
+      const localMatch = COMMON_MEDICATIONS_DB.find(m =>
+        m.name.toLowerCase() === cacheKey ||
+        cacheKey.includes(m.name.toLowerCase()) ||
+        (m.activeSubstance && cacheKey.includes(m.activeSubstance.toLowerCase()))
+      );
+      if (localMatch) {
+        return res.json({
+          details: {
+            name: localMatch.name,
+            activeSubstance: localMatch.activeSubstance || '',
+            category: localMatch.category || '',
+            dosages: localMatch.defaultDosages || [],
+            commonForms: localMatch.commonForms || [],
+            recommendedIntake: localMatch.recommendedIntake || '',
+            sideEffects: localMatch.sideEffects || [],
+            interactions: localMatch.interactions || [],
+            warnings: localMatch.warnings || ''
+          }
+        });
+      }
       res.status(500).json({ error: "Details lookup failed" });
     }
   });

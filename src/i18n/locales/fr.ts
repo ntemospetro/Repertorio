@@ -1423,4 +1423,5 @@ export const fr = {
   "medRecommendedIntake": "Prise recommandée et posologie",
   "medViewDetails": "Afficher la recherche Internet (Substance, effets secondaires & interactions)",
   "medHideDetails": "Masquer la recherche",
+  "medLoadingResearchData": "Chargement des données de recherche en arrière-plan...",
 };
