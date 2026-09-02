@@ -173,6 +173,7 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const [isNoMasterDataModalOpen, setIsNoMasterDataModalOpen] = useState(false);
   const [isPatientSelectionModalOpen, setIsPatientSelectionModalOpen] = useState(false);
+  const [caseToDeleteId, setCaseToDeleteId] = useState<string | null>(null);
   const [analysisResults, setAnalysisResults] = useState<HomeoRemedyResult[]>([]);
   const [clinicalAnalysis, setClinicalAnalysis] = useState<FullClinicalAnalysis | null>(null);
   const [saveToast, setSaveToast] = useState<string | null>(null);
@@ -253,37 +254,54 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
   };
 
   const handleNewCase = () => {
-    setSelectedCaseId(null);
     setClinicalAnalysis(null);
     setAnalysisResults([]);
 
     const hasPatientMasterData = Boolean(currentCase.patientName && currentCase.patientName.trim());
 
     if (hasPatientMasterData) {
-      // Preserve the patient's master data (Stammdaten) and create a new anamnesis/case for this patient
-      setCurrentCase(prev => ({
-        ...BLANK_PATIENT_CASE,
-        anamneseDatum: new Date().toISOString().split('T')[0],
-        patientName: prev.patientName,
-        patientAge: prev.patientAge,
-        patientBirthDate: prev.patientBirthDate,
-        patientGender: prev.patientGender,
-        patientHeightCm: prev.patientHeightCm,
-        patientWeightKg: prev.patientWeightKg,
-        patientMaritalStatus: prev.patientMaritalStatus,
-        patientEmail: prev.patientEmail,
-        patientPhone: prev.patientPhone,
-        isPregnant: prev.isPregnant,
-        pregnancyMonth: prev.pregnancyMonth,
-        hasChildren: prev.hasChildren,
-        childrenCount: prev.childrenCount,
-        childrenList: prev.childrenList ? [...prev.childrenList] : [],
-        customStammdaten: prev.customStammdaten ? [...prev.customStammdaten] : [],
-      }));
-      // Advance to step 2 (Hauptbeschwerde) since Stammdaten are already filled
+      const isFemale = (currentCase.patientGender || 'weiblich') === 'weiblich';
+      const today = new Date().toISOString().split('T')[0];
+
+      // Immediately create and persist the new case for this patient
+      const newCaseData: Omit<PatientCase, 'id'> = {
+        therapistId: therapist.id,
+        anamneseDatum: today,
+        patientName: currentCase.patientName.trim(),
+        patientAge: currentCase.patientAge,
+        patientBirthDate: currentCase.patientBirthDate,
+        patientGender: currentCase.patientGender,
+        patientHeightCm: currentCase.patientHeightCm,
+        patientWeightKg: currentCase.patientWeightKg,
+        patientMaritalStatus: currentCase.patientMaritalStatus,
+        patientEmail: currentCase.patientEmail,
+        patientPhone: currentCase.patientPhone,
+        isPregnant: isFemale ? !!currentCase.isPregnant : false,
+        pregnancyMonth: isFemale && currentCase.isPregnant ? currentCase.pregnancyMonth : undefined,
+        hasChildren: !!currentCase.hasChildren,
+        childrenCount: currentCase.hasChildren ? (currentCase.childrenList?.length || 0) : 0,
+        childrenList: currentCase.hasChildren ? (currentCase.childrenList ? [...currentCase.childrenList] : []) : [],
+        customStammdaten: currentCase.customStammdaten ? [...currentCase.customStammdaten] : [],
+        hauptbeschwerde: '',
+        anamnesisQuestions: [],
+        spontanbericht: '',
+        modalitaetenBesser: '',
+        modalitaetenSchlechter: '',
+        gemuetPsyche: '',
+        koerperAllgemein: '',
+        lokalsymptome: '',
+        bisherigeMittel: '',
+      };
+
+      const created = savePatientCase(newCaseData);
+      setSelectedCaseId(created.id);
+      setCurrentCase(created);
+      refreshCases();
+      // Advance to step 2 (Hauptbeschwerde) so the therapist can directly start recording the new complaint
       setCurrentStep(2);
     } else {
       // Completely blank admission
+      setSelectedCaseId(null);
       setCurrentCase({
         ...BLANK_PATIENT_CASE,
         anamneseDatum: new Date().toISOString().split('T')[0],
@@ -545,13 +563,27 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
 
   const handleDeleteCase = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (window.confirm(t('deleteCaseConfirm'))) {
-      deletePatientCase(id);
-      if (selectedCaseId === id) {
+    setCaseToDeleteId(id);
+  };
+
+  const handleConfirmDeleteCase = () => {
+    if (!caseToDeleteId) return;
+    const id = caseToDeleteId;
+    deletePatientCase(id);
+    if (selectedCaseId === id) {
+      const remainingCases = cases.filter(c => c.id !== id);
+      const currentPatientName = (currentCase.patientName || '').trim().toLowerCase();
+      const otherPatientCase = remainingCases.find(
+        c => (c.patientName || '').trim().toLowerCase() === currentPatientName
+      );
+      if (otherPatientCase) {
+        handleSelectCase(otherPatientCase);
+      } else {
         handleNewCase();
       }
-      refreshCases();
     }
+    refreshCases();
+    setCaseToDeleteId(null);
   };
 
   const handleRunAnalysis = async () => {
@@ -1010,6 +1042,16 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                       patientMap.set(nameKey, []);
                     }
                     patientMap.get(nameKey)!.push(c);
+                  });
+
+                  // Ensure each patient's cases are sorted chronologically descending (newest first)
+                  patientMap.forEach((pList) => {
+                    pList.sort((a, b) => {
+                      const da = new Date(a.anamneseDatum || a.analyzedAt || 0).getTime();
+                      const db = new Date(b.anamneseDatum || b.analyzedAt || 0).getTime();
+                      if (db !== da) return db - da;
+                      return (b.id || '').localeCompare(a.id || '');
+                    });
                   });
 
                   return (
@@ -2854,6 +2896,71 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
         cases={cases}
         activePatientName={currentCase.patientName}
       />
+
+      {/* Modal: Fall löschen Bestätigung (Ja / Nein) */}
+      {caseToDeleteId && (
+        <div
+          id="modal-delete-case-backdrop"
+          className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
+        >
+          <div
+            id="modal-delete-case-container"
+            className="bg-white rounded-2xl max-w-md w-full border border-slate-200 shadow-2xl overflow-hidden p-6 sm:p-7 text-center space-y-5 animate-in zoom-in-95 duration-150"
+          >
+            <div className="w-14 h-14 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center mx-auto shadow-inner">
+              <Trash2 className="w-7 h-7" />
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="text-lg sm:text-xl font-bold text-slate-900 font-serif">
+                {t('deleteCaseConfirm')}
+              </h3>
+              {(() => {
+                const targetCase = cases.find((c) => c.id === caseToDeleteId);
+                if (targetCase) {
+                  return (
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-left text-xs space-y-1 mt-2">
+                      <div className="font-bold text-slate-900">
+                        {targetCase.patientName || t('unnamedPatient')}
+                      </div>
+                      <div className="text-slate-500">
+                        {t('admissionDatePrefix')}: {targetCase.anamneseDatum || targetCase.analyzedAt?.split('T')[0] || '—'}
+                      </div>
+                      {targetCase.hauptbeschwerde && (
+                        <div className="text-slate-700 line-clamp-2 italic pt-0.5">
+                          „{targetCase.hauptbeschwerde}“
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+            </div>
+
+            <div className="pt-2 flex flex-col-reverse sm:flex-row items-center justify-center gap-3">
+              <button
+                type="button"
+                id="btn-confirm-delete-case-no"
+                onClick={() => setCaseToDeleteId(null)}
+                className="w-full sm:w-1/2 px-5 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 text-xs sm:text-sm font-semibold transition-colors cursor-pointer"
+              >
+                {t('no')}
+              </button>
+
+              <button
+                type="button"
+                id="btn-confirm-delete-case-yes"
+                onClick={handleConfirmDeleteCase}
+                className="w-full sm:w-1/2 px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all shadow-md cursor-pointer"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>{t('yes')}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal: Keine Stammdaten vorhanden */}
       {isNoMasterDataModalOpen && (

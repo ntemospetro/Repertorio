@@ -617,35 +617,21 @@ export function exportCategoryPDF(
     // 1. Falldaten
     renderFalldatenSection(ctx, patientCase);
 
-    // 2. Red Flags on separate page
+    // Continuous flow across sections (no forced page breaks per section)
     if (analysis) {
-      doc.addPage();
-      ctx.currentY = 22;
-      drawPageHeader(ctx, 'Warnhinweise & Red Flags');
+      ctx.currentY += 2;
       renderRedFlagsSection(ctx, analysis);
 
-      // 3. Medikamente on separate page
-      doc.addPage();
-      ctx.currentY = 22;
-      drawPageHeader(ctx, 'Medikamentenanalyse');
+      ctx.currentY += 2;
       renderMedikamenteSection(ctx, analysis);
 
-      // 4. Differenzialdiagnostik on separate page
-      doc.addPage();
-      ctx.currentY = 22;
-      drawPageHeader(ctx, 'Medizinische Differenzialdiagnostik');
+      ctx.currentY += 2;
       renderDifferentialSection(ctx, analysis);
 
-      // 5. Homöopathische Fallauswertung on separate page
-      doc.addPage();
-      ctx.currentY = 22;
-      drawPageHeader(ctx, 'Homöopathische Fallauswertung');
+      ctx.currentY += 2;
       renderHomoeopathieSection(ctx, analysis);
 
-      // 6. Empfehlungen & Verordnungsplan on separate page
-      doc.addPage();
-      ctx.currentY = 22;
-      drawPageHeader(ctx, 'Therapie- & Praxisempfehlungen');
+      ctx.currentY += 2;
       renderEmpfehlungenSection(ctx, patientCase, analysis);
     }
   }
