@@ -97,6 +97,7 @@ export const it = {
   "dosage": "Dosaggio",
   "intake": "Modalità di assunzione",
   "addMedication": "Aggiungi farmaco",
+  "deleteMedication": "Elimina farmaco",
   "addCustomField": "Aggiungi campo personalizzato",
   "customFieldName": "Nome campo (es. Glicemia)",
   "customFieldValue": "Valore (es. 105 mg/dl)",

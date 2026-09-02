@@ -97,6 +97,7 @@ export const ru = {
   "dosage": "Дозировка",
   "intake": "Способ приема",
   "addMedication": "Добавить препарат",
+  "deleteMedication": "Удалить лекарство",
   "addCustomField": "Добавить поле",
   "customFieldName": "Название поля (напр. Сахар крови)",
   "customFieldValue": "Значение (напр. 5.5 ммоль/л)",

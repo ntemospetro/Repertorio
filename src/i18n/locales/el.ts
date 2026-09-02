@@ -97,6 +97,7 @@ export const el = {
   "dosage": "Δοσολογία",
   "intake": "Τρόπος λήψης",
   "addMedication": "Προσθήκη φαρμάκου",
+  "deleteMedication": "Διαγραφή φαρμάκου",
   "addCustomField": "Προσθήκη πεδίου",
   "customFieldName": "Όνομα πεδίου (π.χ. Σάκχαρο)",
   "customFieldValue": "Τιμή (π.χ. 100 mg/dl)",

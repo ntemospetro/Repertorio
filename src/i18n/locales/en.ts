@@ -97,6 +97,7 @@ export const en = {
   "dosage": "Dosage",
   "intake": "Intake method",
   "addMedication": "Add Medication",
+  "deleteMedication": "Delete medication",
   "addCustomField": "Add Custom Field",
   "customFieldName": "Field Name (e.g., Blood Sugar)",
   "customFieldValue": "Value (e.g., 120 mg/dl)",

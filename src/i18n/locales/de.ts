@@ -97,6 +97,7 @@ export const de = {
   "dosage": "Dosierung",
   "intake": "Einnahmeart",
   "addMedication": "Medikament hinzufügen",
+  "deleteMedication": "Medikament löschen",
   "addCustomField": "Weiteres Feld hinzufügen",
   "customFieldName": "Feldname (z.B. BZ)",
   "customFieldValue": "Wert (z.B. 120 mg/dl)",

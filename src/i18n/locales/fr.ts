@@ -97,6 +97,7 @@ export const fr = {
   "dosage": "Posologie",
   "intake": "Mode de prise",
   "addMedication": "Ajouter un médicament",
+  "deleteMedication": "Supprimer le médicament",
   "addCustomField": "Ajouter un champ personnalisé",
   "customFieldName": "Nom du champ (ex. Glycémie)",
   "customFieldValue": "Valeur (ex. 1.10 g/l)",

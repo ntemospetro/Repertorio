@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { searchMedications, fetchMedicationDetails, MedicationSuggestion, COMMON_MEDICATIONS_DB } from '../services/medicationDatabase';
-import { Pill, Search, Globe, ChevronDown, ChevronUp, AlertTriangle, ShieldAlert, Sparkles, Loader2 } from 'lucide-react';
+import { Pill, Search, Globe, ChevronDown, ChevronUp, AlertTriangle, ShieldAlert, Sparkles, Loader2, Trash2, X } from 'lucide-react';
 import { TranslationKey } from '../i18n/translations';
 
 export interface MedicationData {
@@ -43,6 +43,14 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
   // Sync internal query with prop if updated externally
   useEffect(() => {
     setQuery(med.name || '');
+    if (!med.name || med.name.trim() === '') {
+      setSelectedSuggestion(null);
+      setIsDetailsExpanded(false);
+      setSuggestions([]);
+      setIsOpen(false);
+      setIsSearching(false);
+      setIsLoadingDetails(false);
+    }
   }, [med.name]);
 
   // Click outside to close dropdown
@@ -99,21 +107,33 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
 
   const handleInputChange = (val: string) => {
     setQuery(val);
-    onChange({ ...med, name: val });
 
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }
 
     if (val.trim().length >= 1) {
+      onChange({ ...med, name: val });
       setIsSearching(true);
       searchTimeoutRef.current = setTimeout(() => {
         executeSearch(val);
       }, 250);
     } else {
+      setSelectedSuggestion(null);
+      setIsDetailsExpanded(false);
       setSuggestions([]);
       setIsOpen(false);
       setIsSearching(false);
+      setIsLoadingDetails(false);
+      onChange({
+        ...med,
+        name: '',
+        wirkstoff: undefined,
+        kategorie: undefined,
+        nebenwirkungen: undefined,
+        wechselwirkungen: undefined,
+        risiken: undefined,
+      });
     }
   };
 
@@ -175,17 +195,20 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
     }
   };
 
-  // Find matching suggestion from DB if name already exists
-  const currentDbMatch = selectedSuggestion || COMMON_MEDICATIONS_DB.find(
-    m => m.name.toLowerCase() === (med.name || '').toLowerCase()
-  );
+  // Find matching suggestion from DB if valid name exists
+  const hasValidName = Boolean(med.name && med.name.trim().length > 0);
+  const currentDbMatch = hasValidName
+    ? (selectedSuggestion || COMMON_MEDICATIONS_DB.find(
+        m => m.name.toLowerCase() === (med.name || '').trim().toLowerCase()
+      ))
+    : null;
 
-  const activeSubstance = med.wirkstoff || currentDbMatch?.activeSubstance;
-  const category = med.kategorie || currentDbMatch?.category;
-  const sideEffects = med.nebenwirkungen || currentDbMatch?.sideEffects || [];
-  const interactions = med.wechselwirkungen || currentDbMatch?.interactions || [];
-  const warnings = med.risiken || currentDbMatch?.warnings;
-  const hasResearchData = Boolean(activeSubstance || (sideEffects && sideEffects.length > 0) || (interactions && interactions.length > 0) || warnings);
+  const activeSubstance = hasValidName ? (med.wirkstoff || currentDbMatch?.activeSubstance) : undefined;
+  const category = hasValidName ? (med.kategorie || currentDbMatch?.category) : undefined;
+  const sideEffects = hasValidName ? (med.nebenwirkungen || currentDbMatch?.sideEffects || []) : [];
+  const interactions = hasValidName ? (med.wechselwirkungen || currentDbMatch?.interactions || []) : [];
+  const warnings = hasValidName ? (med.risiken || currentDbMatch?.warnings) : undefined;
+  const hasResearchData = hasValidName && Boolean(activeSubstance || (sideEffects && sideEffects.length > 0) || (interactions && interactions.length > 0) || warnings);
 
   return (
     <div className="p-3.5 bg-white rounded-xl border border-slate-200 shadow-2xs space-y-3 relative group transition-all duration-200 hover:border-teal-300">
@@ -204,10 +227,13 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
         </div>
         <button
           type="button"
+          id={`btn-delete-medication-${index}`}
           onClick={onRemove}
-          className="text-slate-400 hover:text-rose-600 text-xs font-semibold px-2 py-1 rounded hover:bg-rose-50 transition-colors cursor-pointer"
+          title={t('deleteMedication' as TranslationKey) || 'Medikament löschen'}
+          className="flex items-center gap-1 text-slate-400 hover:text-rose-600 text-xs font-semibold px-2 py-1 rounded hover:bg-rose-50 transition-colors cursor-pointer"
         >
-          {t('btnRemove' as TranslationKey) || t('delete' as TranslationKey) || 'Entfernen'}
+          <Trash2 className="w-3.5 h-3.5" />
+          <span>{t('deleteMedication' as TranslationKey) || 'Medikament löschen'}</span>
         </button>
       </div>
 
@@ -234,14 +260,27 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
                   executeSearch(query);
                 }
               }}
-              className="w-full pl-8 pr-7 py-2 border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 transition-shadow"
+              className="w-full pl-8 pr-12 py-2 border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 transition-shadow"
             />
             <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-            {isSearching ? (
-              <Loader2 className="w-3.5 h-3.5 text-teal-600 animate-spin absolute right-2.5 top-1/2 -translate-y-1/2" />
-            ) : (
-              <Globe className="w-3.5 h-3.5 text-slate-300 absolute right-2.5 top-1/2 -translate-y-1/2" />
-            )}
+            <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
+              {query.trim().length > 0 && (
+                <button
+                  type="button"
+                  id={`btn-clear-med-query-${index}`}
+                  onClick={() => handleInputChange('')}
+                  title={t('clearBtn' as TranslationKey) || 'Eingabe löschen'}
+                  className="text-slate-400 hover:text-slate-600 p-0.5 rounded-full hover:bg-slate-100 transition-colors cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+              {isSearching ? (
+                <Loader2 className="w-3.5 h-3.5 text-teal-600 animate-spin" />
+              ) : (
+                <Globe className="w-3.5 h-3.5 text-slate-300" />
+              )}
+            </div>
           </div>
 
           {/* Suggestions Dropdown */}
@@ -350,7 +389,7 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
       </div>
 
       {/* Internet Research Toggle & Profile Bar */}
-      {(hasResearchData || isLoadingDetails || med.name) && (
+      {(hasResearchData || isLoadingDetails || (hasValidName && med.name)) && (
         <div className="pt-1 border-t border-slate-100">
           <button
             type="button"

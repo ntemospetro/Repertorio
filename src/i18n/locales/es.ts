@@ -97,6 +97,7 @@ export const es = {
   "dosage": "Dosis",
   "intake": "Forma de toma",
   "addMedication": "Agregar Medicamento",
+  "deleteMedication": "Eliminar medicamento",
   "addCustomField": "Agregar campo personalizado",
   "customFieldName": "Nombre del campo (ej. Glucosa)",
   "customFieldValue": "Valor (ej. 120 mg/dl)",
