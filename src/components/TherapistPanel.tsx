@@ -21,6 +21,8 @@ import { useTranslation, useLanguage } from '../i18n/LanguageContext';
 import { TranslationKey } from '../i18n/translations';
 import { CaseAnalysisModal } from './CaseAnalysisModal';
 import { ExtendedAnamnesisWizard } from './ExtendedAnamnesisWizard';
+import { FindingsWizardModal } from './FindingsWizardModal';
+import { MedicationsWizardModal } from './MedicationsWizardModal';
 import { UpgradeModal } from './UpgradeModal';
 import { PatientSelectionModal } from './PatientSelectionModal';
 import { TherapistProfileEditor } from './TherapistProfileEditor';
@@ -47,9 +49,12 @@ import {
   HeartHandshake, 
   Save, 
   Plus, 
+  FolderOpen,
   Trash2, LayoutDashboard, Settings, LogOut, 
   ChevronRight, 
   ChevronLeft,
+  ChevronDown,
+  ChevronUp,
   BookOpen, 
   Stethoscope,
   Clock,
@@ -170,6 +175,8 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
   // Modal states
   const [isAnalysisModalOpen, setIsAnalysisModalOpen] = useState(false);
   const [isExtendedAnamnesisWizardOpen, setIsExtendedAnamnesisWizardOpen] = useState(false);
+  const [isFindingsModalOpen, setIsFindingsModalOpen] = useState(false);
+  const [isMedicationsModalOpen, setIsMedicationsModalOpen] = useState(false);
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const [isNoMasterDataModalOpen, setIsNoMasterDataModalOpen] = useState(false);
   const [isPatientSelectionModalOpen, setIsPatientSelectionModalOpen] = useState(false);
@@ -178,6 +185,238 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
   const [clinicalAnalysis, setClinicalAnalysis] = useState<FullClinicalAnalysis | null>(null);
   const [saveToast, setSaveToast] = useState<string | null>(null);
   const hauptbeschwerdeRef = useRef<HTMLTextAreaElement>(null);
+
+  // Step 6 (Summary) Accordion & Section Confirmation States
+  const [summaryAccordionOpen, setSummaryAccordionOpen] = useState<{
+    stammdaten: boolean;
+    hauptbeschwerde: boolean;
+    fragebogen: boolean;
+    befund: boolean;
+    medikamente: boolean;
+  }>({
+    stammdaten: false,
+    hauptbeschwerde: false,
+    fragebogen: false,
+    befund: false,
+    medikamente: false,
+  });
+
+  const [summaryConfirmedSections, setSummaryConfirmedSections] = useState<{
+    stammdaten: boolean;
+    hauptbeschwerde: boolean;
+    fragebogen: boolean;
+    befund: boolean;
+    medikamente: boolean;
+  }>({
+    stammdaten: false,
+    hauptbeschwerde: false,
+    fragebogen: false,
+    befund: false,
+    medikamente: false,
+  });
+
+  const [isUnconfirmedSummaryModalOpen, setIsUnconfirmedSummaryModalOpen] = useState(false);
+
+  const toggleSummaryAccordion = (section: 'stammdaten' | 'hauptbeschwerde' | 'fragebogen' | 'befund' | 'medikamente') => {
+    setSummaryAccordionOpen(prev => ({
+      ...prev,
+      [section]: !prev[section],
+    }));
+  };
+
+  const toggleSectionConfirmation = (section: 'stammdaten' | 'hauptbeschwerde' | 'fragebogen' | 'befund' | 'medikamente', confirmed?: boolean) => {
+    setSummaryConfirmedSections(prev => ({
+      ...prev,
+      [section]: confirmed !== undefined ? confirmed : !prev[section],
+    }));
+  };
+
+  const handleAdoptAllSections = () => {
+    setSummaryConfirmedSections({
+      stammdaten: true,
+      hauptbeschwerde: true,
+      fragebogen: true,
+      befund: true,
+      medikamente: true,
+    });
+  };
+
+  const areAllSummarySectionsConfirmed = 
+    summaryConfirmedSections.stammdaten &&
+    summaryConfirmedSections.hauptbeschwerde &&
+    summaryConfirmedSections.fragebogen &&
+    summaryConfirmedSections.befund &&
+    summaryConfirmedSections.medikamente;
+
+  const confirmedSummaryCount = Object.values(summaryConfirmedSections).filter(Boolean).length;
+
+  const getStepInfo = (stepNum: number): { status: 'empty' | 'partial' | 'complete'; percent: number } => {
+    switch (stepNum) {
+      case 1: { // 1. Stammdaten
+        const hasName = Boolean(currentCase.patientName && currentCase.patientName.trim());
+        const hasAgeOrBirth = currentCase.patientAge !== undefined || Boolean(currentCase.patientBirthDate && currentCase.patientBirthDate.trim());
+        const hasHeight = currentCase.patientHeightCm !== undefined && currentCase.patientHeightCm > 0;
+        const hasWeight = currentCase.patientWeightKg !== undefined && currentCase.patientWeightKg > 0;
+        const hasAny = hasName || hasAgeOrBirth || hasHeight || hasWeight || Boolean(currentCase.patientEmail) || Boolean(currentCase.patientPhone) || Boolean(currentCase.patientMaritalStatus) || (Boolean(currentCase.customStammdaten && currentCase.customStammdaten.length > 0));
+        if (!hasAny) return { status: 'empty', percent: 0 };
+
+        const pregnancyOk = currentCase.patientGender !== 'weiblich' || !currentCase.isPregnant || Boolean(currentCase.pregnancyMonth);
+        const childrenOk = !currentCase.hasChildren || (Boolean(currentCase.childrenList && currentCase.childrenList.length > 0) && currentCase.childrenList!.every(c => c.name && c.name.trim()));
+
+        if (hasName && pregnancyOk && childrenOk) {
+          return { status: 'complete', percent: 100 };
+        }
+
+        let p = 25;
+        if (hasName) p += 35;
+        if (hasAgeOrBirth) p += 15;
+        if (hasHeight || hasWeight) p += 15;
+        if (pregnancyOk && childrenOk) p += 10;
+        return { status: 'partial', percent: Math.min(90, Math.max(25, p)) };
+      }
+
+      case 2: { // 2. Hauptbeschwerde & Dynamische Fragen
+        const hasComplaint = Boolean(currentCase.hauptbeschwerde && currentCase.hauptbeschwerde.trim().length >= 3);
+        const questions = currentCase.anamnesisQuestions || [];
+        const answeredQuestions = questions.filter(q => 
+          Boolean(q.answerScaleCurrent !== undefined) ||
+          Boolean(q.answerScaleWorst !== undefined) ||
+          Boolean(q.answerChoice && q.answerChoice.trim()) ||
+          Boolean(q.answerMultiChoice && q.answerMultiChoice.length > 0) ||
+          Boolean(q.answerText && q.answerText.trim())
+        ).length;
+
+        if (!hasComplaint && answeredQuestions === 0) return { status: 'empty', percent: 0 };
+
+        if (hasComplaint) {
+          if (questions.length > 0) {
+            if (answeredQuestions === questions.length) return { status: 'complete', percent: 100 };
+            const qPercent = Math.round((answeredQuestions / questions.length) * 50);
+            return { status: 'partial', percent: 50 + qPercent };
+          } else {
+            if (currentCase.hauptbeschwerde!.trim().length >= 15) return { status: 'complete', percent: 100 };
+            return { status: 'partial', percent: 50 };
+          }
+        }
+        return { status: 'partial', percent: 35 };
+      }
+
+      case 3: { // 3. Fragebogen (Erweiterte Anamnese)
+        const ext = currentCase.extendedAnamnesis || {};
+        const answeredKeys = Object.entries(ext).filter(([_, v]) => 
+          v !== undefined && v !== null && v !== '' && (!Array.isArray(v) || v.length > 0)
+        ).length;
+
+        if (answeredKeys === 0) return { status: 'empty', percent: 0 };
+        if (answeredKeys >= 8) return { status: 'complete', percent: 100 };
+        const calculated = Math.round((answeredKeys / 8) * 100);
+        return { status: 'partial', percent: Math.max(20, Math.min(85, calculated)) };
+      }
+
+      case 4: { // 4. Befund
+        const bd = currentCase.befundDetails || {};
+        const customCount = bd.customFelder?.filter((cf: any) => cf.name?.trim() || cf.value?.trim()).length || 0;
+        const filledDetailsCount = [
+          bd.gesamtbeurteilung, 
+          bd.blutdruck, 
+          bd.puls, 
+          bd.temperatur, 
+          bd.spo2, 
+          bd.gewicht,
+          bd.allgemeinzustand,
+          bd.herzLunge,
+          bd.abdomen,
+          bd.hautSchleimhaeute,
+          bd.neurologisch,
+          bd.weitereBefunde,
+          currentCase.befundText
+        ].filter(v => typeof v === 'string' && v.trim().length > 0).length + customCount;
+
+        if (filledDetailsCount === 0) return { status: 'empty', percent: 0 };
+        if (filledDetailsCount >= 3) return { status: 'complete', percent: 100 };
+        const calculated = Math.round((filledDetailsCount / 3) * 100);
+        return { status: 'partial', percent: Math.max(25, Math.min(85, calculated)) };
+      }
+
+      case 5: { // 5. Medikamente
+        const list = currentCase.medikamenteList || [];
+        const validMeds = list.filter(m => m.name && m.name.trim().length > 0);
+        if (validMeds.length === 0) {
+          return { status: 'empty', percent: 0 };
+        }
+        return { status: 'complete', percent: 100 };
+      }
+
+      case 6: { // 6. Übersicht
+        const s1 = getStepInfo(1).status;
+        const s2 = getStepInfo(2).status;
+        const s4 = getStepInfo(4).status;
+        const s5 = getStepInfo(5).status;
+
+        if (s1 === 'complete' && s2 === 'complete' && s4 === 'complete' && s5 === 'complete') {
+          return { status: 'complete', percent: 100 };
+        }
+        return { status: 'empty', percent: 0 };
+      }
+
+      case 7: { // 7. Analyse & Auswertung
+        if (clinicalAnalysis) return { status: 'complete', percent: 100 };
+        return { status: 'empty', percent: 0 };
+      }
+
+      case 8: { // 8. Empfehlungen & Verordnung
+        const rec = currentCase.therapyRecommendations;
+        if (rec && rec.remedies && rec.remedies.some(r => r.isSelected)) return { status: 'complete', percent: 100 };
+        if (rec) return { status: 'partial', percent: 50 };
+        return { status: 'empty', percent: 0 };
+      }
+
+      default:
+        return { status: 'empty', percent: 0 };
+    }
+  };
+
+  const renderSummarySectionBadge = (stepNum: number, isConfirmed: boolean) => {
+    if (isConfirmed) {
+      return (
+        <span className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-teal-50 text-teal-700 border border-teal-200 flex items-center gap-1.5 shadow-xs">
+          <Check className="w-3.5 h-3.5 text-teal-600 stroke-[2.5]" />
+          <span>{t('summaryAdoptedBadge')}</span>
+        </span>
+      );
+    }
+
+    const { status, percent } = getStepInfo(stepNum);
+
+    if (status === 'complete') {
+      return (
+        <span className="relative px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-teal-50 text-teal-900 border border-teal-200 flex items-center gap-1.5 shadow-xs overflow-hidden">
+          <Check className="w-3.5 h-3.5 text-teal-700 stroke-[2.5]" />
+          <span>{t('summaryPendingBadge')} (100%)</span>
+        </span>
+      );
+    }
+
+    if (status === 'partial') {
+      return (
+        <span className="relative px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-teal-50 text-teal-900 border border-teal-200 flex items-center gap-1.5 shadow-xs overflow-hidden">
+          <div
+            className="absolute inset-y-0 left-0 bg-amber-300/55 border-r border-amber-400/60 pointer-events-none transition-all duration-300"
+            style={{ width: `${percent}%` }}
+          />
+          <Clock className="relative z-10 w-3.5 h-3.5 text-teal-800" />
+          <span className="relative z-10">{t('summaryPendingBadge')} ({percent}%)</span>
+        </span>
+      );
+    }
+
+    return (
+      <span className="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-100 text-slate-500 border border-slate-200 flex items-center gap-1.5 shadow-xs">
+        <Clock className="w-3.5 h-3.5 text-slate-400" />
+        <span>{t('summaryPendingBadge')} (0%)</span>
+      </span>
+    );
+  };
 
   // Auto-resize hauptbeschwerde textarea based on content
   useEffect(() => {
@@ -1170,217 +1409,66 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                 </div>
 
                 {/* Interactive Wizard Step Bar */}
-                {(() => {
-                  const getStepInfo = (stepNum: number): { status: 'empty' | 'partial' | 'complete'; percent: number } => {
-                    switch (stepNum) {
-                      case 1: { // 1. Stammdaten
-                        const hasName = Boolean(currentCase.patientName && currentCase.patientName.trim());
-                        const hasAgeOrBirth = currentCase.patientAge !== undefined || Boolean(currentCase.patientBirthDate && currentCase.patientBirthDate.trim());
-                        const hasHeight = currentCase.patientHeightCm !== undefined && currentCase.patientHeightCm > 0;
-                        const hasWeight = currentCase.patientWeightKg !== undefined && currentCase.patientWeightKg > 0;
-                        const hasAny = hasName || hasAgeOrBirth || hasHeight || hasWeight || Boolean(currentCase.patientEmail) || Boolean(currentCase.patientPhone) || Boolean(currentCase.patientMaritalStatus) || (Boolean(currentCase.customStammdaten && currentCase.customStammdaten.length > 0));
-                        if (!hasAny) return { status: 'empty', percent: 0 };
+                <div className={`grid grid-cols-4 ${hasAnalysis ? 'sm:grid-cols-8' : 'sm:grid-cols-7'} gap-1.5 pt-2`}>
+                  {stepNames.map((name, index) => {
+                    const stepNum = index + 1;
+                    const isActive = currentStep === stepNum;
+                    const { status, percent } = getStepInfo(stepNum);
+                    const isComplete = status === 'complete';
+                    const isPartial = status === 'partial';
 
-                        const pregnancyOk = currentCase.patientGender !== 'weiblich' || !currentCase.isPregnant || Boolean(currentCase.pregnancyMonth);
-                        const childrenOk = !currentCase.hasChildren || (Boolean(currentCase.childrenList && currentCase.childrenList.length > 0) && currentCase.childrenList!.every(c => c.name && c.name.trim()));
+                    let btnClasses = '';
+                    let numColorClass = '';
 
-                        if (hasName && pregnancyOk && childrenOk) {
-                          return { status: 'complete', percent: 100 };
-                        }
-
-                        let p = 25;
-                        if (hasName) p += 35;
-                        if (hasAgeOrBirth) p += 15;
-                        if (hasHeight || hasWeight) p += 15;
-                        if (pregnancyOk && childrenOk) p += 10;
-                        return { status: 'partial', percent: Math.min(90, Math.max(25, p)) };
-                      }
-
-                      case 2: { // 2. Hauptbeschwerde & Dynamische Fragen
-                        const hasComplaint = Boolean(currentCase.hauptbeschwerde && currentCase.hauptbeschwerde.trim().length >= 3);
-                        const questions = currentCase.anamnesisQuestions || [];
-                        const answeredQuestions = questions.filter(q => 
-                          Boolean(q.answerScaleCurrent !== undefined) ||
-                          Boolean(q.answerScaleWorst !== undefined) ||
-                          Boolean(q.answerChoice && q.answerChoice.trim()) ||
-                          Boolean(q.answerMultiChoice && q.answerMultiChoice.length > 0) ||
-                          Boolean(q.answerText && q.answerText.trim())
-                        ).length;
-
-                        if (!hasComplaint && answeredQuestions === 0) return { status: 'empty', percent: 0 };
-
-                        if (hasComplaint) {
-                          if (questions.length > 0) {
-                            if (answeredQuestions === questions.length) return { status: 'complete', percent: 100 };
-                            const qPercent = Math.round((answeredQuestions / questions.length) * 50);
-                            return { status: 'partial', percent: 50 + qPercent };
-                          } else {
-                            if (currentCase.hauptbeschwerde!.trim().length >= 15) return { status: 'complete', percent: 100 };
-                            return { status: 'partial', percent: 50 };
-                          }
-                        }
-                        return { status: 'partial', percent: 35 };
-                      }
-
-                      case 3: { // 3. Fragebogen (Erweiterte Anamnese)
-                        const ext = currentCase.extendedAnamnesis || {};
-                        const answeredKeys = Object.entries(ext).filter(([_, v]) => 
-                          v !== undefined && v !== null && v !== '' && (!Array.isArray(v) || v.length > 0)
-                        ).length;
-
-                        if (answeredKeys === 0) return { status: 'empty', percent: 0 };
-                        if (answeredKeys >= 8) return { status: 'complete', percent: 100 };
-                        const calculated = Math.round((answeredKeys / 8) * 100);
-                        return { status: 'partial', percent: Math.max(20, Math.min(85, calculated)) };
-                      }
-
-                      case 4: { // 4. Befund
-                        if (currentCase.befundGewuenscht === undefined) {
-                          const hasText = Boolean(currentCase.befundText && currentCase.befundText.trim());
-                          const bd = currentCase.befundDetails || {};
-                          const hasDetails = Boolean(bd.gesamtbeurteilung || bd.blutdruck || bd.puls || bd.temperatur || bd.spo2 || bd.allgemeinzustand || bd.herzLunge || bd.abdomen);
-                          if (hasText || hasDetails) return { status: 'partial', percent: 50 };
-                          return { status: 'empty', percent: 0 };
-                        }
-
-                        if (currentCase.befundGewuenscht === false) {
-                          return { status: 'complete', percent: 100 };
-                        }
-
-                        const bd = currentCase.befundDetails || {};
-                        const filledDetailsCount = [
-                          bd.gesamtbeurteilung, 
-                          bd.blutdruck, 
-                          bd.puls, 
-                          bd.temperatur,
-                          bd.spo2,
-                          bd.allgemeinzustand,
-                          bd.herzLunge,
-                          bd.abdomen,
-                          bd.hautSchleimhaeute,
-                          bd.neurologisch,
-                          bd.weitereBefunde,
-                          currentCase.befundText
-                        ].filter(v => typeof v === 'string' && v.trim().length > 0).length;
-
-                        if (filledDetailsCount >= 2 || (currentCase.befundText && currentCase.befundText.trim().length > 15)) {
-                          return { status: 'complete', percent: 100 };
-                        }
-                        return { status: 'partial', percent: filledDetailsCount > 0 ? 50 : 25 };
-                      }
-
-                      case 5: { // 5. Medikamente
-                        if (currentCase.nimmtMedikamente === undefined) {
-                          const list = currentCase.medikamenteList || [];
-                          return list.length > 0 ? { status: 'partial', percent: 40 } : { status: 'empty', percent: 0 };
-                        }
-
-                        if (currentCase.nimmtMedikamente === false) {
-                          return { status: 'complete', percent: 100 };
-                        }
-
-                        const list = currentCase.medikamenteList || [];
-                        if (list.length === 0) return { status: 'partial', percent: 30 };
-                        const validMeds = list.filter(m => m.name && m.name.trim().length > 0);
-                        if (validMeds.length === 0) return { status: 'partial', percent: 30 };
-                        if (validMeds.length === list.length && list.every(m => m.name?.trim() && (m.dosierung?.trim() || m.einnahmeart?.trim()))) {
-                          return { status: 'complete', percent: 100 };
-                        }
-                        return { status: 'partial', percent: 60 };
-                      }
-
-                      case 6: { // 6. Übersicht
-                        const s1 = getStepInfo(1).status;
-                        const s2 = getStepInfo(2).status;
-                        const s4 = getStepInfo(4).status;
-                        const s5 = getStepInfo(5).status;
-
-                        if (s1 === 'complete' && s2 === 'complete' && s4 === 'complete' && s5 === 'complete') {
-                          return { status: 'complete', percent: 100 };
-                        }
-                        return { status: 'empty', percent: 0 };
-                      }
-
-                      case 7: { // 7. Analyse & Auswertung
-                        if (clinicalAnalysis) return { status: 'complete', percent: 100 };
-                        return { status: 'empty', percent: 0 };
-                      }
-
-                      case 8: { // 8. Empfehlungen & Verordnung
-                        const rec = currentCase.therapyRecommendations;
-                        if (rec && rec.remedies && rec.remedies.some(r => r.isSelected)) return { status: 'complete', percent: 100 };
-                        if (rec) return { status: 'partial', percent: 50 };
-                        return { status: 'empty', percent: 0 };
-                      }
-
-                      default:
-                        return { status: 'empty', percent: 0 };
+                    if (isActive) {
+                      btnClasses = 'bg-teal-600 text-white font-bold shadow-xs border border-teal-600';
+                      numColorClass = 'text-white';
+                    } else if (isComplete) {
+                      btnClasses = 'bg-teal-50 text-teal-900 border border-teal-200 hover:bg-teal-100/90';
+                      numColorClass = 'text-teal-700';
+                    } else if (isPartial) {
+                      btnClasses = 'bg-teal-50 text-teal-900 border border-teal-200 hover:bg-teal-100/90';
+                      numColorClass = 'text-teal-800 font-bold';
+                    } else {
+                      btnClasses = 'bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200';
+                      numColorClass = 'text-slate-500';
                     }
-                  };
 
-                  return (
-                    <div className={`grid grid-cols-4 ${hasAnalysis ? 'sm:grid-cols-8' : 'sm:grid-cols-7'} gap-1.5 pt-2`}>
-                      {stepNames.map((name, index) => {
-                        const stepNum = index + 1;
-                        const isActive = currentStep === stepNum;
-                        const { status, percent } = getStepInfo(stepNum);
-                        const isComplete = status === 'complete';
-                        const isPartial = status === 'partial';
-
-                        let btnClasses = '';
-                        let numColorClass = '';
-
-                        if (isActive) {
-                          btnClasses = 'bg-teal-600 text-white font-bold shadow-xs border border-teal-600';
-                          numColorClass = 'text-white';
-                        } else if (isComplete) {
-                          btnClasses = 'bg-teal-50 text-teal-900 border border-teal-200 hover:bg-teal-100/90';
-                          numColorClass = 'text-teal-700';
-                        } else if (isPartial) {
-                          btnClasses = 'bg-teal-50 text-teal-900 border border-teal-200 hover:bg-teal-100/90';
-                          numColorClass = 'text-teal-800 font-bold';
-                        } else {
-                          btnClasses = 'bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200';
-                          numColorClass = 'text-slate-500';
+                    return (
+                      <button
+                        key={stepNum}
+                        onClick={() => setCurrentStep(stepNum)}
+                        className={`group relative flex flex-col items-center p-2 rounded-lg text-center transition-all cursor-pointer overflow-hidden ${btnClasses}`}
+                        title={
+                          isComplete
+                            ? t('stepTooltipComplete', { name })
+                            : isPartial
+                            ? t('stepTooltipPartial', { name })
+                            : t('stepTooltipEmpty', { name })
                         }
+                      >
+                        {/* Partial progress bar overlay filled with orange */}
+                        {!isActive && isPartial && (
+                          <div
+                            className="absolute inset-y-0 left-0 bg-amber-300/55 border-r border-amber-400/60 transition-all duration-300 pointer-events-none"
+                            style={{ width: `${percent}%` }}
+                          />
+                        )}
 
-                        return (
-                          <button
-                            key={stepNum}
-                            onClick={() => setCurrentStep(stepNum)}
-                            className={`group relative flex flex-col items-center p-2 rounded-lg text-center transition-all cursor-pointer overflow-hidden ${btnClasses}`}
-                            title={
-                              isComplete
-                                ? t('stepTooltipComplete', { name })
-                                : isPartial
-                                ? t('stepTooltipPartial', { name })
-                                : t('stepTooltipEmpty', { name })
-                            }
-                          >
-                            {/* Partial progress bar overlay filled with orange */}
-                            {!isActive && isPartial && (
-                              <div
-                                className="absolute inset-y-0 left-0 bg-amber-300/55 border-r border-amber-400/60 transition-all duration-300 pointer-events-none"
-                                style={{ width: `${percent}%` }}
-                              />
-                            )}
-
-                            <div className={`relative z-10 flex items-center justify-center w-5 h-5 rounded-full text-[11px] mb-1 font-mono font-bold ${numColorClass}`}>
-                              {!isActive && isComplete ? (
-                                <Check className="w-3.5 h-3.5 text-teal-700 stroke-[2.5]" />
-                              ) : (
-                                <span>{stepNum}</span>
-                              )}
-                            </div>
-                            <span className="relative z-10 text-[10px] leading-tight truncate w-full block">
-                              {name.split('. ')[1] || name}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  );
-                })()}
+                        <div className={`relative z-10 flex items-center justify-center w-5 h-5 rounded-full text-[11px] mb-1 font-mono font-bold ${numColorClass}`}>
+                          {!isActive && isComplete ? (
+                            <Check className="w-3.5 h-3.5 text-teal-700 stroke-[2.5]" />
+                          ) : (
+                            <span>{stepNum}</span>
+                          )}
+                        </div>
+                        <span className="relative z-10 text-[10px] leading-tight truncate w-full block">
+                          {name.split('. ')[1] || name}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* SEQUENTIAL STEP BODIES */}
@@ -2054,619 +2142,687 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                 )}
 
                 {/* 3. FRAGEBOGEN */}
-                {currentStep === 3 && (
-                  <div className="space-y-4 animate-in fade-in-50 duration-150">
-                    <div className="p-6 bg-teal-50/50 border border-teal-200 rounded-xl space-y-4">
-                      <div className="flex items-start gap-3">
-                        <div className="p-2 bg-teal-100 rounded-lg shrink-0">
-                          <Stethoscope className="w-5 h-5 text-teal-700" />
-                        </div>
-                        <div>
-                          <h4 className="font-bold text-slate-800 text-sm mb-1">{t('extAnamnesisTitle' as TranslationKey)}</h4>
-                          <p className="text-xs text-slate-600 mb-4 max-w-xl">
-                            {t('extAnamnesisDesc' as TranslationKey)}
-                          </p>
-                          <button
-                            type="button"
-                            onClick={() => setIsExtendedAnamnesisWizardOpen(true)}
-                            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold transition-colors shadow-sm cursor-pointer"
-                          >
-                            <Plus className="w-4 h-4" />
-                            {t('btnStartQuestionnaire' as TranslationKey)}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                {currentStep === 3 && (() => {
+                  const ext = currentCase.extendedAnamnesis || {};
+                  const hasExtAnamnesis = Object.entries(ext).some(([_, v]) => 
+                    v !== undefined && v !== null && v !== '' && (!Array.isArray(v) || v.length > 0)
+                  );
 
-                {/* 4. BEFUND */}
-                {currentStep === 4 && (
-                  <div className="space-y-4 animate-in fade-in-50 duration-150">
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <label className="block text-xs font-bold text-slate-800 uppercase" htmlFor="input-befund-gewuenscht">
-                          {t('recordFindings')}
-                        </label>
-                      </div>
-                      <div className="flex gap-4 mb-4">
-                        <button
-                          type="button"
-                          onClick={() => setCurrentCase({ ...currentCase, befundGewuenscht: true })}
-                          className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${currentCase.befundGewuenscht === true ? 'bg-teal-50 border-teal-500 text-teal-800' : 'bg-white border-slate-300 text-slate-600 hover:bg-slate-50'}`}
-                        >
-                          <div className={`w-4 h-4 rounded-md border flex items-center justify-center ${currentCase.befundGewuenscht === true ? 'bg-teal-600 border-teal-600' : 'border-slate-300'}`}>
-                            {currentCase.befundGewuenscht === true && <Check className="w-3 h-3 text-white" />}
+                  return (
+                    <div className="space-y-4 animate-in fade-in-50 duration-150">
+                      <div className="p-6 bg-teal-50/50 border border-teal-200 rounded-xl space-y-4">
+                        <div className="flex items-start gap-3">
+                          <div className="p-2 bg-teal-100 rounded-lg shrink-0">
+                            <Stethoscope className="w-5 h-5 text-teal-700" />
                           </div>
-                          {t('yesDesired')}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setCurrentCase({ ...currentCase, befundGewuenscht: false, befundText: '' })}
-                          className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${currentCase.befundGewuenscht === false ? 'bg-rose-50 border-rose-500 text-rose-800' : 'bg-white border-slate-300 text-slate-600 hover:bg-slate-50'}`}
-                        >
-                          <div className={`w-4 h-4 rounded-md border flex items-center justify-center ${currentCase.befundGewuenscht === false ? 'bg-rose-600 border-rose-600' : 'border-slate-300'}`}>
-                            {currentCase.befundGewuenscht === false && <Check className="w-3 h-3 text-white" />}
-                          </div>
-                          {t('notDesired')}
-                        </button>
-                      </div>
-                      
-                      {currentCase.befundGewuenscht && (
-                        <div className="animate-in fade-in duration-200 space-y-6 bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-sm">
-                          <div className="mb-4">
-                            <h4 className="text-base font-bold text-slate-800">{t('clinicalFindings' as TranslationKey)}</h4>
-                            <p className="text-sm text-slate-600">{t('clinicalFindingsDesc')}</p>
-                          </div>
-                          
-                          <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
-                            <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                              {t('overallAssessment')}
-                            </label>
-                            <div className="relative flex items-center">
-                              <select
-                                value={currentCase.befundDetails?.gesamtbeurteilung || ''}
-                                onChange={(e) => setCurrentCase({ 
-                                  ...currentCase, 
-                                  befundDetails: { ...(currentCase.befundDetails || {}), gesamtbeurteilung: e.target.value } 
-                                })}
-                                className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 appearance-none"
-                              >
-                                <option value="">{t('unknown' as TranslationKey)}</option>
-                                <option value="Unauffällig">{t('assessmentUnremarkable')}</option>
-                                <option value="Leicht reduziert">{t('assessmentSlightlyReduced')}</option>
-                                <option value="Reduziert">{t('assessmentReduced')}</option>
-                                <option value="Kritisch">{t('assessmentCritical')}</option>
-                              </select>
-                              <div className="absolute right-3 pointer-events-none text-slate-400">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* 1. Vitalparameter (Top Row - 5 Vital Signs) */}
-                          <div className="pt-1">
-                            <h5 className="text-xs font-bold uppercase tracking-wider text-slate-700 pb-1.5 mb-3 border-b border-slate-200">{t('vitalSigns')}</h5>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                              {[
-                                { key: 'blutdruck', label: 'bloodPressure', ph: '120/80' },
-                                { key: 'puls', label: 'heartRate', ph: '72' },
-                                { key: 'temperatur', label: 'temperature', ph: '36.8' },
-                                { key: 'spo2', label: 'spo2', ph: '98' },
-                                { key: 'gewicht', label: 'weight', ph: '75' }
-                              ].map(f => (
-                                <div key={f.key}>
-                                  <label className="block text-[11px] font-bold text-slate-600 mb-1">{t(f.label as TranslationKey)}</label>
-                                  <div className="relative">
-                                    <input
-                                      type="text"
-                                      placeholder={f.ph}
-                                      value={(currentCase.befundDetails as any)?.[f.key] || ''}
-                                      onChange={(e) => setCurrentCase({ 
-                                        ...currentCase, 
-                                        befundDetails: { ...(currentCase.befundDetails || {}), [f.key]: e.target.value } 
-                                      })}
-                                      className="w-full px-3 py-1.5 pr-7 rounded-lg border border-slate-300 bg-white text-xs sm:text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-shadow"
-                                    />
-                                    <div className="absolute right-1 top-1/2 -translate-y-1/2">
-                                      <VoiceInputButton
-                                        id={`voice-${f.key}`}
-                                        value={(currentCase.befundDetails as any)?.[f.key] || ''}
-                                        onChange={(val) => setCurrentCase({ ...currentCase, befundDetails: { ...(currentCase.befundDetails || {}), [f.key]: val } })}
-                                        mode="append"
-                                        size="xs"
-                                      />
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-
-                          {/* 2. Untersuchungsbefund (Körperliche Untersuchung - Kompakt & Übersichtlich) */}
-                          <div className="pt-2">
-                            <h5 className="text-xs font-bold uppercase tracking-wider text-slate-700 pb-1.5 mb-3 border-b border-slate-200">{t('examinationFindings')}</h5>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-                              {[
-                                { key: 'allgemeinzustand', label: 'generalCondition', ph: 'AZ / EZ, Bewusstsein...' },
-                                { key: 'herzLunge', label: 'heartLungs', ph: 'Auskultationsbefund, Atmung...' },
-                                { key: 'abdomen', label: 'abdomen', ph: 'Weich, eindrückbar, Druckschmerz...' },
-                                { key: 'neurologisch', label: 'neurological', ph: 'Hirnnerven, Motorik, Sensibilität...' },
-                                { key: 'hautSchleimhaeute', label: 'skinMucosa', ph: 'Rosig, feucht, Turgor...' },
-                                { key: 'weitereBefunde', label: 'otherFindings', ph: 'Orthopädisch, HNO, Labor...' }
-                              ].map(f => (
-                                <div key={f.key}>
-                                  <label className="block text-[11px] font-bold text-slate-600 mb-1">{t(f.label as TranslationKey)}</label>
-                                  <div className="relative">
-                                    <textarea
-                                      rows={2}
-                                      placeholder={f.ph}
-                                      value={(currentCase.befundDetails as any)?.[f.key] || ''}
-                                      onChange={(e) => setCurrentCase({ 
-                                        ...currentCase, 
-                                        befundDetails: { ...(currentCase.befundDetails || {}), [f.key]: e.target.value } 
-                                      })}
-                                      className="w-full px-3 py-1.5 pb-6 rounded-lg border border-slate-300 bg-white text-xs sm:text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-shadow resize-y"
-                                    />
-                                    <div className="absolute bottom-1.5 right-1.5">
-                                      <VoiceInputButton
-                                        id={`voice-${f.key}`}
-                                        value={(currentCase.befundDetails as any)?.[f.key] || ''}
-                                        onChange={(val) => setCurrentCase({ ...currentCase, befundDetails: { ...(currentCase.befundDetails || {}), [f.key]: val } })}
-                                        mode="append"
-                                        size="xs"
-                                      />
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-
-                            {/* Custom Fields */}
-                            {currentCase.befundDetails?.customFelder && currentCase.befundDetails.customFelder.length > 0 && (
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 mt-3.5">
-                                {currentCase.befundDetails.customFelder.map((field, idx) => (
-                                  <div key={field.id} className="relative p-2.5 rounded-lg border border-slate-200 bg-slate-50 group">
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        const newFields = [...(currentCase.befundDetails?.customFelder || [])];
-                                        newFields.splice(idx, 1);
-                                        setCurrentCase({
-                                          ...currentCase,
-                                          befundDetails: { ...(currentCase.befundDetails || {}), customFelder: newFields }
-                                        });
-                                      }}
-                                      className="absolute -top-2 -right-2 p-1 bg-white text-slate-400 hover:text-rose-500 hover:bg-rose-50 border border-slate-200 rounded-full transition-colors shadow-xs opacity-0 group-hover:opacity-100 cursor-pointer"
-                                      title="Löschen"
-                                    >
-                                      <Trash2 className="w-3 h-3" />
-                                    </button>
-                                    <div className="space-y-1.5">
-                                      <input
-                                        type="text"
-                                        placeholder={t('customFieldName')}
-                                        value={field.name}
-                                        onChange={(e) => {
-                                          const newFields = [...(currentCase.befundDetails?.customFelder || [])];
-                                          newFields[idx].name = e.target.value;
-                                          setCurrentCase({
-                                            ...currentCase,
-                                            befundDetails: { ...(currentCase.befundDetails || {}), customFelder: newFields }
-                                          });
-                                        }}
-                                        className="w-full px-2.5 py-1 rounded-md border border-slate-300 bg-white text-xs font-bold text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
-                                      />
-                                      <div className="relative">
-                                        <textarea
-                                          rows={2}
-                                          placeholder={t('customFieldValue')}
-                                          value={field.value}
-                                          onChange={(e) => {
-                                            const newFields = [...(currentCase.befundDetails?.customFelder || [])];
-                                            newFields[idx].value = e.target.value;
-                                            setCurrentCase({
-                                              ...currentCase,
-                                              befundDetails: { ...(currentCase.befundDetails || {}), customFelder: newFields }
-                                            });
-                                          }}
-                                          className="w-full px-2.5 py-1.5 pb-6 rounded-md border border-slate-300 bg-white text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 resize-y"
-                                        />
-                                        <div className="absolute bottom-1.5 right-1.5">
-                                          <VoiceInputButton
-                                            id={`voice-custom-${field.id}`}
-                                            value={field.value}
-                                            onChange={(val) => {
-                                              const newFields = [...(currentCase.befundDetails?.customFelder || [])];
-                                              newFields[idx].value = val;
-                                              setCurrentCase({
-                                                ...currentCase,
-                                                befundDetails: { ...(currentCase.befundDetails || {}), customFelder: newFields }
-                                              });
-                                            }}
-                                            mode="append"
-                                            size="xs"
-                                          />
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-
+                          <div>
+                            <h4 className="font-bold text-slate-800 text-sm mb-1">{t('extAnamnesisTitle' as TranslationKey)}</h4>
+                            <p className="text-xs text-slate-600 mb-4 max-w-xl">
+                              {t('extAnamnesisDesc' as TranslationKey)}
+                            </p>
                             <button
                               type="button"
-                              onClick={() => {
-                                const newFields = [...(currentCase.befundDetails?.customFelder || [])];
-                                newFields.push({ id: Math.random().toString(36).substr(2, 9), name: '', value: '' });
-                                setCurrentCase({
-                                  ...currentCase,
-                                  befundDetails: { ...(currentCase.befundDetails || {}), customFelder: newFields }
-                                });
-                              }}
-                              className="w-full py-2 px-3 mt-3 border border-dashed border-slate-300 hover:border-teal-400 bg-slate-50 hover:bg-teal-50 text-slate-600 hover:text-teal-700 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                              onClick={() => setIsExtendedAnamnesisWizardOpen(true)}
+                              className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold transition-colors shadow-sm cursor-pointer"
                             >
-                              <Plus className="w-3.5 h-3.5" />
-                              <span>{t('addCustomField')}</span>
+                              {hasExtAnamnesis ? (
+                                <>
+                                  <FolderOpen className="w-4 h-4" />
+                                  {t('btnOpenQuestionnaire' as TranslationKey)}
+                                </>
+                              ) : (
+                                <>
+                                  <Plus className="w-4 h-4" />
+                                  {t('btnStartQuestionnaire' as TranslationKey)}
+                                </>
+                              )}
                             </button>
                           </div>
                         </div>
-                      )}                   </div>
-                  </div>
-                )}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* 4. BEFUND */}
+                {currentStep === 4 && (() => {
+                  const bd = currentCase.befundDetails || {};
+                  const hasBefund = Boolean(
+                    (bd.gesamtbeurteilung && bd.gesamtbeurteilung.trim() !== '') ||
+                    (bd.blutdruck && bd.blutdruck.trim() !== '') ||
+                    (bd.puls && bd.puls.trim() !== '') ||
+                    (bd.temperatur && bd.temperatur.trim() !== '') ||
+                    (bd.spo2 && bd.spo2.trim() !== '') ||
+                    (bd.gewicht && bd.gewicht.trim() !== '') ||
+                    (bd.allgemeinzustand && bd.allgemeinzustand.trim() !== '') ||
+                    (bd.herzLunge && bd.herzLunge.trim() !== '') ||
+                    (bd.abdomen && bd.abdomen.trim() !== '') ||
+                    (bd.hautSchleimhaeute && bd.hautSchleimhaeute.trim() !== '') ||
+                    (bd.neurologisch && bd.neurologisch.trim() !== '') ||
+                    (bd.weitereBefunde && bd.weitereBefunde.trim() !== '') ||
+                    (bd.customFelder && bd.customFelder.some(f => f.name?.trim() || f.value?.trim())) ||
+                    (currentCase.befundText && currentCase.befundText.trim() !== '')
+                  );
+
+                  return (
+                    <div className="space-y-4 animate-in fade-in-50 duration-150">
+                      <div className="p-6 bg-teal-50/50 border border-teal-200 rounded-xl space-y-4">
+                        <div className="flex items-start gap-3">
+                          <div className="p-2 bg-teal-100 rounded-lg shrink-0">
+                            <Activity className="w-5 h-5 text-teal-700" />
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-slate-800 text-sm mb-1">{t('clinicalFindings' as TranslationKey)}</h4>
+                            <p className="text-xs text-slate-600 mb-4 max-w-xl">
+                              {t('clinicalFindingsDesc' as TranslationKey)}
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => setIsFindingsModalOpen(true)}
+                              className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold transition-colors shadow-sm cursor-pointer"
+                            >
+                              {hasBefund ? (
+                                <>
+                                  <FolderOpen className="w-4 h-4" />
+                                  {t('btnOpenQuestionnaire' as TranslationKey)}
+                                </>
+                              ) : (
+                                <>
+                                  <Plus className="w-4 h-4" />
+                                  {t('btnStartQuestionnaire' as TranslationKey)}
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* 5. MEDIKAMENTENEINNAHME */}
-                {currentStep === 5 && (
-                  <div className="space-y-4 animate-in fade-in-50 duration-150">
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <label className="block text-xs font-bold text-slate-800 uppercase mb-2">
-                          {t('takeMedication')}
-                        </label>
-                      </div>
-                      <div className="flex gap-4 mb-4">
-                        <button
-                          type="button"
-                          onClick={() => setCurrentCase({ ...currentCase, nimmtMedikamente: true })}
-                          className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${currentCase.nimmtMedikamente === true ? 'bg-teal-50 border-teal-500 text-teal-800' : 'bg-white border-slate-300 text-slate-600 hover:bg-slate-50'}`}
-                        >
-                          <div className={`w-4 h-4 rounded-md border flex items-center justify-center ${currentCase.nimmtMedikamente === true ? 'bg-teal-600 border-teal-600' : 'border-slate-300'}`}>
-                            {currentCase.nimmtMedikamente === true && <Check className="w-3 h-3 text-white" />}
+                {currentStep === 5 && (() => {
+                  const list = currentCase.medikamenteList || [];
+                  const hasMeds = Boolean(
+                    list.some(m => m.name && m.name.trim() !== '') ||
+                    (currentCase.nimmtMedikamente === true && list.length > 0)
+                  );
+
+                  return (
+                    <div className="space-y-4 animate-in fade-in-50 duration-150">
+                      <div className="p-6 bg-teal-50/50 border border-teal-200 rounded-xl space-y-4">
+                        <div className="flex items-start gap-3">
+                          <div className="p-2 bg-teal-100 rounded-lg shrink-0">
+                            <Pill className="w-5 h-5 text-teal-700" />
                           </div>
-                          {t('yes')}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setCurrentCase({ ...currentCase, nimmtMedikamente: false, medikamenteList: [] })}
-                          className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${currentCase.nimmtMedikamente === false ? 'bg-rose-50 border-rose-500 text-rose-800' : 'bg-white border-slate-300 text-slate-600 hover:bg-slate-50'}`}
-                        >
-                          <div className={`w-4 h-4 rounded-md border flex items-center justify-center ${currentCase.nimmtMedikamente === false ? 'bg-rose-600 border-rose-600' : 'border-slate-300'}`}>
-                            {currentCase.nimmtMedikamente === false && <Check className="w-3 h-3 text-white" />}
+                          <div>
+                            <h4 className="font-bold text-slate-800 text-sm mb-1">{t('medicationIntakeTitle' as TranslationKey)}</h4>
+                            <p className="text-xs text-slate-600 mb-4 max-w-xl">
+                              {t('medicationIntakeDesc' as TranslationKey)}
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => setIsMedicationsModalOpen(true)}
+                              className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold transition-colors shadow-sm cursor-pointer"
+                            >
+                              {hasMeds ? (
+                                <>
+                                  <FolderOpen className="w-4 h-4" />
+                                  {t('btnOpenQuestionnaire' as TranslationKey)}
+                                </>
+                              ) : (
+                                <>
+                                  <Plus className="w-4 h-4" />
+                                  {t('btnStartQuestionnaire' as TranslationKey)}
+                                </>
+                              )}
+                            </button>
                           </div>
-                          {t('no')}
-                        </button>
-                      </div>
-                      
-                      {currentCase.nimmtMedikamente && (
-                        <div className="space-y-3 animate-in fade-in duration-200">
-                          {(currentCase.medikamenteList || []).map((med, index) => (
-                            <MedicationLiveInput
-                              key={index}
-                              index={index}
-                              med={med}
-                              onChange={(updated) => {
-                                const newList = [...(currentCase.medikamenteList || [])];
-                                newList[index] = updated;
-                                setCurrentCase({ ...currentCase, medikamenteList: newList });
-                              }}
-                              onRemove={() => {
-                                const newList = [...(currentCase.medikamenteList || [])];
-                                newList.splice(index, 1);
-                                setCurrentCase({ ...currentCase, medikamenteList: newList });
-                              }}
-                              t={t}
-                            />
-                          ))}
-                          
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const newList = [...(currentCase.medikamenteList || []), { name: '', dosierung: '', einnahmeart: '' }];
-                              setCurrentCase({ ...currentCase, medikamenteList: newList });
-                            }}
-                            className="w-full py-2.5 px-3 border-2 border-dashed border-teal-300 hover:border-teal-500 bg-teal-50/50 hover:bg-teal-100/50 text-teal-800 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors mt-2 cursor-pointer"
-                          >
-                            <Plus className="w-3.5 h-3.5" />
-                            <span>{t('addMedication')}</span>
-                          </button>
                         </div>
-                      )}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
 
                 {/* 6. ÜBERSICHT & ANALYSE */}
                 {currentStep === 6 && (
                   <div className="space-y-6 animate-in fade-in-50 duration-150">
-                    <div>
-                      <h4 className="font-bold text-slate-800 text-lg mb-1">{t('stepSummaryTitle')}</h4>
-                      <p className="text-sm text-slate-600">{t('stepSummaryDesc')}</p>
+                    {/* Header Card */}
+                    <div className="p-4.5 rounded-xl bg-slate-50 border border-slate-200">
+                      <h4 className="font-bold text-slate-900 text-lg">{t('stepSummaryTitle')}</h4>
+                      <p className="text-xs sm:text-sm text-slate-600">{t('stepSummaryDesc')}</p>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                      {/* 1. Stammdaten */}
-                      <div className="p-5 bg-white border border-slate-200 rounded-lg md:col-span-2 shadow-sm">
-                        <div className="flex items-center justify-between mb-4">
-                          <span className="font-bold text-slate-800 flex items-center gap-2 text-base">
-                            <User className="w-4 h-4 text-teal-600" />
-                            {t('profilePersonalDataTitle' as any) || 'Persönliche Daten'}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => setCurrentStep(1)}
-                            className="text-teal-700 hover:text-teal-900 bg-teal-50 hover:bg-teal-100 px-3 py-1.5 rounded-md font-semibold flex items-center gap-1.5 text-xs transition-colors"
-                          >
-                            <Edit3 className="w-3.5 h-3.5" />
-                            {t('stepEditSection')}
-                          </button>
-                        </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-4 gap-x-6 text-sm">
-                          <div>
-                            <span className="block text-slate-500 mb-1">{t('patientBirthDate' as any) || 'Geburtsdatum'}</span>
-                            <span className="text-slate-900 font-medium">{currentCase.patientBirthDate || '-'}</span>
-                          </div>
-                          <div>
-                            <span className="block text-slate-500 mb-1">{t('patientAge')}</span>
-                            <span className="text-slate-900 font-medium">{currentCase.patientAge !== undefined ? `${currentCase.patientAge} Jahre` : '-'}</span>
-                          </div>
-                          <div>
-                            <span className="block text-slate-500 mb-1">{t('patientHeight' as any) || 'Größe (cm)'}</span>
-                            <span className="text-slate-900 font-medium">{currentCase.patientHeightCm ? `${currentCase.patientHeightCm} cm` : '-'}</span>
-                          </div>
-                          <div>
-                            <span className="block text-slate-500 mb-1">{t('patientWeight' as any) || 'Gewicht (kg)'}</span>
-                            <span className="text-slate-900 font-medium">{currentCase.patientWeightKg ? `${currentCase.patientWeightKg} kg` : '-'}</span>
-                          </div>
-                          <div>
-                            <span className="block text-slate-500 mb-1">{t('patientGender' as any) || 'Geschlecht'}</span>
-                            <span className="text-slate-900 font-medium">
-                              {currentCase.patientGender === 'weiblich' ? t('genderFemale' as any) : 
-                               (currentCase.patientGender === 'männlich' ? t('genderMale' as any) : 
-                               (currentCase.patientGender === 'divers' ? t('genderOther' as any) : '-'))}
-                            </span>
-                          </div>
-                          <div>
-                            <span className="block text-slate-500 mb-1">{t('patientMaritalStatus' as any) || 'Familienstand'}</span>
-                            <span className="text-slate-900 font-medium">
-                              {currentCase.patientMaritalStatus === 'ledig' ? t('maritalSingle' as any) : 
-                               (currentCase.patientMaritalStatus === 'verheiratet' ? t('maritalMarried' as any) : 
-                               (currentCase.patientMaritalStatus === 'in Partnerschaft' ? (t('maritalPartnership' as any) || 'In Partnerschaft') :
-                               (currentCase.patientMaritalStatus === 'geschieden' ? t('maritalDivorced' as any) : 
-                               (currentCase.patientMaritalStatus === 'getrennt lebend' ? (t('maritalSeparated' as any) || 'Getrennt lebend') :
-                               (currentCase.patientMaritalStatus === 'verwitwet' ? t('maritalWidowed' as any) : 
-                               (currentCase.patientMaritalStatus === 'sonstiges' ? t('maritalOther' as any) : (currentCase.patientMaritalStatus || '-')))))))}
-                            </span>
-                          </div>
-                          <div>
-                            <span className="block text-slate-500 mb-1">{t('patientEmail')}</span>
-                            <span className="text-slate-900 font-medium">{currentCase.patientEmail || '-'}</span>
-                          </div>
-                          <div>
-                            <span className="block text-slate-500 mb-1">{t('patientPhone')}</span>
-                            <span className="text-slate-900 font-medium">{currentCase.patientPhone || '-'}</span>
-                          </div>
-                          <div>
-                            <span className="block text-slate-500 mb-1">{t('hasChildrenLabel' as any) || 'Haben Sie Kinder?'}</span>
-                            <span className="text-slate-900 font-medium">
-                              {currentCase.hasChildren ? (
-                                <span>{t('yes')} ({currentCase.childrenList?.length || currentCase.childrenCount || 1} Kinder)</span>
-                              ) : t('no')}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Custom Stammdaten in Summary */}
-                        {currentCase.customStammdaten && currentCase.customStammdaten.length > 0 && (
-                          <div className="mt-4 pt-4 border-t border-slate-100">
-                            <span className="block text-slate-500 text-xs font-bold uppercase mb-2">
-                              {t('customStammdatenTitle')}:
-                            </span>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                              {currentCase.customStammdaten.map((cs) => (
-                                <div key={cs.id} className="p-2.5 bg-slate-50 rounded-lg border border-slate-200">
-                                  <span className="block text-slate-500 text-xs font-medium">{cs.name || 'Feld'}:</span>
-                                  <span className="text-slate-900 font-semibold text-sm">{cs.value || '-'}</span>
-                                </div>
-                              ))}
+                    <div className="space-y-4 text-sm">
+                      {/* 1. Stammdaten Accordion */}
+                      <div className={`rounded-xl border bg-white shadow-xs overflow-hidden transition-all duration-200 ${
+                        summaryConfirmedSections.stammdaten ? 'border-teal-300 ring-1 ring-teal-200/50' : 'border-slate-200'
+                      }`}>
+                        {/* Accordion Header */}
+                        <div
+                          onClick={() => toggleSummaryAccordion('stammdaten')}
+                          className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-slate-50/70 hover:bg-slate-100/70 cursor-pointer select-none transition-colors"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="text-slate-500">
+                              {summaryAccordionOpen.stammdaten ? (
+                                <ChevronDown className="w-4 h-4 text-slate-600" />
+                              ) : (
+                                <ChevronRight className="w-4 h-4 text-slate-400" />
+                              )}
                             </div>
+                            <div className="p-1.5 rounded-lg bg-teal-50 text-teal-700 border border-teal-100 shrink-0">
+                              <User className="w-4 h-4" />
+                            </div>
+                            <span className="font-bold text-slate-800 text-sm sm:text-base truncate">
+                              {t('summaryAccordionStammdaten')}
+                            </span>
                           </div>
-                        )}
-                      </div>
 
-                      {/* 2. Hauptbeschwerde */}
-                      <div className="p-5 bg-white border border-slate-200 rounded-lg md:col-span-2 shadow-sm">
-                        <div className="flex items-center justify-between mb-4">
-                          <span className="font-bold text-slate-800 flex items-center gap-2 text-base">
-                            <MessageSquare className="w-4 h-4 text-teal-600" />
-                            {stepNames[1]}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => setCurrentStep(2)}
-                            className="text-teal-700 hover:text-teal-900 bg-teal-50 hover:bg-teal-100 px-3 py-1.5 rounded-md font-semibold flex items-center gap-1.5 text-xs transition-colors"
-                          >
-                            <Edit3 className="w-3.5 h-3.5" />
-                            {t('stepEditSection')}
-                          </button>
+                          <div className="flex items-center gap-2.5 self-end sm:self-auto shrink-0">
+                            {renderSummarySectionBadge(1, summaryConfirmedSections.stammdaten)}
+
+                            <button
+                              type="button"
+                              id="btn-adopt-section-stammdaten"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleSectionConfirmation('stammdaten');
+                              }}
+                              className={`px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 text-xs transition-all cursor-pointer shadow-xs border ${
+                                summaryConfirmedSections.stammdaten
+                                  ? 'bg-teal-600 hover:bg-teal-700 text-white border-teal-700'
+                                  : 'bg-white hover:bg-teal-50 text-slate-700 hover:text-teal-800 border-slate-200 hover:border-teal-200'
+                              }`}
+                            >
+                              <Check className={`w-3.5 h-3.5 ${summaryConfirmedSections.stammdaten ? 'text-white' : 'text-slate-400'}`} />
+                              <span>{t('summaryAdoptCheckbox')}</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              id="btn-edit-section-stammdaten"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setCurrentStep(1);
+                              }}
+                              className="text-slate-700 hover:text-teal-800 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-200 px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 text-xs transition-colors cursor-pointer shadow-xs"
+                            >
+                              <Edit3 className="w-3.5 h-3.5 text-teal-600" />
+                              <span>{t('stepEditSection')}</span>
+                            </button>
+                          </div>
                         </div>
-                        <p className="text-slate-900 font-medium mb-4 whitespace-pre-wrap">
-                          {currentCase.hauptbeschwerde || '-'}
-                        </p>
-                        
-                        {currentCase.anamnesisQuestions && currentCase.anamnesisQuestions.length > 0 && (
-                          <div className="mt-4 pt-4 border-t border-slate-100 space-y-3">
-                            {currentCase.anamnesisQuestions.map((q, idx) => (
-                              <div key={q.id} className="text-sm">
-                                <span className="block text-slate-500 mb-1">{idx + 1}. {q.question}</span>
+
+                        {/* Accordion Content */}
+                        {summaryAccordionOpen.stammdaten && (
+                          <div className="p-5 border-t border-slate-100 bg-white animate-in fade-in-50 duration-150">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-4 gap-x-6 text-sm">
+                              <div>
+                                <span className="block text-slate-500 mb-1">{t('patientBirthDate' as any) || 'Geburtsdatum'}</span>
+                                <span className="text-slate-900 font-medium">{currentCase.patientBirthDate || '-'}</span>
+                              </div>
+                              <div>
+                                <span className="block text-slate-500 mb-1">{t('patientAge')}</span>
+                                <span className="text-slate-900 font-medium">{currentCase.patientAge !== undefined ? `${currentCase.patientAge} Jahre` : '-'}</span>
+                              </div>
+                              <div>
+                                <span className="block text-slate-500 mb-1">{t('patientHeight' as any) || 'Größe (cm)'}</span>
+                                <span className="text-slate-900 font-medium">{currentCase.patientHeightCm ? `${currentCase.patientHeightCm} cm` : '-'}</span>
+                              </div>
+                              <div>
+                                <span className="block text-slate-500 mb-1">{t('patientWeight' as any) || 'Gewicht (kg)'}</span>
+                                <span className="text-slate-900 font-medium">{currentCase.patientWeightKg ? `${currentCase.patientWeightKg} kg` : '-'}</span>
+                              </div>
+                              <div>
+                                <span className="block text-slate-500 mb-1">{t('patientGender' as any) || 'Geschlecht'}</span>
                                 <span className="text-slate-900 font-medium">
-                                  {q.type === 'scale' ? `${q.answerScaleCurrent || '-'} (Aktuell) / ${q.answerScaleWorst || '-'} (Schlimmste)` : 
-                                   (q.type === 'choice' ? q.answerChoice : 
-                                   (q.type === 'multi_choice' ? q.answerMultiChoice?.join(', ') : q.answerText)) || '-'}
+                                  {currentCase.patientGender === 'weiblich' ? t('genderFemale' as any) : 
+                                   (currentCase.patientGender === 'männlich' ? t('genderMale' as any) : 
+                                   (currentCase.patientGender === 'divers' ? t('genderOther' as any) : '-'))}
                                 </span>
                               </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
+                              <div>
+                                <span className="block text-slate-500 mb-1">{t('patientMaritalStatus' as any) || 'Familienstand'}</span>
+                                <span className="text-slate-900 font-medium">
+                                  {currentCase.patientMaritalStatus === 'ledig' ? t('maritalSingle' as any) : 
+                                   (currentCase.patientMaritalStatus === 'verheiratet' ? t('maritalMarried' as any) : 
+                                   (currentCase.patientMaritalStatus === 'in Partnerschaft' ? (t('maritalPartnership' as any) || 'In Partnerschaft') :
+                                   (currentCase.patientMaritalStatus === 'geschieden' ? t('maritalDivorced' as any) : 
+                                   (currentCase.patientMaritalStatus === 'getrennt lebend' ? (t('maritalSeparated' as any) || 'Getrennt lebend') :
+                                   (currentCase.patientMaritalStatus === 'verwitwet' ? t('maritalWidowed' as any) : 
+                                   (currentCase.patientMaritalStatus === 'sonstiges' ? t('maritalOther' as any) : (currentCase.patientMaritalStatus || '-')))))))}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="block text-slate-500 mb-1">{t('patientEmail')}</span>
+                                <span className="text-slate-900 font-medium">{currentCase.patientEmail || '-'}</span>
+                              </div>
+                              <div>
+                                <span className="block text-slate-500 mb-1">{t('patientPhone')}</span>
+                                <span className="text-slate-900 font-medium">{currentCase.patientPhone || '-'}</span>
+                              </div>
+                              <div>
+                                <span className="block text-slate-500 mb-1">{t('hasChildrenLabel' as any) || 'Haben Sie Kinder?'}</span>
+                                <span className="text-slate-900 font-medium">
+                                  {currentCase.hasChildren ? (
+                                    <span>{t('yes')} ({currentCase.childrenList?.length || currentCase.childrenCount || 1} Kinder)</span>
+                                  ) : t('no')}
+                                </span>
+                              </div>
+                            </div>
 
-                      {/* 3. Fragebogen */}
-                      <div className="p-5 bg-white border border-slate-200 rounded-lg md:col-span-2 shadow-sm">
-                        <div className="flex items-center justify-between mb-4">
-                          <span className="font-bold text-slate-800 flex items-center gap-2 text-base">
-                            <Stethoscope className="w-4 h-4 text-teal-600" />
-                            {stepNames[2]}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => setCurrentStep(3)}
-                            className="text-teal-700 hover:text-teal-900 bg-teal-50 hover:bg-teal-100 px-3 py-1.5 rounded-md font-semibold flex items-center gap-1.5 text-xs transition-colors"
-                          >
-                            <Edit3 className="w-3.5 h-3.5" />
-                            {t('stepEditSection')}
-                          </button>
-                        </div>
-                        {currentCase.extendedAnamnesis && Object.keys(currentCase.extendedAnamnesis).length > 0 ? (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {Object.entries(currentCase.extendedAnamnesis).map(([key, val]) => {
-                              if (!val || (Array.isArray(val) && val.length === 0)) return null;
-                              return (
-                                <div key={key} className="text-sm">
-                                  <span className="block text-slate-500 mb-1 truncate">{key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
-                                  <span className="text-slate-900 font-medium break-words">
-                                    {typeof val === 'object' ? JSON.stringify(val) : String(val)}
-                                  </span>
+                            {/* Custom Stammdaten in Summary */}
+                            {currentCase.customStammdaten && currentCase.customStammdaten.length > 0 && (
+                              <div className="mt-4 pt-4 border-t border-slate-100">
+                                <span className="block text-slate-500 text-xs font-bold uppercase mb-2">
+                                  {t('customStammdatenTitle')}:
+                                </span>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                  {currentCase.customStammdaten.map((cs) => (
+                                    <div key={cs.id} className="p-2.5 bg-slate-50 rounded-lg border border-slate-200">
+                                      <span className="block text-slate-500 text-xs font-medium">{cs.name || 'Feld'}:</span>
+                                      <span className="text-slate-900 font-semibold text-sm">{cs.value || '-'}</span>
+                                    </div>
+                                  ))}
                                 </div>
-                              );
-                            })}
+                              </div>
+                            )}
                           </div>
-                        ) : (
-                          <p className="text-slate-600">{t('noData')}</p>
                         )}
                       </div>
 
-                      {/* 4. Befund */}
-                      <div className="p-5 bg-white border border-slate-200 rounded-lg md:col-span-2 shadow-sm">
-                        <div className="flex items-center justify-between mb-4">
-                          <span className="font-bold text-slate-800 flex items-center gap-2 text-base">
-                            <FileText className="w-4 h-4 text-teal-600" />
-                            {stepNames[3]}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => setCurrentStep(4)}
-                            className="text-teal-700 hover:text-teal-900 bg-teal-50 hover:bg-teal-100 px-3 py-1.5 rounded-md font-semibold flex items-center gap-1.5 text-xs transition-colors"
-                          >
-                            <Edit3 className="w-3.5 h-3.5" />
-                            {t('stepEditSection')}
-                          </button>
+                      {/* 2. Hauptbeschwerde Accordion */}
+                      <div className={`rounded-xl border bg-white shadow-xs overflow-hidden transition-all duration-200 ${
+                        summaryConfirmedSections.hauptbeschwerde ? 'border-teal-300 ring-1 ring-teal-200/50' : 'border-slate-200'
+                      }`}>
+                        {/* Accordion Header */}
+                        <div
+                          onClick={() => toggleSummaryAccordion('hauptbeschwerde')}
+                          className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-slate-50/70 hover:bg-slate-100/70 cursor-pointer select-none transition-colors"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="text-slate-500">
+                              {summaryAccordionOpen.hauptbeschwerde ? (
+                                <ChevronDown className="w-4 h-4 text-slate-600" />
+                              ) : (
+                                <ChevronRight className="w-4 h-4 text-slate-400" />
+                              )}
+                            </div>
+                            <div className="p-1.5 rounded-lg bg-teal-50 text-teal-700 border border-teal-100 shrink-0">
+                              <MessageSquare className="w-4 h-4" />
+                            </div>
+                            <span className="font-bold text-slate-800 text-sm sm:text-base truncate">
+                              {t('summaryAccordionHauptbeschwerde')}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2.5 self-end sm:self-auto shrink-0">
+                            {renderSummarySectionBadge(2, summaryConfirmedSections.hauptbeschwerde)}
+
+                            <button
+                              type="button"
+                              id="btn-adopt-section-hauptbeschwerde"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleSectionConfirmation('hauptbeschwerde');
+                              }}
+                              className={`px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 text-xs transition-all cursor-pointer shadow-xs border ${
+                                summaryConfirmedSections.hauptbeschwerde
+                                  ? 'bg-teal-600 hover:bg-teal-700 text-white border-teal-700'
+                                  : 'bg-white hover:bg-teal-50 text-slate-700 hover:text-teal-800 border-slate-200 hover:border-teal-200'
+                              }`}
+                            >
+                              <Check className={`w-3.5 h-3.5 ${summaryConfirmedSections.hauptbeschwerde ? 'text-white' : 'text-slate-400'}`} />
+                              <span>{t('summaryAdoptCheckbox')}</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              id="btn-edit-section-hauptbeschwerde"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setCurrentStep(2);
+                              }}
+                              className="text-slate-700 hover:text-teal-800 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-200 px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 text-xs transition-colors cursor-pointer shadow-xs"
+                            >
+                              <Edit3 className="w-3.5 h-3.5 text-teal-600" />
+                              <span>{t('stepEditSection')}</span>
+                            </button>
+                          </div>
                         </div>
-                        {currentCase.befundGewuenscht ? (
-                          <div className="space-y-4">
-                            {currentCase.befundDetails && Object.keys(currentCase.befundDetails).length > 0 && (
-                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-                                {Object.entries(currentCase.befundDetails).map(([key, val]) => {
-                                  if (!val) return null;
+
+                        {/* Accordion Content */}
+                        {summaryAccordionOpen.hauptbeschwerde && (
+                          <div className="p-5 border-t border-slate-100 bg-white animate-in fade-in-50 duration-150">
+                            <p className="text-slate-900 font-medium mb-4 whitespace-pre-wrap">
+                              {currentCase.hauptbeschwerde || '-'}
+                            </p>
+                            
+                            {currentCase.anamnesisQuestions && currentCase.anamnesisQuestions.length > 0 && (
+                              <div className="mt-4 pt-4 border-t border-slate-100 space-y-3">
+                                {currentCase.anamnesisQuestions.map((q, idx) => (
+                                  <div key={q.id} className="text-sm">
+                                    <span className="block text-slate-500 mb-1">{idx + 1}. {q.question}</span>
+                                    <span className="text-slate-900 font-medium">
+                                      {q.type === 'scale' ? `${q.answerScaleCurrent || '-'} (Aktuell) / ${q.answerScaleWorst || '-'} (Schlimmste)` : 
+                                       (q.type === 'choice' ? q.answerChoice : 
+                                       (q.type === 'multi_choice' ? q.answerMultiChoice?.join(', ') : q.answerText)) || '-'}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* 3. Fragebogen Accordion */}
+                      <div className={`rounded-xl border bg-white shadow-xs overflow-hidden transition-all duration-200 ${
+                        summaryConfirmedSections.fragebogen ? 'border-teal-300 ring-1 ring-teal-200/50' : 'border-slate-200'
+                      }`}>
+                        {/* Accordion Header */}
+                        <div
+                          onClick={() => toggleSummaryAccordion('fragebogen')}
+                          className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-slate-50/70 hover:bg-slate-100/70 cursor-pointer select-none transition-colors"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="text-slate-500">
+                              {summaryAccordionOpen.fragebogen ? (
+                                <ChevronDown className="w-4 h-4 text-slate-600" />
+                              ) : (
+                                <ChevronRight className="w-4 h-4 text-slate-400" />
+                              )}
+                            </div>
+                            <div className="p-1.5 rounded-lg bg-teal-50 text-teal-700 border border-teal-100 shrink-0">
+                              <Stethoscope className="w-4 h-4" />
+                            </div>
+                            <span className="font-bold text-slate-800 text-sm sm:text-base truncate">
+                              {t('summaryAccordionFragebogen')}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2.5 self-end sm:self-auto shrink-0">
+                            {renderSummarySectionBadge(3, summaryConfirmedSections.fragebogen)}
+
+                            <button
+                              type="button"
+                              id="btn-adopt-section-fragebogen"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleSectionConfirmation('fragebogen');
+                              }}
+                              className={`px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 text-xs transition-all cursor-pointer shadow-xs border ${
+                                summaryConfirmedSections.fragebogen
+                                  ? 'bg-teal-600 hover:bg-teal-700 text-white border-teal-700'
+                                  : 'bg-white hover:bg-teal-50 text-slate-700 hover:text-teal-800 border-slate-200 hover:border-teal-200'
+                              }`}
+                            >
+                              <Check className={`w-3.5 h-3.5 ${summaryConfirmedSections.fragebogen ? 'text-white' : 'text-slate-400'}`} />
+                              <span>{t('summaryAdoptCheckbox')}</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              id="btn-edit-section-fragebogen"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setCurrentStep(3);
+                              }}
+                              className="text-slate-700 hover:text-teal-800 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-200 px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 text-xs transition-colors cursor-pointer shadow-xs"
+                            >
+                              <Edit3 className="w-3.5 h-3.5 text-teal-600" />
+                              <span>{t('stepEditSection')}</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Accordion Content */}
+                        {summaryAccordionOpen.fragebogen && (
+                          <div className="p-5 border-t border-slate-100 bg-white animate-in fade-in-50 duration-150">
+                            {currentCase.extendedAnamnesis && Object.keys(currentCase.extendedAnamnesis).length > 0 ? (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                {Object.entries(currentCase.extendedAnamnesis).map(([key, val]) => {
+                                  if (!val || (Array.isArray(val) && val.length === 0)) return null;
                                   return (
-                                    <div key={key}>
-                                      <span className="block text-slate-500 mb-1 capitalize">{key}</span>
-                                      <span className="text-slate-900 font-medium">{String(val)}</span>
+                                    <div key={key} className="text-sm">
+                                      <span className="block text-slate-500 mb-1 truncate">{key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
+                                      <span className="text-slate-900 font-medium break-words">
+                                        {typeof val === 'object' ? JSON.stringify(val) : String(val)}
+                                      </span>
                                     </div>
                                   );
                                 })}
                               </div>
-                            )}
-                            {currentCase.befundText && (
-                              <div className="text-sm">
-                                <span className="block text-slate-500 mb-1">Text</span>
-                                <span className="text-slate-900 font-medium whitespace-pre-wrap">{currentCase.befundText}</span>
-                              </div>
+                            ) : (
+                              <p className="text-slate-600">{t('noData')}</p>
                             )}
                           </div>
-                        ) : (
-                          <p className="text-slate-600">{t('notDesired')}</p>
                         )}
                       </div>
 
-                      {/* 5. Medikamenteneinnahme */}
-                      <div className="p-5 bg-white border border-slate-200 rounded-lg md:col-span-2 shadow-sm">
-                        <div className="flex items-center justify-between mb-4">
-                          <span className="font-bold text-slate-800 flex items-center gap-2 text-base">
-                            <Pill className="w-4 h-4 text-teal-600" />
-                            {stepNames[4]}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => setCurrentStep(5)}
-                            className="text-teal-700 hover:text-teal-900 bg-teal-50 hover:bg-teal-100 px-3 py-1.5 rounded-md font-semibold flex items-center gap-1.5 text-xs transition-colors"
-                          >
-                            <Edit3 className="w-3.5 h-3.5" />
-                            {t('stepEditSection')}
-                          </button>
-                        </div>
-                        {currentCase.nimmtMedikamente ? (
-                          <div className="space-y-3">
-                            <span className="inline-block px-2.5 py-1 bg-rose-50 text-rose-700 text-xs font-semibold rounded-md border border-rose-200 mb-2">
-                              {t('yes')}
+                      {/* 4. Befund Accordion */}
+                      <div className={`rounded-xl border bg-white shadow-xs overflow-hidden transition-all duration-200 ${
+                        summaryConfirmedSections.befund ? 'border-teal-300 ring-1 ring-teal-200/50' : 'border-slate-200'
+                      }`}>
+                        {/* Accordion Header */}
+                        <div
+                          onClick={() => toggleSummaryAccordion('befund')}
+                          className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-slate-50/70 hover:bg-slate-100/70 cursor-pointer select-none transition-colors"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="text-slate-500">
+                              {summaryAccordionOpen.befund ? (
+                                <ChevronDown className="w-4 h-4 text-slate-600" />
+                              ) : (
+                                <ChevronRight className="w-4 h-4 text-slate-400" />
+                              )}
+                            </div>
+                            <div className="p-1.5 rounded-lg bg-teal-50 text-teal-700 border border-teal-100 shrink-0">
+                              <Activity className="w-4 h-4" />
+                            </div>
+                            <span className="font-bold text-slate-800 text-sm sm:text-base truncate">
+                              {t('summaryAccordionBefund')}
                             </span>
-                            {currentCase.medikamenteList && currentCase.medikamenteList.length > 0 ? (
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm mt-2">
-                                {currentCase.medikamenteList.map((m, idx) => (
-                                  <div key={(m as any).id || idx} className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
-                                    <span className="block font-bold text-slate-800 mb-1">{m.name}</span>
-                                    {m.dosierung && <span className="block text-slate-600 mb-0.5">Dosierung: {m.dosierung}</span>}
-                                    {(m as any).grund && <span className="block text-slate-600">Grund: {(m as any).grund}</span>}
+                          </div>
+
+                          <div className="flex items-center gap-2.5 self-end sm:self-auto shrink-0">
+                            {renderSummarySectionBadge(4, summaryConfirmedSections.befund)}
+
+                            <button
+                              type="button"
+                              id="btn-adopt-section-befund"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleSectionConfirmation('befund');
+                              }}
+                              className={`px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 text-xs transition-all cursor-pointer shadow-xs border ${
+                                summaryConfirmedSections.befund
+                                  ? 'bg-teal-600 hover:bg-teal-700 text-white border-teal-700'
+                                  : 'bg-white hover:bg-teal-50 text-slate-700 hover:text-teal-800 border-slate-200 hover:border-teal-200'
+                              }`}
+                            >
+                              <Check className={`w-3.5 h-3.5 ${summaryConfirmedSections.befund ? 'text-white' : 'text-slate-400'}`} />
+                              <span>{t('summaryAdoptCheckbox')}</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              id="btn-edit-section-befund"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setCurrentStep(4);
+                              }}
+                              className="text-slate-700 hover:text-teal-800 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-200 px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 text-xs transition-colors cursor-pointer shadow-xs"
+                            >
+                              <Edit3 className="w-3.5 h-3.5 text-teal-600" />
+                              <span>{t('stepEditSection')}</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Accordion Content */}
+                        {summaryAccordionOpen.befund && (
+                          <div className="p-5 border-t border-slate-100 bg-white animate-in fade-in-50 duration-150">
+                            {Boolean(
+                              (currentCase.befundDetails && Object.keys(currentCase.befundDetails).length > 0 && Object.values(currentCase.befundDetails).some(v => v && (typeof v !== 'object' || (Array.isArray(v) && v.length > 0)))) ||
+                              (currentCase.befundText && currentCase.befundText.trim())
+                            ) ? (
+                              <div className="space-y-4">
+                                {currentCase.befundDetails && Object.keys(currentCase.befundDetails).length > 0 && (
+                                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+                                    {Object.entries(currentCase.befundDetails).map(([key, val]) => {
+                                      if (!val) return null;
+                                      if (key === 'customFelder' && Array.isArray(val)) {
+                                        return val.map((cf: any) => (
+                                          <div key={cf.id || cf.name}>
+                                            <span className="block text-slate-500 mb-1 capitalize">{cf.name || 'Feld'}</span>
+                                            <span className="text-slate-900 font-medium">{String(cf.value || '-')}</span>
+                                          </div>
+                                        ));
+                                      }
+                                      return (
+                                        <div key={key}>
+                                          <span className="block text-slate-500 mb-1 capitalize">{key.replace(/([A-Z])/g, ' $1')}</span>
+                                          <span className="text-slate-900 font-medium">{String(val)}</span>
+                                        </div>
+                                      );
+                                    })}
                                   </div>
-                                ))}
+                                )}
+                                {currentCase.befundText && (
+                                  <div className="text-sm">
+                                    <span className="block text-slate-500 mb-1">Text</span>
+                                    <span className="text-slate-900 font-medium whitespace-pre-wrap">{currentCase.befundText}</span>
+                                  </div>
+                                )}
                               </div>
                             ) : (
-                              <p className="text-slate-600">{t('none')}</p>
+                              <p className="text-slate-600">{t('noData')}</p>
                             )}
                           </div>
-                        ) : (
-                          <span className="inline-block px-2.5 py-1 bg-teal-50 text-teal-700 text-xs font-semibold rounded-md border border-teal-200">
-                            {t('no')}
-                          </span>
+                        )}
+                      </div>
+
+                      {/* 5. Medikamenteneinnahme Accordion */}
+                      <div className={`rounded-xl border bg-white shadow-xs overflow-hidden transition-all duration-200 ${
+                        summaryConfirmedSections.medikamente ? 'border-teal-300 ring-1 ring-teal-200/50' : 'border-slate-200'
+                      }`}>
+                        {/* Accordion Header */}
+                        <div
+                          onClick={() => toggleSummaryAccordion('medikamente')}
+                          className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-slate-50/70 hover:bg-slate-100/70 cursor-pointer select-none transition-colors"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="text-slate-500">
+                              {summaryAccordionOpen.medikamente ? (
+                                <ChevronDown className="w-4 h-4 text-slate-600" />
+                              ) : (
+                                <ChevronRight className="w-4 h-4 text-slate-400" />
+                              )}
+                            </div>
+                            <div className="p-1.5 rounded-lg bg-teal-50 text-teal-700 border border-teal-100 shrink-0">
+                              <Pill className="w-4 h-4" />
+                            </div>
+                            <span className="font-bold text-slate-800 text-sm sm:text-base truncate">
+                              {t('summaryAccordionMedikamente')}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2.5 self-end sm:self-auto shrink-0">
+                            {renderSummarySectionBadge(5, summaryConfirmedSections.medikamente)}
+
+                            <button
+                              type="button"
+                              id="btn-adopt-section-medikamente"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleSectionConfirmation('medikamente');
+                              }}
+                              className={`px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 text-xs transition-all cursor-pointer shadow-xs border ${
+                                summaryConfirmedSections.medikamente
+                                  ? 'bg-teal-600 hover:bg-teal-700 text-white border-teal-700'
+                                  : 'bg-white hover:bg-teal-50 text-slate-700 hover:text-teal-800 border-slate-200 hover:border-teal-200'
+                              }`}
+                            >
+                              <Check className={`w-3.5 h-3.5 ${summaryConfirmedSections.medikamente ? 'text-white' : 'text-slate-400'}`} />
+                              <span>{t('summaryAdoptCheckbox')}</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              id="btn-edit-section-medikamente"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setCurrentStep(5);
+                              }}
+                              className="text-slate-700 hover:text-teal-800 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-200 px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 text-xs transition-colors cursor-pointer shadow-xs"
+                            >
+                              <Edit3 className="w-3.5 h-3.5 text-teal-600" />
+                              <span>{t('stepEditSection')}</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Accordion Content */}
+                        {summaryAccordionOpen.medikamente && (
+                          <div className="p-5 border-t border-slate-100 bg-white animate-in fade-in-50 duration-150">
+                            {currentCase.medikamenteList && currentCase.medikamenteList.some(m => m.name && m.name.trim() !== '') ? (
+                              <div className="space-y-3">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                                  {currentCase.medikamenteList.filter(m => m.name && m.name.trim() !== '').map((m, idx) => (
+                                    <div key={(m as any).id || idx} className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                                      <span className="block font-bold text-slate-800 mb-1">{m.name}</span>
+                                      {m.dosierung && <span className="block text-xs text-slate-600 mb-0.5">{t('dosage' as TranslationKey)}: {m.dosierung}</span>}
+                                      {m.einnahmeart && <span className="block text-xs text-slate-600">{t('intake' as TranslationKey)}: {m.einnahmeart}</span>}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ) : (
+                              <p className="text-slate-600">{t('noData')}</p>
+                            )}
+                          </div>
                         )}
                       </div>
                     </div>
 
                     {/* Prominent Action Banner for Step 7 */}
-                    <div className="p-6 rounded-2xl bg-gradient-to-r from-teal-900 via-slate-900 to-slate-950 text-white flex flex-col sm:flex-row items-center justify-between gap-4 shadow-md">
-                      <div>
+                    <div className="p-6 rounded-2xl bg-gradient-to-r from-teal-900 via-slate-900 to-slate-950 text-white flex flex-col gap-5 shadow-md">
+                      <div className="space-y-2">
                         <div className="flex items-center gap-2">
                           <span className="px-2 py-0.5 rounded bg-teal-500/20 text-teal-300 font-bold text-[11px] uppercase tracking-wider">
                             {t('step7ShortBadge')}
                           </span>
                           <span className="text-xs text-slate-400">{t('fullAiDiagnostics')}</span>
                         </div>
-                        <h4 className="text-base sm:text-lg font-bold flex items-center gap-2 mt-1">
-                          <Sparkles className="w-5 h-5 text-teal-400" />
+                        <h4 className="text-base sm:text-lg font-bold flex items-center gap-2 text-white">
+                          <Sparkles className="w-5 h-5 text-teal-400 shrink-0" />
                           <span>{t('createHolisticAnalysisTitle')}</span>
                         </h4>
-                        <p className="text-xs text-slate-300 mt-1 max-w-xl leading-relaxed">
+                        <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-3xl">
                           {t('createHolisticAnalysisDesc')}
                         </p>
                       </div>
-                      <button
-                        type="button"
-                        onClick={handleRunAnalysis}
-                        disabled={isAnalyzing}
-                        className="shrink-0 px-6 py-3.5 bg-teal-400 hover:bg-teal-300 text-slate-950 font-bold rounded-xl text-xs sm:text-sm transition-all shadow-lg hover:shadow-xl flex items-center gap-2 cursor-pointer"
-                      >
-                        <Sparkles className={`w-4 h-4 text-slate-950 ${isAnalyzing ? 'animate-spin' : ''}`} />
-                        <span>{isAnalyzing ? t('analysisCalculating') : t('btnRunAnalysis')}</span>
-                      </button>
+
+                      <div className="pt-1 flex justify-start">
+                        <button
+                          type="button"
+                          id="btn-run-homeopathy-analysis"
+                          onClick={() => {
+                            if (!areAllSummarySectionsConfirmed) {
+                              setIsUnconfirmedSummaryModalOpen(true);
+                              return;
+                            }
+                            handleRunAnalysis();
+                          }}
+                          disabled={isAnalyzing}
+                          className="px-6 py-3.5 bg-[#00dfa2] hover:bg-[#00c98f] active:bg-[#00b580] text-slate-950 font-bold rounded-xl text-xs sm:text-sm transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2 cursor-pointer w-full sm:w-auto"
+                        >
+                          <Sparkles className={`w-4 h-4 text-slate-950 ${isAnalyzing ? 'animate-spin' : ''}`} />
+                          <span>{isAnalyzing ? t('analysisCalculating') : t('btnRunAnalysis')}</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -2856,13 +3012,48 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
         </>
       )}
 
-      {/* Repertorisation / Analysis Results Modal */}
+      {/* Extended Anamnesis Questionnaire Modal */}
       <ExtendedAnamnesisWizard
         isOpen={isExtendedAnamnesisWizardOpen}
         onClose={() => setIsExtendedAnamnesisWizardOpen(false)}
         initialData={currentCase.extendedAnamnesis || {}}
         onSave={(data) => {
           setCurrentCase(prev => ({ ...prev, extendedAnamnesis: data }));
+          setSaveToast(t('toastExtendedAnamnesisSaved'));
+          setTimeout(() => setSaveToast(null), 3000);
+        }}
+        patientName={currentCase.patientName}
+      />
+
+      {/* Clinical Findings Wizard Modal */}
+      <FindingsWizardModal
+        isOpen={isFindingsModalOpen}
+        onClose={() => setIsFindingsModalOpen(false)}
+        befundDetails={currentCase.befundDetails || {}}
+        onSave={(data) => {
+          setCurrentCase(prev => ({
+            ...prev,
+            befundGewuenscht: true,
+            befundDetails: data
+          }));
+          setSaveToast(t('toastExtendedAnamnesisSaved'));
+          setTimeout(() => setSaveToast(null), 3000);
+        }}
+        patientName={currentCase.patientName}
+      />
+
+      {/* Medications Wizard Modal */}
+      <MedicationsWizardModal
+        isOpen={isMedicationsModalOpen}
+        onClose={() => setIsMedicationsModalOpen(false)}
+        nimmtMedikamente={currentCase.nimmtMedikamente}
+        medikamenteList={currentCase.medikamenteList || []}
+        onSave={(data) => {
+          setCurrentCase(prev => ({
+            ...prev,
+            nimmtMedikamente: data.nimmtMedikamente,
+            medikamenteList: data.medikamenteList
+          }));
           setSaveToast(t('toastExtendedAnamnesisSaved'));
           setTimeout(() => setSaveToast(null), 3000);
         }}
@@ -2999,6 +3190,79 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
               >
                 <span>{t('btnGoToMasterData')}</span>
                 <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Abschnitte müssen erst übernommen / bestätigt werden */}
+      {isUnconfirmedSummaryModalOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl max-w-md w-full border border-slate-200 shadow-2xl overflow-hidden p-6 sm:p-7 text-center space-y-5 animate-in zoom-in-95 duration-200">
+            <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center mx-auto shadow-inner">
+              <AlertTriangle className="w-7 h-7" />
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="text-lg sm:text-xl font-bold text-slate-900 font-serif">
+                {t('summaryConfirmAllRequiredModalTitle')}
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed max-w-sm mx-auto">
+                {t('summaryConfirmAllRequiredModalDesc')}
+              </p>
+              <p className="text-xs text-slate-500 leading-relaxed max-w-sm mx-auto">
+                {t('summaryConfirmAllRequiredModalDetail')}
+              </p>
+            </div>
+
+            {/* List of unconfirmed sections */}
+            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-left space-y-2 text-xs">
+              <span className="font-bold text-slate-700 block mb-1">
+                {t('summaryMissingSections')}
+              </span>
+              <div className="space-y-1.5">
+                {!summaryConfirmedSections.stammdaten && (
+                  <div className="flex items-center gap-2 text-slate-700">
+                    <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0"></span>
+                    <span>{t('summaryAccordionStammdaten')}</span>
+                  </div>
+                )}
+                {!summaryConfirmedSections.hauptbeschwerde && (
+                  <div className="flex items-center gap-2 text-slate-700">
+                    <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0"></span>
+                    <span>{t('summaryAccordionHauptbeschwerde')}</span>
+                  </div>
+                )}
+                {!summaryConfirmedSections.fragebogen && (
+                  <div className="flex items-center gap-2 text-slate-700">
+                    <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0"></span>
+                    <span>{t('summaryAccordionFragebogen')}</span>
+                  </div>
+                )}
+                {!summaryConfirmedSections.befund && (
+                  <div className="flex items-center gap-2 text-slate-700">
+                    <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0"></span>
+                    <span>{t('summaryAccordionBefund')}</span>
+                  </div>
+                )}
+                {!summaryConfirmedSections.medikamente && (
+                  <div className="flex items-center gap-2 text-slate-700">
+                    <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0"></span>
+                    <span>{t('summaryAccordionMedikamente')}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="pt-2 flex items-center justify-center">
+              <button
+                type="button"
+                id="btn-close-unconfirmed-modal"
+                onClick={() => setIsUnconfirmedSummaryModalOpen(false)}
+                className="w-full sm:w-auto px-6 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-semibold transition-colors cursor-pointer shadow-xs"
+              >
+                {t('btnCancelModal')}
               </button>
             </div>
           </div>

@@ -192,6 +192,93 @@ Beachte alle Details aus den Fall-Daten. Keine Daten erfinden, fehlende Daten al
     }
   });
 
+  app.post("/api/check-medical-relevance", async (req, res) => {
+    try {
+      const { text, language = "de" } = req.body;
+      if (!text || typeof text !== 'string' || !text.trim()) {
+        return res.json({ isRelevant: false, reason: "empty_text" });
+      }
+
+      const trimmedText = text.trim();
+
+      // If no API key or in case of offline fallback, evaluate quickly
+      if (!process.env.GEMINI_API_KEY) {
+        return res.json({ isRelevant: true, reason: "no_api_key_passthrough" });
+      }
+
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const prompt = `Du bist ein strenger medizinischer Relevanzfilter für eine professionelle Anwendung zur Erfassung von Informationen für eine medizinische bzw. homöopathische Anamnese und Befunddokumentation.
+
+AUFGABE:
+Prüfe die folgende gesprochene/transkribierte Benutzeraussage im gesamten Sinnzusammenhang:
+"${trimmedText.replace(/"/g, '\\"')}"
+
+KRITERIEN:
+1. AKZEPTIEREN ("isRelevant": true):
+Die Aussage enthält gesundheitliche, medizinische, psychosomatische, therapeutische oder befundrelevante Informationen.
+Dazu gehören u.a.:
+- Symptome, Beschwerden, Schmerzen, Empfindungen, Krankheitsgefühl, Einschränkungen
+- Vorerkrankungen, Operationen, Allergien, Unverträglichkeiten, Familienanamnese
+- Medikamente, Dosierungen, Einnahmeintervalle, Nahrungsergänzungsmittel, Hausmittel
+- Vitalparameter, Blutdruck, Puls, Laborwerte, körperliche Untersuchungsbefunde
+- Modalitäten (Besserung/Verschlimmerung durch Wärme, Kälte, Bewegung, Ruhe, Tageszeit, Wetter, Berührung etc.)
+- Begleitsymptome, Schlaf, Appetit, Durst, Verdauung, Gemütszustände, Stressreaktionen
+- Homöopathische Leitsymptome, Charakteristika, Wesenszüge oder Auslöser von Beschwerden
+- Konkrete Aussagen zu Behandlungsgründen oder Krankheitsverläufen
+
+2. ABLEHNEN ("isRelevant": false):
+Die Aussage hat KEINEN inhaltlichen Bezug zu Gesundheit, Krankheit, Beschwerden, Befunden oder Anamnese.
+Dazu gehören u.a.:
+- Reiner Begrüßungs- oder Höflichkeits-Smalltalk ohne Beschwerden (z. B. "Hallo wie geht es dir", "Guten Morgen", "Schönen Tag")
+- Technische Kommentare oder Tests (z. B. "Test eins zwei drei", "Funktioniert das Mikrofon", "Hörst du mich", "Knopf drücken")
+- Alltägliche Belanglosigkeiten ohne Gesundheitsbezug (z. B. "Ich gehe jetzt einkaufen", "Das Wetter ist heute sonnig", "Was kostet ein Auto", "Wie spät ist es", "Erzähl mir einen Witz")
+- Kauderwelsch, zusammenhanglose Füllphrasen oder Störlaute ohne Sinn
+
+Beurteile immer den GESAMTEN Sinnzusammenhang, nicht isolierte Wörter.
+
+Antworte AUSSCHLIESSLICH im JSON-Format:
+{
+  "isRelevant": true,
+  "reason": "kurze Begründung"
+}
+oder
+{
+  "isRelevant": false,
+  "reason": "kurze Begründung"
+}`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: prompt,
+        config: {
+          temperature: 0.1,
+          responseMimeType: "application/json",
+        },
+      });
+
+      const parsed = JSON.parse(response.text || '{"isRelevant": true}');
+      res.json({
+        isRelevant: Boolean(parsed.isRelevant),
+        reason: parsed.reason || ""
+      });
+    } catch (error) {
+      console.error("Gemini Medical Relevance Filter Error:", error);
+      // Fallback: If Gemini error occurs, do a basic check
+      const trimmed = (req.body?.text || '').trim().toLowerCase();
+      const nonMedicalPatterns = [
+        /^test(\s+1|\s+2|\s+3|\s+eins|\s+zwei|\s+drei)?$/i,
+        /^(hallo|hi|guten tag|guten morgen|servus|moin|ciao)(\s+(wie gehts|wie geht es dir))?$/i,
+        /^(geht das|funktioniert das|h[öo]rst du mich|kannst du mich h[öo]ren|mikrofon test)$/i,
+        /^(1\s*2\s*3|eins\s*zwei\s*drei|one\s*two\s*three)$/i
+      ];
+      const isObviouslyNonMedical = nonMedicalPatterns.some(p => p.test(trimmed));
+      res.json({
+        isRelevant: !isObviouslyNonMedical,
+        reason: isObviouslyNonMedical ? "heuristic_non_medical" : "fallback_accepted"
+      });
+    }
+  });
+
   app.get("/api/medications/search", async (req, res) => {
     try {
       const q = req.query.q as string;
