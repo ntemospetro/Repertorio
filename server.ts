@@ -177,7 +177,7 @@ Beachte alle Details aus den Fall-Daten. Keine Daten erfinden, fehlende Daten al
 `;
 
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-3.8-flash",
         contents: prompt,
         config: {
           temperature: 0.2,
@@ -248,7 +248,7 @@ oder
 }`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-3.8-flash",
         contents: prompt,
         config: {
           temperature: 0.1,
@@ -279,32 +279,166 @@ oder
     }
   });
 
+  // Helper for extracting JSON from AI response (handles markdown fences or raw json)
+  function extractJsonFromText(text: string): any {
+    if (!text) return null;
+    let clean = text.trim();
+    const jsonMatch = clean.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+    if (jsonMatch) {
+      clean = jsonMatch[1].trim();
+    }
+    try {
+      return JSON.parse(clean);
+    } catch {
+      const firstBracket = clean.indexOf('[');
+      const lastBracket = clean.lastIndexOf(']');
+      if (firstBracket !== -1 && lastBracket > firstBracket) {
+        try {
+          return JSON.parse(clean.substring(firstBracket, lastBracket + 1));
+        } catch {}
+      }
+      const firstBrace = clean.indexOf('{');
+      const lastBrace = clean.lastIndexOf('}');
+      if (firstBrace !== -1 && lastBrace > firstBrace) {
+        try {
+          return JSON.parse(clean.substring(firstBrace, lastBrace + 1));
+        } catch {}
+      }
+      return null;
+    }
+  }
+
+  const medicationSearchCache = new Map<string, any>();
+  const medicationDetailsCache = new Map<string, any>();
+
+  // Full internet live search for medications with all dosages, side effects, interactions
   app.get("/api/medications/search", async (req, res) => {
     try {
-      const q = req.query.q as string;
-      if (!q || q.length < 2) return res.json({ results: [] });
+      const q = (req.query.q as string || '').trim();
+      if (!q || q.length < 1) return res.json({ results: [] });
+
+      const cacheKey = q.toLowerCase();
+      if (medicationSearchCache.has(cacheKey)) {
+        return res.json({ results: medicationSearchCache.get(cacheKey) });
+      }
+
+      if (!process.env.GEMINI_API_KEY) {
+        return res.json({ results: [] });
+      }
 
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      const prompt = `Generiere eine Liste von 5 realen Medikamenten, die auf die Suchanfrage "${q}" passen. 
-Gib für jedes Medikament gängige Dosierungen (mg, ml, etc.) an.
-Antworte AUSSCHLIESSLICH im JSON-Format:
+      const prompt = `Führe eine vollständige Live-Suche im Internet nach existierenden realen Medikamenten und Präparaten durch, die zur Suchanfrage "${q}" passen (Handelsnamen in Deutschland/Österreich/Schweiz/international, Generika, Wirkstoffe, Fertigarzneimittel).
+Ermittle für bis zu 5 gefundene Medikamente aus dem Internet:
+- name: Offizieller Handelsname / Präparatename
+- activeSubstance: Wirkstoff (INN)
+- category: Indikationsgruppe / Wirkstoffklasse
+- dosages: Typische, reale Dosierungsstärken (Array von Strings, z.B. ["200 mg", "400 mg", "600 mg"])
+- commonForms: Darreichungsformen (Array von Strings, z.B. ["Filmtablette", "Kapsel", "Tropfen"])
+- recommendedIntake: Typische Einnahmeart und Einnahmehinweise (z.B. "1-2x täglich mit Wasser nach den Mahlzeiten")
+- sideEffects: Vollständige Liste aller wichtigen und häufigen Nebenwirkungen (Array von kurzen Strings)
+- interactions: Vollständige Liste aller relevanten Wechselwirkungen mit anderen Medikamenten, Nahrungsmitteln oder Alkohol (Array von kurzen Strings)
+- warnings: Kontraindikationen und wichtige Warnhinweise
+
+Antworte AUSSCHLIESSLICH mit einem validen JSON-Array:
 [
-  { "name": "Medikament Name", "dosages": ["400 mg", "600 mg", "800 mg"] }
+  {
+    "name": "Medikament Name",
+    "activeSubstance": "Wirkstoff",
+    "category": "Wirkstoffgruppe",
+    "dosages": ["..."],
+    "commonForms": ["..."],
+    "recommendedIntake": "...",
+    "sideEffects": ["..."],
+    "interactions": ["..."],
+    "warnings": "..."
+  }
 ]`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-3.8-flash",
         contents: prompt,
         config: {
-          temperature: 0.1,
-          responseMimeType: "application/json",
+          tools: [{ googleSearch: {} }],
         },
       });
-      
-      res.json({ results: JSON.parse(response.text || '[]') });
+
+      const parsed = extractJsonFromText(response.text || '');
+      const results = Array.isArray(parsed) ? parsed : [];
+      medicationSearchCache.set(cacheKey, results);
+
+      // Pre-populate details cache
+      results.forEach((item: any) => {
+        if (item && item.name) {
+          medicationDetailsCache.set(item.name.toLowerCase(), item);
+        }
+      });
+
+      res.json({ results });
     } catch (error) {
-      console.error("Gemini Error:", error);
+      console.error("Gemini Medications Search Error:", error);
       res.status(500).json({ error: "Search failed" });
+    }
+  });
+
+  // Dedicated endpoint for full internet profile of any specific medication name
+  app.get("/api/medications/details", async (req, res) => {
+    try {
+      const name = (req.query.name as string || '').trim();
+      if (!name || name.length < 1) return res.status(400).json({ error: "Missing name" });
+
+      const cacheKey = name.toLowerCase();
+      if (medicationDetailsCache.has(cacheKey)) {
+        return res.json({ details: medicationDetailsCache.get(cacheKey) });
+      }
+
+      if (!process.env.GEMINI_API_KEY) {
+        return res.json({ details: null });
+      }
+
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const prompt = `Führe eine vollständige und gründliche Live-Suche im Internet nach dem Medikament bzw. Wirkstoff "${name}" durch.
+Recherchiere alle medizinischen und pharmazeutischen Fakten aus verlässlichen Quellen:
+- name: Name des Medikaments / Präparats
+- activeSubstance: Wirkstoff (INN)
+- category: Wirkstoffgruppe / therapeutische Kategorie
+- dosages: Reale Standard- und Einzeldosierungen (Array von Strings, z.B. ["20 mg", "40 mg"])
+- commonForms: Darreichungsformen (Array von Strings)
+- recommendedIntake: Einnahmeempfehlung / Häufigkeit (z.B. "1x täglich morgens nüchtern mit Wasser")
+- sideEffects: Vollständige Liste aller relevanten und häufigen Nebenwirkungen (Array von Strings)
+- interactions: Vollständige Liste aller bekannten und kritischen Wechselwirkungen (Array von Strings, z.B. mit NSAR, Antikoagulanzien, Alkohol, etc.)
+- warnings: Wichtige Gegenanzeigen, Kontraindikationen und Risikogruppen
+
+Antworte AUSSCHLIESSLICH als valides JSON-Objekt:
+{
+  "name": "${name}",
+  "activeSubstance": "...",
+  "category": "...",
+  "dosages": ["..."],
+  "commonForms": ["..."],
+  "recommendedIntake": "...",
+  "sideEffects": ["..."],
+  "interactions": ["..."],
+  "warnings": "..."
+}`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3.8-flash",
+        contents: prompt,
+        config: {
+          tools: [{ googleSearch: {} }],
+        },
+      });
+
+      const parsed = extractJsonFromText(response.text || '');
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        medicationDetailsCache.set(cacheKey, parsed);
+        return res.json({ details: parsed });
+      }
+
+      res.json({ details: null });
+    } catch (error) {
+      console.error("Gemini Medications Details Error:", error);
+      res.status(500).json({ error: "Details lookup failed" });
     }
   });
 

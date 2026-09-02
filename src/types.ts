@@ -155,7 +155,17 @@ export interface PatientCase {
     customFelder?: { id: string; name: string; value: string }[];
   };
   nimmtMedikamente?: boolean;
-  medikamenteList?: { name: string; dosierung: string; einnahmeart: string }[];
+  medikamenteList?: { 
+    name: string; 
+    dosierung: string; 
+    einnahmeart: string;
+    grund?: string;
+    wirkstoff?: string;
+    kategorie?: string;
+    nebenwirkungen?: string[];
+    wechselwirkungen?: string[];
+    risiken?: string;
+  }[];
   
   // Analyse-Ergebnis
   analyzedAt?: string;

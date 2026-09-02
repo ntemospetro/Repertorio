@@ -4,217 +4,445 @@ export interface MedicationSuggestion {
   defaultDosages: string[];
   commonForms?: string[];
   activeSubstance?: string;
+  recommendedIntake?: string;
+  sideEffects?: string[];
+  interactions?: string[];
+  warnings?: string;
 }
 
 export const COMMON_MEDICATIONS_DB: MedicationSuggestion[] = [
   {
     name: 'Ibuprofen',
     activeSubstance: 'Ibuprofen',
-    category: 'NSAR / Schmerzmittel',
+    category: 'NSAR / Schmerzmittel & Entzündungshemmer',
     defaultDosages: ['200 mg', '400 mg', '600 mg', '800 mg'],
-    commonForms: ['Filmtablette', 'Granulat', 'Zäpfchen']
+    commonForms: ['Filmtablette', 'Granulat', 'Zäpfchen'],
+    recommendedIntake: '1-3x täglich unzerkaut mit einem Glas Wasser nach den Mahlzeiten',
+    sideEffects: [
+      'Magen-Darm-Beschwerden (Sodbrennen, Bauchschmerzen, Übelkeit)',
+      'Erhöhtes Risiko für Magengeschwüre und Magen-Darm-Blutungen',
+      'Kopfschmerzen, Schwindel',
+      'Beeinträchtigung der Nierenfunktion bei Dehydrierung oder Dauergebrauch',
+      'Gelegentlich allergische Hautreaktionen oder Asthma-Anfälle'
+    ],
+    interactions: [
+      'Andere NSAR und Acetylsalicylsäure (ASS) (erhöhtes Ulkusrisiko)',
+      'Antikoagulanzien / Blutverdünner (stark erhöhtes Blutungsrisiko)',
+      'Antihypertensiva / ACE-Hemmer / Sartane (Abschwächung der Blutdrucksenkung)',
+      'Lithium und Methotrexat (erhöhte Wirkstoffspiegel & Toxizität)',
+      'Alkohol (verstärkte Magenschleimhautreizung)'
+    ],
+    warnings: 'Kontraindiziert bei aktiven gastrointestinalen Ulzera, schwerer Herz-, Leber- oder Niereninsuffizienz sowie im letzten Schwangerschaftsdrittel.'
   },
   {
     name: 'Paracetamol',
     activeSubstance: 'Paracetamol',
     category: 'Analgetikum / Antipyretikum',
     defaultDosages: ['500 mg', '1000 mg', '125 mg', '250 mg'],
-    commonForms: ['Tablette', 'Brausetablette', 'Zäpfchen', 'Saft']
+    commonForms: ['Tablette', 'Brausetablette', 'Zäpfchen', 'Saft'],
+    recommendedIntake: 'Alle 6-8 Stunden bei Schmerzen oder Fieber (max. 4000 mg pro Tag)',
+    sideEffects: [
+      'Hepatotoxizität (Leberschäden) bei Überdosierung (> 4 g/Tag)',
+      'Selten allergische Hautreaktionen (Exanthem, Urtikaria)',
+      'Sehr selten hämatologische Veränderungen (Thrombozytopenie, Leukopenie)'
+    ],
+    interactions: [
+      'Alkohol (stark erhöhtes Risiko für toxische Leberschäden)',
+      'Enzyminduktoren (z. B. Carbamazepin, Phenytoin, Rifampicin)',
+      'Cumarin-Antikoagulanzien (bei dauerhafter Einnahme INR-Verschiebung)'
+    ],
+    warnings: 'Nicht anwenden bei schwerer Leberfunktionsstörung. Streng auf die maximale Tagesdosis achten.'
   },
   {
     name: 'Aspirin (ASS)',
     activeSubstance: 'Acetylsalicylsäure',
     category: 'NSAR / Thrombozytenaggregationshemmer',
     defaultDosages: ['100 mg', '300 mg', '500 mg'],
-    commonForms: ['Tablette', 'Brausetablette', 'Kautablette']
+    commonForms: ['Tablette', 'Brausetablette', 'Kautablette'],
+    recommendedIntake: '100 mg 1x täglich zur Thrombozytenhemmung oder 500 mg bei akuten Schmerzen mit viel Wasser',
+    sideEffects: [
+      'Verlängerte Blutungszeit, Hämatome, Nasenbluten',
+      'Gastrointestinale Beschwerden (Magenschmerzen, Mikroblutungen)',
+      'Asthmaanfälle bei empfindlichen Patienten (Analgetika-Asthma)',
+      'Tinnitus oder Schwindel bei hoher Dosierung'
+    ],
+    interactions: [
+      'Andere Blutgerinnungshemmer (Heparine, DOAK, Cumarine)',
+      'Andere NSAR (Ibuprofen schwächt die thrombozytenhemmende Wirkung von ASS ab)',
+      'Kortikosteroide (erhöhtes Risiko für gastrointestinale Blutungen)',
+      'Methotrexat (erhöhte Toxizität)'
+    ],
+    warnings: 'Kontraindiziert bei Magen-Darm-Ulcera, hämorrhagischer Diathese und Kindern mit Virusinfekten (Reye-Syndrom).'
   },
   {
     name: 'Novalgin (Metamizol)',
     activeSubstance: 'Metamizol-Natrium',
-    category: 'Nicht-Opioid-Analgetikum / Krampflösend',
+    category: 'Nicht-Opioid-Analgetikum / Krampflösend & Antipyretisch',
     defaultDosages: ['500 mg', '1000 mg', '20 Tropfen (500 mg)'],
-    commonForms: ['Filmtablette', 'Tropfen', 'Injektionslösung']
+    commonForms: ['Filmtablette', 'Tropfen', 'Injektionslösung'],
+    recommendedIntake: 'Bedarfsorientiert bis zu 4-mal täglich 500-1000 mg mit etwas Wasser',
+    sideEffects: [
+      'Agranulozytose (seltene, aber lebensbedrohliche Abnahme der Granulozyten)',
+      'Blutdruckabfall (Hypotonie) insbesondere bei schneller Applikation',
+      'Arzneimittelinduzierter Leberschaden (DILI)',
+      'Hautreaktionen (z. B. Stevens-Johnson-Syndrom)'
+    ],
+    interactions: [
+      'Methotrexat (erhöhte Hämatotoxizität)',
+      'Ciclosporin (Absenkung des Ciclosporinspiegels)',
+      'Bupropion (Senkung des Bupropionspiegels)',
+      'Alkohol (potenzierte Wirkung)'
+    ],
+    warnings: 'Sofortiges Absetzen bei Fieber, Halsschmerzen oder Schleimhautulzerationen (Agranulozytose-Verdacht).'
   },
   {
     name: 'Diclofenac (Voltaren)',
     activeSubstance: 'Diclofenac-Natrium',
     category: 'NSAR / Antirheumatikum',
     defaultDosages: ['25 mg', '50 mg', '75 mg', '100 mg retard'],
-    commonForms: ['Tablette', 'Retardkapsel', 'Gel', 'Zäpfchen']
+    commonForms: ['Tablette', 'Retardkapsel', 'Gel', 'Zäpfchen'],
+    recommendedIntake: '1-2x täglich unzerkaut vor den Mahlzeiten mit reichlich Flüssigkeit',
+    sideEffects: [
+      'Gastrointestinale Reizungen, Übelkeit, Ulzera, okkulte Blutungen',
+      'Kardiovaskuläres Risiko (erhöhte Gefahr für Myokardinfarkt und Schlaganfall)',
+      'Transaminasenanstieg (Leberwerte)',
+      'Nierenfunktionseinschränkung und Ödeme'
+    ],
+    interactions: [
+      'Thrombozytenaggregationshemmer und orale Antikoagulanzien',
+      'ACE-Hemmer und Diuretika (Nephrotoxizität und Wirkungsabfall)',
+      'Digoxin und Phenytoin (Erhöhung der Plasmakonzentration)'
+    ],
+    warnings: 'Kontraindiziert bei bekannter Herzinsuffizienz (NYHA II-IV), ischämischer Herzkrankheit und peripherer arterieller Verschlusskrankheit.'
   },
   {
     name: 'Pantoprazol',
     activeSubstance: 'Pantoprazol',
     category: 'Protonenpumpeninhibitor (Magenschutz)',
     defaultDosages: ['20 mg', '40 mg'],
-    commonForms: ['Magensaftresistente Tablette']
+    commonForms: ['Magensaftresistente Tablette'],
+    recommendedIntake: '1x täglich morgens ca. 30-60 Minuten vor dem Frühstück nüchtern mit Wasser',
+    sideEffects: [
+      'Kopfschmerzen, Schwindelgefühl',
+      'Gastrointestinale Beschwerden (Durchfall, Verstopfung, Blähungen)',
+      'Bei Langzeitanwendung: verminderte Aufnahme von Vitamin B12, Magnesium und Calcium',
+      'Erhöhtes Risiko für Clostridioides-difficile-Infektionen'
+    ],
+    interactions: [
+      'Wirkstoffe mit pH-abhängiger Resorption (Ketoconazol, Atazanavir, Eisen)',
+      'Cumarin-Antikoagulanzien (INR-Schwankungen)',
+      'Methotrexat (erhöhte Methotrexat-Spiegel)'
+    ],
+    warnings: 'Langzeittherapie regelmäßig auf Notwendigkeit prüfen; bei Absetzen ausschleichen, um Rebound-Säuresekretion zu vermeiden.'
   },
   {
     name: 'Omeprazol',
     activeSubstance: 'Omeprazol',
     category: 'Protonenpumpeninhibitor (Magenschutz)',
     defaultDosages: ['10 mg', '20 mg', '40 mg'],
-    commonForms: ['Magensaftresistente Kapsel']
+    commonForms: ['Magensaftresistente Kapsel'],
+    recommendedIntake: '1x täglich morgens nüchtern mit ausreichend Flüssigkeit vor der Mahlzeit',
+    sideEffects: [
+      'Gastrointestinale Störungen (Übelkeit, Meteorismus, Diarrhoe)',
+      'Schlafstörungen, Kopfschmerzen',
+      'Hypomagnesiämie bei längerer Einnahme',
+      'Erhöhtes Risiko für Knochenfrakturen bei jahrelangem Gebrauch'
+    ],
+    interactions: [
+      'Clopidogrel (Abschwächung der thrombozytenhemmenden Wirkung durch CYP2C19-Hemmung)',
+      'Diazepam, Phenytoin, Warfarin (verzögerte Elimination)',
+      'HIV-Proteaseinhibitoren'
+    ],
+    warnings: 'Vermeidung der gleichzeitigen Anwendung mit Clopidogrel empfohlen.'
   },
   {
     name: 'L-Thyroxin (Levothyroxin)',
     activeSubstance: 'Levothyroxin-Natrium',
     category: 'Schilddrüsenhormon',
     defaultDosages: ['25 µg', '50 µg', '75 µg', '100 µg', '125 µg', '150 µg'],
-    commonForms: ['Tablette']
+    commonForms: ['Tablette'],
+    recommendedIntake: 'Täglich morgens nüchtern mindestens 30 Minuten vor dem Frühstück nur mit Wasser einnehmen',
+    sideEffects: [
+      'Bei Überdosierung: Tachykardie, Herzklopfen, Herzrhythmusstörungen, innere Unruhe, Zittern, Schwitzen, Schlaflosigkeit, Gewichtsverlust'
+    ],
+    interactions: [
+      'Calcium-, Eisen-, Aluminium- und Magnesiumpräparate (mindestens 2-4 Stunden Abstand einhalten)',
+      'Soja- und ballaststoffreiche Nahrungsmittel (verringern die Aufnahme)',
+      'Antidiabetika (Blutzuckersenkung kann vermindert werden)',
+      'Cumarin-Derivate (Verstärkung der Antikoagulanzienwirkung)'
+    ],
+    warnings: 'Dosis muss anhand regelmäßiger TSH-Blutkontrollen individuell austitriert werden. Nicht zur Gewichtsreduktion verwenden.'
   },
   {
     name: 'Ramipril',
     activeSubstance: 'Ramipril',
-    category: 'ACE-Hemmer (Blutdruck)',
+    category: 'ACE-Hemmer (Blutdruck & Herz)',
     defaultDosages: ['2.5 mg', '5 mg', '10 mg'],
-    commonForms: ['Tablette']
-  },
-  {
-    name: 'Metoprolol',
-    activeSubstance: 'Metoprololsuccinat / -tartrat',
-    category: 'Betablocker (Blutdruck / Puls)',
-    defaultDosages: ['23.75 mg', '47.5 mg', '95 mg', '190 mg'],
-    commonForms: ['Retardtablette']
+    commonForms: ['Tablette'],
+    recommendedIntake: '1x täglich morgens zur gleichen Zeit unabhängig von den Mahlzeiten mit Wasser',
+    sideEffects: [
+      'Trockener Reizhusten (charakteristischer ACE-Hemmer-Husten)',
+      'Hypotonie, Schwindel, Müdigkeit',
+      'Hyperkaliämie (erhöhter Kaliumspiegel)',
+      'Angioödem (selten, aber potenziell lebensbedrohlich)',
+      'Verschlechterung der Nierenfunktion'
+    ],
+    interactions: [
+      'Kaliumsparende Diuretika und Kaliumpräparate (Gefahr schwerer Hyperkaliämie)',
+      'NSAR (Ibuprofen, Diclofenac) (Wirkungsabschwächung und Nierenrisiko)',
+      'Lithium (erhöhte Toxizität)',
+      'Andere Antihypertensiva (additive Blutdrucksenkung)'
+    ],
+    warnings: 'Kontraindiziert bei anamnestischem Angioödem, beidseitiger Nierenarterienstenose und in der Schwangerschaft.'
   },
   {
     name: 'Bisoprolol',
     activeSubstance: 'Bisoprolol',
-    category: 'Betablocker (Blutdruck / Herz)',
+    category: 'Kardioselektiver Betablocker',
     defaultDosages: ['1.25 mg', '2.5 mg', '5 mg', '10 mg'],
-    commonForms: ['Tablette']
+    commonForms: ['Tablette'],
+    recommendedIntake: '1x täglich morgens unzerkaut mit etwas Wasser zum Frühstück',
+    sideEffects: [
+      'Bradykardie (verlangsamter Puls), Blutdruckabfall',
+      'Müdigkeit, Schwindel, Kopfschmerzen',
+      'Kältegefühl in den Extremitäten (Raynaud-Phänomen)',
+      'Bronchospasmus bei vorbestehendem Asthma bronchiale',
+      'Gastrointestinale Beschwerden'
+    ],
+    interactions: [
+      'Calciumkanalblocker vom Verapamil- oder Diltiazem-Typ (Gefahr von AV-Block und Asystolie)',
+      'Antidiabetika und Insulin (Maskierung von Hypoglykämiesymptomen wie Tachykardie)',
+      'Digitalisglykoside (Verlangsamung der Erregungsleitung)'
+    ],
+    warnings: 'Niemals abrupt absetzen (Rebound-Phänomen mit Tachykardie und Angina Pectoris). Langsam ausschleichen.'
   },
   {
     name: 'Amlodipin',
     activeSubstance: 'Amlodipin',
-    category: 'Calciumantagonist (Blutdruck)',
+    category: 'Calciumantagonist vom Dihydropyridin-Typ (Blutdruck)',
     defaultDosages: ['5 mg', '10 mg'],
-    commonForms: ['Tablette']
-  },
-  {
-    name: 'Candesartan',
-    activeSubstance: 'Candesartancilexetil',
-    category: 'AT1-Rezeptor-Antagonist (Blutdruck)',
-    defaultDosages: ['4 mg', '8 mg', '16 mg', '32 mg'],
-    commonForms: ['Tablette']
-  },
-  {
-    name: 'Valsartan',
-    activeSubstance: 'Valsartan',
-    category: 'AT1-Rezeptor-Antagonist (Blutdruck)',
-    defaultDosages: ['80 mg', '160 mg', '320 mg'],
-    commonForms: ['Filmtablette']
-  },
-  {
-    name: 'Simvastatin',
-    activeSubstance: 'Simvastatin',
-    category: 'CSE-Hemmer / Statin (Cholesterin)',
-    defaultDosages: ['10 mg', '20 mg', '40 mg'],
-    commonForms: ['Filmtablette']
-  },
-  {
-    name: 'Atorvastatin',
-    activeSubstance: 'Atorvastatin',
-    category: 'Statin (Cholesterinsenker)',
-    defaultDosages: ['10 mg', '20 mg', '40 mg', '80 mg'],
-    commonForms: ['Filmtablette']
+    commonForms: ['Tablette'],
+    recommendedIntake: '1x täglich morgens unzerkaut mit einem Glas Wasser',
+    sideEffects: [
+      'Periphere Ödeme (Knöchelschwellungen)',
+      'Kopfschmerzen, Schwindel, Flush (Gesichtsrötung mit Hitzegefühl)',
+      'Müdigkeit, Palpitationen (Herzklopfen)'
+    ],
+    interactions: [
+      'Grapefruitsaft (erhöht die Bioverfügbarkeit und verstärkt Nebenwirkungen)',
+      'CYP3A4-Inhibitoren (z.B. Ketoconazol, Erythromycin, Diltiazem)',
+      'Simvastatin (erhöhtes Myopathierisiko, Simvastatin-Dosis auf max. 20 mg begrenzen)'
+    ],
+    warnings: 'Vorsicht bei schwerer Aortenstenose und dekompensierter Herzinsuffizienz.'
   },
   {
     name: 'Metformin',
     activeSubstance: 'Metforminhydrochlorid',
-    category: 'Antidiabetikum (Blutzucker)',
+    category: 'Oraler Antidiabetikum (Biguanid)',
     defaultDosages: ['500 mg', '850 mg', '1000 mg'],
-    commonForms: ['Filmtablette']
+    commonForms: ['Filmtablette'],
+    recommendedIntake: 'Zu oder nach den Mahlzeiten einnehmen, um Magen-Darm-Nebenwirkungen zu reduzieren',
+    sideEffects: [
+      'Gastrointestinale Störungen (Übelkeit, Erbrechen, Diarrhoe, Blähungen, metallischer Geschmack)',
+      'Laktatazidose (sehr selten, aber potenziell fatal)',
+      'Vitamin-B12-Mangel bei Langzeitanwendung'
+    ],
+    interactions: [
+      'Alkohol (akute Vergiftung erhöht massiv das Risiko einer Laktatazidose)',
+      'Iodhaltige Röntgenkontrastmittel (Gefahr des Nierenversagens; vorher pausieren)',
+      'NSAR und ACE-Hemmer (können durch renale Effekte Laktatazidose begünstigen)'
+    ],
+    warnings: 'Kontraindiziert bei GFR < 30 ml/min, schwerer Leberinsuffizienz, Sepsis und akutem Myokardinfarkt.'
   },
   {
-    name: 'Citalopram',
-    activeSubstance: 'Citalopram',
-    category: 'SSRI / Antidepressivum',
-    defaultDosages: ['10 mg', '20 mg', '40 mg'],
-    commonForms: ['Filmtablette', 'Tropfen']
+    name: 'Eliquis (Apixaban)',
+    activeSubstance: 'Apixaban',
+    category: 'Direktes Orales Antikoagulans (DOAK / Faktor-Xa-Hemmer)',
+    defaultDosages: ['2.5 mg', '5 mg'],
+    commonForms: ['Filmtablette'],
+    recommendedIntake: '2x täglich (morgens und abends im Abstand von 12 Stunden) mit Wasser unabhängig von Mahlzeiten',
+    sideEffects: [
+      'Erhöhtes Blutungsrisiko (Hämatome, Zahnfleischbluten, Epistaxis)',
+      'Gastrointestinale Blutungen oder Ulzera',
+      'Hämaturie (Blut im Urin)',
+      'Anämie, Übelkeit, erhöhte Lebertransaminasen'
+    ],
+    interactions: [
+      'Starke CYP3A4- und P-gp-Inhibitoren (z. B. Ketoconazol, Itraconazol)',
+      'Starke CYP3A4- und P-gp-Induktoren (z. B. Rifampicin, Johanniskraut, Carbamazepin)',
+      'Andere Blutgerinnungshemmer (Heparine, Warfarin, Phenprocoumon)',
+      'NSAR (Ibuprofen, Diclofenac) und Thrombozytenaggregationshemmer (starkes Blutungsrisiko)',
+      'SSRI / SNRI (erhöhtes Risiko für gastrointestinale Schleimhautblutungen)'
+    ],
+    warnings: 'Nicht absetzen ohne ärztliche Rücksprache (Thromboserisiko). Vor geplanten Operationen rechtzeitig pausieren.'
   },
   {
-    name: 'Sertralin',
-    activeSubstance: 'Sertralin',
-    category: 'SSRI / Antidepressivum',
-    defaultDosages: ['50 mg', '100 mg'],
-    commonForms: ['Filmtablette']
+    name: 'Xarelto (Rivaroxaban)',
+    activeSubstance: 'Rivaroxaban',
+    category: 'Direktes Orales Antikoagulans (DOAK / Faktor-Xa-Hemmer)',
+    defaultDosages: ['10 mg', '15 mg', '20 mg'],
+    commonForms: ['Filmtablette'],
+    recommendedIntake: '15 mg und 20 mg müssen unbedingt ZUSAMMEN mit einer Mahlzeit eingenommen werden (erhöht Bioverfügbarkeit)',
+    sideEffects: [
+      'Blutungskomplikationen (ZNS, Magen-Darm, Weichteile, Urogenital)',
+      'Schwindel, Kopfschmerzen',
+      'Transaminasenanstieg, Schwellungen der Gliedmaßen'
+    ],
+    interactions: [
+      'Andere Antikoagulanzien und Thrombozytenfunktionshemmer (ASS, Clopidogrel)',
+      'NSAR (vervielfachtes gastrointestinales Blutungsrisiko)',
+      'CYP3A4- und P-gp-Hemmer oder -Induktoren'
+    ],
+    warnings: 'Kontraindiziert bei akuten klinisch relevanten Blutungen, schwerer Lebererkrankung mit Koagulopathie sowie in Schwangerschaft und Stillzeit.'
   },
   {
-    name: 'Mirtazapin',
-    activeSubstance: 'Mirtazapin',
-    category: 'NaSSA / Antidepressivum (schlaffördernd)',
-    defaultDosages: ['15 mg', '30 mg', '45 mg'],
-    commonForms: ['Filmtablette', 'Schmelztablette']
-  },
-  {
-    name: 'Salbutamol',
-    activeSubstance: 'Salbutamol',
-    category: 'Beta-2-Sympathomimetikum (Asthma/Bronchodilatator)',
-    defaultDosages: ['100 µg/Hub', '200 µg/Hub'],
-    commonForms: ['Dosieraerosol', 'Inhalationspulver']
-  },
-  {
-    name: 'Budesonid',
-    activeSubstance: 'Budesonid',
-    category: 'Glukokortikoid (Inhalativ/Asthma)',
-    defaultDosages: ['200 µg/Hub', '400 µg/Hub'],
-    commonForms: ['Pulverinhalator', 'Nasenspray']
-  },
-  {
-    name: 'Triptane (Sumatriptan/Zolmitriptan)',
-    activeSubstance: 'Sumatriptan / Zolmitriptan',
-    category: 'Akute Migränetherapie',
-    defaultDosages: ['50 mg', '100 mg', '2.5 mg', '5 mg'],
-    commonForms: ['Filmtablette', 'Nasenspray', 'Schmelztablette']
-  },
-  {
-    name: 'Magnesium',
-    activeSubstance: 'Magnesiumcitrat / -oxid',
-    category: 'Mineralstoff / Nahrungsergänzung',
-    defaultDosages: ['150 mg', '300 mg', '400 mg'],
-    commonForms: ['Brausetablette', 'Kapsel', 'Granulat']
-  },
-  {
-    name: 'Vitamin D3',
-    activeSubstance: 'Cholecalciferol',
-    category: 'Vitamin / Nahrungsergänzung',
-    defaultDosages: ['1.000 I.E.', '2.000 I.E.', '5.000 I.E.', '20.000 I.E.'],
-    commonForms: ['Tropfen', 'Kapsel', 'Tablette']
+    name: 'Torasemid',
+    activeSubstance: 'Torasemid',
+    category: 'Schleifendiuretikum (Entwässerungsmittel)',
+    defaultDosages: ['2.5 mg', '5 mg', '10 mg', '20 mg'],
+    commonForms: ['Tablette'],
+    recommendedIntake: '1x täglich morgens mit etwas Flüssigkeit zum Frühstück',
+    sideEffects: [
+      'Elektrolytverschiebungen (Hypokaliämie, Hyponatriämie, Hypocalcämie)',
+      'Hypovolämie und Dehydratation, Hypotonie',
+      'Anstieg von Harnsäure (Gichtgefahr), Kreatinin und Blutzucker',
+      'Wadenkrämpfe, Schwindel, Kopfschmerzen'
+    ],
+    interactions: [
+      'Digitalisglykoside (Toxizität steigt bei Hypokaliämie)',
+      'Lithium (verminderte Lithiumausscheidung)',
+      'NSAR (verminderte diuretische und antihypertensive Wirkung)',
+      'Ototoxische und nephrotoxische Arzneimittel (Aminoglykoside, Cisplatin)'
+    ],
+    warnings: 'Regelmäßige Kontrolle von Kalium, Natrium und Nierenwerten erforderlich.'
   }
 ];
+
+// In-memory cache for fast responsive lookups
+const searchCache = new Map<string, MedicationSuggestion[]>();
+const detailsCache = new Map<string, MedicationSuggestion>();
 
 export async function searchMedications(query: string): Promise<MedicationSuggestion[]> {
   if (!query || query.trim().length < 1) return [];
   const q = query.toLowerCase().trim();
 
-  // First filter local DB
+  // Return cached result if available
+  if (searchCache.has(q)) {
+    return searchCache.get(q)!;
+  }
+
+  // Check local database for immediate matches
   const localMatches = COMMON_MEDICATIONS_DB.filter(m => 
     m.name.toLowerCase().includes(q) || 
     (m.activeSubstance && m.activeSubstance.toLowerCase().includes(q)) ||
     (m.category && m.category.toLowerCase().includes(q))
   );
 
-  // If we have great local matches, return them immediately
-  if (localMatches.length > 0) {
-    return localMatches;
-  }
-
-  // Otherwise, optionally call the live endpoint
+  // Always perform a live internet search via the server endpoint
   try {
-    const res = await fetch(`/api/medications/search?q=${encodeURIComponent(query)}`);
+    const res = await fetch(`/api/medications/search?q=${encodeURIComponent(query.trim())}`);
     if (res.ok) {
       const data = await res.json();
       if (data.results && Array.isArray(data.results) && data.results.length > 0) {
-        return data.results.map((r: any) => ({
-          name: r.name,
-          defaultDosages: r.dosages || ['Standard'],
+        const liveResults: MedicationSuggestion[] = data.results.map((r: any) => ({
+          name: r.name || query,
+          activeSubstance: r.activeSubstance || '',
+          category: r.category || '',
+          defaultDosages: Array.isArray(r.dosages) && r.dosages.length > 0 ? r.dosages : ['Standard'],
+          commonForms: Array.isArray(r.commonForms) ? r.commonForms : [],
+          recommendedIntake: r.recommendedIntake || '',
+          sideEffects: Array.isArray(r.sideEffects) ? r.sideEffects : [],
+          interactions: Array.isArray(r.interactions) ? r.interactions : [],
+          warnings: r.warnings || ''
         }));
+
+        // Merge live results with local matches, deduplicating by normalized name
+        const seenNames = new Set<string>();
+        const merged: MedicationSuggestion[] = [];
+
+        for (const item of liveResults) {
+          const key = item.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+          if (!seenNames.has(key)) {
+            seenNames.add(key);
+            merged.push(item);
+          }
+        }
+
+        for (const item of localMatches) {
+          const key = item.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+          if (!seenNames.has(key)) {
+            seenNames.add(key);
+            merged.push(item);
+          }
+        }
+
+        searchCache.set(q, merged);
+        return merged;
       }
     }
   } catch (err) {
-    // ignore
+    console.warn('Live medication search error, using local database:', err);
+  }
+
+  // If live search returned empty or errored, return local matches
+  if (localMatches.length > 0) {
+    searchCache.set(q, localMatches);
+    return localMatches;
   }
 
   return [];
 }
+
+export async function fetchMedicationDetails(name: string): Promise<MedicationSuggestion | null> {
+  if (!name || !name.trim()) return null;
+  const key = name.toLowerCase().trim();
+
+  if (detailsCache.has(key)) {
+    return detailsCache.get(key)!;
+  }
+
+  // Check local database first
+  const localMatch = COMMON_MEDICATIONS_DB.find(m => 
+    m.name.toLowerCase() === key ||
+    key.includes(m.name.toLowerCase()) ||
+    (m.activeSubstance && key.includes(m.activeSubstance.toLowerCase()))
+  );
+
+  try {
+    const res = await fetch(`/api/medications/details?name=${encodeURIComponent(name.trim())}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.details) {
+        const item: MedicationSuggestion = {
+          name: data.details.name || name,
+          activeSubstance: data.details.activeSubstance || localMatch?.activeSubstance || '',
+          category: data.details.category || localMatch?.category || '',
+          defaultDosages: Array.isArray(data.details.dosages) && data.details.dosages.length > 0
+            ? data.details.dosages
+            : (localMatch?.defaultDosages || ['Standard']),
+          commonForms: Array.isArray(data.details.commonForms) ? data.details.commonForms : (localMatch?.commonForms || []),
+          recommendedIntake: data.details.recommendedIntake || localMatch?.recommendedIntake || '',
+          sideEffects: Array.isArray(data.details.sideEffects) && data.details.sideEffects.length > 0
+            ? data.details.sideEffects
+            : (localMatch?.sideEffects || []),
+          interactions: Array.isArray(data.details.interactions) && data.details.interactions.length > 0
+            ? data.details.interactions
+            : (localMatch?.interactions || []),
+          warnings: data.details.warnings || localMatch?.warnings || ''
+        };
+        detailsCache.set(key, item);
+        return item;
+      }
+    }
+  } catch (err) {
+    console.warn('Failed to fetch live medication details:', err);
+  }
+
+  if (localMatch) {
+    detailsCache.set(key, localMatch);
+    return localMatch;
+  }
+
+  return null;
+}
+

@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { TranslationKey } from '../i18n/translations';
-import { MedicationLiveInput } from './MedicationLiveInput';
+import { MedicationLiveInput, MedicationData } from './MedicationLiveInput';
 import { X, Plus, Pill, Save, Check } from 'lucide-react';
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
   nimmtMedikamente?: boolean;
-  medikamenteList?: Array<{ name: string; dosierung: string; einnahmeart: string; grund?: string }>;
-  onSave: (data: { nimmtMedikamente: boolean; medikamenteList: Array<{ name: string; dosierung: string; einnahmeart: string; grund?: string }> }) => void;
+  medikamenteList?: Array<MedicationData>;
+  onSave: (data: { nimmtMedikamente: boolean; medikamenteList: Array<MedicationData> }) => void;
   patientName?: string;
 }
 
@@ -22,7 +22,7 @@ export const MedicationsWizardModal: React.FC<Props> = ({
   patientName
 }) => {
   const { t } = useLanguage();
-  const [list, setList] = useState<Array<{ name: string; dosierung: string; einnahmeart: string; grund?: string }>>([]);
+  const [list, setList] = useState<Array<MedicationData>>([]);
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
 
@@ -45,7 +45,7 @@ export const MedicationsWizardModal: React.FC<Props> = ({
     setList(prev => [...prev, { name: '', dosierung: '', einnahmeart: '', grund: '' }]);
   };
 
-  const handleUpdateMedication = (index: number, updated: { name: string; dosierung: string; einnahmeart: string; grund?: string }) => {
+  const handleUpdateMedication = (index: number, updated: MedicationData) => {
     setList(prev => {
       const copy = [...prev];
       copy[index] = updated;
