@@ -43,6 +43,7 @@ import {
   Lock, 
   CheckCircle2, 
   AlertTriangle, 
+  AlertCircle,
   FileText, 
   User, 
   Calendar, 
@@ -217,29 +218,13 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
 
   const [isUnconfirmedSummaryModalOpen, setIsUnconfirmedSummaryModalOpen] = useState(false);
   const [isAnalysisAlreadyCreatedModalOpen, setIsAnalysisAlreadyCreatedModalOpen] = useState(false);
+  const [adoptionBlockedSection, setAdoptionBlockedSection] = useState<'stammdaten' | 'hauptbeschwerde' | null>(null);
 
   const toggleSummaryAccordion = (section: 'stammdaten' | 'hauptbeschwerde' | 'fragebogen' | 'befund' | 'medikamente') => {
     setSummaryAccordionOpen(prev => ({
       ...prev,
       [section]: !prev[section],
     }));
-  };
-
-  const toggleSectionConfirmation = (section: 'stammdaten' | 'hauptbeschwerde' | 'fragebogen' | 'befund' | 'medikamente', confirmed?: boolean) => {
-    setSummaryConfirmedSections(prev => ({
-      ...prev,
-      [section]: confirmed !== undefined ? confirmed : !prev[section],
-    }));
-  };
-
-  const handleAdoptAllSections = () => {
-    setSummaryConfirmedSections({
-      stammdaten: true,
-      hauptbeschwerde: true,
-      fragebogen: true,
-      befund: true,
-      medikamente: true,
-    });
   };
 
   const areAllSummarySectionsConfirmed = 
@@ -264,7 +249,7 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
         const pregnancyOk = currentCase.patientGender !== 'weiblich' || !currentCase.isPregnant || Boolean(currentCase.pregnancyMonth);
         const childrenOk = !currentCase.hasChildren || (Boolean(currentCase.childrenList && currentCase.childrenList.length > 0) && currentCase.childrenList!.every(c => c.name && c.name.trim()));
 
-        if (hasName && pregnancyOk && childrenOk) {
+        if (hasName && hasAgeOrBirth && pregnancyOk && childrenOk) {
           return { status: 'complete', percent: 100 };
         }
 
@@ -375,6 +360,94 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
       default:
         return { status: 'empty', percent: 0 };
     }
+  };
+
+  const getMissingStammdatenFields = (): string[] => {
+    const missing: string[] = [];
+    if (!currentCase.patientName || !currentCase.patientName.trim()) {
+      missing.push(t('missingFieldPatientName'));
+    }
+    if (currentCase.patientAge === undefined && (!currentCase.patientBirthDate || !currentCase.patientBirthDate.trim())) {
+      missing.push(t('missingFieldBirthDateOrAge'));
+    }
+    const isFemale = (currentCase.patientGender || 'weiblich') === 'weiblich';
+    if (isFemale && currentCase.isPregnant && !currentCase.pregnancyMonth) {
+      missing.push(t('missingFieldPregnancyMonth'));
+    }
+    if (currentCase.hasChildren && (!currentCase.childrenList || currentCase.childrenList.length === 0 || currentCase.childrenList.some(c => !c.name || !c.name.trim()))) {
+      missing.push(t('missingFieldChildrenList'));
+    }
+    return missing;
+  };
+
+  const getMissingHauptbeschwerdeFields = (): string[] => {
+    const missing: string[] = [];
+    if (!currentCase.hauptbeschwerde || currentCase.hauptbeschwerde.trim().length < 5) {
+      missing.push(t('missingFieldHauptbeschwerde'));
+    }
+    const questions = currentCase.anamnesisQuestions || [];
+    if (questions.length > 0) {
+      const answeredQuestions = questions.filter(q => 
+        Boolean(q.answerScaleCurrent !== undefined) ||
+        Boolean(q.answerScaleWorst !== undefined) ||
+        Boolean(q.answerChoice && q.answerChoice.trim()) ||
+        Boolean(q.answerMultiChoice && q.answerMultiChoice.length > 0) ||
+        Boolean(q.answerText && q.answerText.trim())
+      ).length;
+      if (answeredQuestions < questions.length) {
+        missing.push(t('missingFieldAnamnesisQuestions'));
+      }
+    } else if (currentCase.hauptbeschwerde && currentCase.hauptbeschwerde.trim().length < 15) {
+      missing.push(t('missingFieldHauptbeschwerde'));
+    }
+    return missing;
+  };
+
+  const toggleSectionConfirmation = (section: 'stammdaten' | 'hauptbeschwerde' | 'fragebogen' | 'befund' | 'medikamente', confirmed?: boolean) => {
+    const willConfirm = confirmed !== undefined ? confirmed : !summaryConfirmedSections[section];
+
+    if (willConfirm) {
+      if (section === 'stammdaten') {
+        const missing = getMissingStammdatenFields();
+        if (missing.length > 0 || getStepInfo(1).status !== 'complete') {
+          setAdoptionBlockedSection('stammdaten');
+          return;
+        }
+      }
+      if (section === 'hauptbeschwerde') {
+        const missing = getMissingHauptbeschwerdeFields();
+        if (missing.length > 0 || getStepInfo(2).status !== 'complete') {
+          setAdoptionBlockedSection('hauptbeschwerde');
+          return;
+        }
+      }
+    }
+
+    setSummaryConfirmedSections(prev => ({
+      ...prev,
+      [section]: willConfirm,
+    }));
+  };
+
+  const handleAdoptAllSections = () => {
+    const missingStamm = getMissingStammdatenFields();
+    if (missingStamm.length > 0 || getStepInfo(1).status !== 'complete') {
+      setAdoptionBlockedSection('stammdaten');
+      return;
+    }
+    const missingHaupt = getMissingHauptbeschwerdeFields();
+    if (missingHaupt.length > 0 || getStepInfo(2).status !== 'complete') {
+      setAdoptionBlockedSection('hauptbeschwerde');
+      return;
+    }
+
+    setSummaryConfirmedSections({
+      stammdaten: true,
+      hauptbeschwerde: true,
+      fragebogen: true,
+      befund: true,
+      medikamente: true,
+    });
   };
 
   const renderSummarySectionBadge = (stepNum: number, isConfirmed: boolean) => {
@@ -3322,6 +3395,80 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
               >
                 <Plus className="w-4 h-4" />
                 <span>{t('newCaseBtn')}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Übernahme nicht möglich wegen fehlender Pflichtangaben */}
+      {adoptionBlockedSection && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl max-w-md w-full border border-slate-200 shadow-2xl overflow-hidden p-6 sm:p-7 text-center space-y-5 animate-in zoom-in-95 duration-200">
+            <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center mx-auto shadow-inner">
+              <AlertCircle className="w-7 h-7" />
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="text-lg sm:text-xl font-bold text-slate-900 font-serif">
+                {t('summaryAdoptionBlockedTitle')}
+              </h3>
+              <p className="text-xs sm:text-sm font-semibold text-amber-700">
+                {t('summaryAdoptionBlockedDesc')}
+              </p>
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed max-w-sm mx-auto">
+                {adoptionBlockedSection === 'stammdaten'
+                  ? t('summaryAdoptionBlockedStammdatenDetail')
+                  : t('summaryAdoptionBlockedHauptbeschwerdeDetail')}
+              </p>
+            </div>
+
+            {/* Liste der fehlenden Pflichtangaben */}
+            {(() => {
+              const missingFields = adoptionBlockedSection === 'stammdaten'
+                ? getMissingStammdatenFields()
+                : getMissingHauptbeschwerdeFields();
+              if (missingFields.length === 0) return null;
+              return (
+                <div className="p-3.5 bg-amber-50/70 border border-amber-200 rounded-xl text-left space-y-2 text-xs">
+                  <span className="font-bold text-slate-800 block">
+                    {t('summaryMissingSections')}
+                  </span>
+                  <ul className="space-y-1.5">
+                    {missingFields.map((field, idx) => (
+                      <li key={idx} className="flex items-center gap-2 text-slate-700 font-medium">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0"></span>
+                        <span>{field}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })()}
+
+            <div className="pt-2 flex flex-col-reverse sm:flex-row items-center justify-center gap-3">
+              <button
+                type="button"
+                id="btn-close-adoption-blocked-modal"
+                onClick={() => setAdoptionBlockedSection(null)}
+                className="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-semibold transition-colors cursor-pointer"
+              >
+                {t('btnCancelModal')}
+              </button>
+
+              <button
+                type="button"
+                id="btn-goto-incomplete-section"
+                onClick={() => {
+                  const targetStep = adoptionBlockedSection === 'stammdaten' ? 1 : 2;
+                  setAdoptionBlockedSection(null);
+                  setCurrentStep(targetStep);
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all shadow-md cursor-pointer"
+              >
+                <span>{t('summaryAdoptionBlockedEditBtn')}</span>
+                <ArrowRight className="w-4 h-4" />
               </button>
             </div>
           </div>

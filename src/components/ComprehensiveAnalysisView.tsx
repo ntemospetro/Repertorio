@@ -21,7 +21,6 @@ import {
   Activity,
   HeartHandshake,
   Download,
-  FileCheck,
   Check,
   Clock,
   Timer
@@ -43,7 +42,7 @@ export const ComprehensiveAnalysisView: React.FC<ComprehensiveAnalysisViewProps>
   isAnalyzing = false
 }) => {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState<'falldaten' | 'redFlags' | 'differential' | 'homoeopathie' | 'medikamente' | 'gesamt'>('gesamt');
+  const [activeTab, setActiveTab] = useState<'redFlags' | 'falldaten' | 'differential' | 'homoeopathie' | 'medikamente' | 'gesamt'>('redFlags');
   const [downloadSuccess, setDownloadSuccess] = useState<string | null>(null);
 
   const handleDownloadPDF = (cat: PDFExportCategory, label: string) => {
@@ -109,75 +108,19 @@ export const ComprehensiveAnalysisView: React.FC<ComprehensiveAnalysisViewProps>
           </div>
         )}
 
-        {/* Individual Category Quick Downloads */}
-        <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
-              <FileCheck className="w-3.5 h-3.5 text-teal-600" />
-              <span>{t('downloadSingleCategoriesHeader')}</span>
-            </span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
-            <button
-              type="button"
-              onClick={() => handleDownloadPDF('falldaten', t('tabRecordedCaseData'))}
-              className="flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-lg bg-white hover:bg-teal-50 text-slate-700 hover:text-teal-900 border border-slate-200 hover:border-teal-300 text-xs font-semibold transition-colors cursor-pointer shadow-2xs"
-            >
-              <FileText className="w-3.5 h-3.5 text-teal-600" />
-              <span className="truncate">{t('pdfFalldatenBtn')}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleDownloadPDF('redFlags', t('tabRedFlags'))}
-              className="flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-lg bg-white hover:bg-amber-50 text-slate-700 hover:text-amber-950 border border-slate-200 hover:border-amber-300 text-xs font-semibold transition-colors cursor-pointer shadow-2xs"
-            >
-              <ShieldAlert className="w-3.5 h-3.5 text-amber-600" />
-              <span className="truncate">{t('pdfWarningsBtn')}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleDownloadPDF('medikamente', t('tabMedications'))}
-              className="flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-lg bg-white hover:bg-teal-50 text-slate-700 hover:text-teal-900 border border-slate-200 hover:border-teal-300 text-xs font-semibold transition-colors cursor-pointer shadow-2xs"
-            >
-              <Pill className="w-3.5 h-3.5 text-teal-600" />
-              <span className="truncate">{t('pdfMedsBtn')}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleDownloadPDF('differential', t('tabDifferentialDiagnosis'))}
-              className="flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-lg bg-white hover:bg-teal-50 text-slate-700 hover:text-teal-900 border border-slate-200 hover:border-teal-300 text-xs font-semibold transition-colors cursor-pointer shadow-2xs"
-            >
-              <Stethoscope className="w-3.5 h-3.5 text-teal-600" />
-              <span className="truncate">{t('pdfDiffBtn')}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleDownloadPDF('homoeopathie', t('tabHomeopathyAnalysis'))}
-              className="flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-lg bg-white hover:bg-teal-50 text-slate-700 hover:text-teal-900 border border-slate-200 hover:border-teal-300 text-xs font-semibold transition-colors cursor-pointer shadow-2xs"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-teal-600" />
-              <span className="truncate">{t('pdfHomeoBtn')}</span>
-            </button>
-          </div>
-        </div>
-
         {/* Tab Navigation */}
         <div className="flex flex-wrap gap-1.5 sm:gap-2 pt-2 border-t border-slate-100">
           <button
             type="button"
-            onClick={() => setActiveTab('gesamt')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer ${
-              activeTab === 'gesamt'
-                ? 'bg-slate-900 text-white shadow-2xs'
+            onClick={() => setActiveTab('redFlags')}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+              activeTab === 'redFlags'
+                ? 'bg-amber-100/90 text-amber-950 border border-amber-300 shadow-2xs'
                 : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200'
             }`}
           >
-            <Layers className="w-4 h-4" />
-            <span>{t('tabAllCategories')}</span>
+            <ShieldAlert className="w-4 h-4 text-amber-600" />
+            <span>{t('tabRedFlags')}</span>
           </button>
 
           <button
@@ -191,19 +134,6 @@ export const ComprehensiveAnalysisView: React.FC<ComprehensiveAnalysisViewProps>
           >
             <FileText className="w-4 h-4 text-teal-300" />
             <span>{t('tabRecordedCaseData')}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('redFlags')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
-              activeTab === 'redFlags'
-                ? 'bg-amber-100/90 text-amber-950 border border-amber-300 shadow-2xs'
-                : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200'
-            }`}
-          >
-            <ShieldAlert className="w-4 h-4 text-amber-600" />
-            <span>{t('tabRedFlags')}</span>
           </button>
 
           <button
@@ -243,6 +173,19 @@ export const ComprehensiveAnalysisView: React.FC<ComprehensiveAnalysisViewProps>
           >
             <Sparkles className="w-4 h-4 text-teal-300" />
             <span>{t('tabHomeopathyAnalysis')}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('gesamt')}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+              activeTab === 'gesamt'
+                ? 'bg-slate-900 text-white shadow-2xs'
+                : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200'
+            }`}
+          >
+            <Layers className="w-4 h-4" />
+            <span>{t('tabAllCategories')}</span>
           </button>
         </div>
       </div>
