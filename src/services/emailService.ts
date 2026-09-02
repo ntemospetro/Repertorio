@@ -1,6 +1,5 @@
 import { EmailConfig, LanguageCode } from '../types';
-import { getEmailConfig, getTherapists, getAdminCredentials, getTermsAndConditions } from './storage';
-import { exportTermsToPDF } from './pdfExportService';
+import { getEmailConfig, getTherapists, getAdminCredentials } from './storage';
 
 export interface EmailAttachment {
   filename: string;
@@ -124,8 +123,8 @@ export async function sendViaHostingerApi(options: SendEmailOptions): Promise<Em
 }
 
 /**
- * Sendet eine Registrierungs-Bestätigungscode-E-Mail mit den aktuellen AGB als PDF-Anhang
- * und Bestätigungstext in der vom Nutzer gewählten Sprache.
+ * Sendet eine Registrierungs-Bestätigungscode-E-Mail mit rechtlicher Vertragsakzeptanz (AGB)
+ * im Nachrichtentext in der vom Nutzer gewählten Sprache (ohne PDF-Anhang, um Spamfilter zu vermeiden).
  */
 export async function sendRegistrationVerificationCodeEmail(
   targetEmail: string,
@@ -138,41 +137,6 @@ export async function sendRegistrationVerificationCodeEmail(
 
   const validLang = (['de', 'en', 'es', 'fr', 'it', 'el', 'ru'].includes(lang) ? lang : 'de') as LanguageCode;
 
-  // Aktuelle AGB aus dem Speicher laden (Admin-Stand)
-  const terms = getTermsAndConditions(validLang);
-  const termsVer = terms.version || '1.0.0';
-  const termsUpdated = terms.lastUpdated || new Date().toLocaleDateString(validLang === 'de' ? 'de-DE' : 'en-US');
-  const cleanVer = termsVer.replace(/[^a-zA-Z0-9._-]/g, '_');
-  const langUpper = validLang.toUpperCase();
-  const pdfFilename = `HomeoPilot360_AGB_v${cleanVer}_${langUpper}.pdf`;
-
-  // PDF des aktuellen AGB-Dokuments dynamisch generieren
-  let attachments: EmailAttachment[] = [];
-  try {
-    const doc = exportTermsToPDF(
-      {
-        title: terms.title,
-        lastUpdated: termsUpdated,
-        version: termsVer,
-        content: terms.content,
-        language: validLang,
-      },
-      { download: false }
-    );
-
-    const dataUri = doc.output('datauristring');
-    const base64Data = dataUri ? dataUri.split(',')[1] : null;
-    if (base64Data) {
-      attachments.push({
-        filename: pdfFilename,
-        content: base64Data,
-        contentType: 'application/pdf',
-      });
-    }
-  } catch (err) {
-    console.error('Fehler bei der PDF-Generierung für den E-Mail-Anhang:', err);
-  }
-
   const titles: Record<
     LanguageCode,
     {
@@ -183,102 +147,86 @@ export async function sendRegistrationVerificationCodeEmail(
       codeLabel: string;
       legalHeader: string;
       legalText: string;
-      pdfAttachedNotice: string;
-      attachmentLabel: string;
       note: string;
       footer: string;
     }
   > = {
     de: {
-      subject: `HomeoPilot 360 - Ihr Bestätigungscode: ${code} • AGB & Nutzungsbedingungen`,
-      title: 'E-Mail-Bestätigung & Vertragsunterlagen für Ihre Registrierung',
+      subject: `HomeoPilot 360 - Ihr Bestätigungscode: ${code}`,
+      title: 'E-Mail-Bestätigung für Ihre Registrierung',
       greeting: `Guten Tag ${recipientName || 'Therapeut'},`,
       msg: 'vielen Dank für Ihre Registrierung bei HomeoPilot 360. Bitte verwenden Sie den folgenden 6-stelligen Bestätigungscode, um Ihre E-Mail-Adresse zu verifizieren und Ihr Therapeutenkonto zu aktivieren:',
       codeLabel: 'Ihr persönlicher Bestätigungscode',
       legalHeader: 'Rechtlicher Hinweis & Vertragsakzeptanz',
       legalText: 'Mit Ihrer Registrierung und der Eingabe des Bestätigungscodes bestätigen Sie verbindlich, dass Sie die Allgemeinen Geschäftsbedingungen (AGB) und die Nutzungsbedingungen der Plattform HomeoPilot 360 sorgfältig gelesen, verstanden und vollumfänglich akzeptiert haben.',
-      pdfAttachedNotice: `Die aktuell gültige Fassung der AGB & Nutzungsbedingungen (Version ${termsVer}, Stand: ${termsUpdated}) ist dieser E-Mail als offizielles PDF-Dokument beigefügt. Sie bestätigen hiermit, dieses Dokument erhalten und zur Kenntnis genommen zu haben.`,
-      attachmentLabel: 'Angehängtes PDF-Dokument:',
       note: 'Geben Sie diesen Code in das Registrierungsfenster ein. Der Code ist für Ihre Registrierung gültig. Falls Sie diese Registrierung nicht veranlasst haben, können Sie diese E-Mail ignorieren.',
-      footer: 'HomeoPilot 360 • Klinische Homöopathie & Praxismanagement • Rechtsverbindliche Vertragsunterlagen',
+      footer: 'HomeoPilot 360 • Klinische Homöopathie & Praxismanagement',
     },
     en: {
-      subject: `HomeoPilot 360 - Your Confirmation Code: ${code} • Terms & Conditions`,
-      title: 'Email Verification & Legal Documents for Your Registration',
+      subject: `HomeoPilot 360 - Your Confirmation Code: ${code}`,
+      title: 'Email Verification for Your Registration',
       greeting: `Hello ${recipientName || 'Therapist'},`,
       msg: 'Thank you for registering with HomeoPilot 360. Please use the following 6-digit confirmation code to verify your email address and activate your therapist account:',
       codeLabel: 'Your Confirmation Code',
       legalHeader: 'Legal Notice & Terms Acceptance',
       legalText: 'By completing your registration and submitting this confirmation code, you expressly confirm that you have carefully read, understood, and fully accepted the General Terms and Conditions (GTC) and Terms of Use of HomeoPilot 360.',
-      pdfAttachedNotice: `The currently valid version of these terms (Version ${termsVer}, As of: ${termsUpdated}) is attached to this email as an official PDF document. You hereby acknowledge that you have received, read, and accepted these contractual documents.`,
-      attachmentLabel: 'Attached PDF Document:',
       note: 'Enter this code in the registration popup window. This code is valid for your registration. If you did not request this, please ignore this email.',
-      footer: 'HomeoPilot 360 • Clinical Homeopathy & Practice Management • Official Contract Documents',
+      footer: 'HomeoPilot 360 • Clinical Homeopathy & Practice Management',
     },
     es: {
-      subject: `HomeoPilot 360 - Su código de confirmación: ${code} • Términos y Condiciones`,
-      title: 'Verificación de correo electrónico y documentación contractual',
+      subject: `HomeoPilot 360 - Su código de confirmación: ${code}`,
+      title: 'Verificación de correo electrónico para el registro',
       greeting: `Hola ${recipientName || 'Terapeuta'},`,
       msg: 'Gracias por registrarse en HomeoPilot 360. Utilice el siguiente código de confirmación de 6 dígitos para verificar su correo electrónico y activar su cuenta de terapeuta:',
       codeLabel: 'Su código de confirmación',
       legalHeader: 'Aviso Legal y Aceptación de Términos',
       legalText: 'Al completar su registro e ingresar este código de confirmación, usted confirma expresamente que ha leído detenidamente, comprendido y aceptado en su totalidad los Términos y Condiciones Generales (TyC) y las Condiciones de Uso de la plataforma HomeoPilot 360.',
-      pdfAttachedNotice: `La versión vigente oficial de estos acuerdos (Versión ${termsVer}, Fecha: ${termsUpdated}) se encuentra adjunta a este correo electrónico como documento PDF. Asimismo, confirma haber recibido y leído dicha documentación contractual.`,
-      attachmentLabel: 'Documento PDF adjunto:',
       note: 'Introduzca este código en la ventana de registro. Si no realizó esta solicitud, puede ignorar este mensaje.',
-      footer: 'HomeoPilot 360 • Homeopatía Clínica y Gestión de Consultas • Documentación Oficial',
+      footer: 'HomeoPilot 360 • Homeopatía Clínica y Gestión de Consultas',
     },
     fr: {
-      subject: `HomeoPilot 360 - Votre code de confirmation : ${code} • CGU & Conditions Générales`,
-      title: 'Vérification de l\'e-mail et documents contractuels',
+      subject: `HomeoPilot 360 - Votre code de confirmation : ${code}`,
+      title: "Vérification de l'e-mail pour votre inscription",
       greeting: `Bonjour ${recipientName || 'Thérapeute'},`,
-      msg: 'Merci de vous être inscrit sur HomeoPilot 360. Veuillez utiliser le code de confirmation à 6 chiffres ci-dessous pour valider votre adresse e-mail et activer votre compte praticien :',
+      msg: "Merci de vous être inscrit sur HomeoPilot 360. Veuillez utiliser le code de confirmation à 6 chiffres ci-dessous pour valider votre adresse e-mail et activer votre compte praticien :",
       codeLabel: 'Votre code de confirmation',
       legalHeader: 'Mentions légales & Acceptation des conditions',
-      legalText: 'En finalisant votre inscription et en saisissant ce code de confirmation, vous confirmez expressément avoir lu attentivement, compris et accepté sans réserve les Conditions Générales d\'Utilisation et de Vente (CGU) de la plateforme HomeoPilot 360.',
-      pdfAttachedNotice: `La version en vigueur de ces dispositions contractuelles (Version ${termsVer}, État : ${termsUpdated}) est jointe au présent e-mail au format PDF. Vous confirmez par la présente avoir bien reçu et pris connaissance de ce document.`,
-      attachmentLabel: 'Document PDF joint :',
-      note: 'Saisissez ce code dans la fenêtre d\'inscription. Si vous n\'êtes pas à l\'origine de cette demande, vous pouvez ignorer cet e-mail.',
-      footer: 'HomeoPilot 360 • Homéopathie Clinique & Gestion de Cabinet • Documents Contractuels',
+      legalText: "En finalisant votre inscription et en saisissant ce code de confirmation, vous confirmez expressément avoir lu attentivement, compris et accepté sans réserve les Conditions Générales d'Utilisation et de Vente (CGU) de la plateforme HomeoPilot 360.",
+      note: "Saisissez ce code dans la fenêtre d'inscription. Si vous n'êtes pas à l'origine de cette demande, vous pouvez ignorer cet e-mail.",
+      footer: 'HomeoPilot 360 • Homéopathie Clinique & Gestion de Cabinet',
     },
     it: {
-      subject: `HomeoPilot 360 - Il tuo codice di conferma: ${code} • Termini e Condizioni (CGC)`,
-      title: 'Verifica email e documentazione contrattuale per la registrazione',
+      subject: `HomeoPilot 360 - Il tuo codice di conferma: ${code}`,
+      title: 'Verifica email per la registrazione',
       greeting: `Ciao ${recipientName || 'Terapeuta'},`,
       msg: 'Grazie per esserti registrato su HomeoPilot 360. Utilizza il seguente codice di conferma a 6 cifre per verificare la tua email e attivare il tuo account terapeuta:',
       codeLabel: 'Il tuo codice di conferma',
       legalHeader: 'Informativa Legale e Accettazione dei Termini',
       legalText: 'Completando la registrazione e inserendo questo codice di conferma, confermi espressamente di aver letto attentamente, compreso e accettato integralmente le Condizioni Generali di Contratto (CGC) e i Termini di Utilizzo della piattaforma HomeoPilot 360.',
-      pdfAttachedNotice: `La versione attualmente in vigore di tali accordi (Versione ${termsVer}, Data: ${termsUpdated}) è allegata a questa email in formato PDF. Confermi contestualmente di aver ricevuto e preso visione di tale documentazione.`,
-      attachmentLabel: 'Documento PDF allegato:',
       note: 'Inserisci questo codice nella finestra di registrazione. Se non hai richiesto tu la registrazione, ignora questa email.',
-      footer: 'HomeoPilot 360 • Omeopatia Clinica e Gestione dello Studio • Documenti Ufficiali',
+      footer: 'HomeoPilot 360 • Omeopatia Clinica e Gestione dello Studio',
     },
     el: {
-      subject: `HomeoPilot 360 - Ο κωδικός επιβεβαίωσής σας: ${code} • Γενικοί Όροι Συναλλαγών (ΓΟΣ)`,
-      title: 'Επαλήθευση Email & Συμβατικά Έγγραφα για την Εγγραφή σας',
+      subject: `HomeoPilot 360 - Ο κωδικός επιβεβαίωσής σας: ${code}`,
+      title: 'Επαλήθευση Email για την Εγγραφή σας',
       greeting: `Γεια σας ${recipientName || 'Θεραπευτή'},`,
       msg: 'Σας ευχαριστούμε για την εγγραφή σας στο HomeoPilot 360. Χρησιμοποιήστε τον παρακάτω 6ψήφιο κωδικό επιβεβαίωσης για να επαληθεύσετε τη διεύθυνση email σας και να ενεργοποιήσετε τον λογαριασμό θεραπευτή σας:',
       codeLabel: 'Ο κωδικός επιβεβαίωσής σας',
       legalHeader: 'Νομική Ενημέρωση & Αποδοχή Συμβατικών Όρων',
       legalText: 'Με την ολοκλήρωση της εγγραφής σας και την εισαγωγή του κωδικού επιβεβαίωσης, δηλώνετε και επιβεβαιώνετε ρητά ότι έχετε διαβάσει προσεκτικά, κατανοήσει και αποδεχτεί πλήρως τους Γενικούς Όρους Συναλλαγών (ΓΟΣ) και τους Όρους Χρήσης της πλατφόρμας HomeoPilot 360.',
-      pdfAttachedNotice: `Η επίσημη ισχύουσα έκδοση των όρων αυτών (Έκδοση ${termsVer}, Κατάσταση: ${termsUpdated}) επισυνάπτεται στο παρόν email ως έγγραφο PDF. Βεβαιώνετε με το παρόν ότι λάβατε και λάβατε πλήρη γνώση των συμβατικών αυτών εγγράφων.`,
-      attachmentLabel: 'Συνημμένο έγγραφο PDF:',
       note: 'Εισαγάγετε αυτόν τον κωδικό στο παράθυρο εγγραφής. Εάν δεν κάνατε εσείς αυτό το αίτημα, παρακαλούμε αγνοήστε αυτό το μήνυμα.',
-      footer: 'HomeoPilot 360 • Κλινική Ομοιοπαθητική & Διαχείριση Ιατρείου • Νομικά Δεσμευτικά Έγγραφα',
+      footer: 'HomeoPilot 360 • Κλινική Ομοιοπαθητική & Διαχείριση Ιατρείου',
     },
     ru: {
-      subject: `HomeoPilot 360 - Ваш код подтверждения: ${code} • Условия и Пользовательское соглашение`,
-      title: 'Подтверждение Email и договорная документация при регистрации',
+      subject: `HomeoPilot 360 - Ваш код подтверждения: ${code}`,
+      title: 'Подтверждение Email для регистрации',
       greeting: `Здравствуйте, ${recipientName || 'Терапевт'},`,
       msg: 'Благодарим вас за регистрацию в системе HomeoPilot 360. Пожалуйста, используйте следующий 6-значный код подтверждения для верификации адреса электронной почты и активации учетной записи:',
       codeLabel: 'Ваш код подтверждения',
       legalHeader: 'Юридическое уведомление и принятие условий',
       legalText: 'Завершая регистрацию и вводя данный код подтверждения, вы прямо подтверждаете, что внимательно прочитали, поняли и в полном объеме безоговорочно принимаете Общие условия сделок (ОУС) и Правила пользования платформой HomeoPilot 360.',
-      pdfAttachedNotice: `Действующая редакция данных соглашений (Версия ${termsVer}, Редакция: ${termsUpdated}) прикреплена к данному письму в виде официального PDF-документа. Вы подтверждаете получение и ознакомление с указанными договорными материалами.`,
-      attachmentLabel: 'Прикрепленный PDF-документ:',
       note: 'Введите этот код в окне регистрации. Если вы не запрашивали регистрацию, проигнорируйте это письмо.',
-      footer: 'HomeoPilot 360 • Клиническая Гомеопатия и Управление Практикой • Официальные документы',
+      footer: 'HomeoPilot 360 • Клиническая Гомеопатия и Управление Практикой',
     },
   };
 
@@ -325,15 +273,9 @@ export async function sendRegistrationVerificationCodeEmail(
         <div style="font-size: 13px; font-weight: 700; color: #0f172a; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 8px;">
           ⚖️ ${textDict.legalHeader}
         </div>
-        <p style="font-size: 13px; line-height: 1.6; color: #334155; margin: 0 0 10px 0;">
+        <p style="font-size: 13px; line-height: 1.6; color: #334155; margin: 0;">
           ${textDict.legalText}
         </p>
-        <p style="font-size: 12.5px; line-height: 1.55; color: #475569; margin: 0 0 12px 0;">
-          ${textDict.pdfAttachedNotice}
-        </p>
-        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px; font-size: 12px; color: #0f766e; display: inline-block;">
-          📎 <strong>${textDict.attachmentLabel}</strong> ${pdfFilename} (v${termsVer})
-        </div>
       </div>
 
       <!-- Security Notice -->
@@ -367,9 +309,6 @@ ${textDict.codeLabel}: ${code}
 ${textDict.legalHeader}:
 ${textDict.legalText}
 
-${textDict.pdfAttachedNotice}
-[${textDict.attachmentLabel} ${pdfFilename}]
-
 --------------------------------------------------
 ${textDict.note}
 
@@ -387,7 +326,6 @@ ${textDict.footer}`;
         text: textBody,
         displayName: config.fromName || 'HomeoPilot 360 Security',
         config,
-        attachments,
       });
       return true;
     } else {
@@ -407,7 +345,6 @@ ${textDict.footer}`;
           subject: textDict.subject,
           html: htmlBody,
           text: textBody,
-          attachments,
         }),
       });
       return true;
@@ -422,7 +359,6 @@ ${textDict.footer}`;
         text: textBody,
         displayName: fallbackConfig.fromName || 'HomeoPilot 360 Security',
         config: fallbackConfig,
-        attachments,
       });
       return true;
     } catch {
