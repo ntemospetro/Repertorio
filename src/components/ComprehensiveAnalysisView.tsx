@@ -84,18 +84,6 @@ export const ComprehensiveAnalysisView: React.FC<ComprehensiveAnalysisViewProps>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            {onReAnalyze && (
-              <button
-                type="button"
-                onClick={onReAnalyze}
-                disabled={isAnalyzing}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-colors cursor-pointer"
-              >
-                <Sparkles className={`w-3.5 h-3.5 text-teal-600 ${isAnalyzing ? 'animate-spin' : ''}`} />
-                <span>{isAnalyzing ? t('btnCalculating') : t('btnReanalyze')}</span>
-              </button>
-            )}
-
             {/* Primary PDF Download Action */}
             <button
                 type="button"

@@ -216,6 +216,7 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
   });
 
   const [isUnconfirmedSummaryModalOpen, setIsUnconfirmedSummaryModalOpen] = useState(false);
+  const [isAnalysisAlreadyCreatedModalOpen, setIsAnalysisAlreadyCreatedModalOpen] = useState(false);
 
   const toggleSummaryAccordion = (section: 'stammdaten' | 'hauptbeschwerde' | 'fragebogen' | 'befund' | 'medikamente') => {
     setSummaryAccordionOpen(prev => ({
@@ -401,8 +402,8 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
       return (
         <span className="relative px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-teal-50 text-teal-900 border border-teal-200 flex items-center gap-1.5 shadow-xs overflow-hidden">
           <div
-            className="absolute inset-y-0 left-0 bg-amber-300/55 border-r border-amber-400/60 pointer-events-none transition-all duration-300"
-            style={{ width: `${percent}%` }}
+            className="absolute inset-y-0 right-0 bg-amber-300/55 border-l border-amber-400/60 pointer-events-none transition-all duration-300"
+            style={{ width: `${100 - percent}%` }}
           />
           <Clock className="relative z-10 w-3.5 h-3.5 text-teal-800" />
           <span className="relative z-10">{t('summaryPendingBadge')} ({percent}%)</span>
@@ -826,6 +827,11 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
   };
 
   const handleRunAnalysis = async () => {
+    if (hasAnalysis) {
+      setIsAnalysisAlreadyCreatedModalOpen(true);
+      return;
+    }
+
     if (isLocked) {
       setIsUpgradeModalOpen(true);
       return;
@@ -1447,11 +1453,11 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                             : t('stepTooltipEmpty', { name })
                         }
                       >
-                        {/* Partial progress bar overlay filled with orange */}
+                        {/* Partial progress bar overlay filled with orange on right for missing part */}
                         {!isActive && isPartial && (
                           <div
-                            className="absolute inset-y-0 left-0 bg-amber-300/55 border-r border-amber-400/60 transition-all duration-300 pointer-events-none"
-                            style={{ width: `${percent}%` }}
+                            className="absolute inset-y-0 right-0 bg-amber-300/55 border-l border-amber-400/60 transition-all duration-300 pointer-events-none"
+                            style={{ width: `${100 - percent}%` }}
                           />
                         )}
 
@@ -2324,6 +2330,19 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
 
                             <button
                               type="button"
+                              id="btn-edit-section-stammdaten"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setCurrentStep(1);
+                              }}
+                              className="text-slate-700 hover:text-teal-800 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-200 px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 text-xs transition-colors cursor-pointer shadow-xs"
+                            >
+                              <Edit3 className="w-3.5 h-3.5 text-teal-600" />
+                              <span>{t('stepEditSection')}</span>
+                            </button>
+
+                            <button
+                              type="button"
                               id="btn-adopt-section-stammdaten"
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -2337,19 +2356,6 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                             >
                               <Check className={`w-3.5 h-3.5 ${summaryConfirmedSections.stammdaten ? 'text-white' : 'text-slate-400'}`} />
                               <span>{t('summaryAdoptCheckbox')}</span>
-                            </button>
-
-                            <button
-                              type="button"
-                              id="btn-edit-section-stammdaten"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setCurrentStep(1);
-                              }}
-                              className="text-slate-700 hover:text-teal-800 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-200 px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 text-xs transition-colors cursor-pointer shadow-xs"
-                            >
-                              <Edit3 className="w-3.5 h-3.5 text-teal-600" />
-                              <span>{t('stepEditSection')}</span>
                             </button>
                           </div>
                         </div>
@@ -2462,6 +2468,19 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
 
                             <button
                               type="button"
+                              id="btn-edit-section-hauptbeschwerde"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setCurrentStep(2);
+                              }}
+                              className="text-slate-700 hover:text-teal-800 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-200 px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 text-xs transition-colors cursor-pointer shadow-xs"
+                            >
+                              <Edit3 className="w-3.5 h-3.5 text-teal-600" />
+                              <span>{t('stepEditSection')}</span>
+                            </button>
+
+                            <button
+                              type="button"
                               id="btn-adopt-section-hauptbeschwerde"
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -2475,19 +2494,6 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                             >
                               <Check className={`w-3.5 h-3.5 ${summaryConfirmedSections.hauptbeschwerde ? 'text-white' : 'text-slate-400'}`} />
                               <span>{t('summaryAdoptCheckbox')}</span>
-                            </button>
-
-                            <button
-                              type="button"
-                              id="btn-edit-section-hauptbeschwerde"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setCurrentStep(2);
-                              }}
-                              className="text-slate-700 hover:text-teal-800 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-200 px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 text-xs transition-colors cursor-pointer shadow-xs"
-                            >
-                              <Edit3 className="w-3.5 h-3.5 text-teal-600" />
-                              <span>{t('stepEditSection')}</span>
                             </button>
                           </div>
                         </div>
@@ -2547,6 +2553,19 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
 
                             <button
                               type="button"
+                              id="btn-edit-section-fragebogen"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setCurrentStep(3);
+                              }}
+                              className="text-slate-700 hover:text-teal-800 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-200 px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 text-xs transition-colors cursor-pointer shadow-xs"
+                            >
+                              <Edit3 className="w-3.5 h-3.5 text-teal-600" />
+                              <span>{t('stepEditSection')}</span>
+                            </button>
+
+                            <button
+                              type="button"
                               id="btn-adopt-section-fragebogen"
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -2560,19 +2579,6 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                             >
                               <Check className={`w-3.5 h-3.5 ${summaryConfirmedSections.fragebogen ? 'text-white' : 'text-slate-400'}`} />
                               <span>{t('summaryAdoptCheckbox')}</span>
-                            </button>
-
-                            <button
-                              type="button"
-                              id="btn-edit-section-fragebogen"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setCurrentStep(3);
-                              }}
-                              className="text-slate-700 hover:text-teal-800 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-200 px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 text-xs transition-colors cursor-pointer shadow-xs"
-                            >
-                              <Edit3 className="w-3.5 h-3.5 text-teal-600" />
-                              <span>{t('stepEditSection')}</span>
                             </button>
                           </div>
                         </div>
@@ -2631,6 +2637,19 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
 
                             <button
                               type="button"
+                              id="btn-edit-section-befund"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setCurrentStep(4);
+                              }}
+                              className="text-slate-700 hover:text-teal-800 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-200 px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 text-xs transition-colors cursor-pointer shadow-xs"
+                            >
+                              <Edit3 className="w-3.5 h-3.5 text-teal-600" />
+                              <span>{t('stepEditSection')}</span>
+                            </button>
+
+                            <button
+                              type="button"
                               id="btn-adopt-section-befund"
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -2644,19 +2663,6 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                             >
                               <Check className={`w-3.5 h-3.5 ${summaryConfirmedSections.befund ? 'text-white' : 'text-slate-400'}`} />
                               <span>{t('summaryAdoptCheckbox')}</span>
-                            </button>
-
-                            <button
-                              type="button"
-                              id="btn-edit-section-befund"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setCurrentStep(4);
-                              }}
-                              className="text-slate-700 hover:text-teal-800 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-200 px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 text-xs transition-colors cursor-pointer shadow-xs"
-                            >
-                              <Edit3 className="w-3.5 h-3.5 text-teal-600" />
-                              <span>{t('stepEditSection')}</span>
                             </button>
                           </div>
                         </div>
@@ -2734,6 +2740,19 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
 
                             <button
                               type="button"
+                              id="btn-edit-section-medikamente"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setCurrentStep(5);
+                              }}
+                              className="text-slate-700 hover:text-teal-800 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-200 px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 text-xs transition-colors cursor-pointer shadow-xs"
+                            >
+                              <Edit3 className="w-3.5 h-3.5 text-teal-600" />
+                              <span>{t('stepEditSection')}</span>
+                            </button>
+
+                            <button
+                              type="button"
                               id="btn-adopt-section-medikamente"
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -2747,19 +2766,6 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                             >
                               <Check className={`w-3.5 h-3.5 ${summaryConfirmedSections.medikamente ? 'text-white' : 'text-slate-400'}`} />
                               <span>{t('summaryAdoptCheckbox')}</span>
-                            </button>
-
-                            <button
-                              type="button"
-                              id="btn-edit-section-medikamente"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setCurrentStep(5);
-                              }}
-                              className="text-slate-700 hover:text-teal-800 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-200 px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 text-xs transition-colors cursor-pointer shadow-xs"
-                            >
-                              <Edit3 className="w-3.5 h-3.5 text-teal-600" />
-                              <span>{t('stepEditSection')}</span>
                             </button>
                           </div>
                         </div>
@@ -2810,6 +2816,10 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                           type="button"
                           id="btn-run-homeopathy-analysis"
                           onClick={() => {
+                            if (hasAnalysis) {
+                              setIsAnalysisAlreadyCreatedModalOpen(true);
+                              return;
+                            }
                             if (!areAllSummarySectionsConfirmed) {
                               setIsUnconfirmedSummaryModalOpen(true);
                               return;
@@ -2845,7 +2855,6 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                         patientCase={currentCase as PatientCase}
                         analysis={clinicalAnalysis}
                         onEditSection={(stepIdx) => setCurrentStep(stepIdx)}
-                        onReAnalyze={handleRunAnalysis}
                         isAnalyzing={isAnalyzing}
                       />
                     ) : (
@@ -2857,7 +2866,13 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                         </p>
                         <button
                           type="button"
-                          onClick={handleRunAnalysis}
+                          onClick={() => {
+                            if (hasAnalysis) {
+                              setIsAnalysisAlreadyCreatedModalOpen(true);
+                              return;
+                            }
+                            handleRunAnalysis();
+                          }}
                           className="px-6 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs sm:text-sm rounded-xl cursor-pointer shadow-xs"
                         >
                           {t('btnRunAnalysis')}
@@ -3263,6 +3278,50 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                 className="w-full sm:w-auto px-6 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-semibold transition-colors cursor-pointer shadow-xs"
               >
                 {t('btnCancelModal')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Analyse bereits erstellt */}
+      {isAnalysisAlreadyCreatedModalOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl max-w-md w-full border border-slate-200 shadow-2xl overflow-hidden p-6 sm:p-7 text-center space-y-5 animate-in zoom-in-95 duration-200">
+            <div className="w-14 h-14 rounded-2xl bg-teal-50 border border-teal-200 text-teal-600 flex items-center justify-center mx-auto shadow-inner">
+              <CheckCircle2 className="w-7 h-7" />
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="text-lg sm:text-xl font-bold text-slate-900 font-serif">
+                {t('analysisAlreadyCreatedModalTitle')}
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed max-w-sm mx-auto">
+                {t('analysisAlreadyCreatedModalDesc')}
+              </p>
+            </div>
+
+            <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+              <button
+                type="button"
+                id="btn-close-already-created-modal"
+                onClick={() => setIsAnalysisAlreadyCreatedModalOpen(false)}
+                className="w-full sm:w-auto px-6 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-semibold transition-colors cursor-pointer shadow-xs"
+              >
+                {t('btnCancelModal')}
+              </button>
+
+              <button
+                type="button"
+                id="btn-new-case-from-already-created-modal"
+                onClick={() => {
+                  setIsAnalysisAlreadyCreatedModalOpen(false);
+                  handleNewCase();
+                }}
+                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all shadow-md cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>{t('newCaseBtn')}</span>
               </button>
             </div>
           </div>
