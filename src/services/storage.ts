@@ -1,4 +1,4 @@
-import { Therapist, PatientCase, PackagePlan, LanguageCode, AdminCredentials, SiteConfig, EmailConfig, NameChangeRequest, FollowUpEntry, InitialPrescription, ActiveView } from '../types';
+import { Therapist, PatientCase, PackagePlan, LanguageCode, AdminCredentials, SiteConfig, EmailConfig, NameChangeRequest, FollowUpEntry, InitialPrescription, ActiveView, TermsPdfArchiveItem } from '../types';
 import { DEFAULT_TERMS, DEFAULT_TERMS_BY_LANG, getDefaultTermsForLanguage, TermsAndConditions } from '../data/defaultTerms';
 
 export const DEFAULT_ADMIN_CREDENTIALS: AdminCredentials = {
@@ -38,6 +38,7 @@ const STORAGE_KEYS = {
   EMAIL_CONFIG: 'homoeo_saas_email_config_v1',
   REG_TRIAL: 'homoeo_saas_reg_trial_v1',
   NAME_CHANGE_REQUESTS: 'homoeo_name_change_requests',
+  TERMS_PDF_ARCHIVE: 'homoeo_saas_terms_pdf_archive_v1',
   ACTIVE_VIEW: 'homoeo_saas_active_view_v1',
   THERAPIST_TAB: 'homoeo_saas_therapist_tab_v1',
   ADMIN_TAB: 'homoeo_saas_admin_tab_v1',
@@ -1304,6 +1305,78 @@ export function resetTermsAndConditionsToDefault(lang: LanguageCode = 'de'): Ter
   }
   window.dispatchEvent(new Event('homoeo_terms_updated'));
   return defaultVal;
+}
+
+// Terms & Conditions PDF Archive
+const ALL_SUPPORTED_LANGS: LanguageCode[] = ['de', 'en', 'es', 'fr', 'it', 'el', 'ru'];
+
+export function getTermsPdfArchive(): TermsPdfArchiveItem[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.TERMS_PDF_ARCHIVE);
+    if (!raw) return [];
+    return JSON.parse(raw);
+  } catch {
+    return [];
+  }
+}
+
+export function saveTermsPdfArchive(items: TermsPdfArchiveItem[]): void {
+  localStorage.setItem(STORAGE_KEYS.TERMS_PDF_ARCHIVE, JSON.stringify(items));
+  window.dispatchEvent(new Event('homoeo_terms_pdf_archive_updated'));
+  window.dispatchEvent(new Event('homoeo_storage_updated'));
+}
+
+export function deleteTermsPdfArchiveItem(id: string): void {
+  const current = getTermsPdfArchive();
+  const updated = current.filter(item => item.id !== id);
+  saveTermsPdfArchive(updated);
+}
+
+export function deleteTermsPdfArchiveGroup(versionGroup: string): void {
+  const current = getTermsPdfArchive();
+  const updated = current.filter(item => item.versionGroup !== versionGroup);
+  saveTermsPdfArchive(updated);
+}
+
+export function archiveCurrentTermsForAllLanguages(
+  customVersion?: string, 
+  customLastUpdated?: string
+): TermsPdfArchiveItem[] {
+  const currentArchive = getTermsPdfArchive();
+  const now = new Date();
+  const timestamp = now.getTime();
+  const versionGroup = `vgroup-${timestamp}`;
+  const isoDate = now.toISOString();
+
+  const newItems: TermsPdfArchiveItem[] = ALL_SUPPORTED_LANGS.map(lang => {
+    const terms = getTermsAndConditions(lang);
+    const version = (customVersion || terms.version || '1.0.0').trim();
+    const lastUpdated = (customLastUpdated || terms.lastUpdated || now.toLocaleDateString(lang === 'de' ? 'de-DE' : 'en-US')).trim();
+    const content = terms.content || '';
+    const sectionCount = (content.match(/^###\s/gm) || []).length;
+    const wordCount = content.trim().split(/\s+/).filter(Boolean).length;
+    const cleanVer = version.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const pdfFilename = `AGB_v${cleanVer}_${lang.toUpperCase()}_${now.toISOString().split('T')[0]}.pdf`;
+
+    return {
+      id: `agb-pdf-${timestamp}-${lang}`,
+      versionGroup,
+      version,
+      title: terms.title || (lang === 'de' ? 'Allgemeine Geschäftsbedingungen' : 'Terms & Conditions'),
+      lastUpdated,
+      language: lang,
+      createdAt: isoDate,
+      content,
+      wordCount,
+      sectionCount,
+      pdfFilename
+    };
+  });
+
+  // Prepend newest first
+  const updatedArchive = [...newItems, ...currentArchive];
+  saveTermsPdfArchive(updatedArchive);
+  return newItems;
 }
 
 // Name Change Requests

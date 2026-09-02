@@ -12,25 +12,38 @@ import {
   Calendar,
   Layers,
   Sparkles,
-  Globe
+  Globe,
+  Download,
+  FileDown,
+  FolderArchive
 } from 'lucide-react';
 import { 
   getTermsAndConditions, 
   saveTermsAndConditions, 
-  resetTermsAndConditionsToDefault 
+  resetTermsAndConditionsToDefault,
+  archiveCurrentTermsForAllLanguages,
+  getTermsPdfArchive
 } from '../services/storage';
+import { exportTermsToPDF } from '../services/pdfExportService';
+import { TermsPdfArchiveModal } from './TermsPdfArchiveModal';
 import { TermsAndConditions } from '../data/defaultTerms';
 import { LanguageCode } from '../types';
 import { LANGUAGES } from '../i18n/translations';
 import { useTranslation } from '../i18n/LanguageContext';
 
 export const AdminTermsEditor: React.FC = () => {
-  const { language: currentLang } = useTranslation();
+  const { language: currentLang, t } = useTranslation();
   const [selectedLang, setSelectedLang] = useState<LanguageCode>(currentLang);
   const [terms, setTerms] = useState<TermsAndConditions>(() => getTermsAndConditions(currentLang));
   const [activeSubTab, setActiveSubTab] = useState<'editor' | 'preview'>('editor');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
+  const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
+  const [archiveCount, setArchiveCount] = useState<number>(() => getTermsPdfArchive().length);
+
+  const refreshArchiveCount = () => {
+    setArchiveCount(getTermsPdfArchive().length);
+  };
 
   useEffect(() => {
     setTerms(getTermsAndConditions(selectedLang));
@@ -41,19 +54,47 @@ export const AdminTermsEditor: React.FC = () => {
     const handleUpdate = () => {
       setTerms(getTermsAndConditions(selectedLang));
     };
+    const handleArchiveUpdate = () => {
+      refreshArchiveCount();
+    };
     window.addEventListener('homoeo_terms_updated', handleUpdate);
-    return () => window.removeEventListener('homoeo_terms_updated', handleUpdate);
+    window.addEventListener('homoeo_terms_pdf_archive_updated', handleArchiveUpdate);
+    return () => {
+      window.removeEventListener('homoeo_terms_updated', handleUpdate);
+      window.removeEventListener('homoeo_terms_pdf_archive_updated', handleArchiveUpdate);
+    };
   }, [selectedLang]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3000);
+    setTimeout(() => setToastMessage(null), 3500);
   };
 
   const handleSave = () => {
     saveTermsAndConditions(terms, selectedLang);
     setHasChanges(false);
     showToast(`AGB (${selectedLang.toUpperCase()}) erfolgreich gespeichert und für alle Registrierungen aktiviert.`);
+  };
+
+  const handleExportCurrentPdf = () => {
+    exportTermsToPDF({
+      title: terms.title,
+      lastUpdated: terms.lastUpdated,
+      version: terms.version,
+      content: terms.content,
+      language: selectedLang,
+    }, { download: true });
+    showToast(`AGB (${selectedLang.toUpperCase()}) als PDF heruntergeladen.`);
+  };
+
+  const handleArchiveAllLanguages = () => {
+    if (hasChanges) {
+      saveTermsAndConditions(terms, selectedLang);
+      setHasChanges(false);
+    }
+    const created = archiveCurrentTermsForAllLanguages();
+    refreshArchiveCount();
+    showToast(t('termsPdfArchiveCreatedSuccess'));
   };
 
   const handleResetToDefault = () => {
@@ -171,7 +212,41 @@ export const AdminTermsEditor: React.FC = () => {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            {/* Open Archive Table Popup */}
             <button
+              id="btn-open-terms-pdf-archive"
+              onClick={() => setIsArchiveModalOpen(true)}
+              className="px-3 py-2 text-xs font-semibold text-slate-800 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-md transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
+              title="Archivierte PDF-Versionen in einer Tabelle anzeigen"
+            >
+              <FolderArchive className="w-4 h-4 text-teal-700" />
+              <span>{t('termsPdfArchiveOpenArchiveBtn', { count: archiveCount })}</span>
+            </button>
+
+            {/* Archive Batch for all 7 languages */}
+            <button
+              id="btn-archive-all-terms-pdf"
+              onClick={handleArchiveAllLanguages}
+              className="px-3 py-2 text-xs font-semibold text-teal-800 bg-teal-50 hover:bg-teal-100 border border-teal-300 rounded-md transition-colors flex items-center gap-1.5 cursor-pointer"
+              title="Speichert und archiviert die AGB für alle 7 Sprachen als PDF-Version"
+            >
+              <FileDown className="w-3.5 h-3.5 text-teal-700" />
+              <span>{t('termsPdfArchiveSaveAllBtn')}</span>
+            </button>
+
+            {/* Download single PDF */}
+            <button
+              id="btn-export-current-terms-pdf"
+              onClick={handleExportCurrentPdf}
+              className="px-3 py-2 text-xs font-semibold text-slate-700 hover:text-slate-950 bg-white hover:bg-slate-50 border border-slate-300 rounded-md transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
+              title={`Aktuelle AGB (${selectedLang.toUpperCase()}) mit Kopfzeile, Stand, Version & Seitenzahlen als PDF herunterladen`}
+            >
+              <Download className="w-3.5 h-3.5 text-slate-600" />
+              <span>{t('termsPdfArchiveDownloadCurrentPdf', { lang: selectedLang.toUpperCase() })}</span>
+            </button>
+
+            <button
+              id="btn-reset-terms-default"
               onClick={handleResetToDefault}
               className="px-3 py-2 text-xs font-medium text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-md transition-colors flex items-center gap-1.5 cursor-pointer"
               title="Auf Standard-Beispieltext zurücksetzen"
@@ -181,6 +256,7 @@ export const AdminTermsEditor: React.FC = () => {
             </button>
 
             <button
+              id="btn-save-terms-changes"
               onClick={handleSave}
               className={`px-4 py-2 text-xs font-semibold text-white rounded-md transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer ${
                 hasChanges 
@@ -204,6 +280,7 @@ export const AdminTermsEditor: React.FC = () => {
                 <button
                   key={lang.code}
                   type="button"
+                  id={`btn-select-terms-lang-${lang.code}`}
                   onClick={() => {
                     if (hasChanges) {
                       if (window.confirm('Sie haben ungespeicherte Änderungen. Möchten Sie trotzdem die Sprache wechseln?')) {
@@ -258,134 +335,129 @@ export const AdminTermsEditor: React.FC = () => {
         <div className="p-3 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-1.5">
             <button
+              id="tab-toggle-editor"
               onClick={() => setActiveSubTab('editor')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-semibold text-xs transition-colors cursor-pointer ${
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
                 activeSubTab === 'editor'
-                  ? 'bg-white text-slate-900 shadow-xs border border-slate-200'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-white text-teal-800 shadow-2xs border border-slate-200'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
               }`}
             >
               <Edit3 className="w-3.5 h-3.5" />
-              <span>AGB bearbeiten (Markdown)</span>
+              <span>Markdown-Editor ({selectedLang.toUpperCase()})</span>
             </button>
-
             <button
+              id="tab-toggle-preview"
               onClick={() => setActiveSubTab('preview')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-semibold text-xs transition-colors cursor-pointer ${
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
                 activeSubTab === 'preview'
-                  ? 'bg-white text-teal-800 shadow-xs border border-slate-200'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-white text-teal-800 shadow-2xs border border-slate-200'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
               }`}
             >
               <Eye className="w-3.5 h-3.5" />
-              <span>Live-Vorschau (Wie Therapeut sieht)</span>
+              <span>Live-Vorschau & Formatierung</span>
             </button>
           </div>
 
-          {hasChanges && (
-            <span className="text-[11px] font-medium text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
-              Ungespeicherte Änderungen ({selectedLang.toUpperCase()})
-            </span>
-          )}
+          <div className="flex items-center gap-3 text-xs text-slate-500">
+            <span className="hidden sm:inline">Unterstützt: `## Überschrift`, `### Paragraph`, `**fett**`, `- Listenpunkt`</span>
+          </div>
         </div>
 
         {/* Metadata Inputs */}
-        <div className="p-4 bg-slate-50/50 border-b border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="p-4 sm:p-5 bg-slate-50/50 border-b border-slate-200 grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">
-              Titel des Dokuments
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Dokumententitel ({selectedLang.toUpperCase()})
             </label>
             <input
+              id="input-terms-title"
               type="text"
               value={terms.title}
               onChange={(e) => {
-                setTerms({ ...terms, title: e.target.value });
+                setTerms(prev => ({ ...prev, title: e.target.value }));
                 setHasChanges(true);
               }}
-              className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-md bg-white text-slate-900 focus:outline-none focus:border-teal-600"
+              className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-md text-slate-900 focus:outline-none focus:border-teal-600"
+              placeholder="z.B. Allgemeine Geschäftsbedingungen (AGB)"
             />
           </div>
 
           <div>
-            <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
               Stand / Gültigkeitsdatum
             </label>
             <input
+              id="input-terms-last-updated"
               type="text"
               value={terms.lastUpdated}
               onChange={(e) => {
-                setTerms({ ...terms, lastUpdated: e.target.value });
+                setTerms(prev => ({ ...prev, lastUpdated: e.target.value }));
                 setHasChanges(true);
               }}
-              placeholder="z.B. Januar 2026"
-              className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-md bg-white text-slate-900 focus:outline-none focus:border-teal-600"
+              className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-md text-slate-900 focus:outline-none focus:border-teal-600"
+              placeholder="z.B. 01. September 2026"
             />
           </div>
 
           <div>
-            <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
               Versionsnummer
             </label>
             <input
+              id="input-terms-version"
               type="text"
               value={terms.version}
               onChange={(e) => {
-                setTerms({ ...terms, version: e.target.value });
+                setTerms(prev => ({ ...prev, version: e.target.value }));
                 setHasChanges(true);
               }}
-              placeholder="z.B. 2.4"
-              className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-md bg-white text-slate-900 focus:outline-none focus:border-teal-600"
+              className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-md text-slate-900 font-mono focus:outline-none focus:border-teal-600"
+              placeholder="z.B. 2.4.0"
             />
           </div>
         </div>
 
-        {/* Editor Body or Preview Body */}
+        {/* Editor Body */}
         {activeSubTab === 'editor' ? (
-          <div className="p-4 sm:p-5 space-y-3">
-            <div className="flex items-center justify-between text-xs text-slate-500">
-              <div className="flex items-center gap-1">
-                <Sparkles className="w-3.5 h-3.5 text-teal-600" />
-                <span>Unterstützt Markdown: <code className="text-teal-700 font-mono">### Paragraphentitel</code>, <code className="text-teal-700 font-mono">**Fett**</code>, <code className="text-teal-700 font-mono">- Aufzählungspunkt</code></span>
-              </div>
-            </div>
-
+          <div className="p-4 sm:p-5">
+            <label className="block text-xs font-semibold text-slate-700 mb-2 flex items-center justify-between">
+              <span>AGB Textkörper (Markdown-Struktur)</span>
+              <span className="text-[11px] font-normal text-slate-400">
+                Wird im Registrierungs-Modal und PDF-Export formatiert gerendert
+              </span>
+            </label>
             <textarea
-              id="agb-editor-textarea"
-              rows={22}
+              id="textarea-terms-content"
               value={terms.content}
               onChange={(e) => {
-                setTerms({ ...terms, content: e.target.value });
+                setTerms(prev => ({ ...prev, content: e.target.value }));
                 setHasChanges(true);
               }}
-              className="w-full p-4 font-mono text-xs leading-relaxed text-slate-800 bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-teal-600 focus:ring-1 focus:ring-teal-600 transition-all resize-y shadow-inner"
-              placeholder="Fügen Sie hier den vollständigen Text der Allgemeinen Geschäftsbedingungen ein..."
+              rows={22}
+              className="w-full font-mono text-xs leading-relaxed p-4 bg-slate-900 text-slate-100 rounded-lg border border-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500 resize-y"
+              placeholder="Geben Sie hier den AGB-Text im Markdown-Format ein..."
             />
           </div>
         ) : (
-          <div className="p-6 bg-white min-h-[500px]">
-            <div className="max-w-2xl mx-auto border border-slate-200 rounded-xl overflow-hidden shadow-xs">
-              <div className="bg-slate-900 p-4 text-white flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <Scale className="w-5 h-5 text-teal-400" />
-                  <div>
-                    <h3 className="font-bold text-sm text-white">{terms.title}</h3>
-                    <div className="text-[10px] text-slate-400">
-                      Stand: {terms.lastUpdated} • Version {terms.version}
-                    </div>
-                  </div>
+          <div className="p-5 sm:p-8 bg-slate-100/50">
+            <div className="max-w-3xl mx-auto bg-white p-6 sm:p-8 rounded-xl shadow-xs border border-slate-200">
+              <div className="border-b border-slate-200 pb-4 mb-4">
+                <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
+                  <span>Stand: <strong>{terms.lastUpdated}</strong></span>
+                  <span className="font-mono font-semibold text-teal-700">v{terms.version}</span>
                 </div>
+                <h1 className="text-xl font-bold text-slate-950">
+                  {terms.title}
+                </h1>
               </div>
 
-              <div className="px-4 py-2 bg-teal-50 border-b border-teal-100 flex items-center gap-2 text-teal-900 text-[11px]">
-                <ShieldCheck className="w-4 h-4 text-teal-600 shrink-0" />
-                <span>Rechtssicherer Rahmen für Heilpraktiker und homöopathische Ärzte: Enthält Bestimmungen zu Haftungsausschluss, DSGVO-konformer Speicherung und Kontingenten.</span>
-              </div>
-
-              <div className="p-5 overflow-y-auto max-h-[420px] bg-white text-xs">
+              <div className="prose prose-sm max-w-none text-slate-800">
                 {renderFormattedPreview(terms.content)}
               </div>
 
-              <div className="p-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500">
+              <div className="mt-8 pt-4 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
                 <div className="flex items-center gap-1.5">
                   <FileText className="w-3.5 h-3.5 text-teal-600" />
                   <span>Dokument ist rechtlich bindend</span>
@@ -397,13 +469,23 @@ export const AdminTermsEditor: React.FC = () => {
         )}
 
         {/* Footer Actions */}
-        <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+        <div className="p-4 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3">
           <div className="text-xs text-slate-500">
             Letzte Speicherung gilt sofort für alle neuen Therapeutenregistrierungen in dieser Sprache ({selectedLang.toUpperCase()}).
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
+              id="btn-footer-export-current-pdf"
+              onClick={handleExportCurrentPdf}
+              className="px-3 py-2 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 rounded-md transition-colors flex items-center gap-1.5 shadow-2xs cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>PDF ({selectedLang.toUpperCase()})</span>
+            </button>
+
+            <button
+              id="btn-footer-save-terms"
               onClick={handleSave}
               className="px-4 py-2 text-xs font-semibold text-white bg-teal-600 hover:bg-teal-700 rounded-md transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
             >
@@ -413,6 +495,13 @@ export const AdminTermsEditor: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* PDF Archive Modal */}
+      <TermsPdfArchiveModal
+        isOpen={isArchiveModalOpen}
+        onClose={() => setIsArchiveModalOpen(false)}
+        onArchiveCreated={refreshArchiveCount}
+      />
     </div>
   );
 };

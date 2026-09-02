@@ -403,7 +403,146 @@ Antworte AUSSCHLIESSLICH im JSON-Format:
     }
   });
 
-  // Email Test & Send API (Hostinger API + SMTP)
+  // Email Send API (with Attachment & Full Template Support)
+  app.post("/api/email/send", async (req, res) => {
+    try {
+      const {
+        sendMethod,
+        apiToken,
+        mailboxId,
+        smtpHost,
+        smtpPort,
+        smtpSecure,
+        smtpUser,
+        smtpPassword,
+        fromEmail,
+        fromName,
+        to,
+        toEmail,
+        subject,
+        text,
+        html,
+        attachments = [],
+      } = req.body || {};
+
+      const targetTo = to || toEmail;
+      if (!targetTo) {
+        return res.status(400).json({ success: false, error: "Kein Empfänger angegeben." });
+      }
+
+      // Load stored email config as default base
+      let config = { ...DEFAULT_EMAIL_SETTINGS };
+      ensureDataDir();
+      if (fs.existsSync(EMAIL_CONFIG_FILE)) {
+        try {
+          config = JSON.parse(fs.readFileSync(EMAIL_CONFIG_FILE, 'utf-8'));
+        } catch {}
+      }
+
+      const effectiveSendMethod = sendMethod || config.sendMethod || 'api';
+      const effectiveApiToken = (apiToken || config.apiToken || 'ca5694e04833ec07a5a65dbe06af56952c3e1fb04cc66e546b50fc5c84464aaf').trim();
+      const effectiveMailboxId = (mailboxId || config.mailboxId || '').trim();
+      const effectiveFromEmail = fromEmail || config.fromEmail || config.smtpUser || 'therapie@homeopilot360.com';
+      const effectiveFromName = fromName || config.fromName || 'HomeoPilot 360';
+      const toArray = Array.isArray(targetTo) ? targetTo : [targetTo];
+
+      // 1. Hostinger Mail API Method
+      if (effectiveSendMethod === 'api' || (!config.smtpPassword && effectiveApiToken)) {
+        if (!effectiveApiToken) {
+          return res.status(400).json({ success: false, error: "Hostinger Mail API Token fehlt." });
+        }
+
+        let resolvedMailboxId = effectiveMailboxId;
+        if (!resolvedMailboxId) {
+          try {
+            const meRes = await fetch('https://api.mail.hostinger.com/api/v1/me', {
+              headers: { 'Authorization': `Bearer ${effectiveApiToken}` },
+            });
+            if (meRes.ok) {
+              const meData = await meRes.json();
+              resolvedMailboxId = meData?.data?.mailboxes?.[0]?.resourceId || 'ACfb7e2a4063af9612b30d0a193ade';
+            } else {
+              resolvedMailboxId = 'ACfb7e2a4063af9612b30d0a193ade';
+            }
+          } catch {
+            resolvedMailboxId = 'ACfb7e2a4063af9612b30d0a193ade';
+          }
+        }
+
+        const payload: any = {
+          to: toArray.map((e: string) => e.trim()),
+          displayName: effectiveFromName,
+          subject: subject || 'HomeoPilot 360',
+          text: text || (html ? html.replace(/<[^>]*>?/gm, '') : ''),
+          html: html || `<p>${text || ''}</p>`,
+        };
+
+        if (attachments && attachments.length > 0) {
+          payload.attachments = attachments.map((att: any) => ({
+            filename: att.filename,
+            content: att.content,
+            contentType: att.contentType || 'application/pdf',
+          }));
+        }
+
+        const sendRes = await fetch(`https://api.mail.hostinger.com/api/v1/mailboxes/${resolvedMailboxId}/send`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${effectiveApiToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
+
+        if (sendRes.status === 204 || sendRes.status === 200 || sendRes.status === 201) {
+          return res.json({ success: true, message: 'E-Mail erfolgreich versendet.' });
+        } else {
+          const sendErr = await sendRes.text();
+          return res.status(400).json({ success: false, error: `Hostinger Versandfehler (${sendRes.status}): ${sendErr}` });
+        }
+      }
+
+      // 2. SMTP Method
+      const host = smtpHost || config.smtpHost;
+      const port = Number(smtpPort || config.smtpPort || 465);
+      const secure = smtpSecure !== undefined ? Boolean(smtpSecure) : Boolean(config.smtpSecure);
+      const user = smtpUser || config.smtpUser;
+      const pass = smtpPassword || config.smtpPassword;
+
+      const transporter = nodemailer.createTransport({
+        host: host.trim(),
+        port,
+        secure,
+        auth: { user: user.trim(), pass: pass || '' },
+        tls: { rejectUnauthorized: false },
+        connectionTimeout: 10000,
+      });
+
+      const mailOptions: any = {
+        from: `"${effectiveFromName}" <${effectiveFromEmail}>`,
+        to: toArray.join(', '),
+        subject: subject || 'HomeoPilot 360',
+        text: text || (html ? html.replace(/<[^>]*>?/gm, '') : ''),
+        html: html || `<p>${text || ''}</p>`,
+      };
+
+      if (attachments && attachments.length > 0) {
+        mailOptions.attachments = attachments.map((att: any) => ({
+          filename: att.filename,
+          content: Buffer.from(att.content, 'base64'),
+          contentType: att.contentType || 'application/pdf',
+        }));
+      }
+
+      const info = await transporter.sendMail(mailOptions);
+      return res.json({ success: true, message: 'E-Mail erfolgreich per SMTP versendet.', messageId: info.messageId });
+    } catch (error: any) {
+      console.error("Email Send Error:", error);
+      return res.status(500).json({ success: false, error: error?.message || 'E-Mail-Versand fehlgeschlagen.' });
+    }
+  });
+
+  // Email Test API (Hostinger API + SMTP)
   app.post("/api/email/test", async (req, res) => {
     try {
       const {
@@ -418,6 +557,10 @@ Antworte AUSSCHLIESSLICH im JSON-Format:
         fromEmail = 'therapie@homeopilot360.com',
         fromName = 'HomeoPilot 360',
         toEmail = '',
+        subject,
+        text,
+        html,
+        attachments = [],
       } = req.body || {};
 
       // 1. Hostinger Mail API Method
@@ -449,31 +592,41 @@ Antworte AUSSCHLIESSLICH im JSON-Format:
 
         let emailSent = false;
         if (toEmail && toEmail.includes('@')) {
+          const payload: any = {
+            to: [toEmail.trim()],
+            displayName: fromName || 'HomeoPilot 360',
+            subject: subject || 'HomeoPilot 360 - Hostinger API Test-Mail',
+            text: text || `Herzlichen Glückwunsch!\n\nDer E-Mail-Versand über die Hostinger Mail API funktioniert einwandfrei.\n\nPostfach: ${primaryMailbox?.address || fromEmail}\nEmpfänger: ${toEmail}`,
+            html: html || `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff; color: #1e293b;">
+                <h2 style="color: #0d9488; margin-top: 0;">Hostinger API Verbindungstest erfolgreich</h2>
+                <p style="font-size: 14px; line-height: 1.6;">Herzlichen Glückwunsch! Der E-Mail-Versand über die <strong>Hostinger Mail API</strong> für <strong>HomeoPilot 360</strong> wurde erfolgreich verifiziert und ist einsatzbereit.</p>
+                <div style="background: #f8fafc; padding: 16px; border-radius: 8px; font-size: 13px; color: #334155; margin: 16px 0; border: 1px solid #e2e8f0;">
+                  <p style="margin: 4px 0;"><strong>Postfach:</strong> ${primaryMailbox?.address || fromEmail}</p>
+                  <p style="margin: 4px 0;"><strong>Mailbox-ID:</strong> ${resolvedMailboxId}</p>
+                  <p style="margin: 4px 0;"><strong>Empfänger:</strong> ${toEmail}</p>
+                  <p style="margin: 4px 0;"><strong>Versandart:</strong> Hostinger REST Mail API</p>
+                </div>
+                <p style="font-size: 12px; color: #64748b; margin-top: 24px; border-top: 1px solid #f1f5f9; padding-top: 12px;">HomeoPilot 360 &copy; ${new Date().getFullYear()} – Naturheilpraxis &amp; Homöopathie Plattform</p>
+              </div>
+            `,
+          };
+
+          if (attachments && attachments.length > 0) {
+            payload.attachments = attachments.map((att: any) => ({
+              filename: att.filename,
+              content: att.content,
+              contentType: att.contentType || 'application/pdf',
+            }));
+          }
+
           const sendRes = await fetch(`https://api.mail.hostinger.com/api/v1/mailboxes/${resolvedMailboxId}/send`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-              to: [toEmail.trim()],
-              displayName: fromName || 'HomeoPilot 360',
-              subject: 'HomeoPilot 360 - Hostinger API Test-Mail',
-              text: `Herzlichen Glückwunsch!\n\nDer E-Mail-Versand über die Hostinger Mail API funktioniert einwandfrei.\n\nPostfach: ${primaryMailbox?.address || fromEmail}\nEmpfänger: ${toEmail}`,
-              html: `
-                <div style="font-family: Arial, sans-serif; max-width: 600px; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff; color: #1e293b;">
-                  <h2 style="color: #0d9488; margin-top: 0;">Hostinger API Verbindungstest erfolgreich</h2>
-                  <p style="font-size: 14px; line-height: 1.6;">Herzlichen Glückwunsch! Der E-Mail-Versand über die <strong>Hostinger Mail API</strong> für <strong>HomeoPilot 360</strong> wurde erfolgreich verifiziert und ist einsatzbereit.</p>
-                  <div style="background: #f8fafc; padding: 16px; border-radius: 8px; font-size: 13px; color: #334155; margin: 16px 0; border: 1px solid #e2e8f0;">
-                    <p style="margin: 4px 0;"><strong>Postfach:</strong> ${primaryMailbox?.address || fromEmail}</p>
-                    <p style="margin: 4px 0;"><strong>Mailbox-ID:</strong> ${resolvedMailboxId}</p>
-                    <p style="margin: 4px 0;"><strong>Empfänger:</strong> ${toEmail}</p>
-                    <p style="margin: 4px 0;"><strong>Versandart:</strong> Hostinger REST Mail API</p>
-                  </div>
-                  <p style="font-size: 12px; color: #64748b; margin-top: 24px; border-top: 1px solid #f1f5f9; padding-top: 12px;">HomeoPilot 360 &copy; ${new Date().getFullYear()} – Naturheilpraxis &amp; Homöopathie Plattform</p>
-                </div>
-              `,
-            }),
+            body: JSON.stringify(payload),
           });
 
           if (sendRes.status === 204 || sendRes.status === 200 || sendRes.status === 201) {
@@ -526,12 +679,12 @@ Antworte AUSSCHLIESSLICH im JSON-Format:
       let messageId: string | undefined = undefined;
 
       if (toEmail && toEmail.includes('@')) {
-        const info = await transporter.sendMail({
+        const mailOptions: any = {
           from: `"${fromName || 'HomeoPilot 360'}" <${fromEmail || smtpUser}>`,
           to: toEmail.trim(),
-          subject: 'HomeoPilot 360 - SMTP Verbindungstest erfolgreich',
-          text: `Herzlichen Glückwunsch!\n\nDie E-Mail- und SMTP-Einstellungen für HomeoPilot 360 funktionieren einwandfrei.\n\nServer: ${smtpHost}\nPort: ${smtpPort}\nBenutzername: ${smtpUser}\nAbsender: ${fromEmail || smtpUser}`,
-          html: `
+          subject: subject || 'HomeoPilot 360 - SMTP Verbindungstest erfolgreich',
+          text: text || `Herzlichen Glückwunsch!\n\nDie E-Mail- und SMTP-Einstellungen für HomeoPilot 360 funktionieren einwandfrei.\n\nServer: ${smtpHost}\nPort: ${smtpPort}\nBenutzername: ${smtpUser}\nAbsender: ${fromEmail || smtpUser}`,
+          html: html || `
             <div style="font-family: Arial, sans-serif; max-width: 600px; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff; color: #1e293b;">
               <h2 style="color: #0d9488; margin-top: 0;">SMTP Verbindungstest erfolgreich</h2>
               <p style="font-size: 14px; line-height: 1.6;">Herzlichen Glückwunsch! Die E-Mail- und SMTP-Einstellungen für <strong>HomeoPilot 360</strong> wurden erfolgreich verifiziert und sind einsatzbereit.</p>
@@ -544,7 +697,17 @@ Antworte AUSSCHLIESSLICH im JSON-Format:
               <p style="font-size: 12px; color: #64748b; margin-top: 24px; border-top: 1px solid #f1f5f9; padding-top: 12px;">HomeoPilot 360 &copy; ${new Date().getFullYear()} – Naturheilpraxis &amp; Homöopathie Plattform</p>
             </div>
           `,
-        });
+        };
+
+        if (attachments && attachments.length > 0) {
+          mailOptions.attachments = attachments.map((att: any) => ({
+            filename: att.filename,
+            content: Buffer.from(att.content, 'base64'),
+            contentType: att.contentType || 'application/pdf',
+          }));
+        }
+
+        const info = await transporter.sendMail(mailOptions);
         emailSent = true;
         messageId = info.messageId;
       }

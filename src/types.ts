@@ -381,3 +381,17 @@ export interface NameChangeRequest {
   createdAt: string;
   resolvedAt?: string;
 }
+
+export interface TermsPdfArchiveItem {
+  id: string;
+  versionGroup: string;
+  version: string;
+  title: string;
+  lastUpdated: string;
+  language: LanguageCode;
+  createdAt: string;
+  content: string;
+  wordCount: number;
+  sectionCount: number;
+  pdfFilename?: string;
+}

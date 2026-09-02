@@ -1,5 +1,6 @@
+import { registerUnicodeFonts } from './pdfFonts';
 import { jsPDF } from 'jspdf';
-import { PatientCase, FullClinicalAnalysis } from '../types';
+import { PatientCase, FullClinicalAnalysis, LanguageCode } from '../types';
 
 export type PDFExportCategory = 'all' | 'falldaten' | 'redFlags' | 'differential' | 'homoeopathie' | 'medikamente' | 'empfehlungen';
 
@@ -44,12 +45,12 @@ function checkPageBreak(ctx: PDFContext, neededHeight: number, categoryHeader?: 
 // Helper: Header on each page
 function drawPageHeader(ctx: PDFContext, sectionName: string) {
   const { doc, pageWidth, margin } = ctx;
-  doc.setFont('helvetica', 'bold');
+  doc.setFont('Roboto', 'bold');
   doc.setFontSize(8);
   doc.setTextColor(...COLORS.primary);
   doc.text('HOMÖOPATHISCHE PRAXIS & FALLANALYSE', margin, 12);
 
-  doc.setFont('helvetica', 'normal');
+  doc.setFont('Roboto', 'normal');
   doc.setFontSize(8);
   doc.setTextColor(...COLORS.textMuted);
   const infoText = `Patient: ${ctx.patientName} | Datum: ${ctx.anamneseDatum}`;
@@ -78,13 +79,13 @@ function drawSectionHeader(ctx: PDFContext, title: string, subtitle?: string, ba
   doc.setFillColor(...badgeColor);
   doc.rect(margin, ctx.currentY, 3, subtitle ? 16 : 12, 'F');
 
-  doc.setFont('helvetica', 'bold');
+  doc.setFont('Roboto', 'bold');
   doc.setFontSize(12);
   doc.setTextColor(...COLORS.textDark);
   doc.text(title, margin + 6, ctx.currentY + 7);
 
   if (subtitle) {
-    doc.setFont('helvetica', 'normal');
+    doc.setFont('Roboto', 'normal');
     doc.setFontSize(8.5);
     doc.setTextColor(...COLORS.textMuted);
     doc.text(subtitle, margin + 6, ctx.currentY + 13);
@@ -101,7 +102,7 @@ function drawLabelValue(ctx: PDFContext, label: string, value: string, indent: n
   const effectiveWidth = contentWidth - indent;
   const startX = margin + indent;
 
-  doc.setFont('helvetica', 'bold');
+  doc.setFont('Roboto', 'bold');
   doc.setFontSize(9);
   doc.setTextColor(...COLORS.textDark);
   const labelWidth = doc.getTextWidth(label + ': ');
@@ -113,12 +114,12 @@ function drawLabelValue(ctx: PDFContext, label: string, value: string, indent: n
 
   checkPageBreak(ctx, lineBlockHeight + 2);
 
-  doc.setFont('helvetica', 'bold');
+  doc.setFont('Roboto', 'bold');
   doc.setFontSize(9);
   doc.setTextColor(...COLORS.primaryDark);
   doc.text(label + ':', startX, ctx.currentY);
 
-  doc.setFont('helvetica', 'normal');
+  doc.setFont('Roboto', 'normal');
   doc.setFontSize(9);
   doc.setTextColor(...COLORS.textDark);
 
@@ -158,14 +159,14 @@ function drawCardBox(ctx: PDFContext, title: string, content: string | string[],
   let textY = ctx.currentY + 5;
 
   if (title) {
-    doc.setFont('helvetica', 'bold');
+    doc.setFont('Roboto', 'bold');
     doc.setFontSize(9.5);
     doc.setTextColor(...COLORS.textDark);
     doc.text(title, margin + 4, textY);
     textY += 5.5;
   }
 
-  doc.setFont('helvetica', 'normal');
+  doc.setFont('Roboto', 'normal');
   doc.setFontSize(8.5);
   doc.setTextColor(...COLORS.textDark);
 
@@ -185,7 +186,7 @@ function drawFooters(doc: jsPDF, patientName: string) {
 
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
-    doc.setFont('helvetica', 'normal');
+    doc.setFont('Roboto', 'normal');
     doc.setFontSize(8);
     doc.setTextColor(...COLORS.textMuted);
 
@@ -570,6 +571,8 @@ export function exportCategoryPDF(
     unit: 'mm',
     format: 'a4',
   });
+  registerUnicodeFonts(doc);
+  doc.setFont('Roboto', 'normal');
 
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -654,4 +657,352 @@ export function exportComprehensiveAnalysisToPDF(
   category: PDFExportCategory = 'all'
 ): void {
   exportCategoryPDF(category, patientCase, analysis);
+}
+
+// ============================================================================
+// TERMS & CONDITIONS (AGB) PDF EXPORT
+// ============================================================================
+
+export interface TermsExportData {
+  title: string;
+  lastUpdated: string;
+  version: string;
+  content: string;
+  language: LanguageCode;
+}
+
+interface TermsPdfI18n {
+  badge: string;
+  validDate: string;
+  versionLabel: string;
+  languageLabel: string;
+  platformNotice: string;
+  headerTitle: string;
+  headerStand: string;
+  headerVer: string;
+  footerStand: string;
+  pageNum: (p: number, total: number) => string;
+}
+
+const TERMS_PDF_I18N: Record<LanguageCode, TermsPdfI18n> = {
+  de: {
+    badge: 'HOMÖOPILOT 360° • RECHTSVERBINDLICHE AGB',
+    validDate: 'Gültigkeitsdatum / Stand:',
+    versionLabel: 'Versionsnummer:',
+    languageLabel: 'Sprache:',
+    platformNotice: 'Gültig für alle Registrierungen und die Nutzung der Plattform.',
+    headerTitle: 'HOMÖOPILOT 360° • AGB & NUTZUNGSVERTRAG',
+    headerStand: 'Stand:',
+    headerVer: 'Ver.',
+    footerStand: 'Stand:',
+    pageNum: (p, total) => `Seite ${p}/${total}`,
+  },
+  en: {
+    badge: 'HOMÖOPILOT 360° • LEGALLY BINDING TERMS',
+    validDate: 'Effective Date / As of:',
+    versionLabel: 'Version:',
+    languageLabel: 'Language:',
+    platformNotice: 'Valid for all registrations and platform usage.',
+    headerTitle: 'HOMÖOPILOT 360° • TERMS & USER AGREEMENT',
+    headerStand: 'As of:',
+    headerVer: 'Ver.',
+    footerStand: 'As of:',
+    pageNum: (p, total) => `Page ${p}/${total}`,
+  },
+  es: {
+    badge: 'HOMÖOPILOT 360° • TÉRMINOS Y CONDICIONES VINCULANTES',
+    validDate: 'Fecha de vigencia / Estado:',
+    versionLabel: 'Versión:',
+    languageLabel: 'Idioma:',
+    platformNotice: 'Válido para todos los registros y el uso de la plataforma.',
+    headerTitle: 'HOMÖOPILOT 360° • TÉRMINOS Y CONTRATO DE USO',
+    headerStand: 'Estado:',
+    headerVer: 'Ver.',
+    footerStand: 'Estado:',
+    pageNum: (p, total) => `Página ${p}/${total}`,
+  },
+  fr: {
+    badge: 'HOMÖOPILOT 360° • CONDITIONS GÉNÉRALES VINCULANTES',
+    validDate: 'Date d\'effet / État :',
+    versionLabel: 'Version :',
+    languageLabel: 'Langue :',
+    platformNotice: 'Valable pour toutes les inscriptions et l\'utilisation de la plateforme.',
+    headerTitle: 'HOMÖOPILOT 360° • CGU & CONTRAT D\'UTILISATION',
+    headerStand: 'État :',
+    headerVer: 'Ver.',
+    footerStand: 'État :',
+    pageNum: (p, total) => `Page ${p}/${total}`,
+  },
+  it: {
+    badge: 'HOMÖOPILOT 360° • TERMINI E CONDIZIONI VINCOLANTI',
+    validDate: 'Data di decorrenza / Stato:',
+    versionLabel: 'Versione:',
+    languageLabel: 'Lingua:',
+    platformNotice: 'Valido per tutte le registrazioni e l\'utilizzo della piattaforma.',
+    headerTitle: 'HOMÖOPILOT 360° • TERMINI E CONTRATTO D\'USO',
+    headerStand: 'Stato:',
+    headerVer: 'Ver.',
+    footerStand: 'Stato:',
+    pageNum: (p, total) => `Pagina ${p}/${total}`,
+  },
+  el: {
+    badge: 'HOMÖOPILOT 360° • ΝΟΜΙΚΑ ΔΕΣΜΕΥΤΙΚΟΙ ΓΟΣ',
+    validDate: 'Ημερομηνία ισχύος / Κατάσταση:',
+    versionLabel: 'Έκδοση:',
+    languageLabel: 'Γλώσσα:',
+    platformNotice: 'Ισχύει για όλες τις εγγραφές και τη χρήση της πλατφόρμας.',
+    headerTitle: 'HOMÖOPILOT 360° • ΓΕΝΙΚΟΙ ΟΡΟΙ & ΣΥΜΒΑΣΗ ΧΡΗΣΗΣ',
+    headerStand: 'Κατάσταση:',
+    headerVer: 'Έκδ.',
+    footerStand: 'Κατάσταση:',
+    pageNum: (p, total) => `Σελίδα ${p}/${total}`,
+  },
+  ru: {
+    badge: 'HOMÖOPILOT 360° • ЮРИДИЧЕСКИ ОБЯЗАТЕЛЬНЫЕ УСЛОВИЯ',
+    validDate: 'Дата вступления в силу / Редакция:',
+    versionLabel: 'Версия:',
+    languageLabel: 'Язык:',
+    platformNotice: 'Действительно для всех регистраций и использования платформы.',
+    headerTitle: 'HOMÖOPILOT 360° • УСЛОВИЯ И ДОГОВОР ИСПОЛЬЗОВАНИЯ',
+    headerStand: 'Редакция:',
+    headerVer: 'Вер.',
+    footerStand: 'Редакция:',
+    pageNum: (p, total) => `Страница ${p}/${total}`,
+  },
+};
+
+export function exportTermsToPDF(
+  termsData: TermsExportData,
+  options: { download?: boolean } = { download: true }
+): jsPDF {
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
+  });
+  registerUnicodeFonts(doc);
+  doc.setFont('Roboto', 'normal');
+
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 15;
+  const contentWidth = pageWidth - margin * 2;
+  const bottomMargin = 20;
+
+  let currentY = 24;
+
+  const docTitle = termsData.title || 'Allgemeine Geschäftsbedingungen';
+  const lastUpdated = termsData.lastUpdated || new Date().toLocaleDateString('de-DE');
+  const version = termsData.version || '1.0.0';
+  const langKey = (termsData.language || 'de') as LanguageCode;
+  const langUpper = langKey.toUpperCase();
+  const tObj = TERMS_PDF_I18N[langKey] || TERMS_PDF_I18N.de;
+
+  // Helper for page break check during content flow
+  const checkTermsPageBreak = (neededHeight: number) => {
+    if (currentY + neededHeight > pageHeight - bottomMargin) {
+      doc.addPage();
+      currentY = 24;
+    }
+  };
+
+  // 1. Top Cover / Summary Banner (Page 1)
+  doc.setFillColor(...COLORS.bgLight);
+  doc.setDrawColor(...COLORS.border);
+  doc.roundedRect(margin, currentY, contentWidth, 28, 2, 2, 'FD');
+
+  // Left accent strip
+  doc.setFillColor(...COLORS.primary);
+  doc.rect(margin, currentY, 3.5, 28, 'F');
+
+  // Pill badge
+  doc.setFont('Roboto', 'bold');
+  doc.setFontSize(6.5);
+  doc.setTextColor(...COLORS.primaryDark);
+  const badgeWidth = doc.getTextWidth(tObj.badge) + 6;
+  doc.setFillColor(...COLORS.primaryLight);
+  doc.roundedRect(margin + 7, currentY + 4, Math.max(75, badgeWidth), 4.5, 1, 1, 'F');
+  doc.text(tObj.badge, margin + 9, currentY + 7.2);
+
+  // Main Document Title
+  doc.setFont('Roboto', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(...COLORS.textDark);
+  const titleLines = doc.splitTextToSize(docTitle, contentWidth - 14);
+  doc.text(titleLines[0] || docTitle, margin + 7, currentY + 14);
+
+  // Key Metadata badges (Stand, Version, Sprache)
+  doc.setFont('Roboto', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(...COLORS.textMuted);
+
+  const metaText1 = `${tObj.validDate} ${lastUpdated}`;
+  const metaText2 = `${tObj.versionLabel} v${version}`;
+  const metaText3 = `${tObj.languageLabel} ${langUpper}`;
+
+  const meta1Width = doc.getTextWidth(metaText1);
+  const meta2X = Math.max(margin + 75, margin + 7 + meta1Width + 6);
+  const meta2Width = doc.getTextWidth(metaText2);
+  const meta3X = Math.max(margin + 130, meta2X + meta2Width + 6);
+
+  doc.text(metaText1, margin + 7, currentY + 20);
+  doc.text(metaText2, meta2X, currentY + 20);
+  doc.text(metaText3, meta3X, currentY + 20);
+
+  // Subtitle / Legal compliance note
+  doc.setFont('Roboto', 'normal');
+  doc.setFontSize(6.8);
+  doc.setTextColor(...COLORS.textMuted);
+  doc.text(tObj.platformNotice, margin + 7, currentY + 25);
+
+  currentY += 34;
+
+  // 2. Parse and render markdown sections
+  const lines = (termsData.content || '').split('\n');
+
+  for (let i = 0; i < lines.length; i++) {
+    const rawLine = lines[i];
+    const line = rawLine.trim();
+
+    if (!line) {
+      currentY += 2.5;
+      continue;
+    }
+
+    // Horizontal Divider
+    if (line === '---' || line === '***' || line === '___') {
+      checkTermsPageBreak(6);
+      doc.setDrawColor(...COLORS.border);
+      doc.setLineWidth(0.25);
+      doc.line(margin, currentY, pageWidth - margin, currentY);
+      currentY += 5;
+      continue;
+    }
+
+    // Section Header (### § ...)
+    if (line.startsWith('### ')) {
+      const headingText = line.replace('### ', '').trim();
+      checkTermsPageBreak(14);
+
+      // Section title box
+      doc.setFillColor(...COLORS.bgLight);
+      doc.setDrawColor(...COLORS.border);
+      doc.roundedRect(margin, currentY, contentWidth, 7.5, 1.5, 1.5, 'FD');
+
+      // Small teal accent dot/bar
+      doc.setFillColor(...COLORS.primary);
+      doc.rect(margin, currentY, 2.5, 7.5, 'F');
+
+      doc.setFont('Roboto', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(...COLORS.textDark);
+      doc.text(headingText, margin + 5, currentY + 5);
+
+      currentY += 10.5;
+      continue;
+    }
+
+    // Main Header (## ...)
+    if (line.startsWith('## ')) {
+      const headingText = line.replace('## ', '').trim();
+      checkTermsPageBreak(12);
+
+      doc.setFont('Roboto', 'bold');
+      doc.setFontSize(10);
+      doc.setTextColor(...COLORS.primaryDark);
+      doc.text(headingText, margin, currentY + 4);
+
+      currentY += 8;
+      continue;
+    }
+
+    // Bullet point list item (- ...)
+    if (line.startsWith('- ') || line.startsWith('* ')) {
+      const bulletText = line.substring(2).trim();
+      const cleanBulletText = bulletText.replace(/\*\*(.*?)\*\*/g, '$1');
+      const bulletLines = doc.splitTextToSize(cleanBulletText, contentWidth - 10);
+      const neededHeight = bulletLines.length * 3.8 + 2;
+
+      checkTermsPageBreak(neededHeight);
+
+      // Bullet dot
+      doc.setFillColor(...COLORS.primary);
+      doc.circle(margin + 3, currentY + 1.8, 0.8, 'F');
+
+      doc.setFont('Roboto', 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(...COLORS.textDark);
+      doc.text(bulletLines, margin + 7, currentY + 2.5);
+
+      currentY += neededHeight;
+      continue;
+    }
+
+    // Regular paragraph text
+    const cleanParagraph = line.replace(/\*\*(.*?)\*\*/g, '$1');
+    const wrappedLines = doc.splitTextToSize(cleanParagraph, contentWidth);
+    const neededHeight = wrappedLines.length * 3.8 + 2;
+
+    checkTermsPageBreak(neededHeight);
+
+    doc.setFont('Roboto', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(30, 41, 59); // Slate 800
+
+    doc.text(wrappedLines, margin, currentY + 2.5);
+    currentY += neededHeight;
+  }
+
+  // 3. Draw Header and Footer on EVERY page
+  const totalPages = (doc as any).internal.getNumberOfPages();
+
+  for (let p = 1; p <= totalPages; p++) {
+    doc.setPage(p);
+
+    // --- Header on every page ---
+    doc.setFont('Roboto', 'bold');
+    doc.setFontSize(7.5);
+    doc.setTextColor(...COLORS.primary);
+    doc.text(tObj.headerTitle, margin, 10);
+
+    doc.setFont('Roboto', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(...COLORS.textMuted);
+    const headerRightText = `${docTitle} | ${tObj.headerStand} ${lastUpdated} | ${tObj.headerVer} ${version} | ${langUpper}`;
+    const headerRightWidth = doc.getTextWidth(headerRightText);
+    doc.text(headerRightText, pageWidth - margin - headerRightWidth, 10);
+
+    // Header divider line
+    doc.setDrawColor(...COLORS.border);
+    doc.setLineWidth(0.25);
+    doc.line(margin, 13, pageWidth - margin, 13);
+
+    // --- Footer on every page ---
+    doc.setDrawColor(...COLORS.border);
+    doc.setLineWidth(0.25);
+    doc.line(margin, pageHeight - 13, pageWidth - margin, pageHeight - 13);
+
+    // Footer Left: Title, Version, Stand / Gültigkeitsdatum
+    doc.setFont('Roboto', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(...COLORS.textMuted);
+    const footerLeftText = `${docTitle} • ${tObj.versionLabel} ${version} (${tObj.footerStand} ${lastUpdated}) • ${langUpper}`;
+    doc.text(footerLeftText, margin, pageHeight - 7.5);
+
+    // Footer Right: Page number in localized format
+    const pageNumText = tObj.pageNum(p, totalPages);
+    const pageNumWidth = doc.getTextWidth(pageNumText);
+    doc.setFont('Roboto', 'bold');
+    doc.setTextColor(...COLORS.primaryDark);
+    doc.text(pageNumText, pageWidth - margin - pageNumWidth, pageHeight - 7.5);
+  }
+
+  if (options.download) {
+    const cleanVer = version.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const dateStr = new Date().toISOString().split('T')[0];
+    const filename = `AGB_v${cleanVer}_${langUpper}_${dateStr}.pdf`;
+    doc.save(filename);
+  }
+
+  return doc;
 }
