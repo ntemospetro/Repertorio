@@ -1024,6 +1024,7 @@ export const it = {
   "planProF3": "Controllo vocale completo su tutti i campi",
   "planProF4": "Supporto dedicato per lo studio",
   "toastNewCaseCreated": "Nuovo caso creato: tutti i campi sono stati reimpostati.",
+  "toastPatientSelected": "Paziente {name} caricato con successo nello spazio di lavoro.",
   "toastCustomQuestionAdded": "Domanda personalizzata aggiunta",
   "toastQuestionsRegenerated": "Domande rigenerate",
   "toastAnswersImported": "Risposte importate nel questionario, reperti, mente e farmaci!",

@@ -1024,6 +1024,7 @@ export const en = {
   "planProF3": "Complete Voice Control on All Fields",
   "planProF4": "Dedicated Practice Support",
   "toastNewCaseCreated": "New case created – all fields have been reset.",
+  "toastPatientSelected": "Patient {name} successfully loaded into workspace.",
   "toastCustomQuestionAdded": "Custom question added",
   "toastQuestionsRegenerated": "Questions regenerated",
   "toastAnswersImported": "Answers imported into questionnaire, findings, mind & medications!",

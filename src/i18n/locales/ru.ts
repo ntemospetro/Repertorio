@@ -1024,6 +1024,7 @@ export const ru = {
   "planProF3": "Полное голосовое управление всеми полями",
   "planProF4": "Персональная поддержка практики",
   "toastNewCaseCreated": "Новый случай создан – все поля сброшены.",
+  "toastPatientSelected": "Пациент {name} успешно загружен в рабочую область.",
   "toastCustomQuestionAdded": "Добавлен индивидуальный вопрос",
   "toastQuestionsRegenerated": "Вопросы сформированы заново",
   "toastAnswersImported": "Ответы перенесены в опросник, симптомы, психику и препараты!",

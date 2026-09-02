@@ -1024,6 +1024,7 @@ export const de = {
   "planProF3": "Vollständige Sprachsteuerung aller Felder",
   "planProF4": "Persönlicher Praxis-Support",
   "toastNewCaseCreated": "Neuer Fall angelegt – alle Felder wurden geleert.",
+  "toastPatientSelected": "Patient {name} erfolgreich in die Übersicht geladen.",
   "toastCustomQuestionAdded": "Individuelle Frage hinzugefügt",
   "toastQuestionsRegenerated": "Fragen neu generiert",
   "toastAnswersImported": "Antworten in Fragebogen, Befund, Gemüt & Medikamente übernommen!",
