@@ -625,6 +625,29 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
     showToast(t('toastNewCaseCreated'));
   };
 
+  const handleNewCaseRef = useRef(handleNewCase);
+  handleNewCaseRef.current = handleNewCase;
+
+  useEffect(() => {
+    const handleNewPatientEvent = () => {
+      setPanelTab('cases');
+      if (handleNewCaseRef.current) {
+        handleNewCaseRef.current();
+      }
+    };
+    const handleOpenDirectoryEvent = () => {
+      setPanelTab('cases');
+      setIsPatientSelectionModalOpen(true);
+    };
+
+    window.addEventListener('homoeo_action_new_patient', handleNewPatientEvent);
+    window.addEventListener('homoeo_action_open_patient_directory', handleOpenDirectoryEvent);
+    return () => {
+      window.removeEventListener('homoeo_action_new_patient', handleNewPatientEvent);
+      window.removeEventListener('homoeo_action_open_patient_directory', handleOpenDirectoryEvent);
+    };
+  }, []);
+
   const handleAddChild = () => {
     const newChild: PatientChild = {
       id: `child_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
@@ -1176,52 +1199,6 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
       {/* TAB CONTENT 5: CASE RECORDS & SEQUENTIAL REPERTORISATION WORKFLOW */}
       {panelTab === 'cases' && (
         <>
-          {/* START AUSWAHL BEI BEGINN: NEUER PATIENT vs BEREITS PATIENT */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs mb-6">
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center border border-teal-100/80 shrink-0">
-                  <Sparkles className="w-5 h-5" />
-                </div>
-                <div>
-                  <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                    <span>{t('startSelectionTitle')}</span>
-                    <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-teal-50 text-teal-800 border border-teal-200/60">
-                      {selectedCaseId ? `${t('activeCasePrefix')}: ${currentCase.patientName || t('unnamedPatient')}` : t('newAdmissionReady')}
-                    </span>
-                  </h2>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    {t('startSelectionDesc')}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 shrink-0">
-                {/* 1. Neuen Patienten aufnehmen */}
-                <button
-                  type="button"
-                  id="btn-choice-new-patient"
-                  onClick={handleNewCase}
-                  className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-white shadow-xs transition-all cursor-pointer whitespace-nowrap"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>{t('btnNewPatientAdmission')}</span>
-                </button>
-
-                {/* 2. Bereits Patient */}
-                <button
-                  type="button"
-                  id="btn-choice-existing-patient"
-                  onClick={() => setIsPatientSelectionModalOpen(true)}
-                  className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-800 border border-slate-200 transition-all cursor-pointer whitespace-nowrap"
-                >
-                  <Users className="w-4 h-4 text-teal-700" />
-                  <span>{t('btnExistingPatientToFiles')}</span>
-                </button>
-              </div>
-            </div>
-          </div>
-
           {/* Main Workspace Layout */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             {/* Left Column: Cases List Grouped by Patient */}
