@@ -19,7 +19,8 @@ import {
   HeartHandshake,
   ArrowLeft,
   SlidersHorizontal,
-  ChevronDown
+  ChevronDown,
+  ShieldAlert
 } from 'lucide-react';
 import { 
   getLocalizedRemedies, 
@@ -39,6 +40,12 @@ import {
   mergeWithOverlap,
   deduplicateRepeatedPhrases
 } from '../services/speechService';
+import { AcuteClarificationModal } from './AcuteClarificationModal';
+import { 
+  AcuteAnswers, 
+  getAcuteClarificationQuestions, 
+  buildEnhancedSymptomQuery 
+} from '../services/acuteClarificationService';
 
 // Comprehensive mapping of homeopathic abbreviations and common synonyms to database keys
 const REMEDY_ALIAS_MAP: Record<string, string> = {
@@ -186,14 +193,18 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = () => {
   // Quick Intake & Voice State
   const [symptomText, setSymptomText] = useState('');
   const [isRecording, setIsRecording] = useState(false);
-  const [recordSecondsLeft, setRecordSecondsLeft] = useState(30);
+  const [recordSecondsLeft, setRecordSecondsLeft] = useState(15);
   const [recommendations, setRecommendations] = useState<SymptomMatchResult[]>([]);
   const [isSpeechSupported, setIsSpeechSupported] = useState(true);
   const [copySuccess, setCopySuccess] = useState<string | null>(null);
+  const [showClarificationModal, setShowClarificationModal] = useState(false);
+  const [acuteAnswers, setAcuteAnswers] = useState<AcuteAnswers>({});
 
   const recognitionRef = useRef<SpeechRecognitionSession | null>(null);
   const timerIntervalRef = useRef<number | null>(null);
   const recordingBaseTextRef = useRef<string>('');
+  const lastSpokenTranscriptRef = useRef<string>('');
+  const isFinalizingRef = useRef<boolean>(false);
   const modalBodyRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -205,15 +216,17 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = () => {
     return getLocalizedRemedies(language);
   }, [language]);
 
-  // Update recommendations whenever symptom text or language changes
+  // Update recommendations whenever symptom text, acute clarification answers, or language changes
   useEffect(() => {
     if (symptomText.trim().length >= 3) {
-      const results = matchSymptomsToRemedies(symptomText, language);
+      const questions = getAcuteClarificationQuestions(symptomText, language);
+      const enhancedQuery = buildEnhancedSymptomQuery(symptomText, acuteAnswers, questions);
+      const results = matchSymptomsToRemedies(enhancedQuery, language);
       setRecommendations(results);
     } else {
       setRecommendations([]);
     }
-  }, [symptomText, language]);
+  }, [symptomText, acuteAnswers, language]);
 
   // Keep open modal in sync with language change
   useEffect(() => {
@@ -237,16 +250,18 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = () => {
     };
   }, []);
 
-  // Voice recording handler (Max 30s)
+  // Voice recording handler (Max 15s) with duplicate deposit prevention & automatic clarification popup
   const startVoiceRecording = () => {
     if (isRecording) {
-      stopVoiceRecording();
+      stopVoiceRecording(true);
       return;
     }
 
-    setRecordSecondsLeft(30);
+    setRecordSecondsLeft(15);
     setIsRecording(true);
-    recordingBaseTextRef.current = symptomText;
+    isFinalizingRef.current = false;
+    lastSpokenTranscriptRef.current = '';
+    recordingBaseTextRef.current = symptomText.trim();
 
     try {
       const session = startSpeechRecognition({
@@ -254,9 +269,12 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = () => {
         continuous: true,
         interimResults: true,
         onResult: (transcript) => {
-          const base = recordingBaseTextRef.current.trim();
+          if (isFinalizingRef.current) return;
           const trimmed = transcript.trim();
           if (!trimmed) return;
+          lastSpokenTranscriptRef.current = trimmed;
+
+          const base = recordingBaseTextRef.current;
           if (!base) {
             setSymptomText(deduplicateRepeatedPhrases(trimmed));
           } else {
@@ -267,18 +285,20 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = () => {
           console.warn('Speech recognition notice:', err);
         },
         onEnd: () => {
-          // handled
+          if (!isFinalizingRef.current && isRecording) {
+            stopVoiceRecording(true);
+          }
         }
       });
 
       recognitionRef.current = session;
 
-      // Start 30s countdown timer
+      // Start 15s countdown timer
       const interval = window.setInterval(() => {
         setRecordSecondsLeft((prev) => {
           if (prev <= 1) {
             clearInterval(interval);
-            stopVoiceRecording();
+            stopVoiceRecording(true);
             return 0;
           }
           return prev - 1;
@@ -292,7 +312,10 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = () => {
     }
   };
 
-  const stopVoiceRecording = () => {
+  const stopVoiceRecording = (openModalIfContent = true) => {
+    if (isFinalizingRef.current) return;
+    isFinalizingRef.current = true;
+
     if (recognitionRef.current) {
       recognitionRef.current.stop();
       recognitionRef.current = null;
@@ -302,13 +325,41 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = () => {
       timerIntervalRef.current = null;
     }
     setIsRecording(false);
+
+    // Prevent duplicate voice deposit: atomically commit single deduplicated text
+    const finalSpoken = lastSpokenTranscriptRef.current.trim();
+    let currentSymptomResult = '';
+    setSymptomText((current) => {
+      const base = recordingBaseTextRef.current;
+      if (finalSpoken) {
+        if (!base) {
+          currentSymptomResult = deduplicateRepeatedPhrases(finalSpoken);
+        } else {
+          currentSymptomResult = mergeWithOverlap(base, finalSpoken);
+        }
+        return currentSymptomResult;
+      }
+      currentSymptomResult = current;
+      return current;
+    });
+
+    // Automatically trigger logical follow-up questions popup
+    if (openModalIfContent) {
+      setTimeout(() => {
+        const textToCheck = currentSymptomResult || symptomText || finalSpoken;
+        if (textToCheck && textToCheck.trim().length >= 3) {
+          setShowClarificationModal(true);
+        }
+      }, 250);
+    }
   };
 
   const handleClearSymptomText = () => {
-    stopVoiceRecording();
+    stopVoiceRecording(false);
     setSymptomText('');
+    setAcuteAnswers({});
     setRecommendations([]);
-    setRecordSecondsLeft(30);
+    setRecordSecondsLeft(15);
   };
 
   const handleOpenRemedyModal = (remedy: LocalizedRemedy) => {
@@ -840,13 +891,13 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = () => {
                 </div>
               </div>
 
-              {/* Progress Bar for 30 Seconds */}
+              {/* Progress Bar for 15 Seconds */}
               {isRecording && (
                 <div className="space-y-1.5">
                   <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
                     <div
                       className="bg-rose-500 h-full transition-all duration-1000 ease-linear rounded-full"
-                      style={{ width: `${((30 - recordSecondsLeft) / 30) * 100}%` }}
+                      style={{ width: `${((15 - recordSecondsLeft) / 15) * 100}%` }}
                     />
                   </div>
                   <div className="flex justify-between text-[10px] text-slate-400 font-semibold">
@@ -916,6 +967,36 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = () => {
                   className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all resize-none"
                 />
               </div>
+
+              {/* Disclaimer: Not a case documentation */}
+              <div className="p-3 bg-amber-50/90 rounded-xl border border-amber-200/80 flex items-start gap-2.5 text-xs text-amber-900">
+                <ShieldAlert className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                <span className="leading-snug">
+                  {t('acuteQuestionsDisclaimer')}
+                </span>
+              </div>
+
+              {/* Clarifying Questions trigger button */}
+              {symptomText.trim().length >= 3 && (
+                <button
+                  type="button"
+                  onClick={() => setShowClarificationModal(true)}
+                  className="w-full flex items-center justify-between p-3 rounded-xl bg-teal-50/90 hover:bg-teal-100 border border-teal-200 text-teal-950 text-xs font-bold transition-all cursor-pointer shadow-2xs"
+                >
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-teal-600" />
+                    <span>{t('acuteQuestionsOpenBtn')}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    {[acuteAnswers.onset, acuteAnswers.modality, acuteAnswers.sensationMind, acuteAnswers.intensity].filter(Boolean).length > 0 && (
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-teal-200/70 text-teal-900">
+                        {[acuteAnswers.onset, acuteAnswers.modality, acuteAnswers.sensationMind, acuteAnswers.intensity].filter(Boolean).length}/4 {t('acuteQuestionsAnsweredCount')}
+                      </span>
+                    )}
+                    <ChevronRight className="w-4 h-4 text-teal-700" />
+                  </div>
+                </button>
+              )}
             </div>
           </div>
 
@@ -1278,6 +1359,15 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = () => {
           </div>
         </div>
       )}
+
+      {/* Logical Acute Clarification Questions Popup */}
+      <AcuteClarificationModal
+        isOpen={showClarificationModal}
+        onClose={() => setShowClarificationModal(false)}
+        symptomText={symptomText}
+        initialAnswers={acuteAnswers}
+        onApplyAnswers={(answers) => setAcuteAnswers(answers)}
+      />
     </div>
   );
 };

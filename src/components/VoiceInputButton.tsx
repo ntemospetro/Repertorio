@@ -46,6 +46,7 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
   const isProcessingRef = useRef<boolean>(false);
   const rejectionTimerRef = useRef<number | null>(null);
   const acceptedTimerRef = useRef<number | null>(null);
+  const maxDurationTimerRef = useRef<number | null>(null);
 
   // Keep valueRef updated for closures
   useEffect(() => {
@@ -58,6 +59,9 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
       if (sessionRef.current) {
         sessionRef.current.abort();
         sessionRef.current = null;
+      }
+      if (maxDurationTimerRef.current) {
+        clearTimeout(maxDurationTimerRef.current);
       }
       if (rejectionTimerRef.current) {
         clearTimeout(rejectionTimerRef.current);
@@ -134,12 +138,17 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
       sessionRef.current.stop();
       sessionRef.current = null;
     }
+    if (maxDurationTimerRef.current) {
+      clearTimeout(maxDurationTimerRef.current);
+      maxDurationTimerRef.current = null;
+    }
     setIsListening(false);
     setIsStarting(false);
 
     // Process spoken text once stopped
     const textToProcess = recordedTranscriptRef.current;
-    if (textToProcess && textToProcess.trim()) {
+    recordedTranscriptRef.current = '';
+    if (textToProcess && textToProcess.trim() && !isProcessingRef.current) {
       processCompletedVoiceInput(textToProcess);
     }
   }, [processCompletedVoiceInput]);
@@ -169,6 +178,14 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
     recordedTranscriptRef.current = '';
     isProcessingRef.current = false;
 
+    // Maximum 15 seconds recording timeout
+    if (maxDurationTimerRef.current) {
+      clearTimeout(maxDurationTimerRef.current);
+    }
+    maxDurationTimerRef.current = window.setTimeout(() => {
+      stopListening();
+    }, 15000);
+
     const session = startSpeechRecognition({
       language,
       continuous: true,
@@ -187,6 +204,10 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
         setIsStarting(false);
         setIsListening(false);
         sessionRef.current = null;
+        if (maxDurationTimerRef.current) {
+          clearTimeout(maxDurationTimerRef.current);
+          maxDurationTimerRef.current = null;
+        }
 
         if (err === 'not-allowed' || err === 'permission-denied') {
           alert('Mikrofon-Berechtigung wurde verweigert. Bitte erlauben Sie den Mikrofonzugriff in Ihren Browsereinstellungen.');
@@ -196,9 +217,14 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
         setIsStarting(false);
         setIsListening(false);
         sessionRef.current = null;
+        if (maxDurationTimerRef.current) {
+          clearTimeout(maxDurationTimerRef.current);
+          maxDurationTimerRef.current = null;
+        }
 
         // Process collected speech text if not already processing
         const textToProcess = recordedTranscriptRef.current;
+        recordedTranscriptRef.current = '';
         if (textToProcess && textToProcess.trim() && !isProcessingRef.current) {
           processCompletedVoiceInput(textToProcess);
         }
