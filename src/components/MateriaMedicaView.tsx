@@ -25,6 +25,11 @@ import {
   getLocalizedRemedies, 
   LocalizedRemedy 
 } from '../data/materiaMedicaData';
+import { 
+  matchesAuthorFilter, 
+  getRemedyClassicalAuthors, 
+  ClassicalAuthorFilterKey 
+} from '../data/classicalAuthorsMap';
 import { matchSymptomsToRemedies, SymptomMatchResult } from '../services/quickSymptomMatcher';
 import { useTranslation } from '../i18n/LanguageContext';
 import { 
@@ -172,6 +177,7 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = () => {
   // Search and Filter State
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedAuthor, setSelectedAuthor] = useState<ClassicalAuthorFilterKey>('all');
   const [selectedLetter, setSelectedLetter] = useState<string>('all');
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [selectedRemedyForModal, setSelectedRemedyForModal] = useState<LocalizedRemedy | null>(null);
@@ -372,17 +378,27 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = () => {
       // Category filter
       const matchesCategory = selectedCategory === 'all' || remedy.categoryKey === selectedCategory;
 
+      // Author filter (Hahnemann, Kent, Hering)
+      const matchesAuthor = matchesAuthorFilter(remedy.id, selectedAuthor);
+
       // Alphabet filter by Latin name first letter
       const firstLetter = remedy.latinName[0].toUpperCase();
       const matchesLetter = selectedLetter === 'all' || firstLetter === selectedLetter;
 
-      return matchesSearch && matchesCategory && matchesLetter;
+      return matchesSearch && matchesCategory && matchesAuthor && matchesLetter;
     });
-  }, [localizedRemedies, searchQuery, selectedCategory, selectedLetter]);
+  }, [localizedRemedies, searchQuery, selectedCategory, selectedAuthor, selectedLetter]);
 
   const uniqueLetters = useMemo(() => {
     return Array.from(new Set(localizedRemedies.map((r) => r.latinName[0].toUpperCase()))).sort();
   }, [localizedRemedies]);
+
+  const authors = [
+    { key: 'all' as ClassicalAuthorFilterKey, label: t('filterAuthorAll') },
+    { key: 'hahnemann' as ClassicalAuthorFilterKey, label: t('filterAuthorHahnemann') },
+    { key: 'kent' as ClassicalAuthorFilterKey, label: t('filterAuthorKent') },
+    { key: 'hering' as ClassicalAuthorFilterKey, label: t('filterAuthorHering') }
+  ];
 
   const categories = [
     { key: 'all', label: t('filterAll') },
@@ -489,7 +505,7 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = () => {
                   type="button"
                   onClick={() => setShowMobileFilters(!showMobileFilters)}
                   className={`lg:hidden flex items-center gap-1.5 px-3 py-2.5 rounded-xl border text-xs font-semibold shrink-0 cursor-pointer transition-all shadow-2xs ${
-                    showMobileFilters || selectedCategory !== 'all' || selectedLetter !== 'all'
+                    showMobileFilters || selectedAuthor !== 'all' || selectedCategory !== 'all' || selectedLetter !== 'all'
                       ? 'bg-teal-50 text-teal-800 border-teal-200'
                       : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border-slate-200'
                   }`}
@@ -498,7 +514,7 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = () => {
                 >
                   <SlidersHorizontal className="w-4 h-4 text-teal-700 shrink-0" />
                   <span className="hidden sm:inline">{t('filterToggle')}</span>
-                  {(selectedCategory !== 'all' || selectedLetter !== 'all') && (
+                  {(selectedAuthor !== 'all' || selectedCategory !== 'all' || selectedLetter !== 'all') && (
                     <span className="w-2 h-2 rounded-full bg-teal-600 shrink-0" />
                   )}
                   <ChevronDown
@@ -508,27 +524,74 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = () => {
                   />
                 </button>
 
-                {/* Category Filter on Desktop */}
-                <div className="hidden lg:flex items-center gap-1.5 shrink-0">
-                  {categories.map((cat) => (
-                    <button
-                      key={cat.key}
-                      type="button"
-                      onClick={() => setSelectedCategory(cat.key)}
-                      className={`flex items-center justify-center text-center px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-                        selectedCategory === cat.key
-                          ? 'bg-teal-600 text-white shadow-2xs'
-                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                      }`}
-                    >
-                      {cat.label}
-                    </button>
-                  ))}
+                {/* Author & Category Filters on Desktop */}
+                <div className="hidden lg:flex items-center gap-2.5 shrink-0">
+                  {/* Author Filter */}
+                  <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-xl border border-slate-200/80">
+                    <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider px-2 shrink-0">
+                      {t('filterAuthorLabel')}:
+                    </span>
+                    {authors.map((auth) => (
+                      <button
+                        key={auth.key}
+                        type="button"
+                        onClick={() => setSelectedAuthor(auth.key)}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                          selectedAuthor === auth.key
+                            ? 'bg-teal-600 text-white shadow-2xs'
+                            : 'text-slate-600 hover:bg-slate-200/60'
+                        }`}
+                      >
+                        {auth.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Category Filter */}
+                  <div className="flex items-center gap-1">
+                    {categories.map((cat) => (
+                      <button
+                        key={cat.key}
+                        type="button"
+                        onClick={() => setSelectedCategory(cat.key)}
+                        className={`flex items-center justify-center text-center px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                          selectedCategory === cat.key
+                            ? 'bg-teal-600 text-white shadow-2xs'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                      >
+                        {cat.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 
               {/* Collapsible section on responsive (< lg), always visible on desktop (lg:block) */}
               <div className={`${showMobileFilters ? 'block' : 'hidden'} lg:block space-y-3`}>
+                {/* Author Filter on Mobile / Tablet */}
+                <div className="lg:hidden pt-2 border-t border-slate-100 space-y-1.5">
+                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+                    {t('filterAuthorLabel')}:
+                  </span>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                    {authors.map((auth) => (
+                      <button
+                        key={auth.key}
+                        type="button"
+                        onClick={() => setSelectedAuthor(auth.key)}
+                        className={`flex items-center justify-center text-center px-2.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                          selectedAuthor === auth.key
+                            ? 'bg-teal-600 text-white shadow-2xs'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                      >
+                        {auth.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 {/* Category Filter on Mobile / Tablet (2x2 grid) */}
                 <div className="grid grid-cols-2 gap-2 w-full lg:hidden pt-2 border-t border-slate-100">
                   {categories.map((cat) => (
@@ -593,12 +656,13 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = () => {
               {t('showingRemediesCount')}: <strong className="text-slate-800">{filteredRemedies.length}</strong> /{' '}
               {localizedRemedies.length}
             </span>
-            {(searchQuery || selectedCategory !== 'all' || selectedLetter !== 'all') && (
+            {(searchQuery || selectedAuthor !== 'all' || selectedCategory !== 'all' || selectedLetter !== 'all') && (
               <button
                 type="button"
                 onClick={() => {
                   setSearchQuery('');
                   setSelectedCategory('all');
+                  setSelectedAuthor('all');
                   setSelectedLetter('all');
                 }}
                 className="text-teal-700 hover:text-teal-900 font-semibold cursor-pointer flex items-center gap-1"
@@ -626,6 +690,30 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = () => {
                       <div className="text-xs font-medium text-teal-800 mt-0.5">
                         {remedy.commonName}
                       </div>
+                      {(() => {
+                        const authorsInfo = getRemedyClassicalAuthors(remedy.id);
+                        const hasAny = authorsInfo.hahnemann || authorsInfo.kent || authorsInfo.hering;
+                        if (!hasAny) return null;
+                        return (
+                          <div className="flex flex-wrap items-center gap-1 mt-1.5">
+                            {authorsInfo.hahnemann && (
+                              <span className="text-[10px] font-medium px-1.5 py-0.2 rounded bg-amber-50 text-amber-800 border border-amber-200/60" title="Samuel Hahnemann">
+                                Hahnemann
+                              </span>
+                            )}
+                            {authorsInfo.kent && (
+                              <span className="text-[10px] font-medium px-1.5 py-0.2 rounded bg-indigo-50 text-indigo-800 border border-indigo-200/60" title="James Tyler Kent">
+                                Kent
+                              </span>
+                            )}
+                            {authorsInfo.hering && (
+                              <span className="text-[10px] font-medium px-1.5 py-0.2 rounded bg-teal-50 text-teal-800 border border-teal-200/60" title="Constantine Hering">
+                                Hering
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
                     <span
                       className={`text-[11px] px-2 py-0.5 rounded-full font-semibold shrink-0 ${
@@ -970,6 +1058,31 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = () => {
                 <p className="text-sm font-medium text-teal-300 truncate">
                   {selectedRemedyForModal.commonName}
                 </p>
+                {(() => {
+                  const authorsInfo = getRemedyClassicalAuthors(selectedRemedyForModal.id);
+                  const hasAny = authorsInfo.hahnemann || authorsInfo.kent || authorsInfo.hering;
+                  if (!hasAny) return null;
+                  return (
+                    <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                      <span className="text-xs text-slate-400 mr-0.5">{t('filterAuthorLabel')}:</span>
+                      {authorsInfo.hahnemann && (
+                        <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                          Samuel Hahnemann
+                        </span>
+                      )}
+                      {authorsInfo.kent && (
+                        <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                          James Tyler Kent
+                        </span>
+                      )}
+                      {authorsInfo.hering && (
+                        <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/30">
+                          Constantine Hering
+                        </span>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
 
               <button
