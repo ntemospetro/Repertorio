@@ -34,6 +34,7 @@ import { ComprehensiveAnalysisView } from './ComprehensiveAnalysisView';
 import { TherapyRecommendationsView } from './TherapyRecommendationsView';
 import { PatientDirectoryView } from './PatientDirectoryView';
 import { MateriaMedicaView } from './MateriaMedicaView';
+import { AcuteIntakeView } from './AcuteIntakeView';
 import { UserManualView } from './UserManualView';
 import { TherapistLogin } from './TherapistLogin';
 import { getCountryFlag } from '../data/countries';
@@ -82,6 +83,7 @@ import {
   Heart,
   UserCheck,
   UserPlus,
+  Mic,
 } from 'lucide-react';
 
 interface TherapistPanelProps {
@@ -157,7 +159,7 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
 }) => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const { t, language } = useTranslation();
-  const [panelTab, setPanelTab] = useState<'cases' | 'patients' | 'materiamedica' | 'documentation' | 'profile' | 'tariff'>(() => getStoredTherapistTab());
+  const [panelTab, setPanelTab] = useState<'cases' | 'patients' | 'materiamedica' | 'quickintake' | 'documentation' | 'profile' | 'tariff'>(() => getStoredTherapistTab());
   const [currentStep, setCurrentStep] = useState<number>(1);
 
   useEffect(() => {
@@ -1068,6 +1070,7 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
 
             <button
               type="button"
+              id="sidebar-nav-tab-materiamedica"
               onClick={() => setPanelTab('materiamedica')}
               className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-3 transition-colors cursor-pointer ${
                 panelTab === 'materiamedica'
@@ -1077,6 +1080,20 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
             >
               <BookOpen className="w-4 h-4 text-teal-600" />
               <span>{t('tabMateriaMedica')}</span>
+            </button>
+
+            <button
+              type="button"
+              id="sidebar-nav-tab-quickintake"
+              onClick={() => setPanelTab('quickintake')}
+              className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-3 transition-colors cursor-pointer ${
+                panelTab === 'quickintake'
+                  ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/50'
+                  : 'text-slate-600 hover:bg-slate-200/50 hover:text-slate-900'
+              }`}
+            >
+              <Mic className="w-4 h-4 text-teal-600" />
+              <span>{t('tabQuickIntake')}</span>
             </button>
           </div>
         </div>
@@ -1190,7 +1207,7 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
         />
       )}
 
-      {/* TAB CONTENT 4: MATERIA MEDICA & RAPID INTAKE */}
+      {/* TAB CONTENT 4: MATERIA MEDICA */}
       {panelTab === 'materiamedica' && (
         <MateriaMedicaView
           onSelectRemedyForCase={(remedyName, potency) => {
@@ -1201,6 +1218,22 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
               verordnungPotenz: potency,
             }));
           }}
+          onGoToAcuteIntake={() => setPanelTab('quickintake')}
+        />
+      )}
+
+      {/* TAB CONTENT 5: AKUTAUFNAHME & VOICE-ANALYSE */}
+      {panelTab === 'quickintake' && (
+        <AcuteIntakeView
+          onSelectRemedyForCase={(remedyName, potency) => {
+            setPanelTab('cases');
+            setCurrentCase(prev => ({
+              ...prev,
+              repertorisationErgebnis: remedyName,
+              verordnungPotenz: potency,
+            }));
+          }}
+          onGoToMateriaMedica={() => setPanelTab('materiamedica')}
         />
       )}
 

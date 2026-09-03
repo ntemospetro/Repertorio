@@ -192,6 +192,218 @@ Beachte alle Details aus den Fall-Daten. Keine Daten erfinden, fehlende Daten al
     }
   });
 
+  // 5-Schritte Homöopathischer Experten-Repertorisations-Endpunkt
+  app.post("/api/acute-repertorise", async (req, res) => {
+    try {
+      const { symptomText, language = "de" } = req.body;
+      if (!symptomText || typeof symptomText !== "string" || !symptomText.trim()) {
+        return res.status(400).json({ error: "symptomText is required" });
+      }
+
+      const langNames: Record<string, string> = {
+        de: "German (Deutsch)",
+        en: "English",
+        el: "Greek (Ελληνικά)",
+        es: "Spanish (Español)",
+        fr: "French (Français)",
+        it: "Italian (Italiano)",
+        ru: "Russian (Русский)"
+      };
+      const targetLanguageName = langNames[language] || "German (Deutsch)";
+
+      if (!process.env.GEMINI_API_KEY) {
+        return res.status(503).json({ error: "GEMINI_API_KEY is not configured" });
+      }
+
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const prompt = `
+Du bist das logische Hintergrund-Modul (Backend-Engine) einer bestehenden Homöopathie-App. Deine Aufgabe ist es, den eingegebenen Patienten-Freitext (via Sprache oder Text) präzise zu analysieren und ein lückenloses, homöopathisches Ausschlussverfahren (Repertorisation) im Hintergrund zu berechnen.
+
+WICHTIG: Du darfst nichts erfinden oder annehmen. Wenn der Text des Benutzers unvollständig ist und wichtige Variablen fehlen, musst du diese als "Unbekannt (Bitte erfragen)" markieren und im Feld "diagnose_fragen_fuer_therapeut" gezielt nach den fehlenden Informationen fragen. 
+
+Du darfst kein UI-Layout, kein HTML und keine visuellen Formatierungen generieren. Dein Ergebnis muss als reines, strukturiertes Daten-Objekt ausgegeben werden, damit das bestehende Design der App nicht verändert oder gestört wird. Die App nutzt deine Daten, um das vorhandene Layout zu befüllen und die vollständige Baumstruktur in einem separaten Popup-Fenster anzuzeigen.
+
+Befolge bei JEDER Eingabe exakt diesen 5-Schritte-Algorithmus:
+
+1. SCHRITT: SYMPTOM-EXTRAKTION (Tokenisierung)
+Analysiere den Text und ordne die Wörter ausnahmslos in diese vier Variablen ein. Wenn eine Information im Text nicht genannt wird, schreibe strikt "Unbekannt (Bitte erfragen)":
+- [Leitsymptom] = Was genau ist die körperliche Hauptbeschwerde?
+- [Causa] = Was war der Auslöser/die Ursache (Wetter, Emotion, Unfall, Genussmittel)?
+- [Modalitäten] = Was verschlimmert (>) oder verbessert (<) den Zustand (Kälte, Wärme, Tageszeit, Bewegung)?
+- [Begleitsymptome] = Welche zusätzlichen Symptome oder Gemütszustände liegen vor?
+
+2. SCHRITT: PRIMÄR-FILTER (Arznei-Pool)
+Suche in deiner homöopathischen Datenbank nach allen Arzneimitteln, die eine hohe Wertigkeit für die Kombination aus [Leitsymptom] und [Causa] besitzen. Dies ist dein "Start-Pool".
+
+3. SCHRITT: BINÄRE DIFFERENZIERUNG (Der Entscheidungsbaum)
+Erstelle einen logischen Ja/Nein-Entscheidungsbaum, um die Mittel aus dem Start-Pool systematisch voneinander abzugrenzen. Nutze dafür die [Modalitäten] und [Begleitsymptome]. Jede Verzweigung MUSS auf einer klaren, homöopathisch verankerten Differenzierungsfrage basieren. Wenn die Daten fehlen, bleibt der Baum auf dieser Ebene unvollständig.
+
+4. SCHRITT: LÜCKENLOSER ABSCHLUSS (Keine Sackgassen)
+Der Baum darf KEINE offenen Enden ("Anderes") haben. Wenn alle Daten vorhanden sind und die Hauptmittel durch ein "NEIN" ausgeschlossen werden, musst du den Pfad so lange mit klassischen homöopathischen "Auffang-Mitteln" (z.B. Ferrum Phos, Thuja, Pulsatilla) weiterführen, bis JEDER Pfad am Ende bei einer exakten Arznei ankommt. Wenn Daten fehlen, stoppt der Pfad bei "Unvollständig (Warte auf Eingabe)".
+
+5. SCHRITT: DIE STRUKTURIERTE AUSGABE FÜR DIE APP-SCHNITTSTELLE
+Gib das Ergebnis als reines Datenobjekt (Schlüssel-Wert-Paare) ohne jeglichen Fließtext davor oder danach in folgendem Format aus:
+
+Eingabetext des Patienten/Therapeuten:
+"${symptomText.replace(/"/g, '\\"')}"
+
+WICHTIG / SPRACHVORGABE:
+Verfasse alle Texte, Beschreibungen, Fragen und Begründungen in der Zielsprache: ${targetLanguageName}.
+Behalte für die Arzneimittel die international etablierten lateinischen Bezeichnungen (z. B. Lycopodium clavatum, Chelidonium majus, Sanguinaria canadensis, Nux vomica, Belladonna, Aconitum napellus, etc.).
+
+Antworte AUSSCHLIESSLICH mit einem validen JSON-Objekt im folgenden Format (ohne Code-Block-Ummantelung):
+{
+  "extraktion": {
+    "hauptbeschwerde": "Inhalt von Leitsymptom",
+    "causa": "Inhalt von Causa oder 'Unbekannt (Bitte erfragen)'",
+    "modalitaeten": "Inhalt von Modalitäten oder 'Unbekannt (Bitte erfragen)'",
+    "begleitsymptome": "Inhalt von Begleitsymptome oder 'Unbekannt (Bitte erfragen)'"
+  },
+  "app_layout_daten": {
+    "optimales_simile": "Name des ermittelten Hauptmittels oder 'Fehlende Daten für Empfehlung'",
+    "begruendung": "Kurze Begründung, warum das Mittel passt ODER Erklärung, welche Kern-Informationen noch benötigt werden"
+  },
+  "diagnose_fragen_fuer_therapeut": {
+    "frage_1": "Gezielte Frage nach der fehlenden Modalität oder dem Schmerzcharakter",
+    "frage_2": "Gezielte Frage nach dem fehlenden Begleitsymptom oder Gemütszustand"
+  },
+  "baumstruktur_popup_daten": {
+    "start_knoten": "Ausgangssymptom und Ursache",
+    "haupt_differenzierungs_frage": "Die erste große Ja/Nein-Frage zur Differenzierung der möglichen Mittel",
+    "pfad_ja": {
+      "bedingung": "Wenn zutreffend",
+      "folge_frage": "Nächste Frage oder 'Warte auf Eingabe der fehlenden Daten'",
+      "ergebnis_ja": "Mittelname bei JA oder 'Unvollständig'",
+      "ergebnis_nein": "Mittelname bei NEIN oder 'Unvollständig'"
+    },
+    "pfad_nein": {
+      "bedingung": "Wenn nicht zutreffend",
+      "folge_frage": "Nächste Frage oder 'Warte auf Eingabe der fehlenden Daten'",
+      "ergebnis_ja": "Mittelname bei JA oder 'Unvollständig'",
+      "ergebnis_nein": "Mittelname bei NEIN oder 'Unvollständig'"
+    }
+  }
+}
+`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3.8-flash",
+        contents: prompt,
+        config: {
+          temperature: 0.1,
+          responseMimeType: "application/json",
+        },
+      });
+
+      const rawParsed = JSON.parse(response.text || "{}");
+      
+      // Ensure strict adherence to both new 5-step schema and normalized compatibility fields
+      const extraktion = rawParsed.extraktion || {
+        hauptbeschwerde: rawParsed.extractedAnalysis?.hauptbeschwerde || symptomText,
+        causa: rawParsed.extractedAnalysis?.causa || "Unbekannt (Bitte erfragen)",
+        modalitaeten: rawParsed.extractedAnalysis?.modalitaeten || "Unbekannt (Bitte erfragen)",
+        begleitsymptome: rawParsed.extractedAnalysis?.begleitsymptome || "Unbekannt (Bitte erfragen)"
+      };
+
+      const app_layout_daten = rawParsed.app_layout_daten || {
+        optimales_simile: rawParsed.recommendedSimile?.remedyName || "Fehlende Daten für Empfehlung",
+        begruendung: rawParsed.recommendedSimile?.rationale || "Informationen zur vollständigen Differenzierung erforderlich."
+      };
+
+      const diagnose_fragen_fuer_therapeut = rawParsed.diagnose_fragen_fuer_therapeut || {
+        frage_1: Array.isArray(rawParsed.diagnosticQuestions) && rawParsed.diagnosticQuestions[0] ? rawParsed.diagnosticQuestions[0] : "Welche Einflüsse verschlimmern oder verbessern die Beschwerden?",
+        frage_2: Array.isArray(rawParsed.diagnosticQuestions) && rawParsed.diagnosticQuestions[1] ? rawParsed.diagnosticQuestions[1] : "Gibt es auffällige Begleitsymptome oder Gemütsveränderungen?"
+      };
+
+      const baumstruktur_popup_daten = rawParsed.baumstruktur_popup_daten || {
+        start_knoten: `${extraktion.hauptbeschwerde} (${extraktion.causa})`,
+        haupt_differenzierungs_frage: "Liegen spezifische Modalitäten vor?",
+        pfad_ja: {
+          bedingung: "Modalitäten und Begleitsymptome bestätigt",
+          folge_frage: "Zustand verschlimmert durch Kälte oder Wärme?",
+          ergebnis_ja: app_layout_daten.optimales_simile !== "Fehlende Daten für Empfehlung" ? app_layout_daten.optimales_simile : "Unvollständig",
+          ergebnis_nein: "Ferrum phosphoricum"
+        },
+        pfad_nein: {
+          bedingung: "Keine Verschlimmerung durch Umweltreize",
+          folge_frage: "Warte auf Eingabe der fehlenden Daten",
+          ergebnis_ja: "Unvollständig",
+          ergebnis_nein: "Unvollständig"
+        }
+      };
+
+      const normalizedResult = {
+        extraktion,
+        app_layout_daten,
+        diagnose_fragen_fuer_therapeut,
+        baumstruktur_popup_daten,
+        // Legacy/compatibility fields:
+        extractedAnalysis: {
+          hauptbeschwerde: extraktion.hauptbeschwerde,
+          causa: extraktion.causa,
+          modalitaeten: extraktion.modalitaeten,
+          begleitsymptome: extraktion.begleitsymptome
+        },
+        recommendedSimile: {
+          remedyName: app_layout_daten.optimales_simile,
+          rationale: app_layout_daten.begruendung
+        },
+        diagnosticQuestions: [
+          diagnose_fragen_fuer_therapeut.frage_1,
+          diagnose_fragen_fuer_therapeut.frage_2
+        ].filter(Boolean),
+        decisionTree: rawParsed.decisionTree || {
+          header: `[ ${extraktion.hauptbeschwerde.toUpperCase()} ]`,
+          rootQuestion: baumstruktur_popup_daten.haupt_differenzierungs_frage,
+          branches: [
+            {
+              id: "branch_ja",
+              branchLabel: "[ JA: BESTÄTIGT ]",
+              subQuestion: baumstruktur_popup_daten.pfad_ja.folge_frage,
+              yesRemedy: {
+                name: baumstruktur_popup_daten.pfad_ja.ergebnis_ja,
+                rationale: app_layout_daten.begruendung
+              },
+              noRemedy: {
+                name: baumstruktur_popup_daten.pfad_ja.ergebnis_nein,
+                rationale: "Klassisches Auffang-Mittel bei Ausschluss der Primärreaktion."
+              }
+            },
+            {
+              id: "branch_nein",
+              branchLabel: "[ NEIN: AUSGESCHLOSSEN ]",
+              subQuestion: baumstruktur_popup_daten.pfad_nein.folge_frage,
+              yesRemedy: {
+                name: baumstruktur_popup_daten.pfad_nein.ergebnis_ja,
+                rationale: "Alternativer Pfad"
+              },
+              noRemedy: {
+                name: baumstruktur_popup_daten.pfad_nein.ergebnis_nein,
+                rationale: "Auffang-Mittel oder unvollständig"
+              }
+            }
+          ],
+          textFlowchart: `[${extraktion.hauptbeschwerde} | Ursache: ${extraktion.causa}]
+  │
+  ▼
+[ ${baumstruktur_popup_daten.haupt_differenzierungs_frage} ]
+  ├── JA  ──> ${baumstruktur_popup_daten.pfad_ja.folge_frage}
+  │            ├── JA  ──> ${baumstruktur_popup_daten.pfad_ja.ergebnis_ja}
+  │            └── NEIN ──> ${baumstruktur_popup_daten.pfad_ja.ergebnis_nein}
+  │
+  └── NEIN ──> ${baumstruktur_popup_daten.pfad_nein.folge_frage}
+               ├── JA  ──> ${baumstruktur_popup_daten.pfad_nein.ergebnis_ja}
+               └── NEIN ──> ${baumstruktur_popup_daten.pfad_nein.ergebnis_nein}`
+        }
+      };
+
+      res.json({ result: normalizedResult });
+    } catch (error) {
+      console.error("Acute Repertorise Gemini Error:", error);
+      res.status(500).json({ error: "Failed to generate acute repertorisation." });
+    }
+  });
+
   app.post("/api/check-medical-relevance", async (req, res) => {
     try {
       const { text, language = "de" } = req.body;

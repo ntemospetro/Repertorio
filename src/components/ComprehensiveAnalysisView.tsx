@@ -41,13 +41,13 @@ export const ComprehensiveAnalysisView: React.FC<ComprehensiveAnalysisViewProps>
   onReAnalyze,
   isAnalyzing = false
 }) => {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const [activeTab, setActiveTab] = useState<'redFlags' | 'falldaten' | 'differential' | 'homoeopathie' | 'medikamente' | 'gesamt'>('redFlags');
   const [downloadSuccess, setDownloadSuccess] = useState<string | null>(null);
 
   const handleDownloadPDF = (cat: PDFExportCategory, label: string) => {
     try {
-      exportCategoryPDF(cat, patientCase, analysis);
+      exportCategoryPDF(cat, patientCase, analysis, (language as any) || 'de');
       setDownloadSuccess(`PDF "${label}" wurde erfolgreich heruntergeladen.`);
       setTimeout(() => setDownloadSuccess(null), 4000);
     } catch (err) {
@@ -676,10 +676,10 @@ export const ComprehensiveAnalysisView: React.FC<ComprehensiveAnalysisViewProps>
           {/* Printable Header */}
           <div className="hidden print:flex items-center justify-between border-b pb-3 mb-4 text-xs text-slate-600">
             <div>
-              <span className="font-bold text-slate-900 text-sm">4. Differenzialdiagnostik: {patientCase.patientName || 'Patient'}</span>
-              <span> • Datum: {patientCase.anamneseDatum || new Date().toLocaleDateString('de-DE')}</span>
+              <span className="font-bold text-slate-900 text-sm">{t('sec4Title')}: {patientCase.patientName || 'Patient'}</span>
+              <span> • {t('patientAnamneseDate') || 'Datum'}: {patientCase.anamneseDatum || new Date().toLocaleDateString()}</span>
             </div>
-            <div className="font-bold text-teal-800">Homöopathische Praxis</div>
+            <div className="font-bold text-teal-800">{t('practice')}</div>
           </div>
 
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
@@ -706,7 +706,7 @@ export const ComprehensiveAnalysisView: React.FC<ComprehensiveAnalysisViewProps>
               {/* High-Contrast Dringlichkeit Badge */}
               <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 text-white font-mono text-xs font-bold tracking-wide">
                 <span className="text-amber-400">{t('urgencyHeaderLabel')}</span>
-                <span>{analysis.differentialdiagnostik?.dringlichkeitHeader || 'ZEITNAHE MEDIZINISCHE ABKLÄRUNG'}</span>
+                <span>{analysis.differentialdiagnostik?.dringlichkeitHeader && analysis.differentialdiagnostik.dringlichkeitHeader !== 'ZEITNAHE MEDIZINISCHE ABKLÄRUNG' ? analysis.differentialdiagnostik.dringlichkeitHeader : t('defaultUrgencyHeader')}</span>
               </div>
             </div>
           </div>

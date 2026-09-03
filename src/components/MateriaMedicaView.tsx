@@ -20,7 +20,10 @@ import {
   ArrowLeft,
   SlidersHorizontal,
   ChevronDown,
-  ShieldAlert
+  ShieldAlert,
+  Ban,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { 
   getLocalizedRemedies, 
@@ -31,7 +34,12 @@ import {
   getRemedyClassicalAuthors, 
   ClassicalAuthorFilterKey 
 } from '../data/classicalAuthorsMap';
-import { matchSymptomsToRemedies, SymptomMatchResult } from '../services/quickSymptomMatcher';
+import { 
+  matchSymptomsToRemedies, 
+  SymptomMatchResult,
+  performDifferentialDiagnosis,
+  DifferentialDiagnosisResult
+} from '../services/quickSymptomMatcher';
 import { useTranslation } from '../i18n/LanguageContext';
 import { 
   isSpeechRecognitionSupported, 
@@ -158,9 +166,13 @@ function resolveDifferentialRemedy(diffStr: string, remedies: LocalizedRemedy[])
 
 interface MateriaMedicaViewProps {
   onSelectRemedyForCase?: (remedyName: string, potency: string) => void;
+  onGoToAcuteIntake?: () => void;
 }
 
-export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = () => {
+export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = ({
+  onSelectRemedyForCase,
+  onGoToAcuteIntake,
+}) => {
   const { t, language } = useTranslation();
   
   // Navigation Tabs
@@ -199,6 +211,8 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = () => {
   const [copySuccess, setCopySuccess] = useState<string | null>(null);
   const [showClarificationModal, setShowClarificationModal] = useState(false);
   const [acuteAnswers, setAcuteAnswers] = useState<AcuteAnswers>({});
+  const [diffResult, setDiffResult] = useState<DifferentialDiagnosisResult | null>(null);
+  const [showExcludedInView, setShowExcludedInView] = useState<boolean>(false);
 
   const recognitionRef = useRef<SpeechRecognitionSession | null>(null);
   const timerIntervalRef = useRef<number | null>(null);
@@ -216,15 +230,16 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = () => {
     return getLocalizedRemedies(language);
   }, [language]);
 
-  // Update recommendations whenever symptom text, acute clarification answers, or language changes
+  // Update recommendations & differential diagnosis whenever symptom text, acute clarification answers, or language changes
   useEffect(() => {
     if (symptomText.trim().length >= 3) {
-      const questions = getAcuteClarificationQuestions(symptomText, language);
-      const enhancedQuery = buildEnhancedSymptomQuery(symptomText, acuteAnswers, questions);
-      const results = matchSymptomsToRemedies(enhancedQuery, language);
+      const results = matchSymptomsToRemedies(symptomText, language, acuteAnswers);
       setRecommendations(results);
+      const diff = performDifferentialDiagnosis(symptomText, language, acuteAnswers);
+      setDiffResult(diff);
     } else {
       setRecommendations([]);
+      setDiffResult(null);
     }
   }, [symptomText, acuteAnswers, language]);
 
@@ -485,7 +500,13 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = () => {
             <button
               id="btn-materia-tab-quickintake"
               type="button"
-              onClick={() => setActiveTab('quickIntake')}
+              onClick={() => {
+                if (onGoToAcuteIntake) {
+                  onGoToAcuteIntake();
+                } else {
+                  setActiveTab('quickIntake');
+                }
+              }}
               className={`order-1 lg:order-2 w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer shadow-xs ${
                 activeTab === 'quickIntake'
                   ? 'bg-teal-800 hover:bg-teal-900 text-white ring-2 ring-teal-500/30'
@@ -981,11 +1002,19 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = () => {
                 <button
                   type="button"
                   onClick={() => setShowClarificationModal(true)}
-                  className="w-full flex items-center justify-between p-3 rounded-xl bg-teal-50/90 hover:bg-teal-100 border border-teal-200 text-teal-950 text-xs font-bold transition-all cursor-pointer shadow-2xs"
+                  className="w-full flex items-center justify-between p-3.5 rounded-xl bg-teal-50/90 hover:bg-teal-100 border border-teal-200 text-teal-950 text-xs font-bold transition-all cursor-pointer shadow-2xs"
                 >
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-teal-600" />
-                    <span>{t('acuteQuestionsOpenBtn')}</span>
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-teal-600 text-white flex items-center justify-center shrink-0">
+                      <SlidersHorizontal className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="text-left">
+                      <span className="block font-bold text-slate-900">{t('diffDiagTitle')}</span>
+                      <span className="text-[10px] font-normal text-slate-600">
+                        {diffResult?.domainName ? `${diffResult.domainName} • ` : ''}
+                        {t('diffDiagStepByStep')}
+                      </span>
+                    </div>
                   </div>
                   <div className="flex items-center gap-1.5">
                     {[acuteAnswers.onset, acuteAnswers.modality, acuteAnswers.sensationMind, acuteAnswers.intensity].filter(Boolean).length > 0 && (
@@ -1043,13 +1072,22 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = () => {
                       {/* Top Header with Latin name as primary */}
                       <div className="flex items-start justify-between gap-2">
                         <div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-teal-700 text-white">
                               #{index + 1}
                             </span>
                             <h3 className="text-sm font-bold text-slate-900 font-serif">
                               {rec.remedy.latinName}
                             </h3>
+                            {index === 0 ? (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-800 text-teal-100 border border-teal-700">
+                                {t('diffDiagPrimarySimile')}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                                {t('diffDiagAlternative')}
+                              </span>
+                            )}
                           </div>
                           <div className="text-xs font-medium text-teal-800 mt-0.5">
                             {rec.remedy.commonName}
@@ -1075,6 +1113,19 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = () => {
                           {rec.clinicalRationale}
                         </p>
                       </div>
+
+                      {/* Differential Note (Distinction vs Top Remedy) */}
+                      {rec.differentialNote && (
+                        <div className="mt-2 p-2.5 rounded-lg bg-teal-50/70 border border-teal-200/80 text-xs text-teal-950 space-y-1">
+                          <div className="font-semibold text-teal-900 flex items-center gap-1">
+                            <SlidersHorizontal className="w-3 h-3 text-teal-700" />
+                            <span>{t('diffDiagDistinctionToPrimary')}:</span>
+                          </div>
+                          <p className="text-teal-900/90 leading-relaxed">
+                            {rec.differentialNote}
+                          </p>
+                        </div>
+                      )}
 
                       {/* Dosage Guidance */}
                       <div className="mt-2 text-[11px] text-slate-500">
@@ -1103,6 +1154,57 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = () => {
                       </div>
                     </div>
                   ))}
+
+                  {/* Differential Excluded Remedies Section */}
+                  {diffResult && diffResult.excludedRemedies.length > 0 && (
+                    <div className="mt-4 p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Ban className="w-4 h-4 text-rose-600" />
+                          <span className="text-xs font-bold text-slate-800">
+                            {t('diffDiagExcludedTitle')} ({diffResult.excludedRemedies.length})
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setShowExcludedInView((prev) => !prev)}
+                          className="text-[11px] font-semibold text-slate-600 hover:text-slate-900 flex items-center gap-1 cursor-pointer"
+                        >
+                          {showExcludedInView ? (
+                            <>
+                              <EyeOff className="w-3 h-3" />
+                              <span>{t('diffDiagHideExcluded')}</span>
+                            </>
+                          ) : (
+                            <>
+                              <Eye className="w-3 h-3" />
+                              <span>{t('diffDiagViewExcluded', { count: diffResult.excludedRemedies.length })}</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                      {showExcludedInView && (
+                        <div className="pt-2 border-t border-slate-200 space-y-1.5 animate-in fade-in duration-100">
+                          {diffResult.excludedRemedies.map((ex) => (
+                            <div
+                              key={ex.remedy.id}
+                              className="text-xs bg-white border border-rose-100 rounded-lg p-2 flex items-start gap-2 text-rose-950"
+                            >
+                              <Ban className="w-3.5 h-3.5 text-rose-500 shrink-0 mt-0.5" />
+                              <div>
+                                <span className="font-bold line-through text-slate-600">
+                                  {ex.remedy.latinName}
+                                </span>
+                                <p className="text-[11px] text-rose-800 mt-0.5">
+                                  {ex.reason}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

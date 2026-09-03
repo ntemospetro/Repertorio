@@ -1,9 +1,12 @@
 import { LanguageCode } from '../types';
+import { QUESTION_META_BY_DOMAIN } from './acuteClarificationTranslations';
+import { OPTION_LABELS_I18N } from './acuteClarificationOptionsI18n';
 
 export interface AcuteClarificationOption {
   id: string;
   label: string;
-  remedyHint?: string; // e.g. 'Aconitum, Belladonna'
+  remedyHint?: string; // e.g. 'Lachesis / Spigelia'
+  remedyIds?: string[]; // Direct mapping to localized remedy IDs
   relevanceKeywords: string[]; // Added to matching text
 }
 
@@ -15,7 +18,7 @@ export interface AcuteClarificationQuestion {
   type: 'single' | 'scale';
   options?: AcuteClarificationOption[];
   scaleMin?: number;
-  scaleMax?: number; // 4 (strictly not 1-10!)
+  scaleMax?: number; // 4 (strictly Hahnemannian 1-4 scale)
 }
 
 export interface AcuteAnswers {
@@ -23,42 +26,647 @@ export interface AcuteAnswers {
   modality?: string;
   sensationMind?: string;
   intensity?: number; // 1 to 4
+  [key: string]: any;
 }
 
+export type AcuteComplaintDomain =
+  | 'pain_laterality'
+  | 'gastrointestinal'
+  | 'respiratory'
+  | 'headache'
+  | 'injury'
+  | 'fever'
+  | 'skin'
+  | 'mind_shock'
+  | 'general';
+
 /**
- * Returns localized core acute clarification questions based on language and recorded symptoms.
- * strictly keeps questions to the 3-4 most necessary questions for acute remedy differentiation,
- * using a 1-4 scale (never 1-10).
- * Fully localized for all 7 supported languages: de, en, es, fr, it, el, ru.
+ * Dynamically detects the acute complaint domain based on the user's input text in all 7 languages.
  */
-export function getAcuteClarificationQuestions(
-  inputText: string,
-  lang: LanguageCode = 'de'
-): AcuteClarificationQuestion[] {
+export function detectComplaintDomain(inputText: string): AcuteComplaintDomain {
   const norm = (inputText || '').toLowerCase();
 
-  // Multi-lingual symptom detection
-  const isInjury = 
-    norm.includes('verletz') || norm.includes('sturz') || norm.includes('trauma') || norm.includes('prell') || norm.includes('wunde') ||
-    norm.includes('injur') || norm.includes('fall') || norm.includes('sprain') || norm.includes('bruis') || norm.includes('wound') ||
-    norm.includes('lesión') || norm.includes('lesion') || norm.includes('herida') || norm.includes('golpe') || norm.includes('caída') || norm.includes('caida') ||
-    norm.includes('bless') || norm.includes('chute') || norm.includes('plaie') || norm.includes('contusion') ||
-    norm.includes('ferita') || norm.includes('caduta') || norm.includes('botta') ||
-    norm.includes('τραύμα') || norm.includes('τραυμα') || norm.includes('πτώση') || norm.includes('πτωση') || norm.includes('πληγή') || norm.includes('πληγη') ||
-    norm.includes('травм') || norm.includes('ушиб') || norm.includes('ран') || norm.includes('паден');
+  // 1. Gastrointestinal / Abdomen / Stomach / Nausea / Colic / Diarrhea
+  // Check FIRST to avoid collision with words like 'durchfall' containing 'fall'
+  if (
+    norm.includes('durchfall') || norm.includes('bauch') || norm.includes('magen') || norm.includes('darm') ||
+    norm.includes('übel') || norm.includes('uebel') || norm.includes('erbrech') || norm.includes('blähung') ||
+    norm.includes('kolik') || norm.includes('verstopfung') || norm.includes('stomach') || norm.includes('belly') ||
+    norm.includes('abdomen') || norm.includes('nausea') || norm.includes('vomit') || norm.includes('diarrhea') ||
+    norm.includes('bloat') || norm.includes('estómago') || norm.includes('estomago') || norm.includes('vientre') ||
+    norm.includes('náusea') || norm.includes('vómit') || norm.includes('diarrea') || norm.includes('estomac') ||
+    norm.includes('ventre') || norm.includes('nausée') || norm.includes('vomir') || norm.includes('diarrhée') ||
+    norm.includes('stomaco') || norm.includes('pancia') || norm.includes('vomito') || norm.includes('κοιλιά') ||
+    norm.includes('στομάχι') || norm.includes('ναυτία') || norm.includes('εμετός') || norm.includes('διάρροια') ||
+    norm.includes('живот') || norm.includes('желудок') || norm.includes('тошнот') || norm.includes('рвот') ||
+    norm.includes('понос')
+  ) {
+    return 'gastrointestinal';
+  }
 
-  const isFever = 
-    norm.includes('fieber') || norm.includes('fever') || norm.includes('fièvre') || norm.includes('fievre') || 
-    norm.includes('fiebre') || norm.includes('febbre') || norm.includes('πυρετ') || norm.includes('лихорад') || norm.includes('жар') ||
-    norm.includes('gripp') || norm.includes('flu') || norm.includes('grippe') || norm.includes('gripe') || norm.includes('influenza') || norm.includes('γρίπ') || norm.includes('грипп');
+  // 2. Injury / Trauma / Sprain / Bruise (Using precise trauma terms so 'durchfall' is not caught)
+  const hasEnglishFall = /\b(fall|falls|fell|falling)\b/i.test(norm);
+  if (
+    hasEnglishFall ||
+    norm.includes('verletz') || norm.includes('sturz') || norm.includes('stürzte') || norm.includes('gestürzt') ||
+    norm.includes('trauma') || norm.includes('prell') || norm.includes('wunde') || norm.includes('zerr') ||
+    norm.includes('verstauch') || norm.includes('unfall') || norm.includes('umgeknick') || norm.includes('ausrutsch') ||
+    norm.includes('gebrochen') || norm.includes('fraktur') || norm.includes('injur') || norm.includes('sprain') ||
+    norm.includes('bruis') || norm.includes('wound') || norm.includes('lesión') || norm.includes('lesion') ||
+    norm.includes('caída') || norm.includes('caida') || norm.includes('esguince') || norm.includes('bless') ||
+    norm.includes('chute') || norm.includes('entorse') || norm.includes('ferita') || norm.includes('caduta') ||
+    norm.includes('distorsione') || norm.includes('τραύμα') || norm.includes('τραυμα') || norm.includes('διάστρεμμα') ||
+    norm.includes('травм') || norm.includes('ушиб') || norm.includes('растяжен') || norm.includes('вывих')
+  ) {
+    return 'injury';
+  }
 
-  const isHead = 
-    norm.includes('kopf') || norm.includes('head') || norm.includes('tête') || norm.includes('tete') || 
-    norm.includes('cabeza') || norm.includes('testa') || norm.includes('κεφάλ') || norm.includes('κεφαλ') || norm.includes('голов') ||
-    norm.includes('migr') || norm.includes('cefal') || norm.includes('ημικραν');
+  // 3. Skin / Rash / Insect Bite / Burn / Blister
+  if (
+    norm.includes('haut') || norm.includes('ausschlag') || norm.includes('juck') || norm.includes('stich') ||
+    norm.includes('insekten') || norm.includes('wespen') || norm.includes('bienen') || norm.includes('brand') ||
+    norm.includes('verbrenn') || norm.includes('bläschen') || norm.includes('blaeschen') || norm.includes('skin') ||
+    norm.includes('rash') || norm.includes('itch') || norm.includes('sting') || norm.includes('insect') ||
+    norm.includes('burn') || norm.includes('blister') || norm.includes('piel') || norm.includes('erupción') ||
+    norm.includes('erupcion') || norm.includes('picadura') || norm.includes('quemadura') || norm.includes('peau') ||
+    norm.includes('éruption') || norm.includes('eruption') || norm.includes('piqûre') || norm.includes('piqure') ||
+    norm.includes('brûlure') || norm.includes('brulure') || norm.includes('pelle') || norm.includes('prurito') ||
+    norm.includes('puntura') || norm.includes('ustione') || norm.includes('δέρμα') || norm.includes('δερμα') ||
+    norm.includes('εξάνθημα') || norm.includes('εξανθημα') || norm.includes('φαγούρα') || norm.includes('τσίμπημα') ||
+    norm.includes('έγκαυμα') || norm.includes('кож') || norm.includes('сыпь') || norm.includes('зуд') ||
+    norm.includes('укус') || norm.includes('ожог')
+  ) {
+    return 'skin';
+  }
 
-  // --- 1. DEUTSCH (DE) ---
-  if (lang === 'de') {
+  // 4. Headache / Migraine / Temples
+  if (
+    norm.includes('kopf') || norm.includes('migrän') || norm.includes('migraen') || norm.includes('stirn') ||
+    norm.includes('schläf') || norm.includes('schlaef') || norm.includes('hinterkopf') || norm.includes('head') ||
+    norm.includes('headache') || norm.includes('migraine') || norm.includes('temple') || norm.includes('cabeza') ||
+    norm.includes('jaqueca') || norm.includes('migraña') || norm.includes('tête') || norm.includes('tete') ||
+    norm.includes('céphalée') || norm.includes('cephalee') || norm.includes('testa') || norm.includes('emicrania') ||
+    norm.includes('κεφάλ') || norm.includes('κεφαλ') || norm.includes('ημικραν') || norm.includes('голов') ||
+    norm.includes('мигрен')
+  ) {
+    return 'headache';
+  }
+
+  // 5. Respiratory / Cough / Throat / Hoarse
+  if (
+    norm.includes('husten') || norm.includes('hals') || norm.includes('heiser') || norm.includes('bronch') ||
+    norm.includes('schnupf') || norm.includes('schluck') || norm.includes('kehlkopf') || norm.includes('cough') ||
+    norm.includes('throat') || norm.includes('hoarse') || norm.includes('swallow') || norm.includes('breath') ||
+    norm.includes('tos') || norm.includes('garganta') || norm.includes('ronquera') || norm.includes('tragar') ||
+    norm.includes('toux') || norm.includes('gorge') || norm.includes('enroué') || norm.includes('enroue') ||
+    norm.includes('avaler') || norm.includes('tosse') || norm.includes('gola') || norm.includes('raucedine') ||
+    norm.includes('βήχ') || norm.includes('βηχ') || norm.includes('λαιμ') || norm.includes('βραχν') ||
+    norm.includes('κατάποση') || norm.includes('καταποση') || norm.includes('кашел') || norm.includes('кашл') ||
+    norm.includes('горл') || norm.includes('охрип') || norm.includes('глота')
+  ) {
+    return 'respiratory';
+  }
+
+  // 6. Fever / Chills / Grippe
+  if (
+    norm.includes('fieber') || norm.includes('schüttelfrost') || norm.includes('schuettelfrost') || norm.includes('gripp') ||
+    norm.includes('fever') || norm.includes('chills') || norm.includes('flu') || norm.includes('fiebre') ||
+    norm.includes('escalofrío') || norm.includes('escalofrio') || norm.includes('gripe') || norm.includes('fièvre') ||
+    norm.includes('fievre') || norm.includes('frissons') || norm.includes('febbre') || norm.includes('brividi') ||
+    norm.includes('influenza') || norm.includes('πυρετ') || norm.includes('ρίγος') || norm.includes('ριγος') ||
+    norm.includes('γρίπ') || norm.includes('лихорад') || norm.includes('жар') || norm.includes('озноб') ||
+    norm.includes('грипп')
+  ) {
+    return 'fever';
+  }
+
+  // 7. Mind / Emotional Shock / Panic / Fear
+  if (
+    norm.includes('schreck') || norm.includes('schock') || norm.includes('panik') || norm.includes('todesangst') ||
+    norm.includes('trauer') || norm.includes('kummer') || norm.includes('shock') || norm.includes('fright') ||
+    norm.includes('panic') || norm.includes('grief') || norm.includes('susto') || norm.includes('pánico') ||
+    norm.includes('duelo') || norm.includes('frayeur') || norm.includes('panique') || norm.includes('chagrin') ||
+    norm.includes('spavento') || norm.includes('lutto') || norm.includes('τρόμος') || norm.includes('πανικός') ||
+    norm.includes('πένθος') || norm.includes('испуг') || norm.includes('паник') || norm.includes('горе')
+  ) {
+    return 'mind_shock';
+  }
+
+  // 8. Pain & Laterality (Links / Rechts / Schmerzen / Wehtun / Stechen / Brennen / Ziehen / Krämpfe)
+  // This explicitly catches complaints like "ich hatte plötzlich Schmerzen am linken" or localized pains!
+  if (
+    norm.includes('schmerz') || norm.includes('weh') || norm.includes('stich') || norm.includes('stechen') ||
+    norm.includes('brenn') || norm.includes('zieh') || norm.includes('krampf') ||
+    norm.includes('pochen') || norm.includes('links') || norm.includes('rechts') || norm.includes('einseitig') ||
+    norm.includes('pain') || norm.includes('hurt') || norm.includes('ache') || norm.includes('left') ||
+    norm.includes('right') || norm.includes('dolor') || norm.includes('duele') || norm.includes('izquierd') ||
+    norm.includes('derech') || norm.includes('douleur') || norm.includes('mal') || norm.includes('gauche') ||
+    norm.includes('droit') || norm.includes('dolore') || norm.includes('sinistr') || norm.includes('destr') ||
+    norm.includes('πόνος') || norm.includes('πονο') || norm.includes('αριστερ') || norm.includes('δεξι') ||
+    norm.includes('боль') || norm.includes('болит') || norm.includes('лев') || norm.includes('прав')
+  ) {
+    return 'pain_laterality';
+  }
+
+  return 'general';
+}
+
+export const OPTION_REMEDY_MAP: Record<string, string[]> = {
+  // Fever
+  fev_sudden_dry: ['aconitum-napellus', 'belladonna'],
+  fev_hot_sweat_red: ['belladonna', 'glonoinum'],
+  fev_slow_drowsy: ['gelsemium-sempervirens', 'ferrum-phosphoricum'],
+  fev_bone_ache: ['eupatorium-perfoliatum'],
+  fev_huge_thirst: ['bryonia-alba', 'aconitum-napellus'],
+  fev_sips_restless: ['arsenicum-album'],
+  fev_thirstless: ['pulsatilla-pratensis', 'apis-mellifica', 'gelsemium-sempervirens'],
+  fev_cold_drinks_crave: ['phosphorus', 'belladonna'],
+  fev_fear_agitation: ['aconitum-napellus', 'arsenicum-album'],
+  fev_delirium_startle: ['belladonna', 'stramonium'],
+  fev_chill_uncover: ['nux-vomica', 'arsenicum-album'],
+  fev_quiet_sleepy: ['gelsemium-sempervirens', 'bryonia-alba'],
+
+  // Headache
+  hd_throbbing_hot: ['belladonna', 'glonoinum'],
+  hd_splitting_motion: ['bryonia-alba'],
+  hd_dull_heavy_occiput: ['gelsemium-sempervirens'],
+  hd_one_sided_sharp: ['spigelia-anthelmia', 'iris-versicolor'],
+  hd_jar_light_noise: ['belladonna'],
+  hd_eye_motion: ['bryonia-alba'],
+  hd_stress_morning: ['nux-vomica'],
+  hd_sun_heat: ['glonoinum', 'belladonna'],
+  hd_firm_bandage: ['silicea', 'argentum-nitricum'],
+  hd_cold_compress: ['belladonna', 'apis-mellifica'],
+  hd_warm_wrap: ['silicea', 'arsenicum-album'],
+  hd_fresh_air_walk: ['pulsatilla-pratensis'],
+
+  // Injury
+  inj_blunt_hematoma: ['arnica-montana', 'bellis-perennis'],
+  inj_blunt: ['arnica-montana', 'bellis-perennis'],
+  inj_sprain_ligaments: ['rhus-toxicodendron', 'ruta-graveolens'],
+  inj_sprain: ['rhus-toxicodendron', 'ruta-graveolens'],
+  inj_nerve_crush: ['hypericum-perforatum'],
+  inj_nerve: ['hypericum-perforatum'],
+  inj_puncture_cut: ['ledum-palustre', 'staphisagria'],
+  inj_cut: ['ledum-palustre', 'staphisagria'],
+  inj_motion_better: ['rhus-toxicodendron'],
+  inj_motion_worse: ['bryonia-alba', 'arnica-montana'],
+  inj_cold_better: ['ledum-palustre', 'arnica-montana'],
+  inj_warmth_better: ['rhus-toxicodendron', 'ruta-graveolens'],
+
+  // Respiratory
+  resp_barking_croup: ['aconitum-napellus', 'spongia-tosta', 'hepar-sulfuris'],
+  resp_spasmodic_fit: ['drosera-rotundifolia', 'ipecacuanha'],
+  resp_painful_hold: ['bryonia-alba'],
+  resp_rattling_mucus: ['antimonium-tartaricum', 'ipecacuanha'],
+  resp_empty_swallow: ['lachesis-muta'],
+  resp_splinter_throat: ['hepar-sulfuris', 'acidum-nitricum'],
+  resp_hoarseness: ['phosphorus', 'causticum'],
+  resp_restless_anxious: ['aconitum-napellus', 'arsenicum-album'],
+
+  // Gastrointestinal
+  gi_colic_cramp: ['colocynthis', 'magnesia-phosphorica'],
+  gi_burning_vomit: ['arsenicum-album'],
+  gi_bloat_gas: ['carbo-vegetabilis', 'lycopodium-clavatum'],
+  gi_constant_nausea: ['ipecacuanha'],
+  gi_food_poison: ['arsenicum-album', 'nux-vomica'],
+  gi_cold_drinks: ['arsenicum-album', 'pulsatilla-pratensis'],
+  gi_stress_overindulge: ['nux-vomica'],
+  gi_doubling_pressure: ['colocynthis', 'magnesia-phosphorica'],
+  gi_warmth_drinks: ['arsenicum-album', 'magnesia-phosphorica'],
+  gi_cold_air_fan: ['carbo-vegetabilis', 'pulsatilla-pratensis'],
+  gi_irritable_anger: ['nux-vomica', 'chamomilla'],
+
+  // Skin
+  sk_bee_edema: ['apis-mellifica'],
+  sk_burn_blister: ['cantharis-vesicatoria', 'urtica-urens'],
+  sk_vesicles_itch: ['rhus-toxicodendron'],
+  sk_pus_sensitive: ['hepar-sulfuris', 'silicea'],
+  sk_cold_ice_better: ['apis-mellifica', 'ledum-palustre'],
+  sk_scalding_hot_better: ['rhus-toxicodendron', 'arsenicum-album'],
+  sk_water_worse: ['sulphur'],
+  sk_open_air_better: ['pulsatilla-pratensis', 'sulphur'],
+  sk_burning_needles: ['apis-mellifica'],
+  sk_unbearable_scratch: ['sulphur'],
+  sk_hypersensitive_rage: ['chamomilla', 'hepar-sulfuris'],
+  sk_anxious_burning: ['arsenicum-album'],
+
+  // Pain / Laterality
+  pn_stabbing: ['bryonia-alba', 'acidum-nitricum', 'apis-mellifica'],
+  pn_burning: ['arsenicum-album', 'apis-mellifica', 'cantharis-vesicatoria'],
+  pn_cramping: ['colocynthis', 'magnesia-phosphorica'],
+  pn_throbbing: ['belladonna', 'glonoinum'],
+  pn_tearing: ['rhus-toxicodendron', 'pulsatilla-pratensis'],
+  lat_left: ['lachesis-muta', 'spigelia-anthelmia'],
+  lat_right: ['lycopodium-clavatum', 'belladonna', 'bryonia-alba'],
+  lat_wandering: ['pulsatilla-pratensis'],
+  lat_radiating: ['colocynthis', 'chamomilla', 'hypericum-perforatum'],
+  mod_press_bend: ['colocynthis', 'bryonia-alba'],
+  mod_warmth_wrap: ['arsenicum-album', 'rhus-toxicodendron', 'magnesia-phosphorica'],
+  mod_cold_ice: ['apis-mellifica', 'ledum-palustre', 'pulsatilla-pratensis'],
+  mod_absolute_rest: ['bryonia-alba'],
+  mod_continued_motion: ['rhus-toxicodendron'],
+  mod_hard_pressure: ['colocynthis', 'bryonia-alba'],
+  mod_cold_air: ['apis-mellifica', 'pulsatilla-pratensis'],
+  mod_rest_still: ['bryonia-alba'],
+  mod_motion_restless: ['rhus-toxicodendron'],
+
+  // General
+  gen_sudden: ['aconitum-napellus', 'belladonna'],
+  gen_cold_wet: ['rhus-toxicodendron', 'dulcamara'],
+  gen_stress: ['chamomilla', 'nux-vomica', 'colocynthis'],
+  gen_slow: ['bryonia-alba', 'gelsemium-sempervirens'],
+  sen_fear_restless: ['aconitum-napellus', 'arsenicum-album'],
+  sen_angry_irritable: ['chamomilla', 'nux-vomica', 'bryonia-alba'],
+  sen_weepy_mild: ['pulsatilla-pratensis'],
+  sen_dull_heavy: ['gelsemium-sempervirens'],
+  sen_burning_stinging: ['apis-mellifica', 'cantharis-vesicatoria'],
+
+  // Mind Shock
+  shk_panic_fear: ['aconitum-napellus', 'arsenicum-album'],
+  shk_trauma_denial: ['arnica-montana'],
+  shk_grief_sob: ['ignatia-amara'],
+  shk_trembling_paralyzed: ['gelsemium-sempervirens', 'opium']
+};
+
+/**
+ * Base domain questions with German default texts and domain-specific options.
+ */
+function getBaseDomainQuestions(domain: AcuteComplaintDomain): AcuteClarificationQuestion[] {
+  if (domain === 'pain_laterality') {
+      return [
+        {
+          id: 'onset',
+          category: 'Schmerzqualität & Empfindung',
+          title: '1. Welcher Schmerzcharakter beschreibt die Beschwerde am besten?',
+          description: 'Die genaue Empfindung ist das führende Symptom zur Auswahl des Akutmittels.',
+          type: 'single',
+          options: [
+            { id: 'pn_stabbing', label: 'Stechend wie Nadeln, Glassplitter oder Messer (schlimmer bei Bewegung)', remedyHint: 'Bryonia / Nitricum acidum / Apis', relevanceKeywords: ['stechender Schmerz', 'Splitter', 'Bryonia', 'Nitricum acidum'] },
+            { id: 'pn_burning', label: 'Brennend wie heißes Feuer oder glühende Kohlen (oft Linderung durch Wärme)', remedyHint: 'Arsenicum album / Apis / Cantharis', relevanceKeywords: ['brennender Schmerz', 'wie Feuer', 'Arsenicum album', 'Apis'] },
+            { id: 'pn_cramping', label: 'Krampfartig, kolikartig, zusammenschnürend (Linderung durch Zusammenkrümmen)', remedyHint: 'Colocynthis / Magnesium phosphoricum', relevanceKeywords: ['Krämpfe', 'Zusammenkrümmen', 'Colocynthis', 'Magnesium phosphoricum'] },
+            { id: 'pn_throbbing', label: 'Pochend, hämmernd, pulsierend mit Hitzegefühl und rotem Kopf', remedyHint: 'Belladonna / Glonoinum', relevanceKeywords: ['pochender Schmerz', 'pulsierend', 'Belladonna', 'Glonoinum'] },
+            { id: 'pn_tearing', label: 'Ziehend, reißend, wandert von Stelle zu Stelle (Unruhe)', remedyHint: 'Rhus toxicodendron / Pulsatilla', relevanceKeywords: ['ziehender Schmerz', 'wandert', 'Rhus toxicodendron', 'Pulsatilla'] }
+          ]
+        },
+        {
+          id: 'modality',
+          category: 'Seitigkeit & Ausstrahlung',
+          title: '2. Auf welcher Körperseite liegt der Schmerz bzw. wie strahlt er aus?',
+          description: 'Die Seitigkeit (Links vs. Rechts) ist ein zentrales Kriterium der homöopathischen Differenzierung.',
+          type: 'single',
+          options: [
+            { id: 'lat_left', label: 'Streng linksseitig oder zieht von links nach rechts', remedyHint: 'Lachesis / Spigelia / Thuja', relevanceKeywords: ['linksseitig', 'von links nach rechts', 'Lachesis', 'Spigelia'] },
+            { id: 'lat_right', label: 'Streng rechtsseitig oder zieht von rechts nach links', remedyHint: 'Lycopodium / Belladonna / Bryonia', relevanceKeywords: ['rechtsseitig', 'von rechts nach links', 'Lycopodium', 'Belladonna'] },
+            { id: 'lat_wandering', label: 'Wechselt ständig die Seite oder wandert zwischen Gelenken', remedyHint: 'Pulsatilla / Lac caninum', relevanceKeywords: ['Seitenwechsel', 'wandernd', 'Pulsatilla', 'Lac caninum'] },
+            { id: 'lat_radiating', label: 'Lokaler Schmerzherd mit schießender Ausstrahlung in die Umgebung', remedyHint: 'Colocynthis / Chamomilla / Hypericum', relevanceKeywords: ['ausstrahlender Schmerz', 'Colocynthis', 'Chamomilla'] }
+          ]
+        },
+        {
+          id: 'sensationMind',
+          category: 'Linderung & Modalitäten',
+          title: '3. Welche Maßnahme bringt spürbare Linderung der Schmerzen?',
+          description: 'Modalitäten entscheiden über das passende Simile im Akutfall.',
+          type: 'single',
+          options: [
+            { id: 'mod_press_bend', label: 'Besser durch starken, festen Druck oder festes Zusammenkrümmen', remedyHint: 'Colocynthis / Bryonia', relevanceKeywords: ['besser durch Druck', 'besser durch Zusammenkrümmen', 'Colocynthis', 'Bryonia'] },
+            { id: 'mod_warmth_wrap', label: 'Besser durch lokale Wärme, heiße Umschläge und warmes Einhüllen', remedyHint: 'Arsenicum album / Rhus tox / Mag phos', relevanceKeywords: ['besser durch Wärme', 'heiße Umschläge', 'Arsenicum album', 'Magnesium phosphoricum'] },
+            { id: 'mod_cold_ice', label: 'Besser durch Kälte, Eisauflagen und frische kühle Luft', remedyHint: 'Apis / Ledum / Pulsatilla', relevanceKeywords: ['besser durch Kälte', 'Eisauflage', 'Apis', 'Ledum'] },
+            { id: 'mod_absolute_rest', label: 'Schlimmer bei geringster Bewegung (braucht absolute Ruhe)', remedyHint: 'Bryonia', relevanceKeywords: ['schlechter bei Bewegung', 'absolute Ruhe', 'Bryonia'] },
+            { id: 'mod_continued_motion', label: 'Besser durch fortgesetzte Bewegung und ständigen Positionswechsel', remedyHint: 'Rhus toxicodendron', relevanceKeywords: ['besser durch Bewegung', 'körperliche Unruhe', 'Rhus toxicodendron'] }
+          ]
+        },
+        {
+          id: 'intensity',
+          category: 'Intensitätsgrad (1 bis 4)',
+          title: '4. Wie stark ist der Akutschmerz ausgeprägt?',
+          description: 'Homöopathische Gradeinstufung von 1 bis 4 nach Samuel Hahnemann (keine 1–10 Skala).',
+          type: 'scale',
+          scaleMin: 1,
+          scaleMax: 4
+        }
+      ];
+    }
+
+    if (domain === 'gastrointestinal') {
+      return [
+        {
+          id: 'onset',
+          category: 'Art der Magen-Darm-Beschwerden',
+          title: '1. Welche Symptome stehen im Vordergrund?',
+          description: 'Charakteristische Zeichen der Verdauungsorgane grenzen die Leitmittel ein.',
+          type: 'single',
+          options: [
+            { id: 'gi_colic_cramp', label: 'Krampfartige, schneidende Koliken, muss sich vor Schmerz krümmen', remedyHint: 'Colocynthis / Mag phos', relevanceKeywords: ['Krämpfe', 'Koliken', 'Zusammenkrümmen', 'Colocynthis'] },
+            { id: 'gi_burning_vomit', label: 'Brennender Magenschmerz mit Erbrechen und brennendem Durchfall', remedyHint: 'Arsenicum album', relevanceKeywords: ['Brennen', 'Erbrechen', 'wässriger Durchfall', 'Arsenicum album'] },
+            { id: 'gi_bloat_gas', label: 'Starke Blähungen, Völlegefühl schon nach wenigen Bissen', remedyHint: 'Carbo vegetabilis / Lycopodium', relevanceKeywords: ['Blähungen', 'Völlegefühl', 'Carbo vegetabilis', 'Lycopodium'] },
+            { id: 'gi_constant_nausea', label: 'Ständige quälende Übelkeit, die durch Erbrechen nicht gelindert wird', remedyHint: 'Ipecacuanha', relevanceKeywords: ['Übelkeit', 'saubere Zunge', 'Ipecacuanha'] }
+          ]
+        },
+        {
+          id: 'modality',
+          category: 'Möglicher Auslöser',
+          title: '2. Was ging den Beschwerden voraus bzw. war der Auslöser?',
+          description: 'Die Causa ist ein zentraler Wegweiser im Magen-Darm-Bereich.',
+          type: 'single',
+          options: [
+            { id: 'gi_food_poison', label: 'Verdorbene Nahrung, Fleisch, Fisch oder Magen-Darm-Infekt', remedyHint: 'Arsenicum album', relevanceKeywords: ['verdorbene Nahrung', 'Infekt', 'Arsenicum album'] },
+            { id: 'gi_fatty_food', label: 'Fettes, schweres Essen, Torten, Gebäck oder Eis', remedyHint: 'Pulsatilla', relevanceKeywords: ['fettes Essen', 'schwer verdaulich', 'Pulsatilla'] },
+            { id: 'gi_stress_coffee', label: 'Ärger, Stress, Kaffee, Alkohol, Tabak oder Medikamente', remedyHint: 'Nux vomica', relevanceKeywords: ['Stress', 'Kaffee', 'Alkohol', 'Nux vomica'] },
+            { id: 'gi_cold_drinks', label: 'Eiskalte Getränke oder Unterkühlung des Bauches', remedyHint: 'Dulcamara / Arsenicum album', relevanceKeywords: ['Kaltgetränke', 'Unterkühlung', 'Dulcamara'] }
+          ]
+        },
+        {
+          id: 'sensationMind',
+          category: 'Durst & Linderung',
+          title: '3. Wie ist das Durstverhalten und was bringt Erleichterung?',
+          description: 'Durstverhalten und Temperaturmodalitäten vervollständigen das Bild.',
+          type: 'single',
+          options: [
+            { id: 'gi_thirst_cold', label: 'Großer Durst auf eiskaltes Wasser (wird aber oft wieder erbrochen)', remedyHint: 'Phosphorus / Arsenicum album', relevanceKeywords: ['Durst auf Kaltes', 'Phosphorus', 'Arsenicum album'] },
+            { id: 'gi_thirst_sips', label: 'Ständiger Durst auf häufige kleine Schlucke mit Unruhe', remedyHint: 'Arsenicum album', relevanceKeywords: ['kleine Schlucke', 'Durst', 'Arsenicum album'] },
+            { id: 'gi_no_thirst', label: 'Völlige Durstlosigkeit trotz Übelkeit und Beschwerden', remedyHint: 'Pulsatilla / Apis', relevanceKeywords: ['durstlos', 'Pulsatilla', 'Apis'] },
+            { id: 'gi_better_warm', label: 'Deutliche Besserung durch heiße Getränke und Wärmflasche', remedyHint: 'Magnesium phosphoricum / Nux vomica', relevanceKeywords: ['Wärmflasche', 'heiße Getränke', 'Magnesium phosphoricum'] }
+          ]
+        },
+        {
+          id: 'intensity',
+          category: 'Intensitätsgrad (1 bis 4)',
+          title: '4. Wie stark beeinträchtigen die Magen-Darm-Beschwerden?',
+          description: 'Homöopathische Gradeinstufung von 1 bis 4 nach Samuel Hahnemann.',
+          type: 'scale',
+          scaleMin: 1,
+          scaleMax: 4
+        }
+      ];
+    }
+
+    if (domain === 'respiratory') {
+      return [
+        {
+          id: 'onset',
+          category: 'Husten- & Halscharakter',
+          title: '1. Wie äußert sich der Husten bzw. die Halsbeschwerde?',
+          description: 'Akustik des Hustens und Empfindung im Hals führen zur Arznei.',
+          type: 'single',
+          options: [
+            { id: 'resp_dry_barking', label: 'Trockener, bellender, erstickender Husten (oft plötzlich nachts)', remedyHint: 'Aconitum / Spongia', relevanceKeywords: ['trockener Husten', 'bellend', 'Aconitum', 'Spongia'] },
+            { id: 'resp_loose_rattling', label: 'Lockerer, rasselnder Schleimhusten, Schleim schwer abhustbar', remedyHint: 'Antimonium tartaricum / Ipecacuanha', relevanceKeywords: ['Rasseln', 'Schleim', 'Antimonium tartaricum'] },
+            { id: 'resp_painful_hold', label: 'Sehr schmerzhafter Husten, muss sich vor Schmerz die Brust halten', remedyHint: 'Bryonia', relevanceKeywords: ['Brust halten', 'schmerzhafter Husten', 'Bryonia'] },
+            { id: 'resp_sore_throat', label: 'Brennender, dunkelroter Hals mit starkem Schluckschmerz', remedyHint: 'Belladonna / Apis / Lachesis', relevanceKeywords: ['Halsschmerz', 'Schlucken', 'Belladonna', 'Lachesis'] }
+          ]
+        },
+        {
+          id: 'modality',
+          category: 'Luft- & Raummodalität',
+          title: '2. Wie reagiert die Atmung auf Raum- und Umgebungsluft?',
+          description: 'Temperatur und Frischluft sind Schlüsselfaktoren bei Atemwegsinfekten.',
+          type: 'single',
+          options: [
+            { id: 'resp_cold_wind', label: 'Schlimmer nach kaltem, scharfem trockenem Wind', remedyHint: 'Aconitum / Hepar sulfuris', relevanceKeywords: ['kalter Wind', 'Aconitum', 'Hepar sulfuris'] },
+            { id: 'resp_warm_room_bad', label: 'Schlimmer im warmen Zimmer, Besserung an kühler frischer Luft', remedyHint: 'Pulsatilla', relevanceKeywords: ['warmes Zimmer', 'frische Luft', 'Pulsatilla'] },
+            { id: 'resp_cold_air_bad', label: 'Hustenanfall sofort beim Einatmen kalter Luft oder beim Entblößen', remedyHint: 'Rumex / Hepar sulfuris', relevanceKeywords: ['kalte Luft', 'Rumex', 'Hepar sulfuris'] },
+            { id: 'resp_warm_drinks_good', label: 'Besserung durch warme Getränke und warmes Einhüllen des Halses', remedyHint: 'Arsenicum album / Spongia', relevanceKeywords: ['warme Getränke', 'Arsenicum album', 'Spongia'] }
+          ]
+        },
+        {
+          id: 'sensationMind',
+          category: 'Begleitsymptome & Schlucken',
+          title: '3. Welche spezifischen Begleitsymptome treten auf?',
+          description: 'Feinheiten beim Schlucken und Kehlkopfreizung schärfen die Auswahl.',
+          type: 'single',
+          options: [
+            { id: 'resp_empty_swallow', label: 'Schlimmer beim Leerschlucken, Engegefühl (kann keinen engen Kragen ertragen)', remedyHint: 'Lachesis', relevanceKeywords: ['Leerschlucken', 'kein enger Kragen', 'Lachesis'] },
+            { id: 'resp_splinter_throat', label: 'Stechender Schmerz beim Schlucken wie ein Holzsplitter oder eine Gräte', remedyHint: 'Hepar sulfuris / Nitricum acidum', relevanceKeywords: ['wie Splitter', 'Gräte', 'Hepar sulfuris'] },
+            { id: 'resp_hoarseness', label: 'Ausgeprägte Heiserkeit bis hin zu völligem Stimmverlust', remedyHint: 'Phosphorus / Causticum', relevanceKeywords: ['Heiserkeit', 'Stimmverlust', 'Phosphorus', 'Causticum'] },
+            { id: 'resp_restless_anxious', label: 'Große Angst, Atembeklemmung und quälende Unruhe', remedyHint: 'Aconitum / Arsenicum album', relevanceKeywords: ['Atembeklemmung', 'Angst', 'Aconitum', 'Arsenicum album'] }
+          ]
+        },
+        {
+          id: 'intensity',
+          category: 'Intensitätsgrad (1 bis 4)',
+          title: '4. Wie stark ist der Hustenreiz bzw. Halsschmerz?',
+          description: 'Klassische homöopathische Einstufung von 1 bis 4 nach Samuel Hahnemann.',
+          type: 'scale',
+          scaleMin: 1,
+          scaleMax: 4
+        }
+      ];
+    }
+
+    if (domain === 'headache') {
+      return [
+        {
+          id: 'onset',
+          category: 'Schmerztyp des Kopfschmerzes',
+          title: '1. Wie fühlt sich der Kopfschmerz genau an?',
+          description: 'Die Schmerzqualität im Kopf ist eines der sichersten Leitsymptome.',
+          type: 'single',
+          options: [
+            { id: 'hd_throbbing_hot', label: 'Pochend, hämmernd, pulsierende Halsschlagadern, rotes Gesicht', remedyHint: 'Belladonna / Glonoinum', relevanceKeywords: ['pochend', 'hämmernd', 'rotes Gesicht', 'Belladonna', 'Glonoinum'] },
+            { id: 'hd_splitting_motion', label: 'Stechend, berstend, als ob der Kopf zerspringt (jede Bewegung unerträglich)', remedyHint: 'Bryonia', relevanceKeywords: ['berstender Kopfschmerz', 'jede Bewegung', 'Bryonia'] },
+            { id: 'hd_dull_heavy_occiput', label: 'Dumpf, schwer, vom Hinterkopf ausgehend, schwere Augenlider', remedyHint: 'Gelsemium', relevanceKeywords: ['Hinterkopf', 'schwere Lider', 'Gelsemium'] },
+            { id: 'hd_one_sided_sharp', label: 'Einseitig stechend über einem Auge (oft mit Augenflimmern)', remedyHint: 'Spigelia / Iris versicolor', relevanceKeywords: ['einseitig über Auge', 'Spigelia', 'Iris versicolor'] }
+          ]
+        },
+        {
+          id: 'modality',
+          category: 'Einfluss von Bewegung & Reizen',
+          title: '2. Was verschlimmert den Kopfschmerz am stärksten?',
+          description: 'Erschütterungs- und Reizempfindlichkeit trennen Belladonna, Bryonia und Co.',
+          type: 'single',
+          options: [
+            { id: 'hd_jar_light_noise', label: 'Erschütterung, Licht, Geräusche und Bücken sind unerträglich', remedyHint: 'Belladonna', relevanceKeywords: ['Erschütterung', 'Lichtscheu', 'Belladonna'] },
+            { id: 'hd_eye_motion', label: 'Jede kleinste Bewegung des Kopfes oder sogar der Augen verschlimmert', remedyHint: 'Bryonia', relevanceKeywords: ['Augenbewegung', 'Stillliegen', 'Bryonia'] },
+            { id: 'hd_stress_morning', label: 'Morgens beim Erwachen nach Stress, Schlafmangel oder Genussmitteln', remedyHint: 'Nux vomica', relevanceKeywords: ['Katerkopfschmerz', 'Stress', 'Nux vomica'] },
+            { id: 'hd_sun_heat', label: 'Nach starker Sonneneinstrahlung, Hitze oder Föhn', remedyHint: 'Belladonna / Glonoinum', relevanceKeywords: ['Sonneneinstrahlung', 'Hitze', 'Glonoinum'] }
+          ]
+        },
+        {
+          id: 'sensationMind',
+          category: 'Linderung & Anwendungen',
+          title: '3. Was bringt dem Kopf spürbare Entlastung?',
+          description: 'Druck- und Kältereaktionen führen direkt zur Verordnung.',
+          type: 'single',
+          options: [
+            { id: 'hd_firm_bandage', label: 'Besser durch festes Abbinden des Kopfes mit einem Tuch', remedyHint: 'Silicea / Argentum nitricum', relevanceKeywords: ['Kopf abbinden', 'fester Druck', 'Silicea'] },
+            { id: 'hd_cold_compress', label: 'Besser durch eiskalte Kompressen auf Stirn oder Schläfen', remedyHint: 'Belladonna / Apis', relevanceKeywords: ['kalte Kompressen', 'Eis', 'Belladonna', 'Apis'] },
+            { id: 'hd_warm_wrap', label: 'Besser durch Wärme und warmes Einhüllen des Kopfes', remedyHint: 'Silicea / Arsenicum album', relevanceKeywords: ['warm einhüllen', 'Silicea', 'Arsenicum album'] },
+            { id: 'hd_fresh_air_walk', label: 'Besser durch langsames Umhergehen an kühler frischer Luft', remedyHint: 'Pulsatilla', relevanceKeywords: ['frische Luft', 'Umhergehen', 'Pulsatilla'] }
+          ]
+        },
+        {
+          id: 'intensity',
+          category: 'Intensitätsgrad (1 bis 4)',
+          title: '4. Wie stark ist der Kopfschmerz ausgeprägt?',
+          description: 'Klassische Einstufung von 1 bis 4 nach Samuel Hahnemann.',
+          type: 'scale',
+          scaleMin: 1,
+          scaleMax: 4
+        }
+      ];
+    }
+
+    if (domain === 'injury') {
+      return [
+        {
+          id: 'onset',
+          category: 'Art der Verletzung (Trauma)',
+          title: '1. Welche Verletzungsform liegt vor?',
+          description: 'Gewebetyp und Traumamechanismus bestimmen das homöopathische Wundmittel.',
+          type: 'single',
+          options: [
+            { id: 'inj_blunt_hematoma', label: 'Stumpfes Trauma, Prellung, Bluterguss, Muskelkater, wie zerschlagen', remedyHint: 'Arnica', relevanceKeywords: ['Arnica', 'Prellung', 'Bluterguss', 'Zerschlagenheit'] },
+            { id: 'inj_sprain_ligaments', label: 'Verstauchung, Zerrung von Bändern, Sehnen oder Überlastung', remedyHint: 'Rhus toxicodendron / Ruta', relevanceKeywords: ['Rhus tox', 'Ruta', 'Verstauchung', 'Bänderdehnung'] },
+            { id: 'inj_nerve_crush', label: 'Quetschung nervenreicher Gewebe (Fingerspitzen, Zehen, Steißbein)', remedyHint: 'Hypericum', relevanceKeywords: ['Hypericum', 'Nervenverletzung', 'Quetschung', 'Steißbein'] },
+            { id: 'inj_puncture_cut', label: 'Stichwunde, Insektenstich, Nageltritt oder Schnittwunde', remedyHint: 'Ledum / Staphisagria', relevanceKeywords: ['Ledum', 'Staphisagria', 'Stichwunde', 'Nageltritt'] }
+          ]
+        },
+        {
+          id: 'modality',
+          category: 'Bewegungsmodalität',
+          title: '2. Wie verhält sich der Schmerz bei Bewegung der verletzten Stelle?',
+          description: 'Das Anlauf- und Ruheverhalten grenzt Rhus tox von Bryonia ab.',
+          type: 'single',
+          options: [
+            { id: 'inj_motion_better', label: 'Erste Bewegung sehr schmerzhaft, nach weiterem Bewegen spürbar besser', remedyHint: 'Rhus toxicodendron', relevanceKeywords: ['Einlaufen', 'besser durch Bewegung', 'Rhus toxicodendron'] },
+            { id: 'inj_motion_worse', label: 'Jede geringste Bewegung ist unerträglich, will absolut ruhig lagern', remedyHint: 'Bryonia', relevanceKeywords: ['schlechter bei Bewegung', 'Ruhelagerung', 'Bryonia'] },
+            { id: 'inj_nerve_shoot', label: 'Schmerz schießt an den Nervenbahnen blitzartig empor', remedyHint: 'Hypericum', relevanceKeywords: ['schießender Schmerz', 'Nervenbahnen', 'Hypericum'] },
+            { id: 'inj_cold_better', label: 'Verletzte Stelle fühlt sich kalt an, aber Kälte lindert den Schmerz', remedyHint: 'Ledum', relevanceKeywords: ['Kälte lindert', 'Ledum'] }
+          ]
+        },
+        {
+          id: 'sensationMind',
+          category: 'Berührung & Temperatur',
+          title: '3. Wie reagiert die Verletzung auf Berührung und Anwendungen?',
+          description: 'Berührungsempfindlichkeit und Kältereaktion.',
+          type: 'single',
+          options: [
+            { id: 'inj_fear_touch', label: 'Extrem berührungsempfindlich, fürchtet jede Annäherung („Mir fehlt nichts!“)', remedyHint: 'Arnica', relevanceKeywords: ['Berührungsempfindlich', 'fürchtet Annäherung', 'Arnica'] },
+            { id: 'inj_ice_relief', label: 'Spürbare Linderung nur durch eiskaltes Wasser oder Eisauflagen', remedyHint: 'Ledum / Arnica', relevanceKeywords: ['Eisauflage', 'Ledum', 'Arnica'] },
+            { id: 'inj_warmth_relief', label: 'Linderung durch feuchte Wärme, warme Bäder oder Einhüllen', remedyHint: 'Rhus toxicodendron / Ruta', relevanceKeywords: ['Wärme lindert', 'Rhus toxicodendron', 'Ruta'] },
+            { id: 'inj_intense_pain', label: 'Unverhältnismäßig heftiger Schmerz, schlägt um sich vor Schmerz', remedyHint: 'Chamomilla / Hypericum', relevanceKeywords: ['heftiger Schmerz', 'Chamomilla', 'Hypericum'] }
+          ]
+        },
+        {
+          id: 'intensity',
+          category: 'Intensitätsgrad (1 bis 4)',
+          title: '4. Wie stark ist die Schmerzintensität der Verletzung?',
+          description: 'Hahnemannsche Einstufung von 1 bis 4.',
+          type: 'scale',
+          scaleMin: 1,
+          scaleMax: 4
+        }
+      ];
+    }
+
+    if (domain === 'fever') {
+      return [
+        {
+          id: 'onset',
+          category: 'Fieberverlauf & Beginn',
+          title: '1. Wie hat das Fieber begonnen und wie verläuft es?',
+          description: 'Temperaturkurve und Hautzustand entscheiden im Fieberstadium.',
+          type: 'single',
+          options: [
+            { id: 'fev_sudden_dry', label: 'Plötzlich hohes Fieber nach Kälte/Wind, glühende trockene Haut, Schüttelfrost', remedyHint: 'Aconitum', relevanceKeywords: ['Aconitum', 'trockene Haut', 'plötzliches Fieber', 'Schüttelfrost'] },
+            { id: 'fev_hot_sweat_red', label: 'Hohe Hitze, hochroter Kopf, weite Pupillen, Schweiß, pochende Schläfen', remedyHint: 'Belladonna', relevanceKeywords: ['Belladonna', 'roter Kopf', 'Schweiß', 'pochend'] },
+            { id: 'fev_slow_drowsy', label: 'Schleichender Beginn, große Schläfrigkeit, Schwere, zittrige Schwäche', remedyHint: 'Gelsemium', relevanceKeywords: ['Gelsemium', 'Schläfrigkeit', 'Schwere', 'Zittern'] },
+            { id: 'fev_bone_ache', label: 'Hohes Fieber mit tiefem, quälendem Zerschlagenheitsgefühl in den Knochen', remedyHint: 'Eupatorium perfoliatum', relevanceKeywords: ['Eupatorium perfoliatum', 'Knochenschmerz', 'Gliederschmerz'] }
+          ]
+        },
+        {
+          id: 'modality',
+          category: 'Durst & Trinkverhalten',
+          title: '2. Wie ist das Durstverhalten während des Fiebers?',
+          description: 'Durstlosigkeit oder Gier nach Eiswasser sind hochgradige Differenzierer.',
+          type: 'single',
+          options: [
+            { id: 'fev_huge_thirst', label: 'Großer Durst auf große Mengen kaltes Wasser in langen Abständen', remedyHint: 'Bryonia', relevanceKeywords: ['großer Durst', 'große Mengen', 'Bryonia'] },
+            { id: 'fev_sips_restless', label: 'Häufiger Durst auf kleine Schlucke mit ängstlicher Ruhelosigkeit', remedyHint: 'Arsenicum album', relevanceKeywords: ['kleine Schlucke', 'Unruhe', 'Arsenicum album'] },
+            { id: 'fev_thirstless', label: 'Völlige Durstlosigkeit trotz Hitze und hohem Fieber', remedyHint: 'Pulsatilla / Apis / Gelsemium', relevanceKeywords: ['durstlos', 'Pulsatilla', 'Apis', 'Gelsemium'] },
+            { id: 'fev_cold_drinks_crave', label: 'Verlangen nach eiskalten Getränken oder säuerlichen Säften', remedyHint: 'Phosphorus / Belladonna', relevanceKeywords: ['eiskaltes Wasser', 'Phosphorus'] }
+          ]
+        },
+        {
+          id: 'sensationMind',
+          category: 'Gemüt & Schweiß',
+          title: '3. Wie ist die Gemütsverfassung und Schweißbildung?',
+          description: 'Verhalten im Fieberwahn oder Zustand des Nervensystems.',
+          type: 'single',
+          options: [
+            { id: 'fev_fear_agitation', label: 'Große Todesangst, panische Unruhe, fürchtet die Nacht', remedyHint: 'Aconitum', relevanceKeywords: ['Todesangst', 'Unruhe', 'Aconitum'] },
+            { id: 'fev_delirium_startle', label: 'Phantasiert im Fieber, schreckhaft, Halluzinationen bei geschlossenen Augen', remedyHint: 'Belladonna', relevanceKeywords: ['Fieberwahn', 'schreckhaft', 'Belladonna'] },
+            { id: 'fev_chill_uncover', label: 'Fröstelt bei geringstem Entblößen, will fest zugedeckt schwitzen', remedyHint: 'Nux vomica / Arsenicum album', relevanceKeywords: ['Frösteln', 'zugedeckt', 'Nux vomica'] },
+            { id: 'fev_quiet_sleepy', label: 'Völlig apathisch, will nur schlafen, liegt bewegungslos', remedyHint: 'Gelsemium / Bryonia', relevanceKeywords: ['apathisch', 'schlafen', 'Gelsemium'] }
+          ]
+        },
+        {
+          id: 'intensity',
+          category: 'Intensitätsgrad (1 bis 4)',
+          title: '4. Wie hoch bzw. beeinträchtigend ist der Fieberzustand?',
+          description: 'Hahnemannsche Einstufung von 1 bis 4.',
+          type: 'scale',
+          scaleMin: 1,
+          scaleMax: 4
+        }
+      ];
+    }
+
+    if (domain === 'skin') {
+      return [
+        {
+          id: 'onset',
+          category: 'Hauterscheinung & Schwellung',
+          title: '1. Wie sieht die betroffene Hautstelle aus?',
+          description: 'Morphologie und Entzündungszeichen der Haut führen zum Simile.',
+          type: 'single',
+          options: [
+            { id: 'sk_bee_edema', label: 'Glasige, blass-rosige Schwellung (wie Wespenstich), brennend und stechend', remedyHint: 'Apis mellifica', relevanceKeywords: ['Insektenstich', 'ödematös', 'brennend stechend', 'Apis'] },
+            { id: 'sk_burn_blister', label: 'Verbrennung / Verbrühung mit schneller Blasenbildung und starkem Brennen', remedyHint: 'Cantharis / Urtica urens', relevanceKeywords: ['Verbrennung', 'Blasenbildung', 'Cantharis', 'Urtica'] },
+            { id: 'sk_vesicles_itch', label: 'Haufenweise kleine, intensiv juckende Bläschen auf geröteter Haut', remedyHint: 'Rhus toxicodendron', relevanceKeywords: ['juckende Bläschen', 'Rhus toxicodendron'] },
+            { id: 'sk_pus_sensitive', label: 'Schmerzhafte Eiterung (Abszess/Furunkel), extrem berührungsempfindlich', remedyHint: 'Hepar sulfuris / Silicea', relevanceKeywords: ['Eiterung', 'berührungsempfindlich', 'Hepar sulfuris'] }
+          ]
+        },
+        {
+          id: 'modality',
+          category: 'Lokale Temperaturmodalität',
+          title: '2. Was bringt der Hautstelle spürbare Linderung?',
+          description: 'Die Reaktion auf Kälte vs. Hitze ist der Hauptschlüssel bei Hautsymptomen.',
+          type: 'single',
+          options: [
+            { id: 'sk_cold_ice_better', label: 'Nur eiskaltes Wasser oder Eisauflagen bringen Erleichterung', remedyHint: 'Apis mellifica / Ledum', relevanceKeywords: ['Eisauflage', 'Kälte lindert', 'Apis', 'Ledum'] },
+            { id: 'sk_scalding_hot_better', label: 'Linderung durch sehr heißes Wasser oder heiße Kompressen', remedyHint: 'Rhus toxicodendron / Arsenicum album', relevanceKeywords: ['heißes Wasser', 'Wärme lindert', 'Rhus tox', 'Arsenicum album'] },
+            { id: 'sk_water_worse', label: 'Jedes Waschen und Wasserberührung verschlimmert den Juckreiz massiv', remedyHint: 'Sulphur', relevanceKeywords: ['Wasser verschlimmert', 'Sulphur'] },
+            { id: 'sk_open_air_better', label: 'Besser an kühler frischer Luft, unerträglich im warmen Bett', remedyHint: 'Pulsatilla / Sulphur', relevanceKeywords: ['Bettwärme verschlimmert', 'Pulsatilla', 'Sulphur'] }
+          ]
+        },
+        {
+          id: 'sensationMind',
+          category: 'Schmerzgefühl & Gemüt',
+          title: '3. Welche Empfindung quält am meisten?',
+          description: 'Gemütszustand und Schmerztyp vervollständigen das Hautbild.',
+          type: 'single',
+          options: [
+            { id: 'sk_burning_needles', label: 'Brennend-stechend wie glühende Nadeln, weinerlich-unruhig', remedyHint: 'Apis mellifica', relevanceKeywords: ['glühende Nadeln', 'Apis mellifica'] },
+            { id: 'sk_unbearable_scratch', label: 'Unerträglicher Juckreiz, muss sich bis aufs Blut kratzen', remedyHint: 'Sulphur', relevanceKeywords: ['Juckreiz', 'Kratzen', 'Sulphur'] },
+            { id: 'sk_hypersensitive_rage', label: 'Überempfindlich gegen geringsten Schmerz, zornig und gereizt', remedyHint: 'Chamomilla / Hepar sulfuris', relevanceKeywords: ['Zorn', 'Überempfindlichkeit', 'Chamomilla', 'Hepar sulfuris'] },
+            { id: 'sk_anxious_burning', label: 'Brennender Schmerz mit nächtlicher Unruhe und Angst', remedyHint: 'Arsenicum album', relevanceKeywords: ['Brennen', 'Todesangst', 'Arsenicum album'] }
+          ]
+        },
+        {
+          id: 'intensity',
+          category: 'Intensitätsgrad (1 bis 4)',
+          title: '4. Wie stark ist das Hautsymptom ausgeprägt?',
+          description: 'Hahnemannsche Einstufung von 1 bis 4.',
+          type: 'scale',
+          scaleMin: 1,
+          scaleMax: 4
+        }
+      ];
+    }
+
+    // Default Fallback: Allgemeine Akutsymptomatik
     return [
       {
         id: 'onset',
@@ -66,26 +674,12 @@ export function getAcuteClarificationQuestions(
         title: '1. Wie haben die Beschwerden begonnen und was war der Auslöser?',
         description: 'Der Auslöser ist eines der wichtigsten Differenzierungskriterien in der Homöopathie.',
         type: 'single',
-        options: isInjury
-          ? [
-              { id: 'inj_blunt', label: 'Stumpfes Trauma, Prellung, Zerschlagenheitsgefühl', remedyHint: 'Arnica', relevanceKeywords: ['Arnica', 'Prellung', 'stumpfes Trauma', 'wie zerschlagen'] },
-              { id: 'inj_sprain', label: 'Verstauchung, Zerrung von Bändern / Sehnen', remedyHint: 'Rhus toxicodendron / Ruta', relevanceKeywords: ['Rhus tox', 'Ruta', 'Verstauchung', 'Sehnenzerrung'] },
-              { id: 'inj_nerve', label: 'Quetschung nervenreicher Gewebe (Finger, Steißbein)', remedyHint: 'Hypericum', relevanceKeywords: ['Hypericum', 'Nervenverletzung', 'Quetschung'] },
-              { id: 'inj_cut', label: 'Schnittwunde oder Stichverletzung', remedyHint: 'Ledum / Staphisagria', relevanceKeywords: ['Ledum', 'Staphisagria', 'Stichverletzung', 'Schnittwunde'] }
-            ]
-          : isFever
-          ? [
-              { id: 'fev_cold_wind', label: 'Plötzlich & heftig nach kaltem, trockenem Wind', remedyHint: 'Aconitum', relevanceKeywords: ['Aconitum', 'kalter Wind', 'plötzlicher Beginn', 'Trockenheit'] },
-              { id: 'fev_wet', label: 'Nach Durchnässung, Unterkühlung oder feuchter Kälte', remedyHint: 'Rhus toxicodendron / Dulcamara', relevanceKeywords: ['Rhus tox', 'Dulcamara', 'Durchnässung', 'feuchte Kälte'] },
-              { id: 'fev_sun', label: 'Nach Sonnenstich, starker Hitzeeinwirkung oder Überhitzung', remedyHint: 'Belladonna / Glonoinum', relevanceKeywords: ['Belladonna', 'Glonoinum', 'Hitzeeinwirkung', 'Sonnenstich'] },
-              { id: 'fev_slow', label: 'Schleichend, langsam über Tage entwickelnd mit Schwere', remedyHint: 'Gelsemium / Ferrum phosphoricum', relevanceKeywords: ['Gelsemium', 'Ferrum phosphoricum', 'schleichender Beginn', 'Schwere'] }
-            ]
-          : [
-              { id: 'gen_sudden', label: 'Plötzlich, heftig einsetzend (oft nach Kälte/Schreck)', remedyHint: 'Aconitum / Belladonna', relevanceKeywords: ['Aconitum', 'Belladonna', 'plötzlich einsetzend', 'heftig'] },
-              { id: 'gen_cold_wet', label: 'Nach Unterkühlung, Durchnässung oder Zugluft', remedyHint: 'Rhus tox / Dulcamara', relevanceKeywords: ['Rhus tox', 'Unterkühlung', 'Zugluft', 'Durchnässung'] },
-              { id: 'gen_stress', label: 'Nach Ärger, Zorn, Kränkung oder Stress', remedyHint: 'Chamomilla / Nux vomica / Colocynthis', relevanceKeywords: ['Chamomilla', 'Nux vomica', 'Colocynthis', 'Ärger', 'Stress'] },
-              { id: 'gen_slow', label: 'Schleichend / langsam zunehmend ohne klaren Auslöser', remedyHint: 'Bryonia / Gelsemium', relevanceKeywords: ['Bryonia', 'Gelsemium', 'schleichend'] }
-            ]
+        options: [
+          { id: 'gen_sudden', label: 'Plötzlich, heftig einsetzend (oft nach Kälte/Schreck)', remedyHint: 'Aconitum / Belladonna', relevanceKeywords: ['Aconitum', 'Belladonna', 'plötzlich einsetzend', 'heftig'] },
+          { id: 'gen_cold_wet', label: 'Nach Unterkühlung, Durchnässung oder Zugluft', remedyHint: 'Rhus tox / Dulcamara', relevanceKeywords: ['Rhus tox', 'Unterkühlung', 'Zugluft', 'Durchnässung'] },
+          { id: 'gen_stress', label: 'Nach Ärger, Zorn, Kränkung oder Stress', remedyHint: 'Chamomilla / Nux vomica / Colocynthis', relevanceKeywords: ['Chamomilla', 'Nux vomica', 'Colocynthis', 'Ärger', 'Stress'] },
+          { id: 'gen_slow', label: 'Schleichend / langsam zunehmend ohne klaren Auslöser', remedyHint: 'Bryonia / Gelsemium', relevanceKeywords: ['Bryonia', 'Gelsemium', 'schleichend'] }
+        ]
       },
       {
         id: 'modality',
@@ -93,20 +687,13 @@ export function getAcuteClarificationQuestions(
         title: '2. Was bringt Linderung oder führt zur Verschlechterung?',
         description: 'Modalitäten sind entscheidend, um zwischen eng verwandten Akutmitteln zu unterscheiden.',
         type: 'single',
-        options: isHead
-          ? [
-              { id: 'mod_still_press', label: 'Besser durch absolutes Stillliegen & festen Druck', remedyHint: 'Bryonia', relevanceKeywords: ['besser durch Ruhe', 'besser durch festen Druck', 'schlechter durch Bewegung', 'Bryonia'] },
-              { id: 'mod_dark_cold', label: 'Schlimmer durch Erschütterung, Licht & Geräusche', remedyHint: 'Belladonna', relevanceKeywords: ['schlechter durch Erschütterung', 'schlechter durch Licht', 'Belladonna'] },
-              { id: 'mod_fresh_air', label: 'Besser an frischer Luft, schlimmer im warmen Zimmer', remedyHint: 'Pulsatilla', relevanceKeywords: ['besser an frischer Luft', 'schlechter im warmen Zimmer', 'Pulsatilla'] },
-              { id: 'mod_warmth', label: 'Besser durch warme Umschläge & Einhüllen', remedyHint: 'Arsenicum album / Silicea', relevanceKeywords: ['besser durch Wärme', 'besser durch Einhüllen', 'Arsenicum'] }
-            ]
-          : [
-              { id: 'mod_warmth_wrap', label: 'Besser durch lokale Wärme, heiße Getränke & Einhüllen', remedyHint: 'Arsenicum album / Rhus tox', relevanceKeywords: ['besser durch Wärme', 'besser durch Einhüllen', 'besser durch heiße Getränke'] },
-              { id: 'mod_cold_air', label: 'Besser durch Kälte, kalte Umschläge & frische Luft', remedyHint: 'Apis / Pulsatilla', relevanceKeywords: ['besser durch Kälte', 'besser durch kalte Umschläge', 'besser durch frische Luft'] },
-              { id: 'mod_rest_still', label: 'Schlimmer durch geringste Bewegung (Verlangen nach absoluter Ruhe)', remedyHint: 'Bryonia', relevanceKeywords: ['schlechter durch Bewegung', 'besser durch Ruhe', 'Bryonia'] },
-              { id: 'mod_motion_restless', label: 'Besser durch fortgesetzte Bewegung & Positionswechsel (kann nicht stillsitzen)', remedyHint: 'Rhus tox', relevanceKeywords: ['besser durch Bewegung', 'körperliche Unruhe', 'Rhus tox'] },
-              { id: 'mod_hard_pressure', label: 'Besser durch starken Druck oder Zusammenkrümmen', remedyHint: 'Colocynthis / Bryonia', relevanceKeywords: ['besser durch festen Druck', 'besser durch Zusammenkrümmen', 'Colocynthis'] }
-            ]
+        options: [
+          { id: 'mod_warmth_wrap', label: 'Besser durch lokale Wärme, heiße Getränke & Einhüllen', remedyHint: 'Arsenicum album / Rhus tox', relevanceKeywords: ['besser durch Wärme', 'besser durch Einhüllen', 'besser durch heiße Getränke'] },
+          { id: 'mod_cold_air', label: 'Besser durch Kälte, kalte Umschläge & frische Luft', remedyHint: 'Apis / Pulsatilla', relevanceKeywords: ['besser durch Kälte', 'besser durch kalte Umschläge', 'besser durch frische Luft'] },
+          { id: 'mod_rest_still', label: 'Schlimmer durch geringste Bewegung (Verlangen nach absoluter Ruhe)', remedyHint: 'Bryonia', relevanceKeywords: ['schlechter durch Bewegung', 'besser durch Ruhe', 'Bryonia'] },
+          { id: 'mod_motion_restless', label: 'Besser durch fortgesetzte Bewegung & Positionswechsel', remedyHint: 'Rhus tox', relevanceKeywords: ['besser durch Bewegung', 'körperliche Unruhe', 'Rhus tox'] },
+          { id: 'mod_hard_pressure', label: 'Besser durch starken Druck oder Zusammenkrümmen', remedyHint: 'Colocynthis / Bryonia', relevanceKeywords: ['besser durch festen Druck', 'besser durch Zusammenkrümmen', 'Colocynthis'] }
+        ]
       },
       {
         id: 'sensationMind',
@@ -132,467 +719,67 @@ export function getAcuteClarificationQuestions(
         scaleMax: 4
       }
     ];
+}
+
+/**
+ * Generates clarification questions localized according to the specified language.
+ */
+function generateRawAcuteQuestions(domain: AcuteComplaintDomain, lang: LanguageCode): AcuteClarificationQuestion[] {
+  const baseQuestions = getBaseDomainQuestions(domain);
+  if (lang === 'de') {
+    return baseQuestions;
   }
 
-  // --- 2. ESPAÑOL (ES) ---
-  if (lang === 'es') {
-    return [
-      {
-        id: 'onset',
-        category: 'Desencadenante e Inicio (Causa)',
-        title: '1. ¿Cómo comenzaron las molestias y cuál fue el desencadenante?',
-        description: 'El desencadenante es uno de los criterios de diferenciación más importantes en homeopatía.',
-        type: 'single',
-        options: isInjury
-          ? [
-              { id: 'inj_blunt', label: 'Traumatismo cerrado, contusión, sensación de magulladura', remedyHint: 'Arnica', relevanceKeywords: ['Arnica', 'contusión', 'traumatismo', 'magulladura'] },
-              { id: 'inj_sprain', label: 'Esguince, distensión de ligamentos o tendones', remedyHint: 'Rhus toxicodendron / Ruta', relevanceKeywords: ['Rhus tox', 'Ruta', 'esguince', 'distensión tendones'] },
-              { id: 'inj_nerve', label: 'Aplastamiento de tejidos ricos en nervios (dedos, cóccix)', remedyHint: 'Hypericum', relevanceKeywords: ['Hypericum', 'lesión nerviosa', 'aplastamiento'] },
-              { id: 'inj_cut', label: 'Herida punzante o corte profundo', remedyHint: 'Ledum / Staphisagria', relevanceKeywords: ['Ledum', 'Staphisagria', 'herida punzante', 'corte'] }
-            ]
-          : isFever
-          ? [
-              { id: 'fev_cold_wind', label: 'Repentino y violento tras viento frío y seco', remedyHint: 'Aconitum', relevanceKeywords: ['Aconitum', 'viento frío', 'inicio brusco', 'fiebre súbita'] },
-              { id: 'fev_wet', label: 'Tras mojarse, enfriamiento o frío húmedo', remedyHint: 'Rhus toxicodendron / Dulcamara', relevanceKeywords: ['Rhus tox', 'Dulcamara', 'mojarse', 'frío húmedo'] },
-              { id: 'fev_sun', label: 'Tras insolación, fuerte calor o sobrecalentamiento', remedyHint: 'Belladonna / Glonoinum', relevanceKeywords: ['Belladonna', 'Glonoinum', 'insolación', 'golpe de calor'] },
-              { id: 'fev_slow', label: 'Lento, progresivo en varios días con pesadez', remedyHint: 'Gelsemium / Ferrum phosphoricum', relevanceKeywords: ['Gelsemium', 'Ferrum phos', 'inicio insidioso', 'pesadez'] }
-            ]
-          : [
-              { id: 'gen_sudden', label: 'Inicio brusco y violento (a menudo tras frío o susto)', remedyHint: 'Aconitum / Belladonna', relevanceKeywords: ['Aconitum', 'Belladonna', 'inicio brusco', 'violento'] },
-              { id: 'gen_cold_wet', label: 'Tras enfriamiento, mojarse o corrientes de aire', remedyHint: 'Rhus tox / Dulcamara', relevanceKeywords: ['Rhus tox', 'enfriamiento', 'mojarse', 'corriente de aire'] },
-              { id: 'gen_stress', label: 'Tras enfado, ira, indignación o estrés agudo', remedyHint: 'Chamomilla / Nux vomica / Colocynthis', relevanceKeywords: ['Chamomilla', 'Nux vomica', 'Colocynthis', 'ira', 'estrés'] },
-              { id: 'gen_slow', label: 'Progresivo, insidioso y sin causa aguda evidente', remedyHint: 'Bryonia / Gelsemium', relevanceKeywords: ['Bryonia', 'Gelsemium', 'insidioso', 'progresivo'] }
-            ]
-      },
-      {
-        id: 'modality',
-        category: 'Modalidades (Mejora / Empeoramiento)',
-        title: '2. ¿Qué alivia o empeora las molestias?',
-        description: 'Las modalidades son decisivas para distinguir entre medicamentos agudos afines.',
-        type: 'single',
-        options: isHead
-          ? [
-              { id: 'mod_still_press', label: 'Mejora con reposo absoluto y presión firme', remedyHint: 'Bryonia', relevanceKeywords: ['mejora por reposo', 'mejora por presión', 'empeora por movimiento', 'Bryonia'] },
-              { id: 'mod_dark_cold', label: 'Empeora con sacudidas, luz y ruidos', remedyHint: 'Belladonna', relevanceKeywords: ['empeora por sacudidas', 'empeora por luz', 'Belladonna'] },
-              { id: 'mod_fresh_air', label: 'Mejora al aire libre fresco, empeora en habitación caliente', remedyHint: 'Pulsatilla', relevanceKeywords: ['mejora aire libre', 'empeora habitación caliente', 'Pulsatilla'] },
-              { id: 'mod_warmth', label: 'Mejora con calor, compresas calientes y abrigarse', remedyHint: 'Arsenicum album / Silicea', relevanceKeywords: ['mejora por calor', 'abrigarse', 'Arsenicum'] }
-            ]
-          : [
-              { id: 'mod_warmth_wrap', label: 'Mejora con calor local, bebidas calientes y abrigarse', remedyHint: 'Arsenicum album / Rhus tox', relevanceKeywords: ['mejora por calor', 'bebidas calientes', 'abrigarse', 'Arsenicum'] },
-              { id: 'mod_cold_air', label: 'Mejora con frío, compresas frescas y aire libre', remedyHint: 'Apis / Pulsatilla', relevanceKeywords: ['mejora por frío', 'compresas frías', 'aire fresco', 'Apis'] },
-              { id: 'mod_rest_still', label: 'Empeora con el menor movimiento (deseo de reposo absoluto)', remedyHint: 'Bryonia', relevanceKeywords: ['empeora por movimiento', 'mejora por reposo', 'Bryonia'] },
-              { id: 'mod_motion_restless', label: 'Mejora con el movimiento continuo y cambiar de postura (inquietud)', remedyHint: 'Rhus tox', relevanceKeywords: ['mejora por movimiento', 'inquietud', 'Rhus tox'] },
-              { id: 'mod_hard_pressure', label: 'Mejora con presión fuerte o doblándose en dos', remedyHint: 'Colocynthis / Bryonia', relevanceKeywords: ['mejora por presión fuerte', 'doblarse', 'Colocynthis'] }
-            ]
-      },
-      {
-        id: 'sensationMind',
-        category: 'Estado de Ánimo y Sensación Principal',
-        title: '3. ¿Cuál es el estado anímico y el tipo de sensación o dolor?',
-        description: 'El comportamiento y el ánimo en estado agudo revelan la imagen característica del remedio.',
-        type: 'single',
-        options: [
-          { id: 'sen_fear_restless', label: 'Gran inquietud ansiosa, miedo, angustia, palpitaciones', remedyHint: 'Aconitum / Arsenicum', relevanceKeywords: ['inquietud ansiosa', 'miedo a morir', 'Aconitum', 'Arsenicum'] },
-          { id: 'sen_angry_irritable', label: 'Irascible, irritable, impaciente, quiere que le dejen en paz', remedyHint: 'Chamomilla / Nux vomica / Bryonia', relevanceKeywords: ['irritable', 'ira', 'Nux vomica', 'Chamomilla'] },
-          { id: 'sen_weepy_mild', label: 'Lloroso, apegado, anhela consuelo y compañía', remedyHint: 'Pulsatilla', relevanceKeywords: ['lloroso', 'busca consuelo', 'Pulsatilla', 'dócil'] },
-          { id: 'sen_dull_heavy', label: 'Aturdido, somnoliento, embotado, pesadez de párpados', remedyHint: 'Gelsemium', relevanceKeywords: ['aturdido', 'somnoliento', 'Gelsemium', 'pesadez'] },
-          { id: 'sen_burning_stinging', label: 'Dolor ardiente o punzante como agujas al rojo vivo', remedyHint: 'Apis / Cantharis', relevanceKeywords: ['dolor ardiente', 'dolor punzante', 'Apis'] }
-        ]
-      },
-      {
-        id: 'intensity',
-        category: 'Grado de Intensidad (1 a 4)',
-        title: '4. ¿Con qué intensidad se manifiesta el síntoma guía?',
-        description: 'Graduación homeopática clásica de 1 a 4 según Samuel Hahnemann (no escala 1–10).',
-        type: 'scale',
-        scaleMin: 1,
-        scaleMax: 4
-      }
-    ];
-  }
+  const domainKey = domain in QUESTION_META_BY_DOMAIN ? domain : 'general';
+  const meta = QUESTION_META_BY_DOMAIN[domainKey] || QUESTION_META_BY_DOMAIN['general'];
 
-  // --- 3. FRANÇAIS (FR) ---
-  if (lang === 'fr') {
-    return [
-      {
-        id: 'onset',
-        category: 'Facteur déclenchant & Début (Causa)',
-        title: '1. Comment les symptômes ont-ils commencé et quel a été le déclencheur ?',
-        description: 'Le facteur déclenchant est l’un des critères de différenciation les plus importants en homéopathie.',
-        type: 'single',
-        options: isInjury
-          ? [
-              { id: 'inj_blunt', label: 'Traumatisme contondant, contusion, courbature générale', remedyHint: 'Arnica', relevanceKeywords: ['Arnica', 'contusion', 'traumatisme', 'courbature'] },
-              { id: 'inj_sprain', label: 'Entorse, élongation des ligaments ou tendons', remedyHint: 'Rhus toxicodendron / Ruta', relevanceKeywords: ['Rhus tox', 'Ruta', 'entorse', 'élongation'] },
-              { id: 'inj_nerve', label: 'Écrasement de zones riches en nerfs (doigts, coccyx)', remedyHint: 'Hypericum', relevanceKeywords: ['Hypericum', 'lésion nerveuse', 'écrasement'] },
-              { id: 'inj_cut', label: 'Plaie par coupure ou piqûre profonde', remedyHint: 'Ledum / Staphisagria', relevanceKeywords: ['Ledum', 'Staphisagria', 'piqûre', 'coupure'] }
-            ]
-          : isFever
-          ? [
-              { id: 'fev_cold_wind', label: 'Brutal & violent après exposition au vent sec et froid', remedyHint: 'Aconitum', relevanceKeywords: ['Aconitum', 'vent froid', 'début brutal', 'fièvre soudaine'] },
-              { id: 'fev_wet', label: 'Après avoir été trempé, refroidi ou par froid humide', remedyHint: 'Rhus toxicodendron / Dulcamara', relevanceKeywords: ['Rhus tox', 'Dulcamara', 'refroidissement', 'humidité'] },
-              { id: 'fev_sun', label: 'Après coup de soleil, forte chaleur ou surchauffe', remedyHint: 'Belladonna / Glonoinum', relevanceKeywords: ['Belladonna', 'Glonoinum', 'coup de soleil', 'chaleur'] },
-              { id: 'fev_slow', label: 'Lent, insidieux sur plusieurs jours avec lourdeur', remedyHint: 'Gelsemium / Ferrum phosphoricum', relevanceKeywords: ['Gelsemium', 'Ferrum phos', 'début insidieux', 'lourdeur'] }
-            ]
-          : [
-              { id: 'gen_sudden', label: 'Début brutal et violent (souvent après grand froid ou peur)', remedyHint: 'Aconitum / Belladonna', relevanceKeywords: ['Aconitum', 'Belladonna', 'début brutal', 'violent'] },
-              { id: 'gen_cold_wet', label: 'Après coup de froid, humidité ou courant d’air', remedyHint: 'Rhus tox / Dulcamara', relevanceKeywords: ['Rhus tox', 'coup de froid', 'courant air'] },
-              { id: 'gen_stress', label: 'Après colère, contrariété, vexation ou stress aigu', remedyHint: 'Chamomilla / Nux vomica / Colocynthis', relevanceKeywords: ['Chamomilla', 'Nux vomica', 'Colocynthis', 'colère', 'stress'] },
-              { id: 'gen_slow', label: 'Progressif, insidieux sans cause aiguë évidente', remedyHint: 'Bryonia / Gelsemium', relevanceKeywords: ['Bryonia', 'Gelsemium', 'progressif'] }
-            ]
-      },
-      {
-        id: 'modality',
-        category: 'Modalités (Amélioration / Aggravation)',
-        title: '2. Qu’est-ce qui soulage ou aggrave les symptômes ?',
-        description: 'Les modalités sont décisives pour différencier les remèdes aigus apparentés.',
-        type: 'single',
-        options: isHead
-          ? [
-              { id: 'mod_still_press', label: 'Amélioration par le repos absolu et forte pression', remedyHint: 'Bryonia', relevanceKeywords: ['mieux par repos', 'mieux par pression', 'pire par mouvement', 'Bryonia'] },
-              { id: 'mod_dark_cold', label: 'Aggravation par secousses, lumière et bruit', remedyHint: 'Belladonna', relevanceKeywords: ['pire par secousses', 'pire par lumière', 'Belladonna'] },
-              { id: 'mod_fresh_air', label: 'Amélioration à l’air frais, aggravation en pièce chaude', remedyHint: 'Pulsatilla', relevanceKeywords: ['mieux à air frais', 'pire en pièce chaude', 'Pulsatilla'] },
-              { id: 'mod_warmth', label: 'Amélioration par compresses chaudes et emmaillotement', remedyHint: 'Arsenicum album / Silicea', relevanceKeywords: ['mieux par chaleur', 'Arsenicum'] }
-            ]
-          : [
-              { id: 'mod_warmth_wrap', label: 'Amélioration par chaleur locale, boissons chaudes et couvertures', remedyHint: 'Arsenicum album / Rhus tox', relevanceKeywords: ['mieux par chaleur', 'boissons chaudes', 'Arsenicum'] },
-              { id: 'mod_cold_air', label: 'Amélioration par le froid, compresses fraîches et air libre', remedyHint: 'Apis / Pulsatilla', relevanceKeywords: ['mieux par froid', 'compresses fraîches', 'air frais', 'Apis'] },
-              { id: 'mod_rest_still', label: 'Aggravation au moindre mouvement (désir de repos absolu)', remedyHint: 'Bryonia', relevanceKeywords: ['pire par mouvement', 'mieux par repos', 'Bryonia'] },
-              { id: 'mod_motion_restless', label: 'Amélioration par mouvement continu et changement de position (agitation)', remedyHint: 'Rhus tox', relevanceKeywords: ['mieux par mouvement', 'agitation', 'Rhus tox'] },
-              { id: 'mod_hard_pressure', label: 'Amélioration par forte pression ou en se pliant en deux', remedyHint: 'Colocynthis / Bryonia', relevanceKeywords: ['mieux par forte pression', 'plié en deux', 'Colocynthis'] }
-            ]
-      },
-      {
-        id: 'sensationMind',
-        category: 'État d’esprit & Sensation principale',
-        title: '3. Quelle est la disposition d’esprit et la nature de la douleur ?',
-        description: 'Le comportement et l’humeur dans l’état aigu révèlent le tableau caractéristique du remède.',
-        type: 'single',
-        options: [
-          { id: 'sen_fear_restless', label: 'Grande agitation anxieuse, peur, angoisse, palpitations', remedyHint: 'Aconitum / Arsenicum', relevanceKeywords: ['agitation anxieuse', 'angoisse', 'Aconitum', 'Arsenicum'] },
-          { id: 'sen_angry_irritable', label: 'Colérique, irritable, impatient, ne supporte pas d’être dérangé', remedyHint: 'Chamomilla / Nux vomica / Bryonia', relevanceKeywords: ['irritable', 'colère', 'Nux vomica', 'Chamomilla'] },
-          { id: 'sen_weepy_mild', label: 'Plaintif, doux, affectueux, cherche consolation et réconfort', remedyHint: 'Pulsatilla', relevanceKeywords: ['plaintif', 'consolation', 'Pulsatilla', 'doux'] },
-          { id: 'sen_dull_heavy', label: 'Hébété, somnolent, engourdi, paupières lourdes et faiblesse', remedyHint: 'Gelsemium', relevanceKeywords: ['hébété', 'somnolent', 'Gelsemium', 'paupières lourdes'] },
-          { id: 'sen_burning_stinging', label: 'Douleur brûlante ou piquante comme des aiguilles brûlantes', remedyHint: 'Apis / Cantharis', relevanceKeywords: ['douleur brûlante', 'douleur piquante', 'Apis'] }
-        ]
-      },
-      {
-        id: 'intensity',
-        category: 'Degré d’intensité (1 à 4)',
-        title: '4. Quelle est l’intensité du symptôme clé ?',
-        description: 'Gradation homéopathique classique de 1 à 4 selon Samuel Hahnemann (pas d’échelle 1–10).',
-        type: 'scale',
-        scaleMin: 1,
-        scaleMax: 4
-      }
-    ];
-  }
+  return baseQuestions.map(q => {
+    const qKey = q.id as 'onset' | 'modality' | 'sensationMind' | 'intensity';
+    const qMeta = meta[qKey];
 
-  // --- 4. ITALIANO (IT) ---
-  if (lang === 'it') {
-    return [
-      {
-        id: 'onset',
-        category: 'Fattore scatenante ed Esordio (Causa)',
-        title: '1. Come sono iniziati i sintomi e qual è stato il fattore scatenante?',
-        description: 'Il fattore scatenante è uno dei criteri di differenziazione più importanti in omeopatia.',
-        type: 'single',
-        options: isInjury
-          ? [
-              { id: 'inj_blunt', label: 'Trauma contusivo, contusione, indolenzimento generale', remedyHint: 'Arnica', relevanceKeywords: ['Arnica', 'contusione', 'trauma', 'indolenzimento'] },
-              { id: 'inj_sprain', label: 'Distorsione, stiramento di legamenti o tendini', remedyHint: 'Rhus toxicodendron / Ruta', relevanceKeywords: ['Rhus tox', 'Ruta', 'distorsione', 'stiramento'] },
-              { id: 'inj_nerve', label: 'Schiacciamento di aree ricche di nervi (dita, coccige)', remedyHint: 'Hypericum', relevanceKeywords: ['Hypericum', 'lesione nervosa', 'schiacciamento'] },
-              { id: 'inj_cut', label: 'Ferita da taglio o puntura profonda', remedyHint: 'Ledum / Staphisagria', relevanceKeywords: ['Ledum', 'Staphisagria', 'ferita puntura', 'taglio'] }
-            ]
-          : isFever
-          ? [
-              { id: 'fev_cold_wind', label: 'Improvviso e violento dopo vento freddo e asciutto', remedyHint: 'Aconitum', relevanceKeywords: ['Aconitum', 'vento freddo', 'esordio improvviso', 'febbre alta'] },
-              { id: 'fev_wet', label: 'Dopo essersi bagnati, raffreddamento o freddo umido', remedyHint: 'Rhus toxicodendron / Dulcamara', relevanceKeywords: ['Rhus tox', 'Dulcamara', 'bagnati', 'freddo umido'] },
-              { id: 'fev_sun', label: 'Dopo colpo di sole, calore intenso o surriscaldamento', remedyHint: 'Belladonna / Glonoinum', relevanceKeywords: ['Belladonna', 'Glonoinum', 'colpo di sole', 'calore'] },
-              { id: 'fev_slow', label: 'Lento, insidioso nell’arco di giorni con pesantezza', remedyHint: 'Gelsemium / Ferrum phosphoricum', relevanceKeywords: ['Gelsemium', 'Ferrum phos', 'esordio insidioso', 'pesantezza'] }
-            ]
-          : [
-              { id: 'gen_sudden', label: 'Esordio improvviso e violento (spesso dopo freddo o spavento)', remedyHint: 'Aconitum / Belladonna', relevanceKeywords: ['Aconitum', 'Belladonna', 'esordio improvviso', 'violento'] },
-              { id: 'gen_cold_wet', label: 'Dopo raffreddamento, umidità o correnti d’aria', remedyHint: 'Rhus tox / Dulcamara', relevanceKeywords: ['Rhus tox', 'raffreddamento', 'corrente aria'] },
-              { id: 'gen_stress', label: 'Dopo rabbia, collera, contrarietà o stress acuto', remedyHint: 'Chamomilla / Nux vomica / Colocynthis', relevanceKeywords: ['Chamomilla', 'Nux vomica', 'Colocynthis', 'rabbia', 'stress'] },
-              { id: 'gen_slow', label: 'Progressivo, insidioso senza causa acuta evidente', remedyHint: 'Bryonia / Gelsemium', relevanceKeywords: ['Bryonia', 'Gelsemium', 'progressivo'] }
-            ]
-      },
-      {
-        id: 'modality',
-        category: 'Modalità (Miglioramento / Peggioramento)',
-        title: '2. Che cosa reca sollievo o provoca peggioramento?',
-        description: 'Le modalità sono decisive per distinguere rimedi acuti strettamente correlati.',
-        type: 'single',
-        options: isHead
-          ? [
-              { id: 'mod_still_press', label: 'Migliora con il riposo assoluto e forte pressione', remedyHint: 'Bryonia', relevanceKeywords: ['migliora riposo', 'migliora pressione', 'peggiora movimento', 'Bryonia'] },
-              { id: 'mod_dark_cold', label: 'Peggiora con scosse, luce intensa e rumori', remedyHint: 'Belladonna', relevanceKeywords: ['peggiora scosse', 'peggiora luce', 'Belladonna'] },
-              { id: 'mod_fresh_air', label: 'Migliora all’aria fresca, peggiora in stanza calda', remedyHint: 'Pulsatilla', relevanceKeywords: ['migliora aria fresca', 'peggiora stanza calda', 'Pulsatilla'] },
-              { id: 'mod_warmth', label: 'Migliora con impacchi caldi e coprendosi bene', remedyHint: 'Arsenicum album / Silicea', relevanceKeywords: ['migliora calore', 'Arsenicum'] }
-            ]
-          : [
-              { id: 'mod_warmth_wrap', label: 'Migliora con calore locale, bevande calde e coperte', remedyHint: 'Arsenicum album / Rhus tox', relevanceKeywords: ['migliora calore', 'bevande calde', 'Arsenicum'] },
-              { id: 'mod_cold_air', label: 'Migliora con il freddo, impacchi freschi e aria aperta', remedyHint: 'Apis / Pulsatilla', relevanceKeywords: ['migliora freddo', 'impacchi freschi', 'aria aperta', 'Apis'] },
-              { id: 'mod_rest_still', label: 'Peggiora al minimo movimento (desiderio di immobilità assoluta)', remedyHint: 'Bryonia', relevanceKeywords: ['peggiora movimento', 'migliora riposo', 'Bryonia'] },
-              { id: 'mod_motion_restless', label: 'Migliora con il movimento continuo e cambiando postura (irrequietezza)', remedyHint: 'Rhus tox', relevanceKeywords: ['migliora movimento', 'irrequietezza', 'Rhus tox'] },
-              { id: 'mod_hard_pressure', label: 'Migliora con forte pressione o piegandosi in due', remedyHint: 'Colocynthis / Bryonia', relevanceKeywords: ['migliora forte pressione', 'piegarsi', 'Colocynthis'] }
-            ]
-      },
-      {
-        id: 'sensationMind',
-        category: 'Stato d’animo e Sensazione principale',
-        title: '3. Qual è lo stato d’animo e la qualità del dolore o della sensazione?',
-        description: 'Il comportamento e l’umore nello stato acuto rivelano il quadro caratteristico del rimedio.',
-        type: 'single',
-        options: [
-          { id: 'sen_fear_restless', label: 'Grande irrequietezza ansiosa, paura, angoscia, palpitazioni', remedyHint: 'Aconitum / Arsenicum', relevanceKeywords: ['irrequietezza ansiosa', 'paura', 'Aconitum', 'Arsenicum'] },
-          { id: 'sen_angry_irritable', label: 'Collerico, irritabile, impaziente, vuole essere lasciato in pace', remedyHint: 'Chamomilla / Nux vomica / Bryonia', relevanceKeywords: ['irritabile', 'collera', 'Nux vomica', 'Chamomilla'] },
-          { id: 'sen_weepy_mild', label: 'Piagnucoloso, docile, desidera consolazione e affetto', remedyHint: 'Pulsatilla', relevanceKeywords: ['piagnucoloso', 'consolazione', 'Pulsatilla', 'mite'] },
-          { id: 'sen_dull_heavy', label: 'Intontito, sonnolento, ottuso, palpebre pesanti e debolezza', remedyHint: 'Gelsemium', relevanceKeywords: ['intontito', 'sonnolento', 'Gelsemium', 'palpebre pesanti'] },
-          { id: 'sen_burning_stinging', label: 'Dolore bruciante o pungente come aghi arroventati', remedyHint: 'Apis / Cantharis', relevanceKeywords: ['dolore bruciante', 'dolore pungente', 'Apis'] }
-        ]
-      },
-      {
-        id: 'intensity',
-        category: 'Grado di intensità (da 1 a 4)',
-        title: '4. Quanto è marcato il sintomo guida?',
-        description: 'Gradazione omeopatica classica da 1 a 4 secondo Samuel Hahnemann (nessuna scala 1–10).',
-        type: 'scale',
-        scaleMin: 1,
-        scaleMax: 4
-      }
-    ];
-  }
+    const localizedCategory = qMeta?.category[lang] || qMeta?.category['en'] || q.category;
+    const localizedTitle = qMeta?.title[lang] || qMeta?.title['en'] || q.title;
+    const localizedDescription = qMeta?.description[lang] || qMeta?.description['en'] || q.description;
 
-  // --- 5. ΕΛΛΗΝΙΚΑ (EL) ---
-  if (lang === 'el') {
-    return [
-      {
-        id: 'onset',
-        category: 'Αιτία & Έναρξη (Causa)',
-        title: '1. Πώς ξεκίνησαν τα συμπτώματα και ποιο ήταν το έναυσμα;',
-        description: 'Η αιτία έναρξης είναι ένα από τα σημαντικότερα κριτήρια διαφοροποίησης στην ομοιοπαθητική.',
-        type: 'single',
-        options: isInjury
-          ? [
-              { id: 'inj_blunt', label: 'Αμβλύ τραύμα, μώλωπας, αίσθηση μωλωπισμού σε όλο το σώμα', remedyHint: 'Arnica', relevanceKeywords: ['Arnica', 'μώλωπας', 'τραύμα', 'μωλωπισμός'] },
-              { id: 'inj_sprain', label: 'Διάστρεμμα, διάταση/τραυματισμός συνδέσμων ή τενόντων', remedyHint: 'Rhus toxicodendron / Ruta', relevanceKeywords: ['Rhus tox', 'Ruta', 'διάστρεμμα', 'τένοντες'] },
-              { id: 'inj_nerve', label: 'Σύνθλιψη περιοχών πλούσιων σε νεύρα (δάχτυλα, κόκκυγας)', remedyHint: 'Hypericum', relevanceKeywords: ['Hypericum', 'νευρικός τραυματισμός', 'σύνθλιψη'] },
-              { id: 'inj_cut', label: 'Νυγμώδες (τρύπημα) ή βαθύ τραύμα από κοπή', remedyHint: 'Ledum / Staphisagria', relevanceKeywords: ['Ledum', 'Staphisagria', 'νυγμός', 'κόψιμο'] }
-            ]
-          : isFever
-          ? [
-              { id: 'fev_cold_wind', label: 'Αιφνίδια & έντονη έναρξη μετά από ξηρό, παγωμένο άνεμο', remedyHint: 'Aconitum', relevanceKeywords: ['Aconitum', 'παγωμένος άνεμος', 'αιφνίδια έναρξη', 'πυρετός'] },
-              { id: 'fev_wet', label: 'Μετά από βρέξιμο, υποθερμία ή υγρό ψύχος', remedyHint: 'Rhus toxicodendron / Dulcamara', relevanceKeywords: ['Rhus tox', 'Dulcamara', 'βρέξιμο', 'υγρό ψύχος'] },
-              { id: 'fev_sun', label: 'Μετά από ηλίαση, υπερβολική ζέστη ή υπερθέρμανση', remedyHint: 'Belladonna / Glonoinum', relevanceKeywords: ['Belladonna', 'Glonoinum', 'ηλίαση', 'ζέστη'] },
-              { id: 'fev_slow', label: 'Βαθμιαία, αργή έναρξη σε διάστημα ημερών με βάρος', remedyHint: 'Gelsemium / Ferrum phosphoricum', relevanceKeywords: ['Gelsemium', 'Ferrum phos', 'ύπουλη έναρξη', 'βάρος'] }
-            ]
-          : [
-              { id: 'gen_sudden', label: 'Αιφνίδια, βίαιη έναρξη (συχνά μετά από σοκ ή έντονο ψύχος)', remedyHint: 'Aconitum / Belladonna', relevanceKeywords: ['Aconitum', 'Belladonna', 'αιφνίδια έναρξη', 'βίαιη'] },
-              { id: 'gen_cold_wet', label: 'Μετά από υποθερμία, βρέξιμο ή ρεύματα αέρα', remedyHint: 'Rhus tox / Dulcamara', relevanceKeywords: ['Rhus tox', 'υποθερμία', 'ρεύμα αέρα'] },
-              { id: 'gen_stress', label: 'Μετά από θυμό, οργή, προσβολή ή έντονο στρες', remedyHint: 'Chamomilla / Nux vomica / Colocynthis', relevanceKeywords: ['Chamomilla', 'Nux vomica', 'Colocynthis', 'θυμός', 'στρες'] },
-              { id: 'gen_slow', label: 'Βαθμιαία, ύπουλη εξέλιξη χωρίς σαφές αιφνίδιο έναυσμα', remedyHint: 'Bryonia / Gelsemium', relevanceKeywords: ['Bryonia', 'Gelsemium', 'βαθμιαία'] }
-            ]
-      },
-      {
-        id: 'modality',
-        category: 'Τροποποιητικοί παράγοντες (Καλύτερα / Χειρότερα)',
-        title: '2. Τι προσφέρει ανακούφιση ή τι επιδεινώνει τα συμπτώματα;',
-        description: 'Οι τροποποιητικοί παράγοντες είναι καθοριστικοί για τη διαφοροδιάγνωση μεταξύ συγγενικών οξέων φαρμάκων.',
-        type: 'single',
-        options: isHead
-          ? [
-              { id: 'mod_still_press', label: 'Καλύτερα με απόλυτη ακινησία και σταθερή πίεση', remedyHint: 'Bryonia', relevanceKeywords: ['καλύτερα ηρεμία', 'καλύτερα πίεση', 'χειρότερα κίνηση', 'Bryonia'] },
-              { id: 'mod_dark_cold', label: 'Χειρότερα από κραδασμούς, έντονο φως και θορύβους', remedyHint: 'Belladonna', relevanceKeywords: ['χειρότερα κραδασμοί', 'χειρότερα φως', 'Belladonna'] },
-              { id: 'mod_fresh_air', label: 'Καλύτερα στον καθαρό δροσερό αέρα, χειρότερα σε ζεστό δωμάτιο', remedyHint: 'Pulsatilla', relevanceKeywords: ['καλύτερα καθαρός αέρας', 'χειρότερα ζεστό δωμάτιο', 'Pulsatilla'] },
-              { id: 'mod_warmth', label: 'Καλύτερα με ζέστη, θερμές κομπρέσες και σκέπασμα', remedyHint: 'Arsenicum album / Silicea', relevanceKeywords: ['καλύτερα ζέστη', 'Arsenicum'] }
-            ]
-          : [
-              { id: 'mod_warmth_wrap', label: 'Καλύτερα με τοπική ζέστη, ζεστά ροφήματα και καλό σκέπασμα', remedyHint: 'Arsenicum album / Rhus tox', relevanceKeywords: ['καλύτερα ζέστη', 'ζεστές κομπρέσες', 'Arsenicum'] },
-              { id: 'mod_cold_air', label: 'Καλύτερα με κρύο, δροσερές κομπρέσες και καθαρό αέρα', remedyHint: 'Apis / Pulsatilla', relevanceKeywords: ['καλύτερα κρύο', 'δροσερές κομπρέσες', 'καθαρός αέρας', 'Apis'] },
-              { id: 'mod_rest_still', label: 'Χειρότερα με την παραμικρή κίνηση (επιθυμία για απόλυτη ηρεμία)', remedyHint: 'Bryonia', relevanceKeywords: ['χειρότερα κίνηση', 'καλύτερα ηρεμία', 'Bryonia'] },
-              { id: 'mod_motion_restless', label: 'Καλύτερα με συνεχή κίνηση και αλλαγή στάσης (σωματική ανησυχία)', remedyHint: 'Rhus tox', relevanceKeywords: ['καλύτερα κίνηση', 'ανησυχία', 'Rhus tox'] },
-              { id: 'mod_hard_pressure', label: 'Καλύτερα με ισχυρή πίεση ή δίπλωμα στα δύο', remedyHint: 'Colocynthis / Bryonia', relevanceKeywords: ['καλύτερα ισχυρή πίεση', 'δίπλωμα', 'Colocynthis'] }
-            ]
-      },
-      {
-        id: 'sensationMind',
-        category: 'Ψυχική διάθεση & Κύρια αίσθηση',
-        title: '3. Ποια είναι η ψυχική κατάσταση και ο χαρακτήρας του πόνου;',
-        description: 'Η συμπεριφορά και η ψυχική διάθεση στην οξεία φάση αποκαλύπτουν τη χαρακτηριστική εικόνα του φαρμάκου.',
-        type: 'single',
-        options: [
-          { id: 'sen_fear_restless', label: 'Έντονη ανησυχία με φόβο, αγωνία, ταχυπαλμία', remedyHint: 'Aconitum / Arsenicum', relevanceKeywords: ['ανησυχία με φόβο', 'αγωνία', 'Aconitum', 'Arsenicum'] },
-          { id: 'sen_angry_irritable', label: 'Ευερέθιστος, θυμωμένος, ανυπόμονος, θέλει να τον αφήσουν ήσυχο', remedyHint: 'Chamomilla / Nux vomica / Bryonia', relevanceKeywords: ['ευερέθιστος', 'θυμός', 'Nux vomica', 'Chamomilla'] },
-          { id: 'sen_weepy_mild', label: 'Κλαψιάρης, πράος, αναζητά παρηγοριά και στοργή', remedyHint: 'Pulsatilla', relevanceKeywords: ['κλαψιάρης', 'παρηγοριά', 'Pulsatilla', 'πράος'] },
-          { id: 'sen_dull_heavy', label: 'Ζαλισμένος, νωθρός, υπνηλέος, βαριά βλέφαρα και αδυναμία', remedyHint: 'Gelsemium', relevanceKeywords: ['ζαλισμένος', 'υπνηλία', 'Gelsemium', 'βαριά βλέφαρα'] },
-          { id: 'sen_burning_stinging', label: 'Καυστικός ή νυγμώδης πόνος σαν πυρωμένες βελόνες', remedyHint: 'Apis / Cantharis', relevanceKeywords: ['καυστικός πόνος', 'νυγμώδης πόνος', 'Apis'] }
-        ]
-      },
-      {
-        id: 'intensity',
-        category: 'Βαθμός έντασης (1 έως 4)',
-        title: '4. Πόσο έντονο είναι το κύριο καθοδηγητικό σύμπτωμα;',
-        description: 'Κλασική ομοιοπαθητική διαβάθμιση από 1 έως 4 κατά τον Samuel Hahnemann (όχι κλίμακα 1–10).',
-        type: 'scale',
-        scaleMin: 1,
-        scaleMax: 4
-      }
-    ];
-  }
+    const localizedOptions = q.options?.map(opt => {
+      const locLabel = OPTION_LABELS_I18N[opt.id]?.[lang] || OPTION_LABELS_I18N[opt.id]?.['en'] || opt.label;
+      return {
+        ...opt,
+        label: locLabel
+      };
+    });
 
-  // --- 6. РУССКИЙ (RU) ---
-  if (lang === 'ru') {
-    return [
-      {
-        id: 'onset',
-        category: 'Причина и Начало (Causa)',
-        title: '1. Как начались симптомы и что послужило причиной?',
-        description: 'Причина начала — один из важнейших критериев дифференциации в классической гомеопатии.',
-        type: 'single',
-        options: isInjury
-          ? [
-              { id: 'inj_blunt', label: 'Тупая травма, ушиб, ощущение разбитости во всем теле', remedyHint: 'Arnica', relevanceKeywords: ['Arnica', 'ушиб', 'травма', 'разбитость'] },
-              { id: 'inj_sprain', label: 'Растяжение связок или сухожилий', remedyHint: 'Rhus toxicodendron / Ruta', relevanceKeywords: ['Rhus tox', 'Ruta', 'растяжение связок', 'сухожилия'] },
-              { id: 'inj_nerve', label: 'Сдавление зон, богатых нервами (пальцы, копчик)', remedyHint: 'Hypericum', relevanceKeywords: ['Hypericum', 'травма нерва', 'сдавление'] },
-              { id: 'inj_cut', label: 'Колотая рана или глубокий порез', remedyHint: 'Ledum / Staphisagria', relevanceKeywords: ['Ledum', 'Staphisagria', 'колотая рана', 'порез'] }
-            ]
-          : isFever
-          ? [
-              { id: 'fev_cold_wind', label: 'Внезапное и бурное начало после сухого холодного ветра', remedyHint: 'Aconitum', relevanceKeywords: ['Aconitum', 'холодный ветер', 'внезапное начало', 'лихорадка'] },
-              { id: 'fev_wet', label: 'После промокания, переохлаждения или сырого холода', remedyHint: 'Rhus toxicodendron / Dulcamara', relevanceKeywords: ['Rhus tox', 'Dulcamara', 'промокание', 'сырой холод'] },
-              { id: 'fev_sun', label: 'После солнечного удара, перегрева или сильной жары', remedyHint: 'Belladonna / Glonoinum', relevanceKeywords: ['Belladonna', 'Glonoinum', 'солнечный удар', 'жара'] },
-              { id: 'fev_slow', label: 'Медленное, постепенное развитие в течение дней с тяжестью', remedyHint: 'Gelsemium / Ferrum phosphoricum', relevanceKeywords: ['Gelsemium', 'Ferrum phos', 'медленное начало', 'тяжесть'] }
-            ]
-          : [
-              { id: 'gen_sudden', label: 'Внезапное, бурное начало (часто после холода или испуга)', remedyHint: 'Aconitum / Belladonna', relevanceKeywords: ['Aconitum', 'Belladonna', 'внезапное начало', 'бурное'] },
-              { id: 'gen_cold_wet', label: 'После переохлаждения, промокания или сквозняка', remedyHint: 'Rhus tox / Dulcamara', relevanceKeywords: ['Rhus tox', 'переохлаждение', 'сквозняк'] },
-              { id: 'gen_stress', label: 'После гнева, досады, обиды или острого стресса', remedyHint: 'Chamomilla / Nux vomica / Colocynthis', relevanceKeywords: ['Chamomilla', 'Nux vomica', 'Colocynthis', 'гнев', 'стресс'] },
-              { id: 'gen_slow', label: 'Постепенное, медленное нарастание без явной острой причины', remedyHint: 'Bryonia / Gelsemium', relevanceKeywords: ['Bryonia', 'Gelsemium', 'постепенное'] }
-            ]
-      },
-      {
-        id: 'modality',
-        category: 'Модальности (Улучшение / Ухудшение)',
-        title: '2. Что приносит облегчение или ухудшает состояние?',
-        description: 'Модальности имеют решающее значение для выбора между сходными острыми средствами.',
-        type: 'single',
-        options: isHead
-          ? [
-              { id: 'mod_still_press', label: 'Улучшение в абсолютном покое и от сильного давления', remedyHint: 'Bryonia', relevanceKeywords: ['лучше в покое', 'лучше от давления', 'хуже от движения', 'Bryonia'] },
-              { id: 'mod_dark_cold', label: 'Ухудшение от сотрясения, яркого света и шума', remedyHint: 'Belladonna', relevanceKeywords: ['хуже от сотрясения', 'хуже от света', 'Belladonna'] },
-              { id: 'mod_fresh_air', label: 'Улучшение на свежем прохладном воздухе, хуже в теплой комнате', remedyHint: 'Pulsatilla', relevanceKeywords: ['лучше на свежем воздухе', 'хуже в тепле', 'Pulsatilla'] },
-              { id: 'mod_warmth', label: 'Улучшение от тепла, теплых компрессов и укутывания', remedyHint: 'Arsenicum album / Silicea', relevanceKeywords: ['лучше от тепла', 'Arsenicum'] }
-            ]
-          : [
-              { id: 'mod_warmth_wrap', label: 'Улучшение от местного тепла, горячих напитков и укутывания', remedyHint: 'Arsenicum album / Rhus tox', relevanceKeywords: ['лучше от тепла', 'горячие напитки', 'Arsenicum'] },
-              { id: 'mod_cold_air', label: 'Улучшение от холода, прохладных компрессов и свежего воздуха', remedyHint: 'Apis / Pulsatilla', relevanceKeywords: ['лучше от холода', 'прохладные компрессы', 'свежий воздух', 'Apis'] },
-              { id: 'mod_rest_still', label: 'Ухудшение от малейшего движения (потребность в абсолютном покое)', remedyHint: 'Bryonia', relevanceKeywords: ['хуже от движения', 'лучше в покое', 'Bryonia'] },
-              { id: 'mod_motion_restless', label: 'Улучшение от непрерывного движения и смены позы (беспокойство)', remedyHint: 'Rhus tox', relevanceKeywords: ['лучше от движения', 'беспокойство', 'Rhus tox'] },
-              { id: 'mod_hard_pressure', label: 'Улучшение от сильного давления или сгибания пополам', remedyHint: 'Colocynthis / Bryonia', relevanceKeywords: ['лучше от сильного давления', 'сгибание пополам', 'Colocynthis'] }
-            ]
-      },
-      {
-        id: 'sensationMind',
-        category: 'Психическое состояние и Основное ощущение',
-        title: '3. Каково душевное состояние и характер боли?',
-        description: 'Поведение и настроение в остром состоянии раскрывают характерную картину препарата.',
-        type: 'single',
-        options: [
-          { id: 'sen_fear_restless', label: 'Сильное тревожное беспокойство, страх, паника, сердцебиение', remedyHint: 'Aconitum / Arsenicum', relevanceKeywords: ['тревожное беспокойство', 'страх смерти', 'Aconitum', 'Arsenicum'] },
-          { id: 'sen_angry_irritable', label: 'Сердитый, раздражительный, нетерпеливый, хочет остаться один', remedyHint: 'Chamomilla / Nux vomica / Bryonia', relevanceKeywords: ['раздражительный', 'гнев', 'Nux vomica', 'Chamomilla'] },
-          { id: 'sen_weepy_mild', label: 'Плаксивый, мягкий, ласковый, жаждет утешения и поддержки', remedyHint: 'Pulsatilla', relevanceKeywords: ['плаксивый', 'утешение', 'Pulsatilla', 'мягкий'] },
-          { id: 'sen_dull_heavy', label: 'Оглушенный, сонливый, заторможенный, тяжелые веки и слабость', remedyHint: 'Gelsemium', relevanceKeywords: ['оглушенный', 'сонливый', 'Gelsemium', 'тяжелые веки'] },
-          { id: 'sen_burning_stinging', label: 'Жгучая или колющая боль, как от раскаленных игл', remedyHint: 'Apis / Cantharis', relevanceKeywords: ['жгучая боль', 'колющая боль', 'Apis'] }
-        ]
-      },
-      {
-        id: 'intensity',
-        category: 'Степень интенсивности (от 1 до 4)',
-        title: '4. Насколько выражен ведущий симптом?',
-        description: 'Классическая гомеопатическая градация от 1 до 4 по Самуэлю Ганеману (не шкала 1–10).',
-        type: 'scale',
-        scaleMin: 1,
-        scaleMax: 4
-      }
-    ];
-  }
+    return {
+      ...q,
+      category: localizedCategory,
+      title: localizedTitle,
+      description: localizedDescription,
+      options: localizedOptions
+    };
+  });
+}
 
-  // --- 7. ENGLISH (EN) - Default fallback ---
-  return [
-    {
-      id: 'onset',
-      category: 'Trigger & Onset (Causa)',
-      title: '1. How did the symptoms begin and what was the trigger?',
-      description: 'The onset and trigger are paramount for classical homeopathic remedy differentiation.',
-      type: 'single',
-      options: isInjury
-        ? [
-            { id: 'inj_blunt', label: 'Blunt trauma, contusion, bruised feeling all over', remedyHint: 'Arnica', relevanceKeywords: ['Arnica', 'bruised feeling', 'blunt trauma'] },
-            { id: 'inj_sprain', label: 'Sprain, strain of ligaments or tendons', remedyHint: 'Rhus toxicodendron / Ruta', relevanceKeywords: ['Rhus tox', 'Ruta', 'sprain', 'strained tendons'] },
-            { id: 'inj_nerve', label: 'Crush injury to nerve-rich areas (fingers, coccyx)', remedyHint: 'Hypericum', relevanceKeywords: ['Hypericum', 'nerve injury', 'crushed tissue'] },
-            { id: 'inj_cut', label: 'Puncture wound or sharp laceration', remedyHint: 'Ledum / Staphisagria', relevanceKeywords: ['Ledum', 'Staphisagria', 'puncture wound'] }
-          ]
-        : isFever
-        ? [
-            { id: 'fev_cold_wind', label: 'Sudden & violent after dry cold wind', remedyHint: 'Aconitum', relevanceKeywords: ['Aconitum', 'cold dry wind', 'sudden onset'] },
-            { id: 'fev_wet', label: 'After getting drenched, chilled or cold damp weather', remedyHint: 'Rhus tox / Dulcamara', relevanceKeywords: ['Rhus tox', 'damp cold', 'drenched'] },
-            { id: 'fev_sun', label: 'After sun exposure, intense heat or sunstroke', remedyHint: 'Belladonna / Glonoinum', relevanceKeywords: ['Belladonna', 'sunstroke', 'heat exposure'] },
-            { id: 'fev_slow', label: 'Slow, insidious onset over days with fatigue & heaviness', remedyHint: 'Gelsemium / Ferrum phos', relevanceKeywords: ['Gelsemium', 'Ferrum phos', 'slow onset', 'heaviness'] }
-          ]
-        : [
-            { id: 'gen_sudden', label: 'Sudden, violent onset (often after shock or cold wind)', remedyHint: 'Aconitum / Belladonna', relevanceKeywords: ['Aconitum', 'Belladonna', 'sudden violent onset'] },
-            { id: 'gen_cold_wet', label: 'After getting chilled, wet or exposed to a draft', remedyHint: 'Rhus tox / Dulcamara', relevanceKeywords: ['Rhus tox', 'draft', 'chilled', 'drenched'] },
-            { id: 'gen_stress', label: 'After anger, vexation, mortification or acute stress', remedyHint: 'Chamomilla / Nux vomica', relevanceKeywords: ['Chamomilla', 'Nux vomica', 'anger', 'stress'] },
-            { id: 'gen_slow', label: 'Gradual, insidious onset without clear sudden trigger', remedyHint: 'Bryonia / Gelsemium', relevanceKeywords: ['Bryonia', 'Gelsemium', 'gradual onset'] }
-          ]
-    },
-    {
-      id: 'modality',
-      category: 'Key Modality (Better / Worse)',
-      title: '2. What brings relief or aggravates the complaint?',
-      description: 'Modalities are decisive for distinguishing between closely related acute remedies.',
-      type: 'single',
-      options: isHead
-        ? [
-            { id: 'mod_still_press', label: 'Better from quiet rest & firm pressure', remedyHint: 'Bryonia', relevanceKeywords: ['better from rest', 'better from pressure', 'worse from motion', 'Bryonia'] },
-            { id: 'mod_dark_cold', label: 'Worse from jarring, light & noise', remedyHint: 'Belladonna', relevanceKeywords: ['worse from jarring', 'worse from light', 'Belladonna'] },
-            { id: 'mod_fresh_air', label: 'Better in open fresh air, worse in warm room', remedyHint: 'Pulsatilla', relevanceKeywords: ['better in fresh air', 'worse in warm room', 'Pulsatilla'] },
-            { id: 'mod_warmth', label: 'Better from warm compresses & wrapping up warm', remedyHint: 'Arsenicum album / Silicea', relevanceKeywords: ['better from warmth', 'Arsenicum'] }
-          ]
-        : [
-            { id: 'mod_warmth_wrap', label: 'Better from heat, warm wraps and hot drinks', remedyHint: 'Arsenicum album / Rhus tox', relevanceKeywords: ['better from heat', 'better from warmth', 'hot drinks', 'relieved by warmth'] },
-            { id: 'mod_cold_air', label: 'Better from cold, cool compresses & open fresh air', remedyHint: 'Apis / Pulsatilla', relevanceKeywords: ['better from cold', 'cool compresses', 'open air', 'relieved by cold'] },
-            { id: 'mod_rest_still', label: 'Worse from least motion (desire for complete quiet & rest)', remedyHint: 'Bryonia', relevanceKeywords: ['worse from motion', 'better from absolute rest', 'Bryonia'] },
-            { id: 'mod_motion_restless', label: 'Better from continued motion & changing posture (restless)', remedyHint: 'Rhus tox', relevanceKeywords: ['better from motion', 'restless', 'Rhus tox'] },
-            { id: 'mod_hard_pressure', label: 'Better from firm pressure or doubling up', remedyHint: 'Colocynthis / Bryonia', relevanceKeywords: ['better from firm pressure', 'doubling up', 'Colocynthis'] }
-          ]
-    },
-    {
-      id: 'sensationMind',
-      category: 'Emotional State & Core Sensation',
-      title: '3. What is the emotional disposition and sensation?',
-      description: 'The acute mental disposition reveals the characteristic remedy picture.',
-      type: 'single',
-      options: [
-        { id: 'sen_fear_restless', label: 'Great anxious restlessness, fear, panic, racing pulse', remedyHint: 'Aconitum / Arsenicum', relevanceKeywords: ['anxious restlessness', 'fear', 'panic', 'Aconitum', 'Arsenicum'] },
-        { id: 'sen_angry_irritable', label: 'Irritable, angry, snappish, intolerant of disturbance', remedyHint: 'Chamomilla / Nux vomica', relevanceKeywords: ['irritable', 'angry', 'Nux vomica', 'Chamomilla'] },
-        { id: 'sen_weepy_mild', label: 'Weepy, clingy, craves consolation, gentle disposition', remedyHint: 'Pulsatilla', relevanceKeywords: ['weepy', 'craves consolation', 'Pulsatilla'] },
-        { id: 'sen_dull_heavy', label: 'Dull, drowsy, heavy eyelids, trembling weakness', remedyHint: 'Gelsemium', relevanceKeywords: ['dull', 'drowsy', 'Gelsemium', 'heaviness'] },
-        { id: 'sen_burning_stinging', label: 'Burning, stinging sensation like red hot needles', remedyHint: 'Apis / Cantharis', relevanceKeywords: ['burning stinging pain', 'Apis', 'Cantharis'] }
-      ]
-    },
-    {
-      id: 'intensity',
-      category: 'Intensity Grade (1 to 4)',
-      title: '4. How intense is the leading symptom?',
-      description: 'Classical homeopathic symptom grade 1 to 4 (strictly not a 1–10 scale).',
-      type: 'scale',
-      scaleMin: 1,
-      scaleMax: 4
+/**
+ * Generates dynamic, highly specific clarification questions based on the complaint text and language.
+ * Adheres strictly to the classical 1-4 intensity scale and gives targeted remedies for fast differentiation.
+ */
+export function getAcuteClarificationQuestions(
+  inputText: string,
+  lang: LanguageCode = 'de'
+): AcuteClarificationQuestion[] {
+  const domain = detectComplaintDomain(inputText);
+  const rawQuestions = generateRawAcuteQuestions(domain, lang);
+
+  // Attach remedyIds to options based on OPTION_REMEDY_MAP
+  rawQuestions.forEach((q) => {
+    if (q.options) {
+      q.options.forEach((opt) => {
+        opt.remedyIds = OPTION_REMEDY_MAP[opt.id] || [];
+      });
     }
-  ];
+  });
+
+  return rawQuestions;
 }
 
 /**

@@ -14,7 +14,138 @@ interface PDFContext {
   patientName: string;
   anamneseDatum: string;
   documentTitle: string;
+  lang: LanguageCode;
 }
+
+const SECTION_TITLES: Record<LanguageCode, {
+  falldaten: string;
+  falldatenSub: string;
+  redFlags: string;
+  redFlagsSub: string;
+  medikamente: string;
+  medikamenteSub: string;
+  differential: string;
+  differentialSub: string;
+  homoeopathie: string;
+  homoeopathieSub: string;
+  empfehlungen: string;
+  empfehlungenSub: string;
+  overallTitle: string;
+  pageHeader: string;
+}> = {
+  de: {
+    falldaten: '1. Falldaten & Anamneseübersicht',
+    falldatenSub: 'Stammdaten, Hauptbeschwerde, Spontanbericht & Befunde',
+    redFlags: '2. Warnhinweise & Red Flags',
+    redFlagsSub: 'Klinische Risikoeinschätzung & Dringlichkeit',
+    medikamente: '3. Medikamenten- & Interaktionsanalyse',
+    medikamenteSub: 'Wirkungen, Nebenwirkungen & Wechselwirkungen',
+    differential: '4. Medizinische Differenzialdiagnostik',
+    differentialSub: 'Systematischer Vergleich und klinische Abklärung',
+    homoeopathie: '5. Homöopathische Fallauswertung',
+    homoeopathieSub: 'Repertorisation, Symptomhierarchie & Mittel-Rangliste',
+    empfehlungen: '6. Therapie- & Praxisempfehlungen',
+    empfehlungenSub: 'Ärztliche Abklärung, homöopathische Verordnung und Einnahmeplan',
+    overallTitle: 'Ganzheitliche Fallanalyse',
+    pageHeader: 'HOMÖOPATHISCHE PRAXIS & FALLANALYSE'
+  },
+  en: {
+    falldaten: '1. Case Data & Anamnesis Overview',
+    falldatenSub: 'Master data, primary complaints, modalities & symptoms',
+    redFlags: '2. Warnings & Red Flags',
+    redFlagsSub: 'Clinical risk assessment & urgency rating',
+    medikamente: '3. Medication & Interaction Analysis',
+    medikamenteSub: 'Active ingredients, adverse effects & interactions',
+    differential: '4. Medical Differential Diagnosis',
+    differentialSub: 'Systematic comparison and clinical investigation',
+    homoeopathie: '5. Homeopathic Case Evaluation',
+    homoeopathieSub: 'Repertorisation, symptom hierarchy & remedy ranking',
+    empfehlungen: '6. Therapy & Practice Recommendations',
+    empfehlungenSub: 'Medical clarification, homeopathic prescription and schedule',
+    overallTitle: 'Comprehensive Clinical Analysis',
+    pageHeader: 'HOMEOPATHIC PRACTICE & CASE ANALYSIS'
+  },
+  es: {
+    falldaten: '1. Datos del caso y resumen de la anamnesis',
+    falldatenSub: 'Datos maestros, quejas principales, modalidades y síntomas',
+    redFlags: '2. Advertencias y banderas rojas',
+    redFlagsSub: 'Evaluación del riesgo clínico y grado de urgencia',
+    medikamente: '3. Análisis de medicamentos e interacciones',
+    medikamenteSub: 'Efectos terapéuticos, adversos e interacciones',
+    differential: '4. Diagnóstico diferencial médico',
+    differentialSub: 'Comparación sistemática y evaluación clínica',
+    homoeopathie: '5. Evaluación homeopática del caso',
+    homoeopathieSub: 'Repertorización, jerarquía de síntomas y ranking de remedios',
+    empfehlungen: '6. Recomendaciones terapéuticas y de consulta',
+    empfehlungenSub: 'Aclaración médica, prescripción homeopática y plan',
+    overallTitle: 'Análisis clínico integral',
+    pageHeader: 'PRÁCTICA HOMEOPÁTICA Y ANÁLISIS DE CASOS'
+  },
+  fr: {
+    falldaten: '1. Données du cas et synthèse de l\'anamnèse',
+    falldatenSub: 'Données de base, plaintes principales, modalités et symptômes',
+    redFlags: '2. Avertissements et signaux d\'alarme',
+    redFlagsSub: 'Évaluation des risques cliniques et urgence',
+    medikamente: '3. Analyse des médicaments et interactions',
+    medikamenteSub: 'Effets recherchés, secondaires et interactions',
+    differential: '4. Diagnostic différentiel médical',
+    differentialSub: 'Comparaison systématique et bilan clinique',
+    homoeopathie: '5. Évaluation homéopathique du cas',
+    homoeopathieSub: 'Répertorisation, hiérarchie des symptômes et classement',
+    empfehlungen: '6. Recommandations thérapeutiques et de pratique',
+    empfehlungenSub: 'Bilan médical, ordonnance homéopathique et plan de prise',
+    overallTitle: 'Analyse clinique globale',
+    pageHeader: 'PRATIQUE HOMÉOPATHIQUE ET ANALYSE DE CAS'
+  },
+  it: {
+    falldaten: '1. Dati del caso e panoramica dell\'anamnesi',
+    falldatenSub: 'Dati anagrafici, disturbi principali, modalità e sintomi',
+    redFlags: '2. Avvertenze e segnali d\'allarme',
+    redFlagsSub: 'Valutazione del rischio clinico e urgenza',
+    medikamente: '3. Analisi dei farmaci e interazioni',
+    medikamenteSub: 'Effetti farmacologici, indesiderati e interazioni',
+    differential: '4. Diagnosi differenziale medica',
+    differentialSub: 'Confronto sistematico e chiarimento clinico',
+    homoeopathie: '5. Valutazione omeopatica del caso',
+    homoeopathieSub: 'Repertorizzazione, gerarchia dei sintomi e classifica rimedi',
+    empfehlungen: '6. Raccomandazioni terapeutiche e pratiche',
+    empfehlungenSub: 'Approfondimento medico, prescrizione omeopatica e schema',
+    overallTitle: 'Analisi clinica olistica',
+    pageHeader: 'PRATICA OMEOPATICA E ANALISI DEI CASI'
+  },
+  el: {
+    falldaten: '1. Δεδομένα περιστατικού & Επισκόπηση αναμνηστικού',
+    falldatenSub: 'Βασικά στοιχεία, κύρια συμπτώματα, τροποποιητικοί παράγοντες',
+    redFlags: '2. Προειδοποιητικά σημεία & Red Flags',
+    redFlagsSub: 'Κλινική εκτίμηση κινδύνου & βαθμός επείγοντος',
+    medikamente: '3. Ανάλυση φαρμάκων & αλληλεπιδράσεων',
+    medikamenteSub: 'Δράσεις, παρενέργειες και αλληλεπιδράσεις ουσιών',
+    differential: '4. Ιατρική διαφορική διάγνωση',
+    differentialSub: 'Συστηματική σύγκριση και κλινική διερεύνηση',
+    homoeopathie: '5. Ομοιοπαθητική αξιολόγηση περιστατικού',
+    homoeopathieSub: 'Ρεπερτοριοποίηση, ιεραρχία συμπτωμάτων & κατάταξη φαρμάκων',
+    empfehlungen: '6. Συστάσεις θεραπείας & πρακτικής',
+    empfehlungenSub: 'Ιατρική διερεύνηση, ομοιοπαθητική συνταγογράφηση & πλάνο λήψης',
+    overallTitle: 'Ολοκληρωμένη Κλινική Ανάλυση',
+    pageHeader: 'ΟΜΟΙΟΠΑΘΗΤΙΚΗ ΠΡΑΚΤΙΚΗ & ΑΝΑΛΥΣΗ ΠΕΡΙΣΤΑΤΙΚΟΥ'
+  },
+  ru: {
+    falldaten: '1. Данные случая и обзор анамнеза',
+    falldatenSub: 'Основные данные, главные жалобы, модальности и симптомы',
+    redFlags: '2. Предупреждения и красные флаги',
+    redFlagsSub: 'Клиническая оценка рисков и степень срочности',
+    medikamente: '3. Анализ медикаментов и взаимодействий',
+    medikamenteSub: 'Действие, побочные эффекты и взаимодействия',
+    differential: '4. Медицинский дифференциальный диагноз',
+    differentialSub: 'Систематическое сопоставление и клиническое обследование',
+    homoeopathie: '5. Гомеопатическая оценка случая',
+    homoeopathieSub: 'Реперторизация, иерархия симптомов и рейтинг препаратов',
+    empfehlungen: '6. Терапевтические и практические рекомендации',
+    empfehlungenSub: 'Врачебное уточнение, гомеопатическое назначение и схема приема',
+    overallTitle: 'Комплексный клинический анализ',
+    pageHeader: 'ГОМЕОПАТИЧЕСКАЯ ПРАКТИКА И АНАЛИЗ СЛУЧАЕВ'
+  }
+};
 
 // Colors (RGB)
 const COLORS = {
@@ -44,16 +175,19 @@ function checkPageBreak(ctx: PDFContext, neededHeight: number, categoryHeader?: 
 
 // Helper: Header on each page
 function drawPageHeader(ctx: PDFContext, sectionName: string) {
-  const { doc, pageWidth, margin } = ctx;
+  const { doc, pageWidth, margin, lang } = ctx;
   doc.setFont('Roboto', 'bold');
   doc.setFontSize(8);
   doc.setTextColor(...COLORS.primary);
-  doc.text('HOMÖOPATHISCHE PRAXIS & FALLANALYSE', margin, 12);
+  const titles = SECTION_TITLES[lang] || SECTION_TITLES.de;
+  doc.text(titles.pageHeader, margin, 12);
 
   doc.setFont('Roboto', 'normal');
   doc.setFontSize(8);
   doc.setTextColor(...COLORS.textMuted);
-  const infoText = `Patient: ${ctx.patientName} | Datum: ${ctx.anamneseDatum}`;
+  const patientLabel = lang === 'el' ? 'Ασθενής' : lang === 'en' ? 'Patient' : lang === 'es' ? 'Paciente' : lang === 'fr' ? 'Patient' : lang === 'it' ? 'Paziente' : lang === 'ru' ? 'Пациент' : 'Patient';
+  const datumLabel = lang === 'el' ? 'Ημερομηνία' : lang === 'en' ? 'Date' : lang === 'es' ? 'Fecha' : lang === 'fr' ? 'Date' : lang === 'it' ? 'Data' : lang === 'ru' ? 'Дата' : 'Datum';
+  const infoText = `${patientLabel}: ${ctx.patientName} | ${datumLabel}: ${ctx.anamneseDatum}`;
   const infoWidth = doc.getTextWidth(infoText);
   doc.text(infoText, pageWidth - margin - infoWidth, 12);
 
@@ -206,7 +340,8 @@ function drawFooters(doc: jsPDF, patientName: string) {
 
 // 1. Falldaten Übersicht
 function renderFalldatenSection(ctx: PDFContext, patientCase: PatientCase) {
-  drawSectionHeader(ctx, '1. Erfasste Falldaten & Anamnese', 'Stammdaten, Hauptbeschwerde, Spontanbericht & Befunde');
+  const t = SECTION_TITLES[ctx.lang] || SECTION_TITLES.de;
+  drawSectionHeader(ctx, t.falldaten, t.falldatenSub);
 
   // Stammdaten Grid
   const stammdatenLines: string[] = [
@@ -307,7 +442,8 @@ function renderFalldatenSection(ctx: PDFContext, patientCase: PatientCase) {
 
 // 2. Warnhinweise & Red Flags
 function renderRedFlagsSection(ctx: PDFContext, analysis: FullClinicalAnalysis) {
-  drawSectionHeader(ctx, '2. Warnhinweise & Red Flags', 'Klinische Risikoeinschätzung & Dringlichkeit', COLORS.amber);
+  const t = SECTION_TITLES[ctx.lang] || SECTION_TITLES.de;
+  drawSectionHeader(ctx, t.redFlags, t.redFlagsSub, COLORS.amber);
 
   const redFlags = analysis.redFlags?.warnings || [];
   if (redFlags.length > 0) {
@@ -342,7 +478,8 @@ function renderRedFlagsSection(ctx: PDFContext, analysis: FullClinicalAnalysis) 
 
 // 3. Medikamente
 function renderMedikamenteSection(ctx: PDFContext, analysis: FullClinicalAnalysis) {
-  drawSectionHeader(ctx, '3. Medikamenten- & Interaktionsanalyse', 'Wirkungen, Nebenwirkungen & Wechselwirkungen', COLORS.primary);
+  const t = SECTION_TITLES[ctx.lang] || SECTION_TITLES.de;
+  drawSectionHeader(ctx, t.medikamente, t.medikamenteSub, COLORS.primary);
 
   // Warnhinweis
   if (analysis.medikamente?.warnhinweis) {
@@ -393,11 +530,18 @@ function renderMedikamenteSection(ctx: PDFContext, analysis: FullClinicalAnalysi
 
 // 4. Medizinische Differenzialdiagnostik
 function renderDifferentialSection(ctx: PDFContext, analysis: FullClinicalAnalysis) {
-  drawSectionHeader(ctx, '4. Medizinische Differenzialdiagnostik', 'Systematischer Vergleich und klinische Abklärung', COLORS.primary);
+  const t = SECTION_TITLES[ctx.lang] || SECTION_TITLES.de;
+  drawSectionHeader(ctx, t.differential, t.differentialSub, COLORS.primary);
 
   if (analysis.differentialdiagnostik?.dringlichkeitHeader) {
-    drawCardBox(ctx, 'Dringlichkeitsstufe', analysis.differentialdiagnostik.dringlichkeitHeader, COLORS.amber, COLORS.amberBg);
+    const urgencyLabel = ctx.lang === 'el' ? 'Επίπεδο επείγοντος' : ctx.lang === 'en' ? 'Urgency Level' : ctx.lang === 'es' ? 'Nivel de urgencia' : ctx.lang === 'fr' ? 'Niveau d\'urgence' : ctx.lang === 'it' ? 'Livello di urgenza' : ctx.lang === 'ru' ? 'Степень срочности' : 'Dringlichkeitsstufe';
+    drawCardBox(ctx, urgencyLabel, analysis.differentialdiagnostik.dringlichkeitHeader, COLORS.amber, COLORS.amberBg);
   }
+
+  const proLabel = ctx.lang === 'el' ? '✓ Συνηγορούν υπέρ:' : ctx.lang === 'en' ? '✓ In favor:' : ctx.lang === 'es' ? '✓ Argumentos a favor:' : ctx.lang === 'fr' ? '✓ En faveur :' : ctx.lang === 'it' ? '✓ A favore:' : ctx.lang === 'ru' ? '✓ В пользу диагноза:' : '✓ Dafür spricht:';
+  const contraLabel = ctx.lang === 'el' ? '⚠ Συνηγορούν κατά:' : ctx.lang === 'en' ? '⚠ Against:' : ctx.lang === 'es' ? '⚠ Argumentos en contra:' : ctx.lang === 'fr' ? '⚠ Contre :' : ctx.lang === 'it' ? '⚠ Contro:' : ctx.lang === 'ru' ? '⚠ Против диагноза:' : '⚠ Dagegen spricht:';
+  const qLabel = ctx.lang === 'el' ? '💡 Ανοικτά ερωτήματα / Διαγνωστικά:' : ctx.lang === 'en' ? '💡 Open Questions / Diagnostics:' : ctx.lang === 'es' ? '💡 Preguntas abiertas / Diagnóstico:' : ctx.lang === 'fr' ? '💡 Questions en suspens / Diagnostic :' : ctx.lang === 'it' ? '💡 Domande aperte / Diagnostica:' : ctx.lang === 'ru' ? '💡 Открытые вопросы / Диагностика:' : '💡 Offene Fragen / Diagnostik:';
+  const diagLabel = ctx.lang === 'el' ? 'Προτεινόμενα διαγνωστικά βήματα' : ctx.lang === 'en' ? 'Recommended diagnostic steps' : ctx.lang === 'es' ? 'Pasos diagnósticos recomendados' : ctx.lang === 'fr' ? 'Étapes diagnostiques recommandées' : ctx.lang === 'it' ? 'Passaggi diagnostici raccomandati' : ctx.lang === 'ru' ? 'Рекомендуемые диагностические шаги' : 'Empfohlene diagnostische Schritte';
 
   const items = analysis.differentialdiagnostik?.items || [];
   items.forEach((dd, idx) => {
@@ -405,22 +549,22 @@ function renderDifferentialSection(ctx: PDFContext, analysis: FullClinicalAnalys
     const ddLines: string[] = [];
 
     if (dd.pro && dd.pro.length > 0) {
-      ddLines.push('✓ Dafür spricht:');
+      ddLines.push(proLabel);
       dd.pro.forEach(p => ddLines.push(`  • ${p}`));
     }
 
     if (dd.contra && dd.contra.length > 0) {
-      ddLines.push('⚠ Dagegen spricht:');
+      ddLines.push(contraLabel);
       dd.contra.forEach(c => ddLines.push(`  • ${c}`));
     }
 
     if (dd.offeneFragen && dd.offeneFragen.length > 0) {
-      ddLines.push('💡 Offene Fragen / Diagnostik:');
+      ddLines.push(qLabel);
       dd.offeneFragen.forEach(q => ddLines.push(`  • ${q}`));
     }
 
     if (dd.diagnostik) {
-      ddLines.push(`Empfohlene diagnostische Schritte: ${dd.diagnostik}`);
+      ddLines.push(`${diagLabel}: ${dd.diagnostik}`);
     }
 
     drawCardBox(ctx, `${idx + 1}. ${dd.title}`, ddLines, COLORS.primary, COLORS.bgLight);
@@ -429,7 +573,8 @@ function renderDifferentialSection(ctx: PDFContext, analysis: FullClinicalAnalys
 
 // 5. Homöopathische Fallauswertung
 function renderHomoeopathieSection(ctx: PDFContext, analysis: FullClinicalAnalysis) {
-  drawSectionHeader(ctx, '5. Homöopathische Fallauswertung', 'Repertorisation, Symptomhierarchie & Mittel-Rangliste', COLORS.primary);
+  const t = SECTION_TITLES[ctx.lang] || SECTION_TITLES.de;
+  drawSectionHeader(ctx, t.homoeopathie, t.homoeopathieSub, COLORS.primary);
 
   // Symptomen Hierarchie
   if (analysis.homoeopathie?.symptomHierarchie) {
@@ -492,7 +637,8 @@ function renderEmpfehlungenSection(
   patientCase: PatientCase,
   analysis?: FullClinicalAnalysis | null
 ) {
-  drawSectionHeader(ctx, '6. Therapie- & Praxisempfehlungen', 'Ärztliche Abklärung, homöopathische Verordnung und Einnahmeplan');
+  const t = SECTION_TITLES[ctx.lang] || SECTION_TITLES.de;
+  drawSectionHeader(ctx, t.empfehlungen, t.empfehlungenSub);
 
   const recs = patientCase.therapyRecommendations;
 
@@ -564,7 +710,8 @@ function renderEmpfehlungenSection(
 export function exportCategoryPDF(
   category: PDFExportCategory,
   patientCase: PatientCase,
-  analysis?: FullClinicalAnalysis | null
+  analysis?: FullClinicalAnalysis | null,
+  lang: LanguageCode = 'de'
 ): void {
   const doc = new jsPDF({
     orientation: 'portrait',
@@ -580,15 +727,16 @@ export function exportCategoryPDF(
   const contentWidth = pageWidth - margin * 2;
 
   const patientName = patientCase.patientName || 'Patient';
-  const anamneseDatum = patientCase.anamneseDatum || new Date().toLocaleDateString('de-DE');
+  const anamneseDatum = patientCase.anamneseDatum || new Date().toLocaleDateString(lang === 'de' ? 'de-DE' : lang === 'el' ? 'el-GR' : 'en-US');
 
-  let title = 'Ganzheitliche Fallanalyse';
-  if (category === 'falldaten') title = 'Falldaten & Anamneseübersicht';
-  else if (category === 'redFlags') title = 'Warnhinweise & Red Flags';
-  else if (category === 'differential') title = 'Medizinische Differenzialdiagnostik';
-  else if (category === 'homoeopathie') title = 'Homöopathische Fallauswertung';
-  else if (category === 'medikamente') title = 'Medikamenten- & Interaktionsanalyse';
-  else if (category === 'empfehlungen') title = 'Therapie- & Praxisempfehlungen';
+  const t = SECTION_TITLES[lang] || SECTION_TITLES.de;
+  let title = t.overallTitle;
+  if (category === 'falldaten') title = t.falldaten;
+  else if (category === 'redFlags') title = t.redFlags;
+  else if (category === 'differential') title = t.differential;
+  else if (category === 'homoeopathie') title = t.homoeopathie;
+  else if (category === 'medikamente') title = t.medikamente;
+  else if (category === 'empfehlungen') title = t.empfehlungen;
 
   const ctx: PDFContext = {
     doc,
@@ -600,6 +748,7 @@ export function exportCategoryPDF(
     patientName,
     anamneseDatum,
     documentTitle: title,
+    lang,
   };
 
   drawPageHeader(ctx, title);
@@ -656,7 +805,7 @@ export function exportComprehensiveAnalysisToPDF(
   language?: string,
   category: PDFExportCategory = 'all'
 ): void {
-  exportCategoryPDF(category, patientCase, analysis);
+  exportCategoryPDF(category, patientCase, analysis, (language as LanguageCode) || 'de');
 }
 
 // ============================================================================

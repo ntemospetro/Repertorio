@@ -16,6 +16,7 @@ import {
   Users,
   LayoutDashboard,
   BookOpen,
+  Mic,
   User,
   Settings,
   FileText,
@@ -356,7 +357,7 @@ export const Header: React.FC<HeaderProps> = ({
                   <ChevronRight className="w-4 h-4 text-slate-400" />
                 </button>
 
-                {/* Materia Medica & Akutaufnahme */}
+                {/* Materia Medica */}
                 <button
                   type="button"
                   id="mobile-nav-tab-materiamedica"
@@ -374,6 +375,28 @@ export const Header: React.FC<HeaderProps> = ({
                   <div className="flex items-center gap-3">
                     <BookOpen className="w-4 h-4 text-teal-600" />
                     <span>{t('tabMateriaMedica')}</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-400" />
+                </button>
+
+                {/* Akutaufnahme */}
+                <button
+                  type="button"
+                  id="mobile-nav-tab-quickintake"
+                  onClick={() => {
+                    setActiveTherapistTab('quickintake');
+                    window.dispatchEvent(new CustomEvent('homoeo_action_set_therapist_tab', { detail: 'quickintake' }));
+                    setMobileMenuOpen(false);
+                  }}
+                  className={`w-full px-3.5 py-2.5 rounded-xl text-sm font-medium flex items-center justify-between transition-colors cursor-pointer ${
+                    activeTherapistTab === 'quickintake'
+                      ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/70'
+                      : 'text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Mic className="w-4 h-4 text-teal-600" />
+                    <span>{t('tabQuickIntake')}</span>
                   </div>
                   <ChevronRight className="w-4 h-4 text-slate-400" />
                 </button>

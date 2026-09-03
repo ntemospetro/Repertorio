@@ -1,20 +1,21 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useEffect } from 'react';
+import { LocalizedRemedy, getLocalizedRemedies } from '../data/materiaMedicaData';
+import { getRemedyClassicalAuthors } from '../data/classicalAuthorsMap';
+import { useTranslation } from '../i18n/LanguageContext';
 import { 
   X, 
-  Info, 
+  ArrowLeft, 
+  CheckCircle2, 
   Sparkles, 
   Pill, 
-  CheckCircle2, 
   HeartHandshake, 
   Snowflake, 
   Flame, 
   Tag, 
   ChevronRight, 
-  ArrowLeft,
-  BookOpen
+  Info,
+  Plus
 } from 'lucide-react';
-import { LocalizedRemedy } from '../data/materiaMedicaData';
-import { useTranslation } from '../i18n/LanguageContext';
 
 // Comprehensive mapping of homeopathic abbreviations and common synonyms to database keys
 export const REMEDY_ALIAS_MAP: Record<string, string> = {
@@ -67,8 +68,12 @@ export const REMEDY_ALIAS_MAP: Record<string, string> = {
   'nux vomica': 'nux'
 };
 
+/**
+ * Resolves a differential diagnosis string (e.g., "Rhus tox (better on motion)")
+ * to a LocalizedRemedy in the active database.
+ */
 export function resolveDifferentialRemedy(diffStr: string, remedies: LocalizedRemedy[]): LocalizedRemedy | null {
-  if (!diffStr || !remedies || remedies.length === 0) return null;
+  if (!diffStr || !remedies) return null;
   // 1. Strip notes in parentheses or brackets
   let raw = diffStr.replace(/\s*\([^)]*\)/g, '').replace(/\s*\[[^\]]*\]/g, '').trim();
   if (!raw) raw = diffStr.trim();
@@ -121,98 +126,103 @@ export function resolveDifferentialRemedy(diffStr: string, remedies: LocalizedRe
   return found || null;
 }
 
-interface RemedyMonographModalProps {
-  isOpen: boolean;
-  onClose: () => void;
+export interface RemedyMonographModalProps {
+  isOpen?: boolean;
   remedy: LocalizedRemedy | null;
+  onClose: () => void;
   allRemedies?: LocalizedRemedy[];
+  modalHistory?: LocalizedRemedy[];
+  onBackModal?: () => void;
+  onNavigateToRemedy?: (remedy: LocalizedRemedy) => void;
+  onSelectRemedyForCase?: (remedyName: string, potency: string) => void;
 }
 
 export const RemedyMonographModal: React.FC<RemedyMonographModalProps> = ({
   isOpen,
-  onClose,
   remedy,
-  allRemedies = []
+  onClose,
+  allRemedies,
+  modalHistory = [],
+  onBackModal,
+  onNavigateToRemedy,
+  onSelectRemedyForCase,
 }) => {
-  const { t } = useTranslation();
-  const modalBodyRef = useRef<HTMLDivElement>(null);
-  const [activeRemedy, setActiveRemedy] = useState<LocalizedRemedy | null>(remedy);
-  const [modalHistory, setModalHistory] = useState<LocalizedRemedy[]>([]);
+  const { t, language } = useTranslation();
+  const modalBodyRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    setActiveRemedy(remedy);
-    setModalHistory([]);
-  }, [remedy, isOpen]);
-
-  if (!isOpen || !activeRemedy) return null;
-
-  const handleSelectDifferentialRemedy = (diffStr: string) => {
-    if (allRemedies.length > 0) {
-      const matched = resolveDifferentialRemedy(diffStr, allRemedies);
-      if (matched) {
-        if (activeRemedy) {
-          setModalHistory(prev => [...prev, activeRemedy]);
-        }
-        setActiveRemedy(matched);
-        setTimeout(() => {
-          if (modalBodyRef.current) {
-            modalBodyRef.current.scrollTo({ top: 0, behavior: 'smooth' });
-          }
-        }, 50);
-      }
+    if (modalBodyRef.current) {
+      modalBodyRef.current.scrollTop = 0;
     }
-  };
+  }, [remedy]);
 
-  const handleBackModal = () => {
-    if (modalHistory.length > 0) {
-      const prev = modalHistory[modalHistory.length - 1];
-      setModalHistory(old => old.slice(0, -1));
-      setActiveRemedy(prev);
-      setTimeout(() => {
-        if (modalBodyRef.current) {
-          modalBodyRef.current.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-      }, 50);
+  if (isOpen === false || !remedy) return null;
+
+  const remediesList = allRemedies || getLocalizedRemedies(language);
+  const authorsInfo = getRemedyClassicalAuthors(remedy.id);
+  const hasAnyAuthors = authorsInfo.hahnemann || authorsInfo.kent || authorsInfo.hering;
+
+  const handleSelectDifferentialRemedy = (diffString: string) => {
+    const targetRemedy = resolveDifferentialRemedy(diffString, remediesList);
+    if (targetRemedy && onNavigateToRemedy) {
+      onNavigateToRemedy(targetRemedy);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs animate-fadeIn">
-      <div 
-        className="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden border border-slate-200"
-        role="dialog"
-        aria-modal="true"
-      >
-        {/* Modal Header */}
-        <div className="p-6 bg-slate-900 text-white flex items-start justify-between gap-4 shrink-0">
-          <div>
-            <div className="flex flex-wrap items-center gap-2 mb-1">
-              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-teal-800 text-teal-200 uppercase tracking-wider flex items-center gap-1">
-                <BookOpen className="w-3 h-3" />
-                {t('remedyRepositoryBadge')}
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
+      <div className="bg-white rounded-2xl max-w-3xl w-full border border-slate-200 shadow-2xl overflow-hidden my-6 flex flex-col max-h-[90vh]">
+        {/* Modal Header: Latin Name as Headline + Localized name subtitle + Navigation Back */}
+        <div className="p-5 sm:p-6 bg-slate-900 text-white flex items-start justify-between gap-4 shrink-0">
+          <div className="space-y-1.5 flex-1 min-w-0">
+            {modalHistory.length > 0 && onBackModal && (
+              <button
+                type="button"
+                onClick={onBackModal}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-teal-300 hover:text-white text-xs font-semibold mb-1 transition-colors cursor-pointer border border-slate-700 shadow-2xs"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>{t('btnBackToPreviousRemedy', { remedy: modalHistory[modalHistory.length - 1].latinName })}</span>
+              </button>
+            )}
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider bg-teal-500/20 text-teal-300 border border-teal-500/30">
+                {remedy.category}
               </span>
-              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-800 text-slate-300 uppercase tracking-wider">
-                {activeRemedy.category}
-              </span>
-              {activeRemedy.isPolychrest && (
-                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-900/60 text-amber-200 border border-amber-500/40">
-                  Polychrest
-                </span>
-              )}
+              <span className="text-xs text-slate-400">{t('remedyRepositoryBadge')}</span>
             </div>
-            <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-              {activeRemedy.latinName}
+            <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight font-serif truncate">
+              {remedy.latinName}
             </h2>
-            <p className="text-xs sm:text-sm text-slate-400 font-medium mt-0.5">
-              {activeRemedy.commonName}
+            <p className="text-sm font-medium text-teal-300 truncate">
+              {remedy.commonName}
             </p>
+            {hasAnyAuthors && (
+              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                <span className="text-xs text-slate-400 mr-0.5">{t('filterAuthorLabel')}:</span>
+                {authorsInfo.hahnemann && (
+                  <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                    Samuel Hahnemann
+                  </span>
+                )}
+                {authorsInfo.kent && (
+                  <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                    James Tyler Kent
+                  </span>
+                )}
+                {authorsInfo.hering && (
+                  <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/30">
+                    Constantine Hering
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
           <button
             type="button"
             onClick={onClose}
             className="text-slate-400 hover:text-white p-2 rounded-xl hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
-            title={t('closeBtn')}
           >
             <X className="w-5 h-5" />
           </button>
@@ -230,7 +240,7 @@ export const RemedyMonographModal: React.FC<RemedyMonographModalProps> = ({
               <span>{t('secOriginTitle')}:</span>
             </div>
             <p className="text-slate-700 leading-relaxed text-xs sm:text-sm">
-              {activeRemedy.origin}
+              {remedy.origin}
             </p>
           </div>
 
@@ -241,7 +251,7 @@ export const RemedyMonographModal: React.FC<RemedyMonographModalProps> = ({
               <span>{t('secEssenceTitle')}:</span>
             </div>
             <p className="text-slate-800 leading-relaxed text-xs sm:text-sm font-medium">
-              {activeRemedy.essence}
+              {remedy.essence}
             </p>
           </div>
 
@@ -252,7 +262,7 @@ export const RemedyMonographModal: React.FC<RemedyMonographModalProps> = ({
               <span>{t('secIndicationsTitle')}:</span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {activeRemedy.mainIndications.map((ind, idx) => (
+              {remedy.mainIndications.map((ind, idx) => (
                 <div key={idx} className="flex items-start gap-2 p-2.5 rounded-lg bg-slate-50 border border-slate-200/80 text-xs">
                   <CheckCircle2 className="w-4 h-4 text-teal-600 shrink-0 mt-0.5" />
                   <span className="font-medium text-slate-800">{ind}</span>
@@ -268,7 +278,7 @@ export const RemedyMonographModal: React.FC<RemedyMonographModalProps> = ({
               <span>{t('secKeynotesTitle')}:</span>
             </div>
             <ul className="space-y-1.5 list-disc list-inside bg-amber-50/40 p-4 rounded-xl border border-amber-100 text-xs sm:text-sm text-slate-800">
-              {activeRemedy.keynotes.map((kn, idx) => (
+              {remedy.keynotes.map((kn, idx) => (
                 <li key={idx} className="leading-relaxed">
                   <span className="font-semibold text-slate-900">{kn}</span>
                 </li>
@@ -283,7 +293,7 @@ export const RemedyMonographModal: React.FC<RemedyMonographModalProps> = ({
               <span>{t('secMindTitle')}:</span>
             </div>
             <p className="p-3.5 bg-indigo-50/40 rounded-xl border border-indigo-100 text-xs sm:text-sm text-slate-800 leading-relaxed">
-              {activeRemedy.mindEmotional}
+              {remedy.mindEmotional}
             </p>
           </div>
 
@@ -295,7 +305,7 @@ export const RemedyMonographModal: React.FC<RemedyMonographModalProps> = ({
                 <span>{t('secModalitiesBetterTitle')}:</span>
               </div>
               <ul className="space-y-1 text-xs text-emerald-950">
-                {activeRemedy.modalitiesBetter.map((mb, idx) => (
+                {remedy.modalitiesBetter.map((mb, idx) => (
                   <li key={idx} className="flex items-start gap-1.5">
                     <span className="font-bold text-emerald-700">•</span>
                     <span>{mb}</span>
@@ -310,7 +320,7 @@ export const RemedyMonographModal: React.FC<RemedyMonographModalProps> = ({
                 <span>{t('secModalitiesWorseTitle')}:</span>
               </div>
               <ul className="space-y-1 text-xs text-rose-950">
-                {activeRemedy.modalitiesWorse.map((mw, idx) => (
+                {remedy.modalitiesWorse.map((mw, idx) => (
                   <li key={idx} className="flex items-start gap-1.5">
                     <span className="font-bold text-rose-700">•</span>
                     <span>{mw}</span>
@@ -327,24 +337,24 @@ export const RemedyMonographModal: React.FC<RemedyMonographModalProps> = ({
               <span>{t('secDosageTitle')}:</span>
             </div>
             <p className="text-xs sm:text-sm text-slate-200 leading-relaxed font-medium">
-              {activeRemedy.potenciesAndDosage}
+              {remedy.potenciesAndDosage}
             </p>
-            {activeRemedy.defaultTagesdosis && (
+            {remedy.defaultTagesdosis && (
               <div className="text-xs text-teal-300 pt-1">
-                {t('secDefaultDailyDose')}: {activeRemedy.defaultTagesdosis}
+                {t('secDefaultDailyDose')}: {remedy.defaultTagesdosis}
               </div>
             )}
           </div>
 
-          {/* 8. Verwandte Mittel & Differenzialdiagnose */}
-          {activeRemedy.differentialRemedies && activeRemedy.differentialRemedies.length > 0 && (
+          {/* 8. Verwandte Mittel & Differenzialdiagnose (ANKLICKBAR mit Direkt-Navigation) */}
+          {remedy.differentialRemedies.length > 0 && (
             <div className="space-y-2.5 pt-1">
               <div className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center justify-between">
                 <span>{t('secDifferentialTitle')}:</span>
               </div>
               <div className="flex flex-wrap gap-2">
-                {activeRemedy.differentialRemedies.map((diff, idx) => {
-                  const matched = allRemedies.length > 0 ? resolveDifferentialRemedy(diff, allRemedies) : null;
+                {remedy.differentialRemedies.map((diff, idx) => {
+                  const matched = resolveDifferentialRemedy(diff, remediesList);
                   return (
                     <button
                       key={idx}
@@ -371,10 +381,10 @@ export const RemedyMonographModal: React.FC<RemedyMonographModalProps> = ({
         {/* Modal Footer */}
         <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-2">
-            {modalHistory.length > 0 && (
+            {modalHistory.length > 0 && onBackModal && (
               <button
                 type="button"
-                onClick={handleBackModal}
+                onClick={onBackModal}
                 className="px-3.5 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
               >
                 <ArrowLeft className="w-3.5 h-3.5 text-slate-500" />
@@ -385,13 +395,30 @@ export const RemedyMonographModal: React.FC<RemedyMonographModalProps> = ({
               {t('monographHeader')}
             </span>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-5 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs sm:text-sm font-semibold transition-colors cursor-pointer"
-          >
-            {t('closeBtn')}
-          </button>
+
+          <div className="flex items-center gap-2">
+            {onSelectRemedyForCase && (
+              <button
+                type="button"
+                onClick={() => {
+                  const defaultPotency = remedy.potenciesAndDosage.match(/[CDLM]\s*\d+/i)?.[0] || 'C30';
+                  onSelectRemedyForCase(remedy.latinName, defaultPotency);
+                  onClose();
+                }}
+                className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+              >
+                <Plus className="w-4 h-4" />
+                <span>{t('btnApplyToCase')}</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-5 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs sm:text-sm font-semibold transition-colors cursor-pointer"
+            >
+              {t('closeBtn')}
+            </button>
+          </div>
         </div>
       </div>
     </div>

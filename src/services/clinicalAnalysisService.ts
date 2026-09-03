@@ -80,7 +80,7 @@ function normalizeClinicalAnalysis(raw: any, patientCase: PatientCase, language:
   };
 }
 
-export function generateDeterministicClinicalAnalysis(patientCase: PatientCase, _language?: LanguageCode): FullClinicalAnalysis {
+export function generateDeterministicClinicalAnalysis(patientCase: PatientCase, language: LanguageCode = 'de'): FullClinicalAnalysis {
   const haupt = (patientCase.hauptbeschwerde || '').toLowerCase();
   const spontan = (patientCase.spontanbericht || '').toLowerCase();
   const gemuet = (patientCase.gemuetPsyche || '').toLowerCase();
@@ -407,7 +407,13 @@ export function generateDeterministicClinicalAnalysis(patientCase: PatientCase, 
       dringlichkeit: 'Zeitnahe ärztliche Abklärung sinnvoll'
     },
     differentialdiagnostik: {
-      dringlichkeitHeader: 'ZEITNAHE MEDIZINISCHE ABKLÄRUNG',
+      dringlichkeitHeader: language === 'el' ? 'ΑΜΕΣΗ ΙΑΤΡΙΚΗ ΔΙΕΡΕΥΝΗΣΗ' :
+        language === 'en' ? 'PROMPT MEDICAL EVALUATION' :
+        language === 'es' ? 'EVALUACIÓN MÉDICA PRONTA' :
+        language === 'fr' ? 'ÉVALUATION MÉDICALE RAPIDE' :
+        language === 'it' ? 'TEMPESTIVA VALUTAZIONE MEDICA' :
+        language === 'ru' ? 'СВОЕВРЕМЕННОЕ МЕДИЦИНСКОЕ ОБСЛЕДОВАНИЕ' :
+        'ZEITNAHE MEDIZINISCHE ABKLÄRUNG',
       items: ddItems
     },
     arztfallEntscheidung: {

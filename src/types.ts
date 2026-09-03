@@ -405,3 +405,102 @@ export interface TermsPdfArchiveItem {
   sectionCount: number;
   pdfFilename?: string;
 }
+
+// ============================================================================
+// HOMOEOPATHIC EXPERT 5-STEP REPERTORISATION & DECISION TREE TYPES
+// ============================================================================
+
+export interface BackendExtraktion {
+  hauptbeschwerde: string; // [Leitsymptom]
+  causa: string;           // [Causa] oder "Unbekannt (Bitte erfragen)"
+  modalitaeten: string;    // [Modalitäten] oder "Unbekannt (Bitte erfragen)"
+  begleitsymptome: string; // [Begleitsymptome] oder "Unbekannt (Bitte erfragen)"
+}
+
+export interface BackendAppLayoutDaten {
+  optimales_simile: string; // Name des Hauptmittels oder "Fehlende Daten für Empfehlung"
+  begruendung: string;      // Begründung oder Erklärung fehlender Daten
+}
+
+export interface BackendDiagnoseFragen {
+  frage_1: string; // Gezielte Frage nach fehlender Modalität / Schmerzcharakter
+  frage_2: string; // Gezielte Frage nach fehlendem Begleitsymptom / Gemütszustand
+}
+
+export interface BackendBaumstrukturPfad {
+  bedingung: string;
+  folge_frage: string;
+  ergebnis_ja: string;
+  ergebnis_nein: string;
+}
+
+export interface BackendBaumstrukturPopupDaten {
+  start_knoten: string;
+  haupt_differenzierungs_frage: string;
+  pfad_ja: BackendBaumstrukturPfad;
+  pfad_nein: BackendBaumstrukturPfad;
+}
+
+export interface HomeopathicExpertBackendOutput {
+  extraktion: BackendExtraktion;
+  app_layout_daten: BackendAppLayoutDaten;
+  diagnose_fragen_fuer_therapeut: BackendDiagnoseFragen;
+  baumstruktur_popup_daten: BackendBaumstrukturPopupDaten;
+}
+
+export interface HomeopathicExtractedAnalysis {
+  hauptbeschwerde: string; // [Leitsymptom] Körperliche Hauptbeschwerde
+  causa: string;           // [Causa] Auslöser/Ursache (Wetter, Emotion, Unfall, etc.)
+  modalitaeten: string;    // [Modalitäten] Was verschlimmert (>) oder bessert (<)
+  begleitsymptome: string; // [Begleitsymptome] Begleitsymptome & Gemütszustände
+}
+
+export interface DecisionTreeNodeRemedy {
+  name: string;
+  commonName?: string;
+  latinName?: string;
+  rationale: string;
+}
+
+export interface DecisionTreeSecondaryQuestion {
+  question: string;
+  option1Label: string;
+  option1Remedy: DecisionTreeNodeRemedy;
+  option2Label: string;
+  option2Remedy: DecisionTreeNodeRemedy;
+}
+
+export interface DecisionTreeBranch {
+  id: string;
+  branchLabel: string;      // z.B. "[ VERDAUUNG / MAGEN ]"
+  subQuestion: string;      // z.B. "Heißhunger auf Süßes? Blähbauch um 16-20 Uhr?"
+  yesRemedy: DecisionTreeNodeRemedy;  // z.B. [LYCOPODIUM]
+  noRemedy: DecisionTreeNodeRemedy;   // Lückenlos: Auffang-Mittel, z.B. [NUX VOMICA]
+  secondaryQuestion?: DecisionTreeSecondaryQuestion;
+}
+
+export interface HomeopathicDecisionTree {
+  header: string;           // z.B. "[ RECHTSEITIGE MIGRÄNE & VERSCHLIMMERUNG ~20 UHR ]"
+  rootQuestion: string;     // z.B. "Gibt es begleitende Organ- oder Verdauungssymptome?"
+  branches: DecisionTreeBranch[];
+  textFlowchart: string;    // ASCII Flussdiagramm
+}
+
+export interface HomeopathicExpertResult {
+  // Pure 5-step backend structured output
+  extraktion: BackendExtraktion;
+  app_layout_daten: BackendAppLayoutDaten;
+  diagnose_fragen_fuer_therapeut: BackendDiagnoseFragen;
+  baumstruktur_popup_daten: BackendBaumstrukturPopupDaten;
+
+  // Normalized / compatibility fields
+  extractedAnalysis: HomeopathicExtractedAnalysis;
+  startPool?: string[];
+  decisionTree: HomeopathicDecisionTree;
+  diagnosticQuestions: string[];
+  recommendedSimile: {
+    remedyName: string;
+    rationale: string;
+  };
+  formattedMarkdown?: string;
+}
