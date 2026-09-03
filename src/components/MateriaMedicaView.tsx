@@ -17,7 +17,9 @@ import {
   Flame, 
   Snowflake, 
   HeartHandshake,
-  ArrowLeft
+  ArrowLeft,
+  SlidersHorizontal,
+  ChevronDown
 } from 'lucide-react';
 import { 
   getLocalizedRemedies, 
@@ -171,6 +173,7 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedLetter, setSelectedLetter] = useState<string>('all');
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [selectedRemedyForModal, setSelectedRemedyForModal] = useState<LocalizedRemedy | null>(null);
   const [modalHistory, setModalHistory] = useState<LocalizedRemedy[]>([]);
 
@@ -457,82 +460,130 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = () => {
         <div className="space-y-6 animate-in fade-in duration-200">
           {/* Search, Filter & Alphabet Toolbar */}
           <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
-            <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between">
-              {/* Search Bar */}
-              <div className="relative flex-1">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder={t('materiaSearchPlaceholder')}
-                  className="w-full pl-9 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
-                />
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setSearchQuery('')}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-2 w-full">
+                {/* Search Bar */}
+                <div className="relative flex-1">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder={t('materiaSearchPlaceholder')}
+                    className="w-full pl-9 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Filter Toggle Button on Responsive (< lg) */}
+                <button
+                  id="btn-toggle-materia-filters"
+                  type="button"
+                  onClick={() => setShowMobileFilters(!showMobileFilters)}
+                  className={`lg:hidden flex items-center gap-1.5 px-3 py-2.5 rounded-xl border text-xs font-semibold shrink-0 cursor-pointer transition-all shadow-2xs ${
+                    showMobileFilters || selectedCategory !== 'all' || selectedLetter !== 'all'
+                      ? 'bg-teal-50 text-teal-800 border-teal-200'
+                      : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border-slate-200'
+                  }`}
+                  aria-expanded={showMobileFilters}
+                  title={showMobileFilters ? t('filterToggleHide') : t('filterToggleShow')}
+                >
+                  <SlidersHorizontal className="w-4 h-4 text-teal-700 shrink-0" />
+                  <span className="hidden sm:inline">{t('filterToggle')}</span>
+                  {(selectedCategory !== 'all' || selectedLetter !== 'all') && (
+                    <span className="w-2 h-2 rounded-full bg-teal-600 shrink-0" />
+                  )}
+                  <ChevronDown
+                    className={`w-3.5 h-3.5 text-slate-500 shrink-0 transition-transform duration-200 ${
+                      showMobileFilters ? 'rotate-180' : ''
+                    }`}
+                  />
+                </button>
+
+                {/* Category Filter on Desktop */}
+                <div className="hidden lg:flex items-center gap-1.5 shrink-0">
+                  {categories.map((cat) => (
+                    <button
+                      key={cat.key}
+                      type="button"
+                      onClick={() => setSelectedCategory(cat.key)}
+                      className={`flex items-center justify-center text-center px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                        selectedCategory === cat.key
+                          ? 'bg-teal-600 text-white shadow-2xs'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      {cat.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              {/* Category Filter */}
-              <div className="grid grid-cols-2 gap-2 w-full lg:w-auto lg:flex lg:items-center lg:gap-1.5">
-                {categories.map((cat) => (
-                  <button
-                    key={cat.key}
-                    type="button"
-                    onClick={() => setSelectedCategory(cat.key)}
-                    className={`flex items-center justify-center text-center px-3 py-2 lg:py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-                      selectedCategory === cat.key
-                        ? 'bg-teal-600 text-white shadow-2xs'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    }`}
-                  >
-                    {cat.label}
-                  </button>
-                ))}
-              </div>
-            </div>
+              {/* Collapsible section on responsive (< lg), always visible on desktop (lg:block) */}
+              <div className={`${showMobileFilters ? 'block' : 'hidden'} lg:block space-y-3`}>
+                {/* Category Filter on Mobile / Tablet (2x2 grid) */}
+                <div className="grid grid-cols-2 gap-2 w-full lg:hidden pt-2 border-t border-slate-100">
+                  {categories.map((cat) => (
+                    <button
+                      key={cat.key}
+                      type="button"
+                      onClick={() => setSelectedCategory(cat.key)}
+                      className={`flex items-center justify-center text-center px-3 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                        selectedCategory === cat.key
+                          ? 'bg-teal-600 text-white shadow-2xs'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      {cat.label}
+                    </button>
+                  ))}
+                </div>
 
-            {/* Alphabet Quick Jump */}
-            <div className="flex items-center gap-1 overflow-x-auto pt-2 border-t border-slate-100 pb-1">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-1.5 shrink-0">
-                {t('indexAlphabet')}:
-              </span>
-              <button
-                type="button"
-                onClick={() => setSelectedLetter('all')}
-                className={`px-2.5 py-1 rounded text-xs font-semibold cursor-pointer shrink-0 transition-colors ${
-                  selectedLetter === 'all' ? 'bg-teal-600 text-white shadow-2xs' : 'text-slate-600 hover:bg-slate-100'
-                }`}
-              >
-                {t('filterAll')}
-              </button>
-              {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((l) => {
-                const hasRemedies = uniqueLetters.includes(l);
-                const isSelected = selectedLetter === l;
-                return (
+                {/* Alphabet Quick Jump */}
+                <div className="flex items-center gap-1 overflow-x-auto pt-2 border-t border-slate-100 pb-1">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-1.5 shrink-0">
+                    {t('indexAlphabet')}:
+                  </span>
                   <button
-                    key={l}
                     type="button"
-                    disabled={!hasRemedies}
-                    onClick={() => setSelectedLetter(l)}
-                    className={`w-6 h-6 rounded text-xs font-semibold shrink-0 flex items-center justify-center transition-colors ${
-                      isSelected
-                        ? 'bg-teal-600 text-white shadow-2xs cursor-pointer'
-                        : hasRemedies
-                        ? 'text-slate-700 hover:bg-teal-50 hover:text-teal-700 cursor-pointer font-medium'
-                        : 'text-slate-300 cursor-not-allowed opacity-40'
+                    onClick={() => setSelectedLetter('all')}
+                    className={`px-2.5 py-1 rounded text-xs font-semibold cursor-pointer shrink-0 transition-colors ${
+                      selectedLetter === 'all' ? 'bg-teal-600 text-white shadow-2xs' : 'text-slate-600 hover:bg-slate-100'
                     }`}
                   >
-                    {l}
+                    {t('filterAll')}
                   </button>
-                );
-              })}
+                  {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((l) => {
+                    const hasRemedies = uniqueLetters.includes(l);
+                    const isSelected = selectedLetter === l;
+                    return (
+                      <button
+                        key={l}
+                        type="button"
+                        disabled={!hasRemedies}
+                        onClick={() => setSelectedLetter(l)}
+                        className={`w-6 h-6 rounded text-xs font-semibold shrink-0 flex items-center justify-center transition-colors ${
+                          isSelected
+                            ? 'bg-teal-600 text-white shadow-2xs cursor-pointer'
+                            : hasRemedies
+                            ? 'text-slate-700 hover:bg-teal-50 hover:text-teal-700 cursor-pointer font-medium'
+                            : 'text-slate-300 cursor-not-allowed opacity-40'
+                        }`}
+                      >
+                        {l}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           </div>
 
