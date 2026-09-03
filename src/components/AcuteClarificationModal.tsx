@@ -204,7 +204,7 @@ export const AcuteClarificationModal: React.FC<AcuteClarificationModalProps> = (
                             </div>
                             {opt.remedyHint && (
                               <span className="text-[10px] font-medium text-teal-700 mt-1.5">
-                                Leitmittel: {opt.remedyHint}
+                                {t('acuteKeynoteRemedies')}: {opt.remedyHint}
                               </span>
                             )}
                           </button>

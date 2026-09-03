@@ -563,6 +563,7 @@ export const fr = {
   "acuteScaleGrade4": "4 - Extrême / Symptôme clé",
   "acuteRecordedSnippetLabel": "Symptômes aigus enregistrés",
   "acuteClearAnswers": "Réinitialiser les réponses",
+  "acuteKeynoteRemedies": "Remèdes clés",
   "clearBtn": "Effacer la saisie",
   "speechNotSupportedMsg": "La reconnaissance vocale n'est pas prise en charge par ce navigateur.",
   "recordedSymptomsLabel": "Symptômes enregistrés",

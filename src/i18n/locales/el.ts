@@ -563,6 +563,7 @@ export const el = {
   "acuteScaleGrade4": "4 - Ακραίο / Βασικό σύμπτωμα",
   "acuteRecordedSnippetLabel": "Καταγεγραμμένα οξέα συμπτώματα",
   "acuteClearAnswers": "Επαναφορά απαντήσεων",
+  "acuteKeynoteRemedies": "Κύρια φάρμακα",
   "clearBtn": "Καθαρισμός κειμένου",
   "speechNotSupportedMsg": "Η αναγνώριση φωνής δεν υποστηρίζεται σε αυτό το πρόγραμμα περιήγησης.",
   "recordedSymptomsLabel": "Καταγεγραμμένα συμπτώματα",

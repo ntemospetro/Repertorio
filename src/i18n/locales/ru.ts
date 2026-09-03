@@ -563,6 +563,7 @@ export const ru = {
   "acuteScaleGrade4": "4 - Экстремальное / Ведущий симптом",
   "acuteRecordedSnippetLabel": "Записанные острые симптомы",
   "acuteClearAnswers": "Сбросить ответы",
+  "acuteKeynoteRemedies": "Ведущие средства",
   "clearBtn": "Очистить текст",
   "speechNotSupportedMsg": "Распознавание речи не поддерживается в этом браузере.",
   "recordedSymptomsLabel": "Зафиксированные симптомы",

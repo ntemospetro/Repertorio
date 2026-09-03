@@ -563,6 +563,7 @@ export const de = {
   "acuteScaleGrade4": "4 - Extrem / Leitsymptom",
   "acuteRecordedSnippetLabel": "Aufgenommene Akut-Symptome",
   "acuteClearAnswers": "Antworten zurücksetzen",
+  "acuteKeynoteRemedies": "Leitmittel",
   "clearBtn": "Eingabe löschen",
   "speechNotSupportedMsg": "Spracheingabe wird in diesem Browser nicht unterstützt. Bitte tippen Sie die Symptome ein.",
   "recordedSymptomsLabel": "Aufgenommene Beschwerdesymptome",

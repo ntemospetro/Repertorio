@@ -563,6 +563,7 @@ export const en = {
   "acuteScaleGrade4": "4 - Extreme / Keynote",
   "acuteRecordedSnippetLabel": "Recorded acute symptoms",
   "acuteClearAnswers": "Reset answers",
+  "acuteKeynoteRemedies": "Keynote remedies",
   "clearBtn": "Clear Input",
   "speechNotSupportedMsg": "Speech recognition is not supported in this browser. Please type your symptoms.",
   "recordedSymptomsLabel": "Recorded Symptom Picture",

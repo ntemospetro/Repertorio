@@ -563,6 +563,7 @@ export const it = {
   "acuteScaleGrade4": "4 - Estremo / Sintomo guida",
   "acuteRecordedSnippetLabel": "Sintomi acuti registrati",
   "acuteClearAnswers": "Reimposta risposte",
+  "acuteKeynoteRemedies": "Rimedi chiave",
   "clearBtn": "Cancella testo",
   "speechNotSupportedMsg": "Riconoscimento vocale non supportato in questo browser.",
   "recordedSymptomsLabel": "Sintomi registrati",
