@@ -21,12 +21,17 @@ import {
 } from 'lucide-react';
 import { 
   getLocalizedRemedies, 
-  getLocalizedPresets, 
   LocalizedRemedy 
 } from '../data/materiaMedicaData';
 import { matchSymptomsToRemedies, SymptomMatchResult } from '../services/quickSymptomMatcher';
 import { useTranslation } from '../i18n/LanguageContext';
-import { isSpeechRecognitionSupported, startSpeechRecognition, SpeechRecognitionSession } from '../services/speechService';
+import { 
+  isSpeechRecognitionSupported, 
+  startSpeechRecognition, 
+  SpeechRecognitionSession,
+  mergeWithOverlap,
+  deduplicateRepeatedPhrases
+} from '../services/speechService';
 
 // Comprehensive mapping of homeopathic abbreviations and common synonyms to database keys
 const REMEDY_ALIAS_MAP: Record<string, string> = {
@@ -191,11 +196,6 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = () => {
     return getLocalizedRemedies(language);
   }, [language]);
 
-  // Fetch localized quick presets
-  const localizedPresets = useMemo(() => {
-    return getLocalizedPresets(language);
-  }, [language]);
-
   // Update recommendations whenever symptom text or language changes
   useEffect(() => {
     if (symptomText.trim().length >= 3) {
@@ -247,12 +247,11 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = () => {
         onResult: (transcript) => {
           const base = recordingBaseTextRef.current.trim();
           const trimmed = transcript.trim();
-          if (!base || !trimmed) {
-            setSymptomText(trimmed);
-          } else if (base.toLowerCase().endsWith(trimmed.toLowerCase())) {
-            setSymptomText(base);
+          if (!trimmed) return;
+          if (!base) {
+            setSymptomText(deduplicateRepeatedPhrases(trimmed));
           } else {
-            setSymptomText(`${base} ${trimmed}`);
+            setSymptomText(mergeWithOverlap(base, trimmed));
           }
         },
         onError: (err) => {
@@ -344,13 +343,6 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = () => {
         modalBodyRef.current.scrollTo({ top: 0, behavior: 'smooth' });
       }
     }, 50);
-  };
-
-  const handleApplyPreset = (preset: string) => {
-    setSymptomText((prev) => {
-      if (!prev) return preset;
-      return prev.trim() + ', ' + preset;
-    });
   };
 
   const handleCopyRecommendation = (item: SymptomMatchResult) => {
@@ -784,25 +776,6 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = () => {
                   placeholder={t('recordedSymptomsPlaceholder')}
                   className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all resize-none"
                 />
-              </div>
-
-              {/* Fast Presets / Symptom Chips in selected language */}
-              <div className="space-y-2 pt-1">
-                <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                  {t('quickPresetsTitle')}:
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {localizedPresets.map((preset, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => handleApplyPreset(preset)}
-                      className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-teal-50 hover:text-teal-800 text-slate-700 text-xs font-medium transition-colors cursor-pointer border border-slate-200/80"
-                    >
-                      + {preset}
-                    </button>
-                  ))}
-                </div>
               </div>
             </div>
           </div>

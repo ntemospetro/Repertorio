@@ -48,70 +48,86 @@ export function isSpeechRecognitionSupported(): boolean {
   return Boolean(window.SpeechRecognition || window.webkitSpeechRecognition);
 }
 
-export function cleanTranscriptDuplicates(finalText: string, interimText: string): string {
-  const f = finalText.trim();
-  const i = interimText.trim();
-
-  if (!i) return deduplicateRepeatedPhrases(f);
-  if (!f) return deduplicateRepeatedPhrases(i);
-
-  // Case 1: interimText already starts with or contains finalText
-  if (i.toLowerCase().startsWith(f.toLowerCase())) {
-    return deduplicateRepeatedPhrases(i);
-  }
-
-  // Case 2: finalText already ends with interimText
-  if (f.toLowerCase().endsWith(i.toLowerCase())) {
-    return deduplicateRepeatedPhrases(f);
-  }
-
-  // Case 3: Check for word overlap at the boundary
-  const fWords = f.split(/\s+/);
-  const iWords = i.split(/\s+/);
-  const maxCheck = Math.min(fWords.length, iWords.length, 15);
-  let overlapCount = 0;
-
-  for (let len = maxCheck; len >= 1; len--) {
-    const fSlice = fWords.slice(-len).map(w => w.toLowerCase().replace(/[.,!?;:]/g, '')).join(' ');
-    const iSlice = iWords.slice(0, len).map(w => w.toLowerCase().replace(/[.,!?;:]/g, '')).join(' ');
-    if (fSlice && fSlice === iSlice) {
-      overlapCount = len;
-      break;
-    }
-  }
-
-  let merged = '';
-  if (overlapCount > 0) {
-    const remainingInterim = iWords.slice(overlapCount).join(' ');
-    merged = remainingInterim ? `${f} ${remainingInterim}` : f;
-  } else {
-    merged = `${f} ${i}`;
-  }
-
-  return deduplicateRepeatedPhrases(merged);
-}
-
 export function deduplicateRepeatedPhrases(text: string): string {
   if (!text) return '';
-  // Deduplicate consecutive identical phrases or sentences
-  const sentences = text.split(/(?<=[.?!;])\s+/);
-  const cleanSentences: string[] = [];
+  const trimmed = text.trim();
+  if (!trimmed) return '';
 
+  // 1. Punctuation-based sentence deduplication
+  const sentences = trimmed.split(/(?<=[.?!;])\s+/);
+  let cleanSentences: string[] = [];
   for (const s of sentences) {
-    const trimmed = s.trim();
-    if (!trimmed) continue;
-
-    const normalizedCurrent = trimmed.toLowerCase().replace(/[.,!?;:]/g, '').trim();
+    const sTrimmed = s.trim();
+    if (!sTrimmed) continue;
+    const norm = sTrimmed.toLowerCase().replace(/[.,!?;:]/g, '').trim();
     const last = cleanSentences[cleanSentences.length - 1];
-    const normalizedLast = last ? last.toLowerCase().replace(/[.,!?;:]/g, '').trim() : '';
-
-    if (last && normalizedCurrent === normalizedLast) {
-      continue; // Skip consecutive repeated sentence
-    }
-    cleanSentences.push(trimmed);
+    const lastNorm = last ? last.toLowerCase().replace(/[.,!?;:]/g, '').trim() : '';
+    if (last && norm === lastNorm) continue;
+    cleanSentences.push(sTrimmed);
   }
 
-  return cleanSentences.join(' ');
+  let words = cleanSentences.join(' ').split(/\s+/);
+  if (words.length <= 1) return words.join(' ');
+
+  // 2. Multi-word n-gram deduplication (eliminates repeated phrases and words)
+  let modified = true;
+  while (modified) {
+    modified = false;
+    const maxN = Math.floor(words.length / 2);
+    for (let n = maxN; n >= 1; n--) {
+      for (let i = 0; i <= words.length - 2 * n; i++) {
+        const chunk1 = words.slice(i, i + n).map(w => w.toLowerCase().replace(/[.,!?;:]/g, '')).join(' ');
+        const chunk2 = words.slice(i + n, i + 2 * n).map(w => w.toLowerCase().replace(/[.,!?;:]/g, '')).join(' ');
+        if (chunk1 && chunk1 === chunk2) {
+          // Remove second duplicate chunk
+          words.splice(i + n, n);
+          modified = true;
+          break;
+        }
+      }
+      if (modified) break;
+    }
+  }
+
+  return words.join(' ');
+}
+
+export function mergeWithOverlap(base: string, next: string): string {
+  const b = base.trim();
+  const n = next.trim();
+  if (!b) return deduplicateRepeatedPhrases(n);
+  if (!n) return deduplicateRepeatedPhrases(b);
+
+  const bLower = b.toLowerCase().replace(/[.,!?;:]/g, '');
+  const nLower = n.toLowerCase().replace(/[.,!?;:]/g, '');
+
+  // If one already fully contains the other
+  if (nLower.startsWith(bLower) || nLower.includes(bLower)) {
+    return deduplicateRepeatedPhrases(n);
+  }
+  if (bLower.endsWith(nLower) || bLower.includes(nLower)) {
+    return deduplicateRepeatedPhrases(b);
+  }
+
+  // Word-level boundary overlap detection (from longest to 1 word)
+  const bWords = b.split(/\s+/);
+  const nWords = n.split(/\s+/);
+  const maxCheck = Math.min(bWords.length, nWords.length);
+
+  for (let len = maxCheck; len >= 1; len--) {
+    const bSlice = bWords.slice(-len).map(w => w.toLowerCase().replace(/[.,!?;:]/g, '')).join(' ');
+    const nSlice = nWords.slice(0, len).map(w => w.toLowerCase().replace(/[.,!?;:]/g, '')).join(' ');
+    if (bSlice && bSlice === nSlice) {
+      const remainingN = nWords.slice(len).join(' ');
+      return deduplicateRepeatedPhrases(remainingN ? `${b} ${remainingN}` : b);
+    }
+  }
+
+  return deduplicateRepeatedPhrases(`${b} ${n}`);
+}
+
+export function cleanTranscriptDuplicates(finalText: string, interimText: string): string {
+  return mergeWithOverlap(finalText, interimText);
 }
 
 export function startSpeechRecognition(
@@ -171,14 +187,9 @@ export function startSpeechRecognition(
       if (!trimmed) continue;
 
       if (item.isFinal) {
-        // Prevent duplicate final chunks
-        const prevWords = sessionFinal.toLowerCase().replace(/[.,!?;:]/g, '').trim();
-        const curWords = trimmed.toLowerCase().replace(/[.,!?;:]/g, '').trim();
-        if (!sessionFinal || (prevWords !== curWords && !prevWords.endsWith(curWords))) {
-          sessionFinal += (sessionFinal ? ' ' : '') + trimmed;
-        }
+        sessionFinal = mergeWithOverlap(sessionFinal, trimmed);
       } else {
-        sessionInterim += (sessionInterim ? ' ' : '') + trimmed;
+        sessionInterim = mergeWithOverlap(sessionInterim, trimmed);
       }
     }
 
