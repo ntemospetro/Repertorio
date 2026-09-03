@@ -465,7 +465,7 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = () => {
         <div className="space-y-6 animate-in fade-in duration-200">
           {/* Search, Filter & Alphabet Toolbar */}
           <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
-            <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+            <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between">
               {/* Search Bar */}
               <div className="relative flex-1">
                 <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -488,13 +488,13 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = () => {
               </div>
 
               {/* Category Filter */}
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+              <div className="grid grid-cols-2 gap-2 w-full lg:w-auto lg:flex lg:items-center lg:gap-1.5">
                 {categories.map((cat) => (
                   <button
                     key={cat.key}
                     type="button"
                     onClick={() => setSelectedCategory(cat.key)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                    className={`flex items-center justify-center text-center px-3 py-2 lg:py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
                       selectedCategory === cat.key
                         ? 'bg-teal-600 text-white shadow-2xs'
                         : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
