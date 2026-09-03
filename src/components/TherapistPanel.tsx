@@ -162,6 +162,7 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
 
   useEffect(() => {
     setStoredTherapistTab(panelTab);
+    window.dispatchEvent(new CustomEvent('homoeo_therapist_tab_changed', { detail: panelTab }));
   }, [panelTab]);
   const [cases, setCases] = useState<PatientCase[]>([]);
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
@@ -639,14 +640,29 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
       setPanelTab('cases');
       setIsPatientSelectionModalOpen(true);
     };
+    const handleSetTabEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<'cases' | 'patients' | 'materiamedica' | 'documentation' | 'profile' | 'tariff'>;
+      if (customEvent.detail) {
+        setPanelTab(customEvent.detail);
+      }
+    };
+    const handleLogoutEvent = () => {
+      if (onLogout) {
+        onLogout();
+      }
+    };
 
     window.addEventListener('homoeo_action_new_patient', handleNewPatientEvent);
     window.addEventListener('homoeo_action_open_patient_directory', handleOpenDirectoryEvent);
+    window.addEventListener('homoeo_action_set_therapist_tab', handleSetTabEvent);
+    window.addEventListener('homoeo_action_therapist_logout', handleLogoutEvent);
     return () => {
       window.removeEventListener('homoeo_action_new_patient', handleNewPatientEvent);
       window.removeEventListener('homoeo_action_open_patient_directory', handleOpenDirectoryEvent);
+      window.removeEventListener('homoeo_action_set_therapist_tab', handleSetTabEvent);
+      window.removeEventListener('homoeo_action_therapist_logout', handleLogoutEvent);
     };
-  }, []);
+  }, [onLogout]);
 
   const handleAddChild = () => {
     const newChild: PatientChild = {
@@ -1016,7 +1032,7 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
   return (
     <div className="flex flex-col md:flex-row h-full min-h-[calc(100vh-4rem)] bg-slate-50 w-full">
       {/* Sidebar (Sticky on desktop, bottom-aligned with viewport) */}
-      <div className="w-full md:w-64 bg-slate-100 border-r border-slate-200 flex flex-col flex-shrink-0 md:sticky md:top-16 md:h-[calc(100vh-4rem)] md:max-h-[calc(100vh-4rem)] md:self-start z-20 shadow-xs">
+      <div className="hidden md:flex w-full md:w-64 bg-slate-100 border-r border-slate-200 flex-col flex-shrink-0 md:sticky md:top-16 md:h-[calc(100vh-4rem)] md:max-h-[calc(100vh-4rem)] md:self-start z-20 shadow-xs">
         <div className="p-4 flex-1 overflow-y-auto">
           <div className="flex items-center gap-2 mb-8 px-2">
             <Stethoscope className="w-6 h-6 text-teal-600" />
