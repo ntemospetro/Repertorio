@@ -116,6 +116,7 @@ export interface PatientCase {
   // Stammdaten Erweiterungen
   patientHeightCm?: number;
   isPregnant?: boolean;
+  pregnancyWeek?: number;
   pregnancyMonth?: number;
   hasChildren?: boolean;
   childrenCount?: number;
