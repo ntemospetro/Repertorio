@@ -5,6 +5,8 @@
  * information is accepted into anamnesis and clinical findings.
  */
 
+import { getActiveTherapist } from './storage';
+
 export interface MedicalRelevanceResult {
   isRelevant: boolean;
   reason?: string;
@@ -20,6 +22,7 @@ export async function checkMedicalRelevance(
   }
 
   try {
+    const activeTherapist = getActiveTherapist();
     const response = await fetch('/api/check-medical-relevance', {
       method: 'POST',
       headers: {
@@ -28,6 +31,9 @@ export async function checkMedicalRelevance(
       body: JSON.stringify({
         text: trimmed,
         language,
+        therapistId: activeTherapist?.id || 'th-101',
+        therapistName: activeTherapist ? `${activeTherapist.vorname} ${activeTherapist.nachname}` : undefined,
+        therapistEmail: activeTherapist?.email
       }),
     });
 

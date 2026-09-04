@@ -116,7 +116,6 @@ export interface PatientCase {
   // Stammdaten Erweiterungen
   patientHeightCm?: number;
   isPregnant?: boolean;
-  pregnancyWeek?: number;
   pregnancyMonth?: number;
   hasChildren?: boolean;
   childrenCount?: number;
@@ -504,4 +503,50 @@ export interface HomeopathicExpertResult {
     rationale: string;
   };
   formattedMarkdown?: string;
+}
+
+export interface TokenUsageRecord {
+  id: string;
+  timestamp: string;
+  therapistId: string;
+  therapistName?: string;
+  therapistEmail?: string;
+  endpoint: string;
+  actionName: string;
+  model: string;
+  promptTokens: number;
+  candidatesTokens: number;
+  totalTokens: number;
+  costEur: number;
+}
+
+export interface TherapistTokenSummary {
+  therapistId: string;
+  therapistName: string;
+  therapistEmail: string;
+  praxisName?: string;
+  tarifLabel?: string;
+  requestCount: number;
+  promptTokens: number;
+  candidatesTokens: number;
+  totalTokens: number;
+  totalCostEur: number;
+  lastUsedAt: string;
+}
+
+export interface TokenPricingRates {
+  inputPerMillionEur: number;
+  outputPerMillionEur: number;
+  currency: string;
+}
+
+export interface TokenBillingSummary {
+  totalPromptTokens: number;
+  totalCandidatesTokens: number;
+  totalTokens: number;
+  totalCostEur: number;
+  totalRequests: number;
+  byTherapist: TherapistTokenSummary[];
+  rates: TokenPricingRates;
+  lastUpdated: string;
 }

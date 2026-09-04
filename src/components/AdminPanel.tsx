@@ -19,6 +19,7 @@ import { TariffAssignModal } from './TariffAssignModal';
 import { AdminTermsEditor } from './AdminTermsEditor';
 import { AdminConfigEditor } from './AdminConfigEditor';
 import { AdminNameChangeRequests } from './AdminNameChangeRequests';
+import { AdminTokenUsage } from './AdminTokenUsage';
 import { COUNTRIES, getCountryFlag, formatCountryWithFlag } from '../data/countries';
 import { getNameChangeRequests } from '../services/storage';
 import { 
@@ -47,6 +48,7 @@ import {
   FileText,
   Settings,
   KeyRound,
+  Coins,
   X
 } from 'lucide-react';
 
@@ -60,9 +62,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onLogout,
 }) => {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState<'therapists' | 'packages' | 'terms' | 'config' | 'requests'>(() => getStoredAdminTab());
+  const [activeTab, setActiveTab] = useState<'therapists' | 'packages' | 'tokens' | 'terms' | 'config' | 'requests'>(() => getStoredAdminTab());
 
-  const handleSelectTab = (tab: 'therapists' | 'packages' | 'terms' | 'config' | 'requests') => {
+  const handleSelectTab = (tab: 'therapists' | 'packages' | 'tokens' | 'terms' | 'config' | 'requests') => {
     setActiveTab(tab);
     navigateTo('admin', { adminTab: tab });
   };
@@ -74,7 +76,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   useEffect(() => {
     const handleAdminTabChange = (e: Event) => {
       const tab = (e as CustomEvent).detail;
-      if (tab && ['therapists', 'packages', 'terms', 'config', 'requests'].includes(tab)) {
+      if (tab && ['therapists', 'packages', 'tokens', 'terms', 'config', 'requests'].includes(tab)) {
         setActiveTab(tab);
       }
     };
@@ -316,6 +318,25 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 {packages.length}
               </span>
             </button>
+
+            <button
+              onClick={() => handleSelectTab('tokens')}
+              className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center justify-between transition-colors cursor-pointer ${
+                activeTab === 'tokens'
+                  ? 'bg-slate-900 text-white shadow-sm'
+                  : 'text-slate-600 hover:bg-white hover:text-slate-900 hover:shadow-sm border border-transparent'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <Coins className="w-4 h-4 text-teal-400" />
+                <span>{t('adminNavTokens')}</span>
+              </div>
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono font-semibold ${
+                activeTab === 'tokens' ? 'bg-teal-500 text-slate-950' : 'bg-emerald-100 text-emerald-800'
+              }`}>
+                Live
+              </span>
+            </button>
             
             <button
               onClick={() => handleSelectTab('requests')}
@@ -472,6 +493,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       {/* Tab 3: Terms & Conditions (AGB) Editor */}
       {activeTab === 'terms' && (
         <AdminTermsEditor />
+      )}
+
+      {/* Tab: Token Usage & Live Billing */}
+      {activeTab === 'tokens' && (
+        <AdminTokenUsage />
       )}
 
       {/* Tab 2: Packages & Tariffs Configurator */}

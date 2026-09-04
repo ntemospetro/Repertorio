@@ -1,12 +1,20 @@
 import { PatientCase, FullClinicalAnalysis, DifferentialDiagnosisItem, RedFlagItem, MedicationAnalysisDetail, HomeoRemedyRecommendation, LanguageCode } from '../types';
 import { runHomeopathyAnalysis } from './homeopathyEngine';
+import { getActiveTherapist } from './storage';
 
 export async function generateFullClinicalAnalysis(patientCase: PatientCase, language: LanguageCode = 'de'): Promise<FullClinicalAnalysis> {
   try {
+    const activeTherapist = getActiveTherapist();
     const response = await fetch('/api/analyze', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ caseData: patientCase, language }),
+      body: JSON.stringify({
+        caseData: patientCase,
+        language,
+        therapistId: patientCase.therapistId || activeTherapist?.id || 'th-101',
+        therapistName: activeTherapist ? `${activeTherapist.vorname} ${activeTherapist.nachname}` : undefined,
+        therapistEmail: activeTherapist?.email
+      }),
     });
 
     if (response.ok) {

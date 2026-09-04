@@ -1,4 +1,5 @@
 import { LanguageCode, HomeopathicExpertResult, DecisionTreeBranch, HomeopathicDecisionTree } from '../types';
+import { getActiveTherapist } from './storage';
 
 // ============================================================================
 // HOMOEOPATHIC 5-STEP REPERTORISATION EXPERT ENGINE
@@ -1460,6 +1461,7 @@ export async function analyzeAcuteCaseWithAIOrFallback(
   }
 
   try {
+    const activeTherapist = getActiveTherapist();
     const res = await fetch('/api/acute-repertorise', {
       method: 'POST',
       headers: {
@@ -1467,7 +1469,10 @@ export async function analyzeAcuteCaseWithAIOrFallback(
       },
       body: JSON.stringify({
         symptomText: symptomText.trim(),
-        language: lang
+        language: lang,
+        therapistId: activeTherapist?.id || 'th-101',
+        therapistName: activeTherapist ? `${activeTherapist.vorname} ${activeTherapist.nachname}` : undefined,
+        therapistEmail: activeTherapist?.email
       })
     });
 

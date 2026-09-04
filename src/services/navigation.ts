@@ -14,14 +14,14 @@ export interface AppNavigationState {
   index: number;
   view: ActiveView;
   therapistTab?: 'cases' | 'patients' | 'materiamedica' | 'quickintake' | 'documentation' | 'profile' | 'tariff';
-  adminTab?: 'therapists' | 'packages' | 'terms' | 'config' | 'requests';
+  adminTab?: 'therapists' | 'packages' | 'tokens' | 'terms' | 'config' | 'requests';
   modal?: string | null;
   isSentinel?: boolean;
 }
 
 export const VALID_VIEWS: ActiveView[] = ['landing', 'register', 'therapist', 'admin'];
 export const VALID_THERAPIST_TABS = ['cases', 'patients', 'materiamedica', 'quickintake', 'documentation', 'profile', 'tariff'] as const;
-export const VALID_ADMIN_TABS = ['therapists', 'packages', 'terms', 'config', 'requests'] as const;
+export const VALID_ADMIN_TABS = ['therapists', 'packages', 'tokens', 'terms', 'config', 'requests'] as const;
 
 let currentIndex = 1;
 let isInitialized = false;
@@ -33,7 +33,7 @@ let isInternalNavigation = false;
 export function parseHash(hash: string): {
   view: ActiveView;
   therapistTab?: 'cases' | 'patients' | 'materiamedica' | 'quickintake' | 'documentation' | 'profile' | 'tariff';
-  adminTab?: 'therapists' | 'packages' | 'terms' | 'config' | 'requests';
+  adminTab?: 'therapists' | 'packages' | 'tokens' | 'terms' | 'config' | 'requests';
   modal?: string | null;
 } {
   const cleanHash = hash.replace(/^#\/?/, '');
@@ -269,7 +269,7 @@ export function navigateTo(
   view: ActiveView,
   options?: {
     therapistTab?: 'cases' | 'patients' | 'materiamedica' | 'quickintake' | 'documentation' | 'profile' | 'tariff';
-    adminTab?: 'therapists' | 'packages' | 'terms' | 'config' | 'requests';
+    adminTab?: 'therapists' | 'packages' | 'tokens' | 'terms' | 'config' | 'requests';
     modal?: string | null;
     replace?: boolean;
   }

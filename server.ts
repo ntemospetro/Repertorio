@@ -14,6 +14,214 @@ async function startServer() {
 
   app.use(express.json({ limit: "50mb" }));
 
+  // Persistent Data Directory & File Paths
+  const DATA_DIR = path.join(process.cwd(), 'data');
+  const ADMIN_CONFIG_FILE = path.join(DATA_DIR, 'admin_config.json');
+  const SITE_CONFIG_FILE = path.join(DATA_DIR, 'site_config.json');
+  const EMAIL_CONFIG_FILE = path.join(DATA_DIR, 'email_config.json');
+  const TOKEN_USAGE_FILE = path.join(DATA_DIR, 'token_usage_logs.json');
+  const TOKEN_RATES_FILE = path.join(DATA_DIR, 'token_rates.json');
+
+  const DEFAULT_TOKEN_RATES = {
+    inputPerMillionEur: 0.075,
+    outputPerMillionEur: 0.30,
+    currency: '€'
+  };
+
+  const ensureDataDir = () => {
+    if (!fs.existsSync(DATA_DIR)) {
+      try {
+        fs.mkdirSync(DATA_DIR, { recursive: true });
+      } catch (err) {
+        console.error("Failed to create data dir:", err);
+      }
+    }
+  };
+
+  const THERAPIST_LOOKUP: Record<string, { name: string; email: string; praxis: string; tarif: string }> = {
+    'th-101': { name: 'Katharina Lindemann', email: 'k.lindemann@naturheilpraxis-berlin.de', praxis: 'Naturheilpraxis Lindemann', tarif: 'Kostenloser Test-Tarif' },
+    'th-102': { name: 'Dr. med. Markus Vogel', email: 'praxis@dr-vogel-muenchen.de', praxis: 'Ganzheitliche Medizin Vogel', tarif: 'Kostenloser Test-Tarif' },
+    'th-103': { name: 'Sophie Brunner', email: 'sophie.brunner@homoeopathie-zuerich.ch', praxis: 'Klassische Homöopathie Zürich', tarif: 'Pro Unbegrenzt (Praxis-Flatrate)' },
+  };
+
+  const getTokenRates = () => {
+    ensureDataDir();
+    if (fs.existsSync(TOKEN_RATES_FILE)) {
+      try {
+        return { ...DEFAULT_TOKEN_RATES, ...JSON.parse(fs.readFileSync(TOKEN_RATES_FILE, 'utf-8')) };
+      } catch {}
+    }
+    return DEFAULT_TOKEN_RATES;
+  };
+
+  const getSeedTokenLogs = () => {
+    return [
+      {
+        id: 'tok-seed-101',
+        timestamp: new Date(Date.now() - 1000 * 60 * 35).toISOString(),
+        therapistId: 'th-103',
+        therapistName: 'Sophie Brunner',
+        therapistEmail: 'sophie.brunner@homoeopathie-zuerich.ch',
+        endpoint: '/api/analyze',
+        actionName: 'Große klinische Fallanalyse',
+        model: 'gemini-3.8-flash',
+        promptTokens: 2540,
+        candidatesTokens: 1890,
+        totalTokens: 4430,
+        costEur: 0.00076
+      },
+      {
+        id: 'tok-seed-102',
+        timestamp: new Date(Date.now() - 1000 * 60 * 120).toISOString(),
+        therapistId: 'th-103',
+        therapistName: 'Sophie Brunner',
+        therapistEmail: 'sophie.brunner@homoeopathie-zuerich.ch',
+        endpoint: '/api/acute-repertorise',
+        actionName: '5-Schritte-Akut-Repertorisation',
+        model: 'gemini-3.8-flash',
+        promptTokens: 1210,
+        candidatesTokens: 840,
+        totalTokens: 2050,
+        costEur: 0.00034
+      },
+      {
+        id: 'tok-seed-103',
+        timestamp: new Date(Date.now() - 1000 * 60 * 300).toISOString(),
+        therapistId: 'th-103',
+        therapistName: 'Sophie Brunner',
+        therapistEmail: 'sophie.brunner@homoeopathie-zuerich.ch',
+        endpoint: '/api/check-medical-relevance',
+        actionName: 'Medizinischer Relevanz-Check',
+        model: 'gemini-3.8-flash',
+        promptTokens: 215,
+        candidatesTokens: 32,
+        totalTokens: 247,
+        costEur: 0.00003
+      },
+      {
+        id: 'tok-seed-201',
+        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 6).toISOString(),
+        therapistId: 'th-102',
+        therapistName: 'Dr. med. Markus Vogel',
+        therapistEmail: 'praxis@dr-vogel-muenchen.de',
+        endpoint: '/api/analyze',
+        actionName: 'Große klinische Fallanalyse',
+        model: 'gemini-3.8-flash',
+        promptTokens: 2610,
+        candidatesTokens: 1950,
+        totalTokens: 4560,
+        costEur: 0.00078
+      },
+      {
+        id: 'tok-seed-202',
+        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 18).toISOString(),
+        therapistId: 'th-102',
+        therapistName: 'Dr. med. Markus Vogel',
+        therapistEmail: 'praxis@dr-vogel-muenchen.de',
+        endpoint: '/api/acute-repertorise',
+        actionName: '5-Schritte-Akut-Repertorisation',
+        model: 'gemini-3.8-flash',
+        promptTokens: 1180,
+        candidatesTokens: 810,
+        totalTokens: 1990,
+        costEur: 0.00033
+      },
+      {
+        id: 'tok-seed-301',
+        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
+        therapistId: 'th-101',
+        therapistName: 'Katharina Lindemann',
+        therapistEmail: 'k.lindemann@naturheilpraxis-berlin.de',
+        endpoint: '/api/analyze',
+        actionName: 'Große klinische Fallanalyse',
+        model: 'gemini-3.8-flash',
+        promptTokens: 2430,
+        candidatesTokens: 1810,
+        totalTokens: 4240,
+        costEur: 0.00073
+      },
+      {
+        id: 'tok-seed-302',
+        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 30).toISOString(),
+        therapistId: 'th-101',
+        therapistName: 'Katharina Lindemann',
+        therapistEmail: 'k.lindemann@naturheilpraxis-berlin.de',
+        endpoint: '/api/check-medical-relevance',
+        actionName: 'Medizinischer Relevanz-Check',
+        model: 'gemini-3.8-flash',
+        promptTokens: 195,
+        candidatesTokens: 28,
+        totalTokens: 223,
+        costEur: 0.00002
+      }
+    ];
+  };
+
+  const getStoredTokenLogs = (): any[] => {
+    ensureDataDir();
+    if (fs.existsSync(TOKEN_USAGE_FILE)) {
+      try {
+        const raw = fs.readFileSync(TOKEN_USAGE_FILE, 'utf-8');
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch {}
+    }
+    const seeds = getSeedTokenLogs();
+    try {
+      fs.writeFileSync(TOKEN_USAGE_FILE, JSON.stringify(seeds, null, 2), 'utf-8');
+    } catch {}
+    return seeds;
+  };
+
+  const recordTokenUsage = (params: {
+    therapistId?: string;
+    therapistName?: string;
+    therapistEmail?: string;
+    endpoint: string;
+    actionName: string;
+    model: string;
+    promptTokens: number;
+    candidatesTokens: number;
+  }) => {
+    try {
+      ensureDataDir();
+      const rates = getTokenRates();
+      const promptTokens = Math.max(0, Math.round(params.promptTokens || 0));
+      const candidatesTokens = Math.max(0, Math.round(params.candidatesTokens || 0));
+      const totalTokens = promptTokens + candidatesTokens;
+      
+      const inputCost = (promptTokens / 1_000_000) * rates.inputPerMillionEur;
+      const outputCost = (candidatesTokens / 1_000_000) * rates.outputPerMillionEur;
+      const costEur = Math.round((inputCost + outputCost) * 100000) / 100000;
+
+      const logs = getStoredTokenLogs();
+      const resolvedTherapistId = params.therapistId || 'th-101';
+      const meta = THERAPIST_LOOKUP[resolvedTherapistId] as { name?: string; email?: string; praxis?: string; tarif?: string } | undefined;
+
+      const newRecord = {
+        id: 'tok-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
+        timestamp: new Date().toISOString(),
+        therapistId: resolvedTherapistId,
+        therapistName: params.therapistName || meta?.name || 'Unbekannter Therapeut',
+        therapistEmail: params.therapistEmail || meta?.email || '',
+        endpoint: params.endpoint,
+        actionName: params.actionName,
+        model: params.model,
+        promptTokens,
+        candidatesTokens,
+        totalTokens,
+        costEur
+      };
+
+      logs.unshift(newRecord);
+      const trimmedLogs = logs.slice(0, 3000);
+      fs.writeFileSync(TOKEN_USAGE_FILE, JSON.stringify(trimmedLogs, null, 2), 'utf-8');
+      return newRecord;
+    } catch (err) {
+      console.error("Error recording token usage:", err);
+    }
+  };
+
   // API Routes
   app.post("/api/analyze", async (req, res) => {
     try {
@@ -185,6 +393,18 @@ Beachte alle Details aus den Fall-Daten. Keine Daten erfinden, fehlende Daten al
         },
       });
 
+      const usage = (response as any).usageMetadata || {};
+      recordTokenUsage({
+        therapistId: req.body?.therapistId,
+        therapistName: req.body?.therapistName,
+        therapistEmail: req.body?.therapistEmail,
+        endpoint: "/api/analyze",
+        actionName: "Große klinische Fallanalyse",
+        model: "gemini-3.8-flash",
+        promptTokens: usage.promptTokenCount || Math.ceil(prompt.length / 4),
+        candidatesTokens: usage.candidatesTokenCount || Math.ceil((response.text || "").length / 4),
+      });
+
       res.json({ analysis: JSON.parse(response.text || '{}') });
     } catch (error) {
       console.error("Gemini Error:", error);
@@ -293,6 +513,18 @@ Antworte AUSSCHLIESSLICH mit einem validen JSON-Objekt im folgenden Format (ohne
           temperature: 0.1,
           responseMimeType: "application/json",
         },
+      });
+
+      const usage = (response as any).usageMetadata || {};
+      recordTokenUsage({
+        therapistId: req.body?.therapistId,
+        therapistName: req.body?.therapistName,
+        therapistEmail: req.body?.therapistEmail,
+        endpoint: "/api/acute-repertorise",
+        actionName: "5-Schritte-Akut-Repertorisation",
+        model: "gemini-3.8-flash",
+        promptTokens: usage.promptTokenCount || Math.ceil(prompt.length / 4),
+        candidatesTokens: usage.candidatesTokenCount || Math.ceil((response.text || "").length / 4),
       });
 
       const rawParsed = JSON.parse(response.text || "{}");
@@ -466,6 +698,18 @@ oder
           temperature: 0.1,
           responseMimeType: "application/json",
         },
+      });
+
+      const usage = (response as any).usageMetadata || {};
+      recordTokenUsage({
+        therapistId: req.body?.therapistId,
+        therapistName: req.body?.therapistName,
+        therapistEmail: req.body?.therapistEmail,
+        endpoint: "/api/check-medical-relevance",
+        actionName: "Medizinischer Relevanz-Check",
+        model: "gemini-3.8-flash",
+        promptTokens: usage.promptTokenCount || Math.ceil(prompt.length / 4),
+        candidatesTokens: usage.candidatesTokenCount || Math.ceil((response.text || "").length / 4),
       });
 
       const parsed = JSON.parse(response.text || '{"isRelevant": true}');
@@ -655,11 +899,6 @@ Antworte AUSSCHLIESSLICH als valides JSON-Objekt:
   });
 
   // Admin Credentials & Config Persistence API
-  const DATA_DIR = path.join(process.cwd(), 'data');
-  const ADMIN_CONFIG_FILE = path.join(DATA_DIR, 'admin_config.json');
-  const SITE_CONFIG_FILE = path.join(DATA_DIR, 'site_config.json');
-  const EMAIL_CONFIG_FILE = path.join(DATA_DIR, 'email_config.json');
-
   const DEFAULT_ADMIN = {
     email: process.env.ADMIN_EMAIL || 'p.stogian@yahoo.com',
     password: process.env.ADMIN_PASSWORD || 'Othonospet@19071963',
@@ -683,16 +922,6 @@ Antworte AUSSCHLIESSLICH als valides JSON-Objekt:
     popHost: process.env.POP_HOST || 'pop.hostinger.com',
     popPort: parseInt(process.env.POP_PORT || '995', 10),
     popSecure: process.env.POP_SECURE !== 'false',
-  };
-
-  const ensureDataDir = () => {
-    if (!fs.existsSync(DATA_DIR)) {
-      try {
-        fs.mkdirSync(DATA_DIR, { recursive: true });
-      } catch (err) {
-        console.error("Failed to create data dir:", err);
-      }
-    }
   };
 
   app.get("/api/admin/credentials", (req, res) => {
@@ -833,6 +1062,153 @@ Antworte AUSSCHLIESSLICH als valides JSON-Objekt:
     } catch (err) {
       console.error("Error resetting email config:", err);
       res.status(500).json({ error: "Failed to reset email config" });
+    }
+  });
+
+  // Token Billing & Usage Monitoring API
+  app.get("/api/admin/tokens/summary", (req, res) => {
+    try {
+      const logs = getStoredTokenLogs();
+      const rates = getTokenRates();
+
+      let totalPromptTokens = 0;
+      let totalCandidatesTokens = 0;
+      let totalTokens = 0;
+      let totalCostEur = 0;
+      const totalRequests = logs.length;
+
+      const therapistMap: Record<string, {
+        therapistId: string;
+        therapistName: string;
+        therapistEmail: string;
+        praxisName: string;
+        tarifLabel: string;
+        requestCount: number;
+        promptTokens: number;
+        candidatesTokens: number;
+        totalTokens: number;
+        totalCostEur: number;
+        lastUsedAt: string;
+      }> = {};
+
+      // Seed lookup map
+      for (const [id, info] of Object.entries(THERAPIST_LOOKUP)) {
+        therapistMap[id] = {
+          therapistId: id,
+          therapistName: info.name,
+          therapistEmail: info.email,
+          praxisName: info.praxis,
+          tarifLabel: info.tarif,
+          requestCount: 0,
+          promptTokens: 0,
+          candidatesTokens: 0,
+          totalTokens: 0,
+          totalCostEur: 0,
+          lastUsedAt: ''
+        };
+      }
+
+      for (const log of logs) {
+        totalPromptTokens += log.promptTokens || 0;
+        totalCandidatesTokens += log.candidatesTokens || 0;
+        totalTokens += log.totalTokens || 0;
+        totalCostEur += log.costEur || 0;
+
+        const thId = log.therapistId || 'th-101';
+        if (!therapistMap[thId]) {
+          therapistMap[thId] = {
+            therapistId: thId,
+            therapistName: log.therapistName || ('Therapeut ' + thId),
+            therapistEmail: log.therapistEmail || '',
+            praxisName: '',
+            tarifLabel: 'Standard-Tarif',
+            requestCount: 0,
+            promptTokens: 0,
+            candidatesTokens: 0,
+            totalTokens: 0,
+            totalCostEur: 0,
+            lastUsedAt: ''
+          };
+        }
+
+        const entry = therapistMap[thId];
+        entry.requestCount += 1;
+        entry.promptTokens += log.promptTokens || 0;
+        entry.candidatesTokens += log.candidatesTokens || 0;
+        entry.totalTokens += log.totalTokens || 0;
+        entry.totalCostEur += log.costEur || 0;
+        if (!entry.lastUsedAt || new Date(log.timestamp) > new Date(entry.lastUsedAt)) {
+          entry.lastUsedAt = log.timestamp;
+        }
+      }
+
+      const byTherapist = Object.values(therapistMap).map(t => ({
+        ...t,
+        totalCostEur: Math.round(t.totalCostEur * 100000) / 100000
+      })).sort((a, b) => b.totalTokens - a.totalTokens);
+
+      res.json({
+        totalPromptTokens,
+        totalCandidatesTokens,
+        totalTokens,
+        totalCostEur: Math.round(totalCostEur * 100000) / 100000,
+        totalRequests,
+        byTherapist,
+        rates,
+        lastUpdated: new Date().toISOString()
+      });
+    } catch (err) {
+      console.error("Error computing token summary:", err);
+      res.status(500).json({ error: "Failed to compute token summary" });
+    }
+  });
+
+  app.get("/api/admin/tokens/logs", (req, res) => {
+    try {
+      const logs = getStoredTokenLogs();
+      const therapistId = req.query.therapistId as string | undefined;
+      const limit = parseInt((req.query.limit as string) || '200', 10);
+
+      let filtered = logs;
+      if (therapistId && therapistId !== 'all') {
+        filtered = filtered.filter(l => l.therapistId === therapistId);
+      }
+
+      res.json({ logs: filtered.slice(0, limit), total: filtered.length });
+    } catch (err) {
+      console.error("Error fetching token logs:", err);
+      res.status(500).json({ error: "Failed to fetch token logs" });
+    }
+  });
+
+  app.get("/api/admin/tokens/rates", (req, res) => {
+    res.json({ rates: getTokenRates() });
+  });
+
+  app.post("/api/admin/tokens/rates", (req, res) => {
+    try {
+      const current = getTokenRates();
+      const updated = {
+        ...current,
+        ...(req.body || {})
+      };
+      ensureDataDir();
+      fs.writeFileSync(TOKEN_RATES_FILE, JSON.stringify(updated, null, 2), 'utf-8');
+      res.json({ success: true, rates: updated });
+    } catch (err) {
+      console.error("Error saving token rates:", err);
+      res.status(500).json({ error: "Failed to save token rates" });
+    }
+  });
+
+  app.post("/api/admin/tokens/reset", (req, res) => {
+    try {
+      ensureDataDir();
+      fs.writeFileSync(TOKEN_USAGE_FILE, JSON.stringify([], null, 2), 'utf-8');
+      res.json({ success: true, message: "Token logs reset" });
+    } catch (err) {
+      console.error("Error resetting token logs:", err);
+      res.status(500).json({ error: "Failed to reset token logs" });
     }
   });
 
