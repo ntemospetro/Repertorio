@@ -1334,7 +1334,7 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                 </div>
 
                 {/* Search Cases */}
-                <div className="mb-3">
+                <div className="mb-0">
                   <div className="relative flex items-center">
                     <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
                     <input
@@ -1393,14 +1393,14 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                   if (displayCases.length === 0) {
                     if (caseSearchQuery.trim()) {
                       return (
-                        <div className="text-center py-6 text-slate-400 text-xs">
+                        <div className="mt-3 text-center py-6 text-slate-400 text-xs">
                           <span>{t('noMatchingCasesFound')}</span>
                         </div>
                       );
                     }
 
                     return (
-                      <div className="text-center py-6 px-3 bg-slate-50/70 rounded-xl border border-dashed border-slate-200 text-xs space-y-2.5">
+                      <div className="hidden lg:block mt-3 text-center py-6 px-3 bg-slate-50/70 rounded-xl border border-dashed border-slate-200 text-xs space-y-2.5">
                         <div className="w-9 h-9 rounded-full bg-teal-50 text-teal-700 mx-auto flex items-center justify-center border border-teal-100">
                           <UserCheck className="w-4 h-4" />
                         </div>
@@ -1443,7 +1443,7 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                   });
 
                   return (
-                    <div className="space-y-3 max-h-[480px] overflow-y-auto pr-1 custom-scrollbar">
+                    <div className="mt-3 space-y-3 max-h-[480px] overflow-y-auto pr-1 custom-scrollbar">
                       {Array.from(patientMap.entries()).map(([patientName, pCases]) => {
                         const hasManyCases = pCases.length > 10;
 
