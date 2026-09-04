@@ -943,6 +943,8 @@ export const en = {
   "lastConsultation": "Last consultation",
   "unknownDate": "Unknown",
   "editMasterData": "Edit Master Data",
+  "enterMasterData": "Enter Master Data",
+  "noPatientEntered": "No patient recorded yet",
   "openInCaseDoc": "Open in Case Documentation",
   "birthdateAndAge": "Birth Date & Age",
   "genderAndStatus": "Gender & Status",

@@ -11,6 +11,7 @@ import {
 } from '../services/storage';
 import { useTranslation } from '../i18n/LanguageContext';
 import { VoiceInputButton } from './VoiceInputButton';
+import { StammdatenModal } from './StammdatenModal';
 import { 
   ResponsiveContainer, 
   BarChart, 
@@ -1493,135 +1494,17 @@ export const PatientDirectoryView: React.FC<PatientDirectoryViewProps> = ({
       )}
 
       {/* MODAL 3: EDIT STAMMDATEN MODAL */}
-      {isEditStammdatenOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4 animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <Users className="w-5 h-5 text-teal-600" />
-                <h3 className="font-bold text-slate-900 text-base">
-                  {t('editMasterDataTitle')}
-                </h3>
-              </div>
-              <button
-                onClick={() => setIsEditStammdatenOpen(false)}
-                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-3 text-xs max-h-[450px] overflow-y-auto pr-1">
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">{t('patientNameLabel')}</label>
-                <input
-                  type="text"
-                  value={editStamm.patientName || ''}
-                  onChange={(e) => setEditStamm(prev => ({ ...prev, patientName: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-900 focus:outline-none focus:border-teal-600"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">{t('birthDateLabel')}</label>
-                  <input
-                    type="date"
-                    value={editStamm.patientBirthDate || ''}
-                    onChange={(e) => setEditStamm(prev => ({ ...prev, patientBirthDate: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-900 focus:outline-none focus:border-teal-600"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">{t('ageLabel')}</label>
-                  <input
-                    type="number"
-                    value={editStamm.patientAge ?? ''}
-                    onChange={(e) => setEditStamm(prev => ({ ...prev, patientAge: parseInt(e.target.value, 10) || undefined }))}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-900 focus:outline-none focus:border-teal-600"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">{t('phoneLabel')}</label>
-                  <input
-                    type="text"
-                    value={editStamm.patientPhone || ''}
-                    onChange={(e) => setEditStamm(prev => ({ ...prev, patientPhone: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-900 focus:outline-none focus:border-teal-600"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">{t('emailLabel')}</label>
-                  <input
-                    type="email"
-                    value={editStamm.patientEmail || ''}
-                    onChange={(e) => setEditStamm(prev => ({ ...prev, patientEmail: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-900 focus:outline-none focus:border-teal-600"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">{t('heightCmLabel')}</label>
-                  <input
-                    type="number"
-                    value={editStamm.patientHeightCm ?? ''}
-                    onChange={(e) => setEditStamm(prev => ({ ...prev, patientHeightCm: parseInt(e.target.value, 10) || undefined }))}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-900 focus:outline-none focus:border-teal-600"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">{t('weightKgLabel')}</label>
-                  <input
-                    type="number"
-                    value={editStamm.patientWeightKg ?? ''}
-                    onChange={(e) => setEditStamm(prev => ({ ...prev, patientWeightKg: parseInt(e.target.value, 10) || undefined }))}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-900 focus:outline-none focus:border-teal-600"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">{t('maritalStatusLabel')}</label>
-                <select
-                  value={editStamm.patientMaritalStatus || ''}
-                  onChange={(e) => setEditStamm(prev => ({ ...prev, patientMaritalStatus: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-900 focus:outline-none focus:border-teal-600 bg-white"
-                >
-                  <option value="">{t('optionalField') || 'Nicht angegeben'}</option>
-                  <option value="ledig">{t('maritalSingle')}</option>
-                  <option value="verheiratet">{t('maritalMarried')}</option>
-                  <option value="in Partnerschaft">{t('maritalPartnership')}</option>
-                  <option value="geschieden">{t('maritalDivorced')}</option>
-                  <option value="getrennt lebend">{t('maritalSeparated')}</option>
-                  <option value="verwitwet">{t('maritalWidowed')}</option>
-                  <option value="sonstiges">{t('maritalOther')}</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => setIsEditStammdatenOpen(false)}
-                className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 text-xs font-semibold hover:bg-slate-50 cursor-pointer"
-              >
-                {t('cancelBtn')}
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveStammdaten}
-                className="px-5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold cursor-pointer shadow-xs"
-              >
-                {t('saveMasterDataBtn')}
-              </button>
-            </div>
-          </div>
-        </div>
+      {activePatient && (
+        <StammdatenModal
+          isOpen={isEditStammdatenOpen}
+          onClose={() => setIsEditStammdatenOpen(false)}
+          initialData={activePatient.primaryCase}
+          onSave={(data) => {
+            updatePatientStammdatenAcrossCases(therapist.id, activePatient.name, data);
+            setIsEditStammdatenOpen(false);
+            refreshData();
+          }}
+        />
       )}
 
       {/* 5. PATIENT / CUSTOMER SELECTION POPUP MODAL */}

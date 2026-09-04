@@ -943,6 +943,8 @@ export const ru = {
   "lastConsultation": "Последний прием:",
   "unknownDate": "Неизвестная дата",
   "editMasterData": "Редактировать Основные Данные",
+  "enterMasterData": "Ввести Основные Данные",
+  "noPatientEntered": "Пациент пока не внесен",
   "openInCaseDoc": "Открыть в документации",
   "birthdateAndAge": "Дата Рождения и Возраст",
   "genderAndStatus": "Пол и Статус",

@@ -943,6 +943,8 @@ export const it = {
   "lastConsultation": "Ultima seduta:",
   "unknownDate": "Data sconosciuta",
   "editMasterData": "Modifica Dati Anagrafici",
+  "enterMasterData": "Inserisci Dati Anagrafici",
+  "noPatientEntered": "Nessun paziente ancora registrato",
   "openInCaseDoc": "Apri nella documentazione",
   "birthdateAndAge": "Data di Nascita ed Età",
   "genderAndStatus": "Genere e Stato",

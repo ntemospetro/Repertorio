@@ -943,6 +943,8 @@ export const el = {
   "lastConsultation": "Τελευταία εξέταση",
   "unknownDate": "Άγνωστη ημερομηνία",
   "editMasterData": "Επεξεργασία Βασικών Στοιχείων",
+  "enterMasterData": "Καταχώρηση Βασικών Στοιχείων",
+  "noPatientEntered": "Δεν έχει καταχωρηθεί ασθενής ακόμα",
   "openInCaseDoc": "Άνοιγμα στην Τεκμηρίωση",
   "birthdateAndAge": "Ημερομηνία Γέννησης & Ηλικία",
   "genderAndStatus": "Φύλο & Κατάσταση",

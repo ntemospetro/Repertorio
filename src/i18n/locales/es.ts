@@ -943,6 +943,8 @@ export const es = {
   "lastConsultation": "Última consulta",
   "unknownDate": "Fecha desconocida",
   "editMasterData": "Editar Datos Básicos",
+  "enterMasterData": "Ingresar Datos Básicos",
+  "noPatientEntered": "Ningún paciente registrado aún",
   "openInCaseDoc": "Abrir en Documentación",
   "birthdateAndAge": "Fecha de Nacimiento y Edad",
   "genderAndStatus": "Género y Estado",

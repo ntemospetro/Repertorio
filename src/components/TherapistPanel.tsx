@@ -37,6 +37,7 @@ import { PatientDirectoryView } from './PatientDirectoryView';
 import { MateriaMedicaView } from './MateriaMedicaView';
 import { AcuteIntakeView } from './AcuteIntakeView';
 import { UserManualView } from './UserManualView';
+import { StammdatenModal } from './StammdatenModal';
 import { TherapistLogin } from './TherapistLogin';
 import { getCountryFlag } from '../data/countries';
 import { exportComprehensiveAnalysisToPDF } from '../services/pdfExportService';
@@ -183,6 +184,7 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
   });
 
   // Modal states
+  const [isStammdatenModalOpen, setIsStammdatenModalOpen] = useState(false);
   const [isAnalysisModalOpen, setIsAnalysisModalOpen] = useState(false);
   const [isExtendedAnamnesisWizardOpen, setIsExtendedAnamnesisWizardOpen] = useState(false);
   const [isFindingsModalOpen, setIsFindingsModalOpen] = useState(false);
@@ -657,6 +659,7 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
     };
     const handleModalEvent = (e: Event) => {
       const modalId = (e as CustomEvent<string | null>).detail;
+      setIsStammdatenModalOpen(modalId === 'stammdaten');
       setIsAnalysisModalOpen(modalId === 'analysis');
       setIsExtendedAnamnesisWizardOpen(modalId === 'wizard');
       setIsFindingsModalOpen(modalId === 'findings');
@@ -786,6 +789,26 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
   const showToast = (msg: string) => {
     setSaveToast(msg);
     setTimeout(() => setSaveToast(null), 3000);
+  };
+
+  const getGenderLabel = (gender?: string) => {
+    if (!gender) return '—';
+    if (gender === 'weiblich') return t('genderFemale');
+    if (gender === 'männlich') return t('genderMale');
+    if (gender === 'divers') return t('genderOther');
+    return gender;
+  };
+
+  const getMaritalStatusLabel = (status?: string) => {
+    if (!status) return '';
+    if (status === 'ledig') return t('maritalSingle');
+    if (status === 'verheiratet') return t('maritalMarried');
+    if (status === 'in Partnerschaft') return t('maritalPartnership');
+    if (status === 'geschieden') return t('maritalDivorced');
+    if (status === 'getrennt lebend') return t('maritalSeparated');
+    if (status === 'verwitwet') return t('maritalWidowed');
+    if (status === 'sonstiges') return t('maritalOther');
+    return status;
   };
 
   const handleUpdateHauptbeschwerde = (newComplaint: string) => {
@@ -1607,580 +1630,122 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                       <span><strong>{t('patientDataTitle')}:</strong> {t('patientDataDesc')}</span>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-12 gap-4">
-                      {/* Name */}
-                      <div className="sm:col-span-6">
-                        <label className="block text-xs font-bold text-slate-700 uppercase mb-1" htmlFor="input-patient-name">
-                          {t('patientName')}
-                        </label>
-                        <div className="relative flex items-center">
-                          <User className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
-                          <input
-                            id="input-patient-name"
-                            type="text"
-                            placeholder={t('patientNamePlaceholder')}
-                            value={currentCase.patientName || ''}
-                            onChange={(e) => setCurrentCase({ ...currentCase, patientName: e.target.value })}
-                            className="w-full pl-8 pr-9 py-2 border border-slate-300 rounded-md text-slate-900 text-xs sm:text-sm focus:outline-none focus:border-teal-600 h-[38px]"
-                          />
-                          <div className="absolute right-1.5 top-1/2 -translate-y-1/2">
-                            <VoiceInputButton
-                              value={currentCase.patientName || ''}
-                              onChange={(val) => setCurrentCase({ ...currentCase, patientName: val })}
-                              size="xs"
-                              mode="append"
-                              id="btn-voice-patient-name"
-                            />
+                    {/* PATIENT STAMMDATEN CARD - Identical layout to Bild 2 */}
+                    <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-xs relative overflow-hidden">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+                        <div className="flex items-center gap-3.5">
+                          <div className="w-12 h-12 rounded-2xl bg-teal-600 text-white flex items-center justify-center font-bold text-base shadow-xs shrink-0">
+                            {(currentCase.patientName || '').trim() 
+                              ? currentCase.patientName.trim().split(' ').map(n => n[0]).filter(Boolean).slice(0, 2).join('').toUpperCase()
+                              : <User className="w-6 h-6 text-white" />
+                            }
                           </div>
-                        </div>
-                      </div>
-
-                      {/* Geburtsdatum */}
-                      <div className="sm:col-span-3">
-                        <label className="block text-xs font-bold text-slate-700 uppercase mb-1" htmlFor="input-patient-birthdate">
-                          {t('patientBirthDate')}
-                        </label>
-                        <div className="relative">
-                          <Calendar className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
-                          <input
-                            id="input-patient-birthdate"
-                            type="date"
-                            value={currentCase.patientBirthDate || ''}
-                            onChange={(e) => {
-                              const bDate = e.target.value;
-                              let calcAge = currentCase.patientAge;
-                              if (bDate) {
-                                const diff = Date.now() - new Date(bDate).getTime();
-                                const ageDate = new Date(diff);
-                                calcAge = Math.abs(ageDate.getUTCFullYear() - 1970);
-                              }
-                              setCurrentCase({ 
-                                ...currentCase, 
-                                patientBirthDate: bDate,
-                                ...(calcAge !== undefined && !isNaN(calcAge) && calcAge >= 0 && calcAge <= 125 ? { patientAge: calcAge } : {})
-                              });
-                            }}
-                            className="w-full pl-8 pr-2 py-2 border border-slate-300 rounded-md text-slate-900 text-xs sm:text-sm focus:outline-none focus:border-teal-600 h-[38px]"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Alter */}
-                      <div className="sm:col-span-3">
-                        <label className="block text-xs font-bold text-slate-700 uppercase mb-1" htmlFor="input-patient-age">
-                          {t('patientAge')}
-                        </label>
-                        <input
-                          id="input-patient-age"
-                          type="number"
-                          min="0"
-                          max="125"
-                          placeholder={t('patientAgePlaceholder')}
-                          value={currentCase.patientAge !== undefined ? currentCase.patientAge : ''}
-                          onChange={(e) => setCurrentCase({ ...currentCase, patientAge: e.target.value ? parseInt(e.target.value) : undefined })}
-                          className="w-full px-3 py-2 border border-slate-300 rounded-md text-slate-900 text-xs sm:text-sm focus:outline-none focus:border-teal-600 h-[38px]"
-                        />
-                      </div>
-
-                      {/* Geschlecht */}
-                      <div className="sm:col-span-4">
-                        <label className="block text-xs font-bold text-slate-700 uppercase mb-1" htmlFor="select-patient-gender">
-                          {t('patientGender')}
-                        </label>
-                        <select
-                          id="select-patient-gender"
-                          value={currentCase.patientGender || 'weiblich'}
-                          onChange={(e) => {
-                            const newGender = e.target.value as any;
-                            setCurrentCase({ 
-                              ...currentCase, 
-                              patientGender: newGender,
-                              ...(newGender !== 'weiblich' ? { isPregnant: false, pregnancyMonth: undefined } : {})
-                            });
-                          }}
-                          className="w-full px-2 py-2 border border-slate-300 rounded-md text-slate-900 text-xs sm:text-sm focus:outline-none focus:border-teal-600 bg-white h-[38px]"
-                        >
-                          <option value="weiblich">{t('genderFemale')}</option>
-                          <option value="männlich">{t('genderMale')}</option>
-                          <option value="divers">{t('genderOther')}</option>
-                        </select>
-                      </div>
-
-                      {/* Körpergröße (cm) */}
-                      <div className="sm:col-span-4">
-                        <label className="block text-xs font-bold text-slate-700 uppercase mb-1" htmlFor="input-patient-height">
-                          {t('patientHeight')}
-                        </label>
-                        <div className="relative">
-                          <Ruler className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
-                          <input
-                            id="input-patient-height"
-                            type="number"
-                            min="30"
-                            max="260"
-                            placeholder={t('patientHeightPlaceholder')}
-                            value={currentCase.patientHeightCm !== undefined ? currentCase.patientHeightCm : ''}
-                            onChange={(e) => setCurrentCase({ ...currentCase, patientHeightCm: e.target.value ? parseInt(e.target.value) : undefined })}
-                            className="w-full pl-8 pr-3 py-2 border border-slate-300 rounded-md text-slate-900 text-xs sm:text-sm focus:outline-none focus:border-teal-600 h-[38px]"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Gewicht (kg) */}
-                      <div className="sm:col-span-4">
-                        <label className="block text-xs font-bold text-slate-700 uppercase mb-1" htmlFor="input-patient-weight">
-                          {t('patientWeight')}
-                        </label>
-                        <div className="relative">
-                          <Activity className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
-                          <input
-                            id="input-patient-weight"
-                            type="number"
-                            min="1"
-                            max="300"
-                            placeholder={t('patientWeightPlaceholder')}
-                            value={currentCase.patientWeightKg !== undefined ? currentCase.patientWeightKg : ''}
-                            onChange={(e) => setCurrentCase({ ...currentCase, patientWeightKg: e.target.value ? parseFloat(e.target.value) : undefined })}
-                            className="w-full pl-8 pr-3 py-2 border border-slate-300 rounded-md text-slate-900 text-xs sm:text-sm focus:outline-none focus:border-teal-600 h-[38px]"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Familienstand */}
-                      <div className="sm:col-span-6">
-                        <label className="block text-xs font-bold text-slate-700 uppercase mb-1" htmlFor="select-patient-marital">
-                          {t('patientMaritalStatus')} <span className="text-slate-400 font-normal text-[11px] lowercase">{t('optionalField')}</span>
-                        </label>
-                        <div className="relative">
-                          <HeartHandshake className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
-                          <select
-                            id="select-patient-marital"
-                            value={currentCase.patientMaritalStatus || ''}
-                            onChange={(e) => setCurrentCase({ ...currentCase, patientMaritalStatus: e.target.value as any })}
-                            className="w-full pl-8 pr-3 py-2 border border-slate-300 rounded-md text-slate-900 text-xs sm:text-sm focus:outline-none focus:border-teal-600 bg-white h-[38px]"
-                          >
-                            <option value="">-- {t('selectMaritalStatus')} --</option>
-                            <option value="ledig">{t('maritalSingle')}</option>
-                            <option value="verheiratet">{t('maritalMarried')}</option>
-                            <option value="in Partnerschaft">{t('maritalPartnership')}</option>
-                            <option value="geschieden">{t('maritalDivorced')}</option>
-                            <option value="getrennt lebend">{t('maritalSeparated')}</option>
-                            <option value="verwitwet">{t('maritalWidowed')}</option>
-                            <option value="sonstiges">{t('maritalOther')}</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      {/* Aufnahmedatum */}
-                      <div className="sm:col-span-6">
-                        <label className="block text-xs font-bold text-slate-700 uppercase mb-1" htmlFor="input-anamnese-date">
-                          {t('anamneseDate')}
-                        </label>
-                        <div className="relative">
-                          <Calendar className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
-                          <input
-                            id="input-anamnese-date"
-                            type="date"
-                            value={currentCase.anamneseDatum || ''}
-                            onChange={(e) => setCurrentCase({ ...currentCase, anamneseDatum: e.target.value })}
-                            className="w-full pl-8 pr-3 py-2 border border-slate-300 rounded-md text-slate-900 text-xs sm:text-sm focus:outline-none focus:border-teal-600 h-[38px]"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Kontaktdaten (optional / keine Pflicht) */}
-                    <div id="section-contact-info" className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Mail className="w-4 h-4 text-teal-600 shrink-0" />
-                          <label className="text-xs font-bold text-slate-800 uppercase tracking-wide">
-                            {t('contactDataTitle')} <span className="text-slate-500 font-normal text-[11px] lowercase">{t('optionalField')}</span>
-                          </label>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
-                        {/* E-Mail-Adresse */}
-                        <div className="sm:col-span-6">
-                          <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1" htmlFor="input-patient-email">
-                            {t('patientEmail')}
-                          </label>
-                          <div className="relative flex items-center">
-                            <Mail className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
-                            <input
-                              id="input-patient-email"
-                              type="email"
-                              placeholder={t('patientEmailPlaceholder')}
-                              value={currentCase.patientEmail || ''}
-                              onChange={(e) => setCurrentCase({ ...currentCase, patientEmail: e.target.value })}
-                              className="w-full pl-8 pr-9 py-2 border border-slate-300 rounded-md text-slate-900 text-xs sm:text-sm focus:outline-none focus:border-teal-600 bg-white h-[38px]"
-                            />
-                            <div className="absolute right-1.5 top-1/2 -translate-y-1/2">
-                              <VoiceInputButton
-                                value={currentCase.patientEmail || ''}
-                                onChange={(val) => setCurrentCase({ ...currentCase, patientEmail: val })}
-                                size="xs"
-                                mode="append"
-                                id="btn-voice-patient-email"
-                              />
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Telefonnummer */}
-                        <div className="sm:col-span-6">
-                          <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1" htmlFor="input-patient-phone">
-                            {t('patientPhone')}
-                          </label>
-                          <div className="relative flex items-center">
-                            <Phone className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
-                            <input
-                              id="input-patient-phone"
-                              type="tel"
-                              placeholder={t('patientPhonePlaceholder')}
-                              value={currentCase.patientPhone || ''}
-                              onChange={(e) => setCurrentCase({ ...currentCase, patientPhone: e.target.value })}
-                              className="w-full pl-8 pr-9 py-2 border border-slate-300 rounded-md text-slate-900 text-xs sm:text-sm focus:outline-none focus:border-teal-600 bg-white h-[38px]"
-                            />
-                            <div className="absolute right-1.5 top-1/2 -translate-y-1/2">
-                              <VoiceInputButton
-                                value={currentCase.patientPhone || ''}
-                                onChange={(val) => setCurrentCase({ ...currentCase, patientPhone: val })}
-                                size="xs"
-                                mode="append"
-                                id="btn-voice-patient-phone"
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Conditional: Pregnancy Section (Wenn Frau / Geschlecht === 'weiblich') */}
-                    {currentCase.patientGender === 'weiblich' && (
-                      <div id="section-pregnancy" className="p-4 rounded-xl border border-rose-100 bg-rose-50/40 space-y-3 animate-in fade-in duration-200">
-                        <div className="flex items-center gap-2">
-                          <Baby className="w-4 h-4 text-rose-600 shrink-0" />
-                          <label className="text-xs font-bold text-slate-800 uppercase tracking-wide">
-                            {t('isPregnantLabel')}
-                          </label>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
-                          {/* Toggle buttons: Nein / Ja */}
-                          <div className="sm:col-span-6 flex items-center gap-2">
-                            <button
-                              type="button"
-                              id="btn-pregnant-no"
-                              onClick={() => setCurrentCase({ ...currentCase, isPregnant: false, pregnancyMonth: undefined })}
-                              className={`flex-1 py-2 px-3 rounded-lg text-xs font-semibold border transition-all cursor-pointer text-center ${
-                                !currentCase.isPregnant
-                                  ? 'bg-white border-slate-300 text-slate-800 shadow-xs font-bold ring-1 ring-slate-300'
-                                  : 'bg-white/60 border-slate-200 text-slate-500 hover:bg-white'
-                              }`}
-                            >
-                              {t('isPregnantNo')}
-                            </button>
-                            <button
-                              type="button"
-                              id="btn-pregnant-yes"
-                              onClick={() => setCurrentCase({ ...currentCase, isPregnant: true, pregnancyMonth: currentCase.pregnancyMonth || 1 })}
-                              className={`flex-1 py-2 px-3 rounded-lg text-xs font-semibold border transition-all cursor-pointer text-center ${
-                                currentCase.isPregnant
-                                  ? 'bg-rose-600 border-rose-600 text-white shadow-xs font-bold'
-                                  : 'bg-white/60 border-slate-200 text-slate-500 hover:bg-white'
-                              }`}
-                            >
-                              {t('isPregnantYes')}
-                            </button>
-                          </div>
-
-                          {/* If pregnant: Month selector */}
-                          {currentCase.isPregnant && (
-                            <div className="sm:col-span-6 flex items-center gap-2 animate-in fade-in duration-150">
-                              <label className="text-xs font-semibold text-slate-700 shrink-0" htmlFor="select-pregnancy-month">
-                                {t('pregnancyMonthLabel')}:
-                              </label>
-                              <select
-                                id="select-pregnancy-month"
-                                value={currentCase.pregnancyMonth || 1}
-                                onChange={(e) => setCurrentCase({ ...currentCase, pregnancyMonth: parseInt(e.target.value) })}
-                                className="w-full px-3 py-1.5 border border-rose-300 rounded-md text-slate-900 text-xs sm:text-sm focus:outline-none focus:border-rose-500 bg-white h-[38px]"
-                              >
-                                {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((m) => (
-                                  <option key={m} value={m}>
-                                    {t('pregnancyMonthOption', { month: m })}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Children Section (Haben Sie Kinder?) */}
-                    <div id="section-children" className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 space-y-3">
-                      <div className="flex items-center justify-between flex-wrap gap-2">
-                        <div className="flex items-center gap-2">
-                          <Users className="w-4 h-4 text-teal-600 shrink-0" />
-                          <label className="text-xs font-bold text-slate-800 uppercase tracking-wide">
-                            {t('hasChildrenLabel')}
-                          </label>
-                        </div>
-
-                        {/* Toggle Yes/No */}
-                        <div className="flex items-center gap-1.5 bg-slate-200/80 p-0.5 rounded-lg">
-                          <button
-                            type="button"
-                            id="btn-children-no"
-                            onClick={() => handleToggleChildren(false)}
-                            className={`px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${
-                              !currentCase.hasChildren
-                                ? 'bg-white text-slate-800 shadow-xs font-bold'
-                                : 'text-slate-600 hover:text-slate-900'
-                            }`}
-                          >
-                            {t('hasChildrenNo')}
-                          </button>
-                          <button
-                            type="button"
-                            id="btn-children-yes"
-                            onClick={() => handleToggleChildren(true)}
-                            className={`px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${
-                              currentCase.hasChildren
-                                ? 'bg-teal-600 text-white shadow-xs font-bold'
-                                : 'text-slate-600 hover:text-slate-900'
-                            }`}
-                          >
-                            {t('hasChildrenYes')}
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* If has children: Dynamic Child Rows */}
-                      {currentCase.hasChildren && (
-                        <div className="pt-2 space-y-3 animate-in fade-in duration-200 border-t border-slate-200">
-                          <div className="flex items-center justify-between text-xs text-slate-600">
-                            <span className="font-semibold text-slate-700">
-                              {t('childrenListTitle')} ({currentCase.childrenList?.length || 0}):
-                            </span>
-                            <span className="text-[11px] text-slate-500 font-medium">
-                              {t('childrenCountLabel')}: {currentCase.childrenList?.length || 0}
-                            </span>
-                          </div>
-
-                          {/* List of child entries */}
-                          <div className="space-y-2.5">
-                            {(currentCase.childrenList || []).map((child, index) => (
-                              <div
-                                key={child.id}
-                                className="p-3 bg-white rounded-lg border border-slate-200 shadow-2xs space-y-2 animate-in fade-in-50 duration-150"
-                              >
-                                <div className="flex items-center justify-between">
-                                  <span className="text-xs font-bold text-teal-900 flex items-center gap-1.5">
-                                    <span className="w-4 h-4 rounded-full bg-teal-100 text-teal-800 flex items-center justify-center text-[10px] font-bold">
-                                      {index + 1}
-                                    </span>
-                                    <span>{t('childEntryLabel', { index: index + 1 })}</span>
-                                  </span>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleRemoveChild(child.id)}
-                                    className="text-slate-400 hover:text-rose-600 text-xs font-semibold flex items-center gap-1 p-1 rounded hover:bg-rose-50 transition-colors cursor-pointer"
-                                    title={t('removeChildBtn')}
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                    <span className="text-[11px] hidden sm:inline">{t('removeChildBtn')}</span>
-                                  </button>
-                                </div>
-
-                                <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
-                                  {/* Child Name */}
-                                  <div className="sm:col-span-5">
-                                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-0.5">
-                                      {t('childNameLabel')}
-                                    </label>
-                                    <div className="relative flex items-center">
-                                      <input
-                                        type="text"
-                                        placeholder={t('childNamePlaceholder')}
-                                        value={child.name || ''}
-                                        onChange={(e) => handleUpdateChild(child.id, 'name', e.target.value)}
-                                        className="w-full px-2.5 pr-8 py-1.5 border border-slate-300 rounded-md text-xs text-slate-900 focus:outline-none focus:border-teal-600 h-[34px]"
-                                      />
-                                      <div className="absolute right-1 top-1/2 -translate-y-1/2">
-                                        <VoiceInputButton
-                                          value={child.name || ''}
-                                          onChange={(val) => handleUpdateChild(child.id, 'name', val)}
-                                          size="xs"
-                                          mode="append"
-                                          id={`btn-voice-child-${child.id}`}
-                                        />
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                  {/* Child Age */}
-                                  <div className="sm:col-span-3">
-                                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-0.5">
-                                      {t('childAgeLabel')}
-                                    </label>
-                                    <input
-                                      type="number"
-                                      min="0"
-                                      max="120"
-                                      placeholder="z.B. 7"
-                                      value={child.age !== undefined ? child.age : ''}
-                                      onChange={(e) => handleUpdateChild(child.id, 'age', e.target.value ? parseInt(e.target.value) : undefined)}
-                                      className="w-full px-2.5 py-1.5 border border-slate-300 rounded-md text-xs text-slate-900 focus:outline-none focus:border-teal-600 h-[34px]"
-                                    />
-                                  </div>
-
-                                  {/* Child Gender */}
-                                  <div className="sm:col-span-4">
-                                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-0.5">
-                                      {t('childGenderLabel')}
-                                    </label>
-                                    <select
-                                      value={child.gender || 'weiblich'}
-                                      onChange={(e) => handleUpdateChild(child.id, 'gender', e.target.value as any)}
-                                      className="w-full px-2 py-1.5 border border-slate-300 rounded-md text-xs text-slate-900 focus:outline-none focus:border-teal-600 bg-white h-[34px]"
-                                    >
-                                      <option value="weiblich">{t('genderFemale')}</option>
-                                      <option value="männlich">{t('genderMale')}</option>
-                                      <option value="divers">{t('genderOther')}</option>
-                                    </select>
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-
-                          {/* Plus button to add another child */}
-                          <button
-                            type="button"
-                            id="btn-add-child"
-                            onClick={handleAddChild}
-                            className="w-full py-2 px-3 border-2 border-dashed border-teal-300 hover:border-teal-500 bg-teal-50/50 hover:bg-teal-100/50 text-teal-800 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                          >
-                            <Plus className="w-3.5 h-3.5" />
-                            <span>{t('addChildBtn')}</span>
-                          </button>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Zusätzliche Stammdaten / Freie Felder */}
-                    <div id="section-custom-stammdaten" className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 space-y-3">
-                      <div className="flex items-center justify-between flex-wrap gap-2">
-                        <div className="flex items-center gap-2">
-                          <Layers className="w-4 h-4 text-teal-600 shrink-0" />
                           <div>
-                            <label className="text-xs font-bold text-slate-800 uppercase tracking-wide block">
-                              {t('customStammdatenTitle')}
-                            </label>
-                            <span className="text-[11px] text-slate-500 font-normal">
-                              {t('customStammdatenDesc')}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <h2 className="text-xl font-bold text-slate-900 font-serif">
+                                {currentCase.patientName?.trim() || t('noPatientEntered')}
+                              </h2>
+                            </div>
+                            <p className="text-xs text-slate-500 mt-0.5">
+                              {t('patientRecord')} • {t('lastConsultation')}: {currentCase.anamneseDatum ? new Date(currentCase.anamneseDatum).toLocaleDateString(language) : (currentCase.patientName ? new Date().toLocaleDateString(language) : t('unknownDate'))}
+                            </p>
                           </div>
                         </div>
-                        <button
-                          type="button"
-                          id="btn-add-custom-sd-top"
-                          onClick={() => handleAddCustomStammdaten()}
-                          className="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-xs transition-colors cursor-pointer"
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                          <span>{t('addCustomStammdatenBtn')}</span>
-                        </button>
-                      </div>
 
-
-
-                      {/* Custom Fields List */}
-                      {currentCase.customStammdaten && currentCase.customStammdaten.length > 0 && (
-                        <div className="space-y-3 pt-2">
-                          {currentCase.customStammdaten.map((field, idx) => (
-                            <div
-                              key={field.id}
-                              className="p-3 bg-white rounded-lg border border-slate-200 shadow-2xs space-y-2 relative group animate-in fade-in-50 duration-150"
-                            >
-                              <div className="flex items-center justify-between">
-                                <span className="text-xs font-bold text-teal-900 flex items-center gap-1.5">
-                                  <span className="w-4 h-4 rounded-full bg-teal-100 text-teal-800 flex items-center justify-center text-[10px] font-bold">
-                                    {idx + 1}
-                                  </span>
-                                  <span>{field.name || `${t('extraFields')} #${idx + 1}`}</span>
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveCustomStammdaten(field.id)}
-                                  className="text-slate-400 hover:text-rose-600 text-xs font-semibold flex items-center gap-1 p-1 rounded hover:bg-rose-50 transition-colors cursor-pointer"
-                                  title={t('removeChildBtn')}
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                  <span className="text-[11px] hidden sm:inline">{t('removeChildBtn')}</span>
-                                </button>
-                              </div>
-
-                              <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
-                                {/* Field Name */}
-                                <div className="sm:col-span-4">
-                                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-0.5">
-                                    {t('profilePraxisNameTitle')}
-                                  </label>
-                                  <input
-                                    type="text"
-                                    placeholder={t('customStammdatenNamePlaceholder')}
-                                    value={field.name}
-                                    onChange={(e) => handleUpdateCustomStammdaten(field.id, 'name', e.target.value)}
-                                    className="w-full px-2.5 py-1.5 border border-slate-300 rounded-md text-xs font-semibold text-slate-800 focus:outline-none focus:border-teal-600 h-[34px] bg-slate-50/50"
-                                  />
-                                </div>
-
-                                {/* Field Value */}
-                                <div className="sm:col-span-8">
-                                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-0.5">
-                                    {t('optionalInfo')}
-                                  </label>
-                                  <div className="relative flex items-center">
-                                    <input
-                                      type="text"
-                                      placeholder={t('customStammdatenValuePlaceholder')}
-                                      value={field.value}
-                                      onChange={(e) => handleUpdateCustomStammdaten(field.id, 'value', e.target.value)}
-                                      className="w-full px-2.5 pr-8 py-1.5 border border-slate-300 rounded-md text-xs text-slate-900 focus:outline-none focus:border-teal-600 h-[34px]"
-                                    />
-                                    <div className="absolute right-1 top-1/2 -translate-y-1/2">
-                                      <VoiceInputButton
-                                        value={field.value}
-                                        onChange={(val) => handleUpdateCustomStammdaten(field.id, 'value', val)}
-                                        size="xs"
-                                        mode="append"
-                                        id={`btn-voice-custom-sd-${field.id}`}
-                                      />
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-
+                        {/* Action: Stammdaten bearbeiten / erfassen */}
+                        <div className="flex items-center gap-2 flex-wrap">
                           <button
                             type="button"
-                            onClick={() => handleAddCustomStammdaten()}
-                            className="w-full py-2 px-3 border-2 border-dashed border-teal-300 hover:border-teal-500 bg-teal-50/50 hover:bg-teal-100/50 text-teal-800 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                            id="btn-edit-master-data"
+                            onClick={() => {
+                              openModal('stammdaten');
+                              setIsStammdatenModalOpen(true);
+                            }}
+                            className="px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors shadow-xs"
                           >
-                            <Plus className="w-3.5 h-3.5" />
-                            <span>{t('addCustomStammdatenBtn')}</span>
+                            <Edit3 className="w-3.5 h-3.5 text-slate-500" />
+                            <span>{currentCase.patientName?.trim() ? t('editMasterData') : t('enterMasterData')}</span>
                           </button>
                         </div>
-                      )}
-                    </div>
+                      </div>
 
-                                      </div>
+                      {/* Structured Stammdaten Grid */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 mt-4 text-xs">
+                        <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                          <span className="block text-[10px] text-slate-400 font-medium">{t('birthdateAndAge')}</span>
+                          <span className="font-semibold text-slate-800">
+                            {currentCase.patientBirthDate || '—'} 
+                            {currentCase.patientAge ? ` (${currentCase.patientAge} ${t('yearsOld')})` : ''}
+                          </span>
+                        </div>
+
+                        <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                          <span className="block text-[10px] text-slate-400 font-medium">{t('genderAndStatus')}</span>
+                          <span className="font-semibold text-slate-800">
+                            {getGenderLabel(currentCase.patientGender)}
+                            {currentCase.isPregnant 
+                              ? ` • ${t('isPregnantYes')}${currentCase.pregnancyMonth ? ` (${currentCase.pregnancyMonth}. ${t('pregnancyMonthLabel')})` : ''}` 
+                              : (currentCase.patientMaritalStatus ? ` • ${getMaritalStatusLabel(currentCase.patientMaritalStatus)}` : '')}
+                          </span>
+                        </div>
+
+                        <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                          <span className="block text-[10px] text-slate-400 font-medium">{t('heightAndWeight')}</span>
+                          <span className="font-semibold text-slate-800">
+                            {currentCase.patientHeightCm ? `${currentCase.patientHeightCm} cm` : '—'} 
+                            {currentCase.patientWeightKg ? ` / ${currentCase.patientWeightKg} kg` : ''}
+                          </span>
+                        </div>
+
+                        <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                          <span className="block text-[10px] text-slate-400 font-medium">{t('hasChildren')}</span>
+                          <span className="font-semibold text-slate-800">
+                            {currentCase.hasChildren 
+                              ? (currentCase.childrenList && currentCase.childrenList.length > 0
+                                  ? `${currentCase.childrenList.length} (${currentCase.childrenList.map(c => c.name || t('childEntryLabel', { index: '' })).join(', ')})`
+                                  : t('childrenCountLabel').replace('{count}', (currentCase.childrenCount || 1).toString()))
+                              : t('noChildren')}
+                          </span>
+                        </div>
+
+                        <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 col-span-2 sm:col-span-4">
+                          <span className="block text-[10px] text-slate-400 font-medium">{t('contactData')}</span>
+                          <div className="flex items-center gap-4 font-semibold text-slate-800 mt-0.5 truncate flex-wrap">
+                            {currentCase.patientPhone && (
+                              <a href={`tel:${currentCase.patientPhone}`} className="hover:text-teal-700 flex items-center gap-1 truncate">
+                                <Phone className="w-3 h-3 text-slate-400 shrink-0" />
+                                <span>{currentCase.patientPhone}</span>
+                              </a>
+                            )}
+                            {currentCase.patientEmail && (
+                              <a href={`mailto:${currentCase.patientEmail}`} className="hover:text-teal-700 flex items-center gap-1 truncate">
+                                <Mail className="w-3 h-3 text-slate-400 shrink-0" />
+                                <span className="truncate">{currentCase.patientEmail}</span>
+                              </a>
+                            )}
+                            {!currentCase.patientPhone && !currentCase.patientEmail && (
+                              <span className="text-slate-400">{t('noContactData')}</span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Custom Stammdaten / Freie Felder */}
+                        {currentCase.customStammdaten && currentCase.customStammdaten.length > 0 && (
+                          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 col-span-2 sm:col-span-4">
+                            <span className="block text-[10px] text-slate-400 font-medium">{t('extraFields')}</span>
+                            <div className="flex flex-wrap gap-2 mt-1">
+                              {currentCase.customStammdaten.map((cs) => (
+                                <span key={cs.id} className="inline-flex items-center gap-1 bg-white px-2.5 py-1 rounded-lg border border-slate-200 text-xs shadow-2xs">
+                                  <strong className="text-slate-600">{cs.name || t('extraFields')}:</strong> 
+                                  <span className="text-slate-800">{cs.value || '—'}</span>
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 )}
 
                 {/* 2. HAUPTBESCHWERDE & DYNAMISCHE FRAGEN */}
@@ -3549,6 +3114,22 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
           </div>
         </div>
       )}
+
+      {/* Stammdaten Modal */}
+      <StammdatenModal
+        isOpen={isStammdatenModalOpen}
+        onClose={() => {
+          closeModal();
+          setIsStammdatenModalOpen(false);
+        }}
+        initialData={currentCase as PatientCase}
+        onSave={(data) => {
+          setCurrentCase(prev => ({
+            ...prev,
+            ...data,
+          }));
+        }}
+      />
         </div>
       </div>
     </div>
