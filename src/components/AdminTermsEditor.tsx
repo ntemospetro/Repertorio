@@ -265,7 +265,7 @@ export const AdminTermsEditor: React.FC = () => {
               }`}
             >
               <Save className="w-3.5 h-3.5" />
-              <span>Änderungen speichern</span>
+              <span>{t('adminTermsSaveBtn')}</span>
             </button>
           </div>
         </div>
@@ -274,7 +274,7 @@ export const AdminTermsEditor: React.FC = () => {
         <div className="mt-4 pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-1.5">
             <Globe className="w-4 h-4 text-slate-500 mr-1" />
-            <span className="text-xs font-bold text-slate-600 mr-1">Sprache der AGB:</span>
+            <span className="text-xs font-bold text-slate-600 mr-1">{t('adminTermsLanguageLabel')}</span>
             <div className="flex flex-wrap gap-1">
               {LANGUAGES.map(lang => (
                 <button
@@ -323,7 +323,7 @@ export const AdminTermsEditor: React.FC = () => {
             <div className="text-sm font-bold font-mono text-teal-700 mt-0.5">{terms.version}</div>
           </div>
           <div className="p-2.5 rounded-md bg-slate-50 border border-slate-100">
-            <div className="text-[10px] text-slate-400 uppercase font-bold">Stand der AGB</div>
+            <div className="text-[10px] text-slate-400 uppercase font-bold">{t('adminTermsLastUpdated')}</div>
             <div className="text-sm font-bold text-slate-800 mt-0.5">{terms.lastUpdated}</div>
           </div>
         </div>
@@ -460,7 +460,7 @@ export const AdminTermsEditor: React.FC = () => {
               <div className="mt-8 pt-4 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
                 <div className="flex items-center gap-1.5">
                   <FileText className="w-3.5 h-3.5 text-teal-600" />
-                  <span>Dokument ist rechtlich bindend</span>
+                  <span>{t('termsModalLegallyBinding')}</span>
                 </div>
                 <span className="font-medium text-teal-700">Vorschau-Modus</span>
               </div>

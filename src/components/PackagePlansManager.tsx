@@ -240,7 +240,7 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
             className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs shadow-md transition-colors cursor-pointer shrink-0"
           >
             <Plus className="w-4 h-4" />
-            <span>Neues Paket erstellen</span>
+            <span>{t('adminBtnCreatePackage')}</span>
           </button>
         </div>
       </div>
@@ -379,8 +379,8 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
                         <InfinityIcon className="w-4 h-4" />
                       </div>
                       <div>
-                        <div className="text-[11px] font-bold text-slate-900">Unbegrenzte Analysen</div>
-                        <div className="text-[10px] text-slate-500">Flatrate ohne Begrenzung</div>
+                        <div className="text-[11px] font-bold text-slate-900">{t('adminUnlimitedAnalyses')}</div>
+                        <div className="text-[10px] text-slate-500">{t('adminFlatrateNoLimit')}</div>
                       </div>
                     </>
                   ) : (
@@ -390,9 +390,9 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
                       </div>
                       <div>
                         <div className="text-[11px] font-bold text-slate-900">
-                          {plan.maxAnalyses} Vollanalysen
+                          {t('tariffAnalysesIncluded', { count: plan.maxAnalyses })}
                         </div>
-                        <div className="text-[10px] text-slate-500">Kontingent pro Therapeut</div>
+                        <div className="text-[10px] text-slate-500">{t('adminQuotaPerTherapist')}</div>
                       </div>
                     </>
                   )}

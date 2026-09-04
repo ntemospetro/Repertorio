@@ -329,7 +329,7 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
                   onClick={() => setShowRejectionNotice(false)}
                   className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-800 text-xs font-semibold rounded-lg transition-colors border border-rose-200 cursor-pointer"
                 >
-                  {t('btnOk' as TranslationKey) || 'Verstanden'}
+                  {t('btnOk')}
                 </button>
               </div>
             </div>

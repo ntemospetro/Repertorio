@@ -449,7 +449,7 @@ export const AdminConfigEditor: React.FC<AdminConfigEditorProps> = ({ onShowToas
                   />
                 </div>
                 <p className="text-[11px] text-slate-500 mt-1">
-                  Mit dieser E-Mail-Adresse melden Sie sich im Admin-Panel an.
+                  {t('adminEmailNotice')}
                 </p>
               </div>
 
@@ -458,10 +458,10 @@ export const AdminConfigEditor: React.FC<AdminConfigEditorProps> = ({ onShowToas
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
                     <Lock className="w-4 h-4 text-teal-600" />
-                    <span>Passwort aktualisieren</span>
+                    <span>{t('adminUpdatePassword')}</span>
                   </div>
                   <span className="text-[11px] text-slate-500">
-                    Leer lassen, um das bestehende Passwort beizubehalten
+                    {t('adminPasswordLeaveBlank')}
                   </span>
                 </div>
 
@@ -592,13 +592,13 @@ export const AdminConfigEditor: React.FC<AdminConfigEditorProps> = ({ onShowToas
           <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-5 space-y-4">
             <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5 pb-2 border-b border-slate-100">
               <Fingerprint className="w-4 h-4 text-teal-600" />
-              <span>Aktuelle Zugangs-Konfiguration</span>
+              <span>{t('adminCurrentAccessConfig')}</span>
             </h4>
 
             <div className="space-y-3 text-xs">
               <div className="p-3 bg-slate-50 rounded-lg border border-slate-100 space-y-1">
                 <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider block">
-                  Aktive Anmelde-E-Mail
+                  {t('adminActiveLoginEmail')}
                 </span>
                 <span className="font-mono font-bold text-slate-900 break-all">
                   {adminCreds.email}

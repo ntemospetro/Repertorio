@@ -199,9 +199,9 @@ export const ComprehensiveAnalysisView: React.FC<ComprehensiveAnalysisViewProps>
           <div className="hidden print:flex items-center justify-between border-b pb-3 mb-4 text-xs text-slate-600">
             <div>
               <span className="font-bold text-slate-900 text-sm">Falldaten-Übersicht: {patientCase.patientName || 'Patient'}</span>
-              <span> • Datum: {patientCase.anamneseDatum || new Date().toLocaleDateString('de-DE')}</span>
+              <span> • Datum: {patientCase.anamneseDatum || new Date().toLocaleDateString()}</span>
             </div>
-            <div className="font-bold text-teal-800">Homöopathische Praxis</div>
+            <div className="font-bold text-teal-800">{t('defaultPracticeName')}</div>
           </div>
 
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -434,10 +434,10 @@ export const ComprehensiveAnalysisView: React.FC<ComprehensiveAnalysisViewProps>
           {/* Printable Header */}
           <div className="hidden print:flex items-center justify-between border-b pb-3 mb-4 text-xs text-slate-600">
             <div>
-              <span className="font-bold text-slate-900 text-sm">2. Warnhinweise &amp; Red Flags: {patientCase.patientName || 'Patient'}</span>
-              <span> • Datum: {patientCase.anamneseDatum || new Date().toLocaleDateString('de-DE')}</span>
+              <span className="font-bold text-slate-900 text-sm">2. {t('sec2Title')}: {patientCase.patientName || 'Patient'}</span>
+              <span> • Datum: {patientCase.anamneseDatum || new Date().toLocaleDateString()}</span>
             </div>
-            <div className="font-bold text-teal-800">Homöopathische Praxis</div>
+            <div className="font-bold text-teal-800">{t('defaultPracticeName')}</div>
           </div>
 
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -532,10 +532,10 @@ export const ComprehensiveAnalysisView: React.FC<ComprehensiveAnalysisViewProps>
           {/* Printable Header */}
           <div className="hidden print:flex items-center justify-between border-b pb-3 mb-4 text-xs text-slate-600">
             <div>
-              <span className="font-bold text-slate-900 text-sm">3. Medikamentenanalyse: {patientCase.patientName || 'Patient'}</span>
-              <span> • Datum: {patientCase.anamneseDatum || new Date().toLocaleDateString('de-DE')}</span>
+              <span className="font-bold text-slate-900 text-sm">3. {t('sec3Title')}: {patientCase.patientName || 'Patient'}</span>
+              <span> • Datum: {patientCase.anamneseDatum || new Date().toLocaleDateString()}</span>
             </div>
-            <div className="font-bold text-teal-800">Homöopathische Praxis</div>
+            <div className="font-bold text-teal-800">{t('defaultPracticeName')}</div>
           </div>
 
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -795,10 +795,10 @@ export const ComprehensiveAnalysisView: React.FC<ComprehensiveAnalysisViewProps>
           {/* Printable Header */}
           <div className="hidden print:flex items-center justify-between border-b pb-3 mb-4 text-xs text-slate-600">
             <div>
-              <span className="font-bold text-slate-900 text-sm">5. Homöopathische Auswertung: {patientCase.patientName || 'Patient'}</span>
-              <span> • Datum: {patientCase.anamneseDatum || new Date().toLocaleDateString('de-DE')}</span>
+              <span className="font-bold text-slate-900 text-sm">5. {t('sec5Title')}: {patientCase.patientName || 'Patient'}</span>
+              <span> • Datum: {patientCase.anamneseDatum || new Date().toLocaleDateString()}</span>
             </div>
-            <div className="font-bold text-teal-800">Homöopathische Praxis</div>
+            <div className="font-bold text-teal-800">{t('defaultPracticeName')}</div>
           </div>
 
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">

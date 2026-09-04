@@ -44,6 +44,67 @@ const STORAGE_KEYS = {
   ADMIN_TAB: 'homoeo_saas_admin_tab_v1',
 };
 
+/**
+ * Safe wrapper for localStorage.setItem to guard against QuotaExceededError.
+ * In case of storage quota exhaustion, prunes older PDF archives to recover space
+ * and dispatches a warning event if storage remains critical.
+ */
+export function safeLocalStorageSetItem(key: string, value: string): boolean {
+  try {
+    localStorage.setItem(key, value);
+    return true;
+  } catch (err: any) {
+    console.warn(`[Storage] Storage quota or write issue for key "${key}":`, err);
+    if (err && (err.name === 'QuotaExceededError' || err.code === 22 || err.code === 1014)) {
+      try {
+        // Attempt emergency cleanup of heavy non-critical PDF archives
+        const rawArchive = localStorage.getItem(STORAGE_KEYS.TERMS_PDF_ARCHIVE);
+        if (rawArchive) {
+          const parsed = JSON.parse(rawArchive);
+          if (Array.isArray(parsed) && parsed.length > 2) {
+            localStorage.setItem(STORAGE_KEYS.TERMS_PDF_ARCHIVE, JSON.stringify(parsed.slice(0, 2)));
+          }
+        }
+        localStorage.setItem(key, value);
+        return true;
+      } catch (retryErr) {
+        console.error(`[Storage] Fatal quota error while saving "${key}":`, retryErr);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('homoeo_storage_quota_exceeded', { detail: { key } }));
+        }
+        return false;
+      }
+    }
+    return false;
+  }
+}
+
+/**
+ * Calculates rough storage quota usage and signals warnings if > 85% full.
+ */
+export function checkStorageQuotaUsage(): { usedBytes: number; quotaEstimate: number; percentage: number; isWarning: boolean } {
+  let totalLength = 0;
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k) {
+        const val = localStorage.getItem(k) || '';
+        totalLength += (k.length + val.length) * 2; // UTF-16 bytes approx
+      }
+    }
+  } catch {
+    // ignore
+  }
+  const quotaEstimate = 5 * 1024 * 1024; // 5MB standard browser localStorage limit
+  const percentage = Math.min(100, Math.round((totalLength / quotaEstimate) * 100));
+  return {
+    usedBytes: totalLength,
+    quotaEstimate,
+    percentage,
+    isWarning: percentage >= 85,
+  };
+}
+
 // Registration Trial Management
 import { RegistrationTrialConfig, RegistrationTrialTranslations } from '../types';
 
@@ -68,7 +129,7 @@ export function getRegistrationTrialTranslations(): RegistrationTrialTranslation
 }
 
 export function saveRegistrationTrialTranslations(translations: RegistrationTrialTranslations): void {
-  localStorage.setItem(STORAGE_KEYS.REG_TRIAL, JSON.stringify(translations));
+  safeLocalStorageSetItem(STORAGE_KEYS.REG_TRIAL, JSON.stringify(translations));
   window.dispatchEvent(new Event('homoeo_reg_trial_updated'));
 }
 
@@ -96,7 +157,7 @@ export async function syncSiteConfigFromServer(): Promise<SiteConfig> {
       if (data && typeof data === 'object') {
         const current = getSiteConfig();
         const merged = { ...current, ...data };
-        localStorage.setItem(STORAGE_KEYS.SITE_CONFIG, JSON.stringify(merged));
+        safeLocalStorageSetItem(STORAGE_KEYS.SITE_CONFIG, JSON.stringify(merged));
         window.dispatchEvent(new Event('homoeo_site_config_changed'));
         return merged;
       }
@@ -110,7 +171,7 @@ export async function syncSiteConfigFromServer(): Promise<SiteConfig> {
 export function saveSiteConfig(updates: Partial<SiteConfig>): SiteConfig {
   const current = getSiteConfig();
   const updated = { ...current, ...updates };
-  localStorage.setItem(STORAGE_KEYS.SITE_CONFIG, JSON.stringify(updated));
+  safeLocalStorageSetItem(STORAGE_KEYS.SITE_CONFIG, JSON.stringify(updated));
   window.dispatchEvent(new Event('homoeo_site_config_changed'));
 
   // Sync to server
@@ -128,7 +189,7 @@ export function getAdminCredentials(): AdminCredentials {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.ADMIN_CREDENTIALS);
     if (!raw) {
-      localStorage.setItem(STORAGE_KEYS.ADMIN_CREDENTIALS, JSON.stringify(DEFAULT_ADMIN_CREDENTIALS));
+      safeLocalStorageSetItem(STORAGE_KEYS.ADMIN_CREDENTIALS, JSON.stringify(DEFAULT_ADMIN_CREDENTIALS));
       return DEFAULT_ADMIN_CREDENTIALS;
     }
     const parsed = JSON.parse(raw);
@@ -155,7 +216,7 @@ export async function syncAdminCredentialsFromServer(): Promise<AdminCredentials
           resetEmailDestination: data.resetEmailDestination || DEFAULT_ADMIN_CREDENTIALS.resetEmailDestination,
           updatedAt: data.updatedAt,
         };
-        localStorage.setItem(STORAGE_KEYS.ADMIN_CREDENTIALS, JSON.stringify(serverCreds));
+        safeLocalStorageSetItem(STORAGE_KEYS.ADMIN_CREDENTIALS, JSON.stringify(serverCreds));
         window.dispatchEvent(new Event('homoeo_admin_credentials_changed'));
         window.dispatchEvent(new Event('homoeo_storage_updated'));
         return serverCreds;
@@ -179,7 +240,7 @@ export function getEmailConfig(): EmailConfig {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.EMAIL_CONFIG);
     if (!raw) {
-      localStorage.setItem(STORAGE_KEYS.EMAIL_CONFIG, JSON.stringify(DEFAULT_EMAIL_CONFIG));
+      safeLocalStorageSetItem(STORAGE_KEYS.EMAIL_CONFIG, JSON.stringify(DEFAULT_EMAIL_CONFIG));
       return DEFAULT_EMAIL_CONFIG;
     }
     const parsed = JSON.parse(raw);
@@ -223,7 +284,7 @@ export async function syncEmailConfigFromServer(): Promise<EmailConfig> {
           ...current,
           ...data,
         };
-        localStorage.setItem(STORAGE_KEYS.EMAIL_CONFIG, JSON.stringify(merged));
+        safeLocalStorageSetItem(STORAGE_KEYS.EMAIL_CONFIG, JSON.stringify(merged));
         window.dispatchEvent(new Event('homoeo_email_config_changed'));
         return merged;
       }
@@ -241,7 +302,7 @@ export function saveEmailConfig(updates: Partial<EmailConfig>): EmailConfig {
     ...updates,
     updatedAt: new Date().toISOString(),
   };
-  localStorage.setItem(STORAGE_KEYS.EMAIL_CONFIG, JSON.stringify(updated));
+  safeLocalStorageSetItem(STORAGE_KEYS.EMAIL_CONFIG, JSON.stringify(updated));
   window.dispatchEvent(new Event('homoeo_email_config_changed'));
 
   // Sync to server
@@ -255,7 +316,7 @@ export function saveEmailConfig(updates: Partial<EmailConfig>): EmailConfig {
 }
 
 export function resetEmailConfig(): EmailConfig {
-  localStorage.setItem(STORAGE_KEYS.EMAIL_CONFIG, JSON.stringify(DEFAULT_EMAIL_CONFIG));
+  safeLocalStorageSetItem(STORAGE_KEYS.EMAIL_CONFIG, JSON.stringify(DEFAULT_EMAIL_CONFIG));
   window.dispatchEvent(new Event('homoeo_email_config_changed'));
 
   // Sync to server
@@ -273,7 +334,7 @@ export function saveAdminCredentials(updates: Partial<AdminCredentials>): AdminC
     ...updates,
     updatedAt: new Date().toISOString(),
   };
-  localStorage.setItem(STORAGE_KEYS.ADMIN_CREDENTIALS, JSON.stringify(updated));
+  safeLocalStorageSetItem(STORAGE_KEYS.ADMIN_CREDENTIALS, JSON.stringify(updated));
   window.dispatchEvent(new Event('homoeo_admin_credentials_changed'));
   window.dispatchEvent(new Event('homoeo_storage_updated'));
 
@@ -288,7 +349,7 @@ export function saveAdminCredentials(updates: Partial<AdminCredentials>): AdminC
 }
 
 export function resetAdminCredentials(): AdminCredentials {
-  localStorage.setItem(STORAGE_KEYS.ADMIN_CREDENTIALS, JSON.stringify(DEFAULT_ADMIN_CREDENTIALS));
+  safeLocalStorageSetItem(STORAGE_KEYS.ADMIN_CREDENTIALS, JSON.stringify(DEFAULT_ADMIN_CREDENTIALS));
   window.dispatchEvent(new Event('homoeo_admin_credentials_changed'));
   window.dispatchEvent(new Event('homoeo_storage_updated'));
 
@@ -772,7 +833,7 @@ export function getPackagePlans(): PackagePlan[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.PACKAGES);
     if (!raw) {
-      localStorage.setItem(STORAGE_KEYS.PACKAGES, JSON.stringify(INITIAL_PACKAGE_PLANS));
+      safeLocalStorageSetItem(STORAGE_KEYS.PACKAGES, JSON.stringify(INITIAL_PACKAGE_PLANS));
       return INITIAL_PACKAGE_PLANS;
     }
     return JSON.parse(raw);
@@ -782,7 +843,7 @@ export function getPackagePlans(): PackagePlan[] {
 }
 
 export function savePackagePlans(plans: PackagePlan[]): void {
-  localStorage.setItem(STORAGE_KEYS.PACKAGES, JSON.stringify(plans));
+  safeLocalStorageSetItem(STORAGE_KEYS.PACKAGES, JSON.stringify(plans));
   window.dispatchEvent(new Event('homoeo_packages_updated'));
 }
 
@@ -874,7 +935,7 @@ export function getTherapists(): Therapist[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.THERAPISTS);
     if (!raw) {
-      localStorage.setItem(STORAGE_KEYS.THERAPISTS, JSON.stringify(INITIAL_THERAPISTS));
+      safeLocalStorageSetItem(STORAGE_KEYS.THERAPISTS, JSON.stringify(INITIAL_THERAPISTS));
       return INITIAL_THERAPISTS;
     }
     return JSON.parse(raw);
@@ -884,7 +945,7 @@ export function getTherapists(): Therapist[] {
 }
 
 export function saveTherapists(therapists: Therapist[]): void {
-  localStorage.setItem(STORAGE_KEYS.THERAPISTS, JSON.stringify(therapists));
+  safeLocalStorageSetItem(STORAGE_KEYS.THERAPISTS, JSON.stringify(therapists));
   window.dispatchEvent(new Event('homoeo_storage_updated'));
 }
 
@@ -1002,7 +1063,7 @@ export function getActiveTherapistId(): string | null {
 }
 
 export function setActiveTherapistId(id: string): void {
-  localStorage.setItem(STORAGE_KEYS.ACTIVE_THERAPIST, id);
+  safeLocalStorageSetItem(STORAGE_KEYS.ACTIVE_THERAPIST, id);
   window.dispatchEvent(new Event('homoeo_active_therapist_changed'));
 }
 
@@ -1094,7 +1155,7 @@ export function getPatientCases(therapistId?: string): PatientCase[] {
     const raw = localStorage.getItem(STORAGE_KEYS.CASES);
     let list: PatientCase[] = raw ? JSON.parse(raw) : INITIAL_CASES;
     if (!raw) {
-      localStorage.setItem(STORAGE_KEYS.CASES, JSON.stringify(INITIAL_CASES));
+      safeLocalStorageSetItem(STORAGE_KEYS.CASES, JSON.stringify(INITIAL_CASES));
     }
     if (therapistId) {
       list = list.filter(c => c.therapistId === therapistId);
@@ -1120,14 +1181,14 @@ export function savePatientCase(caseData: Omit<PatientCase, 'id'> & { id?: strin
     all.unshift(newOrUpdated);
   }
   
-  localStorage.setItem(STORAGE_KEYS.CASES, JSON.stringify(all));
+  safeLocalStorageSetItem(STORAGE_KEYS.CASES, JSON.stringify(all));
   window.dispatchEvent(new Event('homoeo_cases_updated'));
   return newOrUpdated;
 }
 
 export function deletePatientCase(caseId: string): void {
   const all = getPatientCases().filter(c => c.id !== caseId);
-  localStorage.setItem(STORAGE_KEYS.CASES, JSON.stringify(all));
+  safeLocalStorageSetItem(STORAGE_KEYS.CASES, JSON.stringify(all));
   window.dispatchEvent(new Event('homoeo_cases_updated'));
 }
 
@@ -1148,7 +1209,7 @@ export function addFollowUpToCase(caseId: string, followUpData: Omit<FollowUpEnt
     followUps: [newEntry, ...existingFollowUps],
   };
 
-  localStorage.setItem(STORAGE_KEYS.CASES, JSON.stringify(all));
+  safeLocalStorageSetItem(STORAGE_KEYS.CASES, JSON.stringify(all));
   window.dispatchEvent(new Event('homoeo_cases_updated'));
   return newEntry;
 }
@@ -1176,7 +1237,7 @@ export function updateFollowUpInCase(caseId: string, followUpId: string, updates
     followUps: updatedFollowUps,
   };
 
-  localStorage.setItem(STORAGE_KEYS.CASES, JSON.stringify(all));
+  safeLocalStorageSetItem(STORAGE_KEYS.CASES, JSON.stringify(all));
   window.dispatchEvent(new Event('homoeo_cases_updated'));
   return updatedEntry;
 }
@@ -1195,7 +1256,7 @@ export function deleteFollowUpFromCase(caseId: string, followUpId: string): bool
     followUps: filtered,
   };
 
-  localStorage.setItem(STORAGE_KEYS.CASES, JSON.stringify(all));
+  safeLocalStorageSetItem(STORAGE_KEYS.CASES, JSON.stringify(all));
   window.dispatchEvent(new Event('homoeo_cases_updated'));
   return true;
 }
@@ -1213,7 +1274,7 @@ export function updateInitialPrescriptionInCase(caseId: string, prescription: In
     },
   };
 
-  localStorage.setItem(STORAGE_KEYS.CASES, JSON.stringify(all));
+  safeLocalStorageSetItem(STORAGE_KEYS.CASES, JSON.stringify(all));
   window.dispatchEvent(new Event('homoeo_cases_updated'));
   return true;
 }
@@ -1234,7 +1295,7 @@ export function updatePatientStammdatenAcrossCases(therapistId: string, patientN
   });
 
   if (modified) {
-    localStorage.setItem(STORAGE_KEYS.CASES, JSON.stringify(updatedAll));
+    safeLocalStorageSetItem(STORAGE_KEYS.CASES, JSON.stringify(updatedAll));
     window.dispatchEvent(new Event('homoeo_cases_updated'));
   }
 }
@@ -1246,7 +1307,7 @@ export function isAdminLoggedIn(): boolean {
 
 export function setAdminLoggedIn(loggedIn: boolean): void {
   if (loggedIn) {
-    localStorage.setItem(STORAGE_KEYS.ADMIN_LOGGED_IN, 'true');
+    safeLocalStorageSetItem(STORAGE_KEYS.ADMIN_LOGGED_IN, 'true');
   } else {
     localStorage.removeItem(STORAGE_KEYS.ADMIN_LOGGED_IN);
   }
@@ -1254,12 +1315,12 @@ export function setAdminLoggedIn(loggedIn: boolean): void {
 }
 
 export function resetAllToSampleData(): void {
-  localStorage.setItem(STORAGE_KEYS.PACKAGES, JSON.stringify(INITIAL_PACKAGE_PLANS));
-  localStorage.setItem(STORAGE_KEYS.THERAPISTS, JSON.stringify(INITIAL_THERAPISTS));
-  localStorage.setItem(STORAGE_KEYS.CASES, JSON.stringify(INITIAL_CASES));
-  localStorage.setItem(STORAGE_KEYS.TERMS, JSON.stringify(DEFAULT_TERMS));
-  localStorage.setItem(STORAGE_KEYS.ACTIVE_THERAPIST, INITIAL_THERAPISTS[0].id);
-  localStorage.setItem(STORAGE_KEYS.ADMIN_CREDENTIALS, JSON.stringify(DEFAULT_ADMIN_CREDENTIALS));
+  safeLocalStorageSetItem(STORAGE_KEYS.PACKAGES, JSON.stringify(INITIAL_PACKAGE_PLANS));
+  safeLocalStorageSetItem(STORAGE_KEYS.THERAPISTS, JSON.stringify(INITIAL_THERAPISTS));
+  safeLocalStorageSetItem(STORAGE_KEYS.CASES, JSON.stringify(INITIAL_CASES));
+  safeLocalStorageSetItem(STORAGE_KEYS.TERMS, JSON.stringify(DEFAULT_TERMS));
+  safeLocalStorageSetItem(STORAGE_KEYS.ACTIVE_THERAPIST, INITIAL_THERAPISTS[0].id);
+  safeLocalStorageSetItem(STORAGE_KEYS.ADMIN_CREDENTIALS, JSON.stringify(DEFAULT_ADMIN_CREDENTIALS));
   window.dispatchEvent(new Event('homoeo_packages_updated'));
   window.dispatchEvent(new Event('homoeo_storage_updated'));
   window.dispatchEvent(new Event('homoeo_active_therapist_changed'));
@@ -1289,9 +1350,9 @@ export function getTermsAndConditions(lang: LanguageCode = 'de'): TermsAndCondit
 
 export function saveTermsAndConditions(terms: TermsAndConditions, lang: LanguageCode = 'de'): void {
   const key = `${STORAGE_KEYS.TERMS}_${lang}`;
-  localStorage.setItem(key, JSON.stringify(terms));
+  safeLocalStorageSetItem(key, JSON.stringify(terms));
   if (lang === 'de') {
-    localStorage.setItem(STORAGE_KEYS.TERMS, JSON.stringify(terms));
+    safeLocalStorageSetItem(STORAGE_KEYS.TERMS, JSON.stringify(terms));
   }
   window.dispatchEvent(new Event('homoeo_terms_updated'));
 }
@@ -1299,9 +1360,9 @@ export function saveTermsAndConditions(terms: TermsAndConditions, lang: Language
 export function resetTermsAndConditionsToDefault(lang: LanguageCode = 'de'): TermsAndConditions {
   const defaultVal = getDefaultTermsForLanguage(lang);
   const key = `${STORAGE_KEYS.TERMS}_${lang}`;
-  localStorage.setItem(key, JSON.stringify(defaultVal));
+  safeLocalStorageSetItem(key, JSON.stringify(defaultVal));
   if (lang === 'de') {
-    localStorage.setItem(STORAGE_KEYS.TERMS, JSON.stringify(defaultVal));
+    safeLocalStorageSetItem(STORAGE_KEYS.TERMS, JSON.stringify(defaultVal));
   }
   window.dispatchEvent(new Event('homoeo_terms_updated'));
   return defaultVal;
@@ -1321,7 +1382,7 @@ export function getTermsPdfArchive(): TermsPdfArchiveItem[] {
 }
 
 export function saveTermsPdfArchive(items: TermsPdfArchiveItem[]): void {
-  localStorage.setItem(STORAGE_KEYS.TERMS_PDF_ARCHIVE, JSON.stringify(items));
+  safeLocalStorageSetItem(STORAGE_KEYS.TERMS_PDF_ARCHIVE, JSON.stringify(items));
   window.dispatchEvent(new Event('homoeo_terms_pdf_archive_updated'));
   window.dispatchEvent(new Event('homoeo_storage_updated'));
 }
@@ -1391,7 +1452,7 @@ export function getNameChangeRequests(): NameChangeRequest[] {
 }
 
 export function saveNameChangeRequests(requests: NameChangeRequest[]): void {
-  localStorage.setItem(STORAGE_KEYS.NAME_CHANGE_REQUESTS, JSON.stringify(requests));
+  safeLocalStorageSetItem(STORAGE_KEYS.NAME_CHANGE_REQUESTS, JSON.stringify(requests));
   window.dispatchEvent(new Event('homoeo_name_change_requests_updated'));
 }
 
@@ -1455,7 +1516,7 @@ export function getStoredActiveView(): ActiveView {
 
 export function setStoredActiveView(view: ActiveView): void {
   try {
-    localStorage.setItem(STORAGE_KEYS.ACTIVE_VIEW, view);
+    safeLocalStorageSetItem(STORAGE_KEYS.ACTIVE_VIEW, view);
     sessionStorage.setItem(STORAGE_KEYS.ACTIVE_VIEW, view);
   } catch (e) {}
 }
@@ -1472,7 +1533,7 @@ export function getStoredTherapistTab(): 'cases' | 'patients' | 'materiamedica' 
 
 export function setStoredTherapistTab(tab: string): void {
   try {
-    localStorage.setItem(STORAGE_KEYS.THERAPIST_TAB, tab);
+    safeLocalStorageSetItem(STORAGE_KEYS.THERAPIST_TAB, tab);
     sessionStorage.setItem(STORAGE_KEYS.THERAPIST_TAB, tab);
   } catch (e) {}
 }
@@ -1489,7 +1550,7 @@ export function getStoredAdminTab(): 'therapists' | 'packages' | 'terms' | 'conf
 
 export function setStoredAdminTab(tab: string): void {
   try {
-    localStorage.setItem(STORAGE_KEYS.ADMIN_TAB, tab);
+    safeLocalStorageSetItem(STORAGE_KEYS.ADMIN_TAB, tab);
     sessionStorage.setItem(STORAGE_KEYS.ADMIN_TAB, tab);
   } catch (e) {}
 }

@@ -661,28 +661,28 @@ Antworte AUSSCHLIESSLICH als valides JSON-Objekt:
   const EMAIL_CONFIG_FILE = path.join(DATA_DIR, 'email_config.json');
 
   const DEFAULT_ADMIN = {
-    email: 'p.stogian@yahoo.com',
-    password: 'Othonospet@19071963',
-    resetEmailDestination: 'p.stogian@yahoo.com',
+    email: process.env.ADMIN_EMAIL || 'p.stogian@yahoo.com',
+    password: process.env.ADMIN_PASSWORD || 'Othonospet@19071963',
+    resetEmailDestination: process.env.ADMIN_RESET_EMAIL || process.env.ADMIN_EMAIL || 'p.stogian@yahoo.com',
   };
 
   const DEFAULT_EMAIL_SETTINGS = {
-    sendMethod: 'api',
-    apiToken: 'ca5694e04833ec07a5a65dbe06af56952c3e1fb04cc66e546b50fc5c84464aaf',
-    mailboxId: 'ACfb7e2a4063af9612b30d0a193ade',
-    smtpHost: 'smtp.hostinger.com',
-    smtpPort: 465,
-    smtpSecure: true,
-    smtpUser: 'therapie@homeopilot360.com',
-    smtpPassword: 'Othonospet@19071963',
-    fromEmail: 'therapie@homeopilot360.com',
-    fromName: 'HomeoPilot 360',
-    imapHost: 'imap.hostinger.com',
-    imapPort: 993,
-    imapSecure: true,
-    popHost: 'pop.hostinger.com',
-    popPort: 995,
-    popSecure: true,
+    sendMethod: process.env.MAIL_SEND_METHOD || 'api',
+    apiToken: process.env.MAILBOX_API_TOKEN || 'ca5694e04833ec07a5a65dbe06af56952c3e1fb04cc66e546b50fc5c84464aaf',
+    mailboxId: process.env.MAILBOX_ID || 'ACfb7e2a4063af9612b30d0a193ade',
+    smtpHost: process.env.SMTP_HOST || 'smtp.hostinger.com',
+    smtpPort: parseInt(process.env.SMTP_PORT || '465', 10),
+    smtpSecure: process.env.SMTP_SECURE !== 'false',
+    smtpUser: process.env.SMTP_USER || 'therapie@homeopilot360.com',
+    smtpPassword: process.env.SMTP_PASSWORD || 'Othonospet@19071963',
+    fromEmail: process.env.FROM_EMAIL || 'therapie@homeopilot360.com',
+    fromName: process.env.FROM_NAME || 'HomeoPilot 360',
+    imapHost: process.env.IMAP_HOST || 'imap.hostinger.com',
+    imapPort: parseInt(process.env.IMAP_PORT || '993', 10),
+    imapSecure: process.env.IMAP_SECURE !== 'false',
+    popHost: process.env.POP_HOST || 'pop.hostinger.com',
+    popPort: parseInt(process.env.POP_PORT || '995', 10),
+    popSecure: process.env.POP_SECURE !== 'false',
   };
 
   const ensureDataDir = () => {
