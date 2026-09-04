@@ -575,7 +575,23 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
       anamnesisQuestions: questions || [],
     });
     setClinicalAnalysis(patientCase.clinicalAnalysis || null);
+    if (patientCase.remedySuggestions && patientCase.remedySuggestions.length > 0) {
+      setAnalysisResults(patientCase.remedySuggestions.map(r => ({
+        name: r.name,
+        potency: r.potency,
+        score: r.score,
+        grade: (r.score >= 85 ? '1. Grad' : r.score >= 70 ? '2. Grad' : '3. Grad') as any,
+        keyIndicators: r.keyIndicators || [],
+        modalitiesMatch: [],
+        description: r.description,
+        materiaMedicaHint: '',
+      })));
+    } else {
+      setAnalysisResults([]);
+    }
     setCurrentStep(1);
+    setPanelTab('cases');
+    navigateTo('therapist', { therapistTab: 'cases', modal: null, replace: true });
   };
 
   const handleStartNewPatient = () => {
@@ -1443,7 +1459,10 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                         </div>
                         <button
                           type="button"
-                          onClick={() => setIsPatientSelectionModalOpen(true)}
+                          onClick={() => {
+                            openModal('patient_select');
+                            setIsPatientSelectionModalOpen(true);
+                          }}
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-[11px] font-semibold text-slate-700 hover:text-teal-800 hover:border-teal-300 shadow-2xs transition-colors cursor-pointer"
                         >
                           <Users className="w-3.5 h-3.5 text-teal-600" />

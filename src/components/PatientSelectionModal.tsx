@@ -203,7 +203,6 @@ export const PatientSelectionModal: React.FC<PatientSelectionModalProps> = ({
                         key={p.key}
                         onClick={() => {
                           onSelectPatient(p.primaryCase);
-                          onClose();
                         }}
                         className={`cursor-pointer transition-colors group ${
                           isSelected ? 'bg-teal-50/80 font-medium' : 'hover:bg-teal-50/40'
@@ -252,7 +251,6 @@ export const PatientSelectionModal: React.FC<PatientSelectionModalProps> = ({
                             onClick={(e) => {
                               e.stopPropagation();
                               onSelectPatient(p.primaryCase);
-                              onClose();
                             }}
                             className="px-3 py-1.5 rounded-lg bg-teal-600 group-hover:bg-teal-700 active:bg-teal-800 text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
                           >

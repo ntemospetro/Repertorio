@@ -325,7 +325,7 @@ export function navigateTo(
 }
 
 /**
- * Opens a modal and records it in the history stack, so browser Back closes it.
+ * Opens a modal and records it in the history state without changing views.
  */
 export function openModal(modalId: string): void {
   const current = parseHash(window.location.hash);
@@ -333,27 +333,22 @@ export function openModal(modalId: string): void {
     therapistTab: current.therapistTab,
     adminTab: current.adminTab,
     modal: modalId,
+    replace: true,
   });
 }
 
 /**
- * Closes the active modal in history.
+ * Closes the active modal in history safely on the current view.
  */
 export function closeModal(): void {
   const current = parseHash(window.location.hash);
-  if (!current.modal) return;
-
-  const state = window.history.state as AppNavigationState | null;
-  if (state && state.modal) {
-    // If the modal was pushed as a history step, go back 1 step
-    window.history.back();
-  } else {
-    // Otherwise replace state without modal
-    navigateTo(current.view, {
-      therapistTab: current.therapistTab,
-      adminTab: current.adminTab,
-      modal: null,
-      replace: true,
-    });
+  navigateTo(current.view, {
+    therapistTab: current.therapistTab,
+    adminTab: current.adminTab,
+    modal: null,
+    replace: true,
+  });
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('homoeo_action_set_modal', { detail: null }));
   }
 }
