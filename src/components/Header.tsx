@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ActiveView, Therapist } from '../types';
 import { isAdminLoggedIn, getSiteConfig } from '../services/storage';
+import { navigateTo } from '../services/navigation';
 import { useTranslation } from '../i18n/LanguageContext';
 import { LanguageSelector } from './LanguageSelector';
 import { 
@@ -49,7 +50,11 @@ export const Header: React.FC<HeaderProps> = ({
       }
     };
     window.addEventListener('homoeo_therapist_tab_changed', handleTabChange);
-    return () => window.removeEventListener('homoeo_therapist_tab_changed', handleTabChange);
+    window.addEventListener('homoeo_action_set_therapist_tab', handleTabChange);
+    return () => {
+      window.removeEventListener('homoeo_therapist_tab_changed', handleTabChange);
+      window.removeEventListener('homoeo_action_set_therapist_tab', handleTabChange);
+    };
   }, []);
 
   useEffect(() => {
@@ -319,6 +324,7 @@ export const Header: React.FC<HeaderProps> = ({
                   id="mobile-nav-tab-cases"
                   onClick={() => {
                     setActiveTherapistTab('cases');
+                    navigateTo('therapist', { therapistTab: 'cases' });
                     window.dispatchEvent(new CustomEvent('homoeo_action_set_therapist_tab', { detail: 'cases' }));
                     setMobileMenuOpen(false);
                   }}
@@ -341,6 +347,7 @@ export const Header: React.FC<HeaderProps> = ({
                   id="mobile-nav-tab-patients"
                   onClick={() => {
                     setActiveTherapistTab('patients');
+                    navigateTo('therapist', { therapistTab: 'patients' });
                     window.dispatchEvent(new CustomEvent('homoeo_action_set_therapist_tab', { detail: 'patients' }));
                     setMobileMenuOpen(false);
                   }}
@@ -363,6 +370,7 @@ export const Header: React.FC<HeaderProps> = ({
                   id="mobile-nav-tab-materiamedica"
                   onClick={() => {
                     setActiveTherapistTab('materiamedica');
+                    navigateTo('therapist', { therapistTab: 'materiamedica' });
                     window.dispatchEvent(new CustomEvent('homoeo_action_set_therapist_tab', { detail: 'materiamedica' }));
                     setMobileMenuOpen(false);
                   }}
@@ -385,6 +393,7 @@ export const Header: React.FC<HeaderProps> = ({
                   id="mobile-nav-tab-quickintake"
                   onClick={() => {
                     setActiveTherapistTab('quickintake');
+                    navigateTo('therapist', { therapistTab: 'quickintake' });
                     window.dispatchEvent(new CustomEvent('homoeo_action_set_therapist_tab', { detail: 'quickintake' }));
                     setMobileMenuOpen(false);
                   }}
@@ -410,6 +419,7 @@ export const Header: React.FC<HeaderProps> = ({
                   id="mobile-nav-tab-profile"
                   onClick={() => {
                     setActiveTherapistTab('profile');
+                    navigateTo('therapist', { therapistTab: 'profile' });
                     window.dispatchEvent(new CustomEvent('homoeo_action_set_therapist_tab', { detail: 'profile' }));
                     setMobileMenuOpen(false);
                   }}
@@ -432,6 +442,7 @@ export const Header: React.FC<HeaderProps> = ({
                   id="mobile-nav-tab-tariff"
                   onClick={() => {
                     setActiveTherapistTab('tariff');
+                    navigateTo('therapist', { therapistTab: 'tariff' });
                     window.dispatchEvent(new CustomEvent('homoeo_action_set_therapist_tab', { detail: 'tariff' }));
                     setMobileMenuOpen(false);
                   }}
@@ -454,6 +465,7 @@ export const Header: React.FC<HeaderProps> = ({
                   id="mobile-nav-tab-documentation"
                   onClick={() => {
                     setActiveTherapistTab('documentation');
+                    navigateTo('therapist', { therapistTab: 'documentation' });
                     window.dispatchEvent(new CustomEvent('homoeo_action_set_therapist_tab', { detail: 'documentation' }));
                     setMobileMenuOpen(false);
                   }}

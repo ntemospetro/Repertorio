@@ -12,6 +12,7 @@ import {
   getStoredAdminTab,
   setStoredAdminTab
 } from '../services/storage';
+import { navigateTo } from '../services/navigation';
 import { useTranslation } from '../i18n/LanguageContext';
 import { PackagePlansManager } from './PackagePlansManager';
 import { TariffAssignModal } from './TariffAssignModal';
@@ -61,9 +62,25 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<'therapists' | 'packages' | 'terms' | 'config' | 'requests'>(() => getStoredAdminTab());
 
+  const handleSelectTab = (tab: 'therapists' | 'packages' | 'terms' | 'config' | 'requests') => {
+    setActiveTab(tab);
+    navigateTo('admin', { adminTab: tab });
+  };
+
   useEffect(() => {
     setStoredAdminTab(activeTab);
   }, [activeTab]);
+
+  useEffect(() => {
+    const handleAdminTabChange = (e: Event) => {
+      const tab = (e as CustomEvent).detail;
+      if (tab && ['therapists', 'packages', 'terms', 'config', 'requests'].includes(tab)) {
+        setActiveTab(tab);
+      }
+    };
+    window.addEventListener('homoeo_action_set_admin_tab', handleAdminTabChange);
+    return () => window.removeEventListener('homoeo_action_set_admin_tab', handleAdminTabChange);
+  }, []);
   const [therapists, setTherapists] = useState<Therapist[]>(getTherapists());
   const [packages, setPackages] = useState<PackagePlan[]>(getPackagePlans());
   const [adminCreds, setAdminCreds] = useState(getAdminCredentials());
@@ -263,7 +280,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           
           <div className="space-y-1">
             <button
-              onClick={() => setActiveTab('therapists')}
+              onClick={() => handleSelectTab('therapists')}
               className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center justify-between transition-colors cursor-pointer ${
                 activeTab === 'therapists'
                   ? 'bg-slate-900 text-white shadow-sm'
@@ -282,7 +299,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </button>
 
             <button
-              onClick={() => setActiveTab('packages')}
+              onClick={() => handleSelectTab('packages')}
               className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center justify-between transition-colors cursor-pointer ${
                 activeTab === 'packages'
                   ? 'bg-slate-900 text-white shadow-sm'
@@ -301,7 +318,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </button>
             
             <button
-              onClick={() => setActiveTab('requests')}
+              onClick={() => handleSelectTab('requests')}
               className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center justify-between transition-colors cursor-pointer ${
                 activeTab === 'requests'
                   ? 'bg-teal-50 text-teal-700 shadow-sm'
@@ -322,7 +339,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </button>
 
             <button
-              onClick={() => setActiveTab('terms')}
+              onClick={() => handleSelectTab('terms')}
               className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center justify-between transition-colors cursor-pointer ${
                 activeTab === 'terms'
                   ? 'bg-slate-900 text-white shadow-sm'
@@ -336,7 +353,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </button>
 
             <button
-              onClick={() => setActiveTab('config')}
+              onClick={() => handleSelectTab('config')}
               className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center justify-between transition-colors cursor-pointer ${
                 activeTab === 'config'
                   ? 'bg-slate-900 text-white shadow-sm'

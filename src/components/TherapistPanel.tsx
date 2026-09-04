@@ -9,6 +9,7 @@ import {
   getStoredTherapistTab,
   setStoredTherapistTab
 } from '../services/storage';
+import { navigateTo, openModal, closeModal } from '../services/navigation';
 import { runHomeopathyAnalysis, HomeoRemedyResult } from '../services/homeopathyEngine';
 import { generateFullClinicalAnalysis } from '../services/clinicalAnalysisService';
 import { 
@@ -161,6 +162,11 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
   const { t, language } = useTranslation();
   const [panelTab, setPanelTab] = useState<'cases' | 'patients' | 'materiamedica' | 'quickintake' | 'documentation' | 'profile' | 'tariff'>(() => getStoredTherapistTab());
   const [currentStep, setCurrentStep] = useState<number>(1);
+
+  const handleSelectTab = (tab: 'cases' | 'patients' | 'materiamedica' | 'quickintake' | 'documentation' | 'profile' | 'tariff') => {
+    setPanelTab(tab);
+    navigateTo('therapist', { therapistTab: tab });
+  };
 
   useEffect(() => {
     setStoredTherapistTab(panelTab);
@@ -639,14 +645,24 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
       }
     };
     const handleOpenDirectoryEvent = () => {
-      setPanelTab('cases');
+      handleSelectTab('cases');
+      openModal('patient_select');
       setIsPatientSelectionModalOpen(true);
     };
     const handleSetTabEvent = (e: Event) => {
-      const customEvent = e as CustomEvent<'cases' | 'patients' | 'materiamedica' | 'documentation' | 'profile' | 'tariff'>;
+      const customEvent = e as CustomEvent<'cases' | 'patients' | 'materiamedica' | 'quickintake' | 'documentation' | 'profile' | 'tariff'>;
       if (customEvent.detail) {
         setPanelTab(customEvent.detail);
       }
+    };
+    const handleModalEvent = (e: Event) => {
+      const modalId = (e as CustomEvent<string | null>).detail;
+      setIsAnalysisModalOpen(modalId === 'analysis');
+      setIsExtendedAnamnesisWizardOpen(modalId === 'wizard');
+      setIsFindingsModalOpen(modalId === 'findings');
+      setIsMedicationsModalOpen(modalId === 'medications');
+      setIsPatientSelectionModalOpen(modalId === 'patient_select');
+      setIsUpgradeModalOpen(modalId === 'upgrade');
     };
     const handleLogoutEvent = () => {
       if (onLogout) {
@@ -657,11 +673,13 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
     window.addEventListener('homoeo_action_new_patient', handleNewPatientEvent);
     window.addEventListener('homoeo_action_open_patient_directory', handleOpenDirectoryEvent);
     window.addEventListener('homoeo_action_set_therapist_tab', handleSetTabEvent);
+    window.addEventListener('homoeo_action_set_modal', handleModalEvent);
     window.addEventListener('homoeo_action_therapist_logout', handleLogoutEvent);
     return () => {
       window.removeEventListener('homoeo_action_new_patient', handleNewPatientEvent);
       window.removeEventListener('homoeo_action_open_patient_directory', handleOpenDirectoryEvent);
       window.removeEventListener('homoeo_action_set_therapist_tab', handleSetTabEvent);
+      window.removeEventListener('homoeo_action_set_modal', handleModalEvent);
       window.removeEventListener('homoeo_action_therapist_logout', handleLogoutEvent);
     };
   }, [onLogout]);
@@ -1044,7 +1062,7 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
           <div className="space-y-1">
             <button
               type="button"
-              onClick={() => setPanelTab('cases')}
+              onClick={() => handleSelectTab('cases')}
               className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-3 transition-colors cursor-pointer ${
                 panelTab === 'cases'
                   ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/50'
@@ -1057,7 +1075,7 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
 
             <button
               type="button"
-              onClick={() => setPanelTab('patients')}
+              onClick={() => handleSelectTab('patients')}
               className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-3 transition-colors cursor-pointer ${
                 panelTab === 'patients'
                   ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/50'
@@ -1071,7 +1089,7 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
             <button
               type="button"
               id="sidebar-nav-tab-materiamedica"
-              onClick={() => setPanelTab('materiamedica')}
+              onClick={() => handleSelectTab('materiamedica')}
               className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-3 transition-colors cursor-pointer ${
                 panelTab === 'materiamedica'
                   ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/50'
@@ -1085,7 +1103,7 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
             <button
               type="button"
               id="sidebar-nav-tab-quickintake"
-              onClick={() => setPanelTab('quickintake')}
+              onClick={() => handleSelectTab('quickintake')}
               className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-3 transition-colors cursor-pointer ${
                 panelTab === 'quickintake'
                   ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/50'
@@ -1112,7 +1130,7 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
           
           <button 
             type="button"
-            onClick={() => setPanelTab('profile')}
+            onClick={() => handleSelectTab('profile')}
             className={`w-full text-left px-3.5 py-2 rounded-xl text-xs sm:text-sm font-medium flex items-center gap-3 transition-colors cursor-pointer ${
               panelTab === 'profile'
                 ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/50'
@@ -1125,7 +1143,7 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
           
           <button 
             type="button"
-            onClick={() => setPanelTab('tariff')}
+            onClick={() => handleSelectTab('tariff')}
             className={`w-full text-left px-3.5 py-2 rounded-xl text-xs sm:text-sm font-medium flex items-center gap-3 transition-colors cursor-pointer ${
               panelTab === 'tariff'
                 ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/50'
@@ -1138,7 +1156,7 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
 
           <button
             type="button"
-            onClick={() => setPanelTab('documentation')}
+            onClick={() => handleSelectTab('documentation')}
             className={`w-full text-left px-3.5 py-2 rounded-xl text-xs sm:text-sm font-medium flex items-center gap-3 transition-colors cursor-pointer ${
               panelTab === 'documentation'
                 ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/50'
@@ -1193,7 +1211,7 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
           therapist={therapist}
           onOpenCaseInWorkspace={(selectedCase) => {
             handleSelectCase(selectedCase);
-            setPanelTab('cases');
+            handleSelectTab('cases');
           }}
           onNewCaseForPatient={(patientName, defaults) => {
             handleNewCase();
@@ -1202,7 +1220,7 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
               patientName,
               ...defaults,
             }));
-            setPanelTab('cases');
+            handleSelectTab('cases');
           }}
         />
       )}
@@ -1211,14 +1229,14 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
       {panelTab === 'materiamedica' && (
         <MateriaMedicaView
           onSelectRemedyForCase={(remedyName, potency) => {
-            setPanelTab('cases');
+            handleSelectTab('cases');
             setCurrentCase(prev => ({
               ...prev,
               repertorisationErgebnis: remedyName,
               verordnungPotenz: potency,
             }));
           }}
-          onGoToAcuteIntake={() => setPanelTab('quickintake')}
+          onGoToAcuteIntake={() => handleSelectTab('quickintake')}
         />
       )}
 
@@ -1226,21 +1244,21 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
       {panelTab === 'quickintake' && (
         <AcuteIntakeView
           onSelectRemedyForCase={(remedyName, potency) => {
-            setPanelTab('cases');
+            handleSelectTab('cases');
             setCurrentCase(prev => ({
               ...prev,
               repertorisationErgebnis: remedyName,
               verordnungPotenz: potency,
             }));
           }}
-          onGoToMateriaMedica={() => setPanelTab('materiamedica')}
+          onGoToMateriaMedica={() => handleSelectTab('materiamedica')}
         />
       )}
 
       {/* TAB CONTENT 5: USER MANUAL & DOCUMENTATION */}
       {panelTab === 'documentation' && (
         <UserManualView
-          onNavigateTab={(tab) => setPanelTab(tab)}
+          onNavigateTab={(tab) => handleSelectTab(tab)}
           onGoToAdmin={onGoToAdmin}
         />
       )}
@@ -1279,7 +1297,10 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                     <button
                       type="button"
                       id="btn-open-patient-selection-modal"
-                      onClick={() => setIsPatientSelectionModalOpen(true)}
+                      onClick={() => {
+                        openModal('patient_select');
+                        setIsPatientSelectionModalOpen(true);
+                      }}
                       title={t('patientFilesTab')}
                       className="flex items-center gap-1 text-xs font-semibold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded-md transition-colors cursor-pointer border border-slate-200"
                     >
@@ -2267,7 +2288,10 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                             </p>
                             <button
                               type="button"
-                              onClick={() => setIsExtendedAnamnesisWizardOpen(true)}
+                              onClick={() => {
+                                openModal('wizard');
+                                setIsExtendedAnamnesisWizardOpen(true);
+                              }}
                               className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold transition-colors shadow-sm cursor-pointer"
                             >
                               {hasExtAnamnesis ? (
@@ -2323,7 +2347,10 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                             </p>
                             <button
                               type="button"
-                              onClick={() => setIsFindingsModalOpen(true)}
+                              onClick={() => {
+                                openModal('findings');
+                                setIsFindingsModalOpen(true);
+                              }}
                               className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold transition-colors shadow-sm cursor-pointer"
                             >
                               {hasBefund ? (
@@ -2367,7 +2394,10 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                             </p>
                             <button
                               type="button"
-                              onClick={() => setIsMedicationsModalOpen(true)}
+                              onClick={() => {
+                                openModal('medications');
+                                setIsMedicationsModalOpen(true);
+                              }}
                               className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold transition-colors shadow-sm cursor-pointer"
                             >
                               {hasMeds ? (
@@ -3129,7 +3159,10 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
       {/* Extended Anamnesis Questionnaire Modal */}
       <ExtendedAnamnesisWizard
         isOpen={isExtendedAnamnesisWizardOpen}
-        onClose={() => setIsExtendedAnamnesisWizardOpen(false)}
+        onClose={() => {
+          closeModal();
+          setIsExtendedAnamnesisWizardOpen(false);
+        }}
         initialData={currentCase.extendedAnamnesis || {}}
         onSave={(data) => {
           setCurrentCase(prev => ({ ...prev, extendedAnamnesis: data }));
@@ -3142,7 +3175,10 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
       {/* Clinical Findings Wizard Modal */}
       <FindingsWizardModal
         isOpen={isFindingsModalOpen}
-        onClose={() => setIsFindingsModalOpen(false)}
+        onClose={() => {
+          closeModal();
+          setIsFindingsModalOpen(false);
+        }}
         befundDetails={currentCase.befundDetails || {}}
         onSave={(data) => {
           setCurrentCase(prev => ({
@@ -3159,7 +3195,10 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
       {/* Medications Wizard Modal */}
       <MedicationsWizardModal
         isOpen={isMedicationsModalOpen}
-        onClose={() => setIsMedicationsModalOpen(false)}
+        onClose={() => {
+          closeModal();
+          setIsMedicationsModalOpen(false);
+        }}
         nimmtMedikamente={currentCase.nimmtMedikamente}
         medikamenteList={currentCase.medikamenteList || []}
         onSave={(data) => {
@@ -3176,7 +3215,10 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
 
       <CaseAnalysisModal
         isOpen={isAnalysisModalOpen}
-        onClose={() => setIsAnalysisModalOpen(false)}
+        onClose={() => {
+          closeModal();
+          setIsAnalysisModalOpen(false);
+        }}
         results={analysisResults}
         patientCase={currentCase}
         remainingAnalyses={remainingCount}
@@ -3185,16 +3227,23 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
       {/* Upgrade / Quota Lockout Modal */}
       <UpgradeModal
         isOpen={isUpgradeModalOpen}
-        onClose={() => setIsUpgradeModalOpen(false)}
+        onClose={() => {
+          closeModal();
+          setIsUpgradeModalOpen(false);
+        }}
         onGoToAdmin={onGoToAdmin}
       />
 
       {/* Patient / Customer Selection Modal */}
       <PatientSelectionModal
         isOpen={isPatientSelectionModalOpen}
-        onClose={() => setIsPatientSelectionModalOpen(false)}
+        onClose={() => {
+          closeModal();
+          setIsPatientSelectionModalOpen(false);
+        }}
         onSelectPatient={(patientCase) => {
           handleSelectCase(patientCase);
+          closeModal();
           setIsPatientSelectionModalOpen(false);
           showToast(t('toastPatientSelected', { name: patientCase.patientName || 'Patient' }) || `${patientCase.patientName || 'Patient'} geladen`);
         }}

@@ -11,6 +11,11 @@ import {
   getStoredActiveView,
   setStoredActiveView
 } from './services/storage';
+import { 
+  initNavigation, 
+  navigateTo, 
+  dispatchNavigationEvents 
+} from './services/navigation';
 import { LanguageProvider, useTranslation } from './i18n/LanguageContext';
 import { Header } from './components/Header';
 import { RegistrationView } from './components/RegistrationView';
@@ -21,7 +26,10 @@ import { AdminLogin } from './components/AdminLogin';
 import { LandingPage } from './components/LandingPage';
 
 function AppContent() {
-  const [currentView, setCurrentView] = useState<ActiveView>(() => getStoredActiveView());
+  const [currentView, setCurrentView] = useState<ActiveView>(() => {
+    const nav = initNavigation();
+    return nav.view;
+  });
   const [activeTherapist, setActiveTherapist] = useState<Therapist | null>(getActiveTherapist());
   const [isAdmin, setIsAdmin] = useState<boolean>(isAdminLoggedIn());
   const { t } = useTranslation();
@@ -33,6 +41,18 @@ function AppContent() {
 
   useEffect(() => {
     setStoredActiveView(currentView);
+  }, [currentView]);
+
+  // Synchronize browser history navigation changes
+  useEffect(() => {
+    const handleNavStateChange = (e: Event) => {
+      const customEvent = e as CustomEvent<{ view: ActiveView }>;
+      if (customEvent.detail?.view && customEvent.detail.view !== currentView) {
+        setCurrentView(customEvent.detail.view);
+      }
+    };
+    window.addEventListener('homoeo_navigation_state_changed', handleNavStateChange);
+    return () => window.removeEventListener('homoeo_navigation_state_changed', handleNavStateChange);
   }, [currentView]);
 
   useEffect(() => {
@@ -78,14 +98,19 @@ function AppContent() {
     return () => window.removeEventListener('homoeo_site_config_changed', updateFavicon);
   }, []);
 
+  const handleViewChange = (newView: ActiveView) => {
+    navigateTo(newView);
+    setCurrentView(newView);
+  };
+
   const handleRegistrationSuccess = (newTherapist: Therapist) => {
     setActiveTherapist(newTherapist);
-    setCurrentView('therapist');
+    handleViewChange('therapist');
   };
 
   const handleSwitchToTherapistFromAdmin = (therapistId: string) => {
     setActiveTherapist(getActiveTherapist());
-    setCurrentView('therapist');
+    handleViewChange('therapist');
   };
 
   const handleAdminLogout = () => {
@@ -98,7 +123,7 @@ function AppContent() {
       {/* Primary App Header */}
       <Header
         currentView={currentView}
-        onViewChange={setCurrentView}
+        onViewChange={handleViewChange}
         activeTherapist={activeTherapist}
       />
 
@@ -107,8 +132,8 @@ function AppContent() {
         {/* VIEW 0: LANDING PAGE */}
         {currentView === 'landing' && (
           <LandingPage 
-            onGetStarted={() => setCurrentView('register')}
-            onGoToLogin={() => setCurrentView('therapist')}
+            onGetStarted={() => handleViewChange('register')}
+            onGoToLogin={() => handleViewChange('therapist')}
           />
         )}
 
@@ -116,7 +141,7 @@ function AppContent() {
         {currentView === 'register' && (
           <RegistrationView
             onSuccess={handleRegistrationSuccess}
-            onGoToAdmin={() => setCurrentView('admin')}
+            onGoToAdmin={() => handleViewChange('admin')}
           />
         )}
 
@@ -125,21 +150,21 @@ function AppContent() {
           activeTherapist ? (
             <TherapistPanel
               therapist={activeTherapist}
-              onGoToAdmin={() => setCurrentView('admin')}
-              onGoToRegister={() => setCurrentView('register')}
+              onGoToAdmin={() => handleViewChange('admin')}
+              onGoToRegister={() => handleViewChange('register')}
               onLogout={() => {
                 setActiveTherapistId('');
                 setActiveTherapist(null);
-                setCurrentView('landing');
+                handleViewChange('landing');
               }}
             />
           ) : (
             <TherapistLogin
               onLoginSuccess={(loggedTherapist) => {
                 setActiveTherapist(loggedTherapist);
-                setCurrentView('therapist');
+                handleViewChange('therapist');
               }}
-              onGoToRegister={() => setCurrentView('register')}
+              onGoToRegister={() => handleViewChange('register')}
             />
           )
         )}
