@@ -1573,5 +1573,9 @@ export const es = {
   "adminUnlimitedAnalyses": "Análisis ilimitados",
   "adminFlatrateNoLimit": "Tarifa plana sin límites",
   "adminQuotaPerTherapist": "Cuota por terapeuta",
-  "defaultPracticeName": "Consulta Homeopática"
+  "defaultPracticeName": "Consulta Homeopática",
+  missingPatientNameTitle: "Campo obligatorio faltante",
+  missingPatientNameDesc: "Por favor, introduzca el nombre del paciente. El paciente no se puede guardar sin un nombre.",
+  btnCompleteEntry: "Completar datos",
+  btnCancelWithoutSaving: "Cancelar (no guardar)",
 };

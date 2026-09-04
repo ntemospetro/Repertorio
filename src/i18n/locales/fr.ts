@@ -1573,5 +1573,9 @@ export const fr = {
   "adminUnlimitedAnalyses": "Analyses illimitées",
   "adminFlatrateNoLimit": "Forfait illimité",
   "adminQuotaPerTherapist": "Quota par thérapeute",
-  "defaultPracticeName": "Cabinet Homéopathique"
+  "defaultPracticeName": "Cabinet Homéopathique",
+  missingPatientNameTitle: "Champ obligatoire manquant",
+  missingPatientNameDesc: "Veuillez saisir le nom du patient. Le patient ne peut pas être enregistré sans nom.",
+  btnCompleteEntry: "Compléter la saisie",
+  btnCancelWithoutSaving: "Annuler (ne rien enregistrer)",
 };

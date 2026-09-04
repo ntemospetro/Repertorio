@@ -1580,4 +1580,8 @@ export const de = {
   adminFlatrateNoLimit: "Flatrate ohne Begrenzung",
   adminQuotaPerTherapist: "Kontingent pro Therapeut",
   defaultPracticeName: "Homöopathische Praxis",
+  missingPatientNameTitle: "Pflichtangabe fehlt",
+  missingPatientNameDesc: "Bitte geben Sie den Namen des Patienten ein. Ohne Namen kann der Patient nicht gespeichert werden.",
+  btnCompleteEntry: "Eingabe vervollständigen",
+  btnCancelWithoutSaving: "Abbrechen (nichts speichern)",
 };

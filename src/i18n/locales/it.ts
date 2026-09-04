@@ -1573,5 +1573,9 @@ export const it = {
   "adminUnlimitedAnalyses": "Analisi illimitate",
   "adminFlatrateNoLimit": "Tariffa flat senza limiti",
   "adminQuotaPerTherapist": "Quota per terapeuta",
-  "defaultPracticeName": "Studio Omeopatico"
+  "defaultPracticeName": "Studio Omeopatico",
+  missingPatientNameTitle: "Campo obbligatorio mancante",
+  missingPatientNameDesc: "Si prega di inserire il nome del paziente. Il paziente non può essere salvato senza un nome.",
+  btnCompleteEntry: "Completa l'inserimento",
+  btnCancelWithoutSaving: "Annulla (non salvare)",
 };

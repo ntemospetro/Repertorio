@@ -1573,5 +1573,9 @@ export const ru = {
   "adminUnlimitedAnalyses": "Неограниченные анализы",
   "adminFlatrateNoLimit": "Безлимитный тариф",
   "adminQuotaPerTherapist": "Квота на терапевта",
-  "defaultPracticeName": "Гомеопатическая практика"
+  "defaultPracticeName": "Гомеопатическая практика",
+  missingPatientNameTitle: "Обязательное поле не заполнено",
+  missingPatientNameDesc: "Пожалуйста, введите имя пациента. Пациент не может быть сохранен без имени.",
+  btnCompleteEntry: "Заполнить данные",
+  btnCancelWithoutSaving: "Отмена (не сохранять)",
 };

@@ -1580,4 +1580,8 @@ export const en = {
   adminFlatrateNoLimit: "Flatrate without limits",
   adminQuotaPerTherapist: "Quota per therapist",
   defaultPracticeName: "Homeopathic Practice",
+  missingPatientNameTitle: "Required field missing",
+  missingPatientNameDesc: "Please enter the patient's name. The patient cannot be saved without a name.",
+  btnCompleteEntry: "Complete entry",
+  btnCancelWithoutSaving: "Cancel (do not save)",
 };

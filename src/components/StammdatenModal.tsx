@@ -13,7 +13,8 @@ import {
   Plus, 
   Trash2, 
   X, 
-  Check 
+  Check,
+  AlertCircle
 } from 'lucide-react';
 import { PatientCase, PatientChild } from '../types';
 import { useTranslation } from '../i18n/LanguageContext';
@@ -35,9 +36,11 @@ export const StammdatenModal: React.FC<StammdatenModalProps> = ({
   const { t } = useTranslation();
 
   const [formData, setFormData] = useState<Partial<PatientCase>>({});
+  const [showValidationAlert, setShowValidationAlert] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
+      setShowValidationAlert(false);
       setFormData({
         patientName: initialData.patientName || '',
         patientBirthDate: initialData.patientBirthDate || '',
@@ -161,6 +164,10 @@ export const StammdatenModal: React.FC<StammdatenModalProps> = ({
   };
 
   const handleSave = () => {
+    if (!formData.patientName || !formData.patientName.trim()) {
+      setShowValidationAlert(true);
+      return;
+    }
     onSave(formData);
     onClose();
   };
@@ -762,6 +769,44 @@ export const StammdatenModal: React.FC<StammdatenModalProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Validation Alert Modal - Missing required patient name */}
+      {showValidationAlert && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-md w-full p-6 text-center space-y-4 animate-in zoom-in-95 duration-150">
+            <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center mx-auto shadow-inner">
+              <AlertCircle className="w-6 h-6" />
+            </div>
+            <div className="space-y-1.5">
+              <h4 className="text-base font-bold text-slate-900 font-serif">
+                {t('missingPatientNameTitle')}
+              </h4>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                {t('missingPatientNameDesc')}
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowValidationAlert(false);
+                  onClose();
+                }}
+                className="w-full sm:w-1/2 px-4 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold transition-colors cursor-pointer"
+              >
+                {t('btnCancelWithoutSaving')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowValidationAlert(false)}
+                className="w-full sm:w-1/2 px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition-colors cursor-pointer shadow-xs"
+              >
+                {t('btnCompleteEntry')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

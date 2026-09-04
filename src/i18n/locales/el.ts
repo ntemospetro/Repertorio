@@ -1573,5 +1573,9 @@ export const el = {
   "adminUnlimitedAnalyses": "Απεριόριστες αναλύσεις",
   "adminFlatrateNoLimit": "Χωρίς όρια",
   "adminQuotaPerTherapist": "Όριο ανά θεραπευτή",
-  "defaultPracticeName": "Ομοιοπαθητικό Ιατρείο"
+  "defaultPracticeName": "Ομοιοπαθητικό Ιατρείο",
+  missingPatientNameTitle: "Λείπει υποχρεωτικό πεδίο",
+  missingPatientNameDesc: "Παρακαλώ εισάγετε το όνομα του ασθενούς. Ο ασθενής δεν μπορεί να αποθηκευτεί χωρίς όνομα.",
+  btnCompleteEntry: "Συμπλήρωση στοιχείων",
+  btnCancelWithoutSaving: "Ακύρωση (χωρίς αποθήκευση)",
 };
