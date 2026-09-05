@@ -2,18 +2,14 @@
     RewriteEngine On
     RewriteBase /
 
-    # 1. API Route rewriting: Pass all /api/ requests to api/index.php
-    RewriteCond %{REQUEST_URI} ^/api/ [NC]
-    RewriteRule ^api/(.*)$ api/index.php/$1 [QSA,L]
+    # 1. API Route rewriting: Pass all /api/* requests to api/index.php?route=*
+    RewriteRule ^api/(.*)$ api/index.php?route=$1 [QSA,L]
 
     # 2. SPA client-side fallback: serve index.html for any route that is not an existing file or directory
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteRule ^ index.html [L]
 </IfModule>
-
-# Security: prevent directory listing
-Options -Indexes
 
 # Character encoding
 AddDefaultCharset UTF-8

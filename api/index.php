@@ -3,14 +3,26 @@
  * =========================================================================
  * Hostinger PHP API Bridge für Live-Medikamentensuche (homeopilot360.com)
  * =========================================================================
- * Unterstützt:
- * - GET/POST /api/medications/search?q=...
- * - GET/POST /api/medications/details?name=...&lang=...
- * - POST /api/medications/translate
- * - GET /api/health oder /api/status
  */
 
-// Keine HTML-Fehlermeldungen im JSON-Output ausgeben
+// Fehler abfangen & sauberes JSON statt Apache 500 HTML-Fehlerseite ausgeben
+register_shutdown_function(function() {
+    $error = error_get_last();
+    if ($error && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
+        if (!headers_sent()) {
+            header('Content-Type: application/json; charset=utf-8');
+            header('Access-Control-Allow-Origin: *');
+        }
+        echo json_encode([
+            'status' => 'error',
+            'error' => $error['message'],
+            'file' => basename($error['file']),
+            'line' => $error['line']
+        ]);
+        exit;
+    }
+});
+
 ini_set('display_errors', '0');
 error_reporting(0);
 
@@ -21,7 +33,7 @@ header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
 
 // Preflight OPTIONS Request direkt beantworten
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);
     exit;
 }
@@ -33,13 +45,11 @@ function getMedicationsDbPath() {
     $candidates = [
         __DIR__ . '/../data/medications_db.json',
         __DIR__ . '/data/medications_db.json',
-        __DIR__ . '/../../data/medications_db.json',
-        dirname(__DIR__, 2) . '/data/medications_db.json'
+        __DIR__ . '/../../data/medications_db.json'
     ];
     foreach ($candidates as $c) {
         if (file_exists($c)) return $c;
     }
-    // Fallback: Default-Ordner erzeugen
     $defaultDir = __DIR__ . '/../data';
     if (!is_dir($defaultDir)) {
         @mkdir($defaultDir, 0755, true);
@@ -51,8 +61,7 @@ function getTranslationsDbPath() {
     $candidates = [
         __DIR__ . '/../data/medication_translations.json',
         __DIR__ . '/data/medication_translations.json',
-        __DIR__ . '/../../data/medication_translations.json',
-        dirname(__DIR__, 2) . '/data/medication_translations.json'
+        __DIR__ . '/../../data/medication_translations.json'
     ];
     foreach ($candidates as $c) {
         if (file_exists($c)) return $c;
@@ -74,10 +83,8 @@ function loadMedicationsDatabase() {
 }
 
 function saveToMedicationsDatabase($items) {
-    if (empty($items)) return 0;
-    if (!is_array($items)) return 0;
+    if (empty($items) || !is_array($items)) return 0;
     
-    // Falls ein einzelnes Objekt übergeben wurde
     if (isset($items['name'])) {
         $items = [$items];
     }
@@ -142,7 +149,7 @@ function saveMedicationTranslation($key, $text) {
 function getGeminiKey() {
     $configFile = __DIR__ . '/config.php';
     if (file_exists($configFile)) {
-        $key = include $configFile;
+        $key = @include $configFile;
         if (!empty($key) && is_string($key)) return trim($key);
     }
     return getenv('GEMINI_API_KEY') ?: ($_ENV['GEMINI_API_KEY'] ?? ($_SERVER['GEMINI_API_KEY'] ?? ''));
@@ -249,7 +256,6 @@ function extractJsonFromText($text) {
     $parsed = @json_decode($clean, true);
     if ($parsed !== null) return $parsed;
 
-    // Suche nach Klammern [...]
     $firstBracket = strpos($clean, '[');
     $lastBracket = strrpos($clean, ']');
     if ($firstBracket !== false && $lastBracket !== false && $lastBracket > $firstBracket) {
@@ -258,7 +264,6 @@ function extractJsonFromText($text) {
         if ($parsed !== null) return $parsed;
     }
 
-    // Suche nach geschweiften Klammern {...}
     $firstBrace = strpos($clean, '{');
     $lastBrace = strrpos($clean, '}');
     if ($firstBrace !== false && $lastBrace !== false && $lastBrace > $firstBrace) {
@@ -282,19 +287,15 @@ function getBaseMedName($name) {
 // -------------------------------------------------------------------------
 // Ermittlung der Route
 // -------------------------------------------------------------------------
-$uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-$pathInfo = isset($_SERVER['PATH_INFO']) ? $_SERVER['PATH_INFO'] : '';
-
-// Normalisiere Route
 $route = '';
-if (!empty($pathInfo)) {
-    $route = trim($pathInfo, '/');
+if (!empty($_GET['route'])) {
+    $route = trim($_GET['route'], '/');
 } elseif (!empty($_GET['action'])) {
     $route = trim($_GET['action'], '/');
-} elseif (!empty($_GET['route'])) {
-    $route = trim($_GET['route'], '/');
+} elseif (isset($_SERVER['PATH_INFO']) && !empty($_SERVER['PATH_INFO'])) {
+    $route = trim($_SERVER['PATH_INFO'], '/');
 } else {
-    // Extrahiere aus URI
+    $uri = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH);
     $cleanUri = preg_replace('#^/api/#', '', $uri);
     $cleanUri = preg_replace('#^api/#', '', $cleanUri);
     $cleanUri = preg_replace('#^index\.php/#', '', $cleanUri);
@@ -348,7 +349,6 @@ if ($route === 'medications/search' || $route === 'search') {
         }
     }
 
-    // Wenn genaue und vollständige Treffer vorliegen, direkt zurückgeben
     if (!empty($matches)) {
         echo json_encode([
             'results' => $matches,
@@ -414,7 +414,6 @@ Antworte AUSSCHLIESSLICH mit einem validen JSON-Array:
             }
 
             if (!empty($newItems)) {
-                // Schritt 3: In Datenbank speichern
                 saveToMedicationsDatabase($newItems);
                 echo json_encode([
                     'results' => $newItems,
@@ -427,7 +426,6 @@ Antworte AUSSCHLIESSLICH mit einem validen JSON-Array:
         }
     }
 
-    // Fallback: matches oder leeres Array
     echo json_encode([
         'results' => $matches,
         'fromDatabase' => true,
@@ -469,7 +467,6 @@ if ($route === 'medications/details' || $route === 'details') {
         }
     }
 
-    // Falls nicht gefunden und Gemini vorhanden: online recherchieren
     if (!$found) {
         $apiKey = getGeminiKey();
         if (!empty($apiKey)) {
@@ -489,7 +486,6 @@ if ($route === 'medications/details' || $route === 'details') {
     }
 
     if ($found) {
-        // Übersetzung falls Zielsprache nicht Deutsch
         if ($lang !== 'de' && !empty($found['monographText'])) {
             $directKey = strtolower(trim($found['name'])) . "_{$lang}";
             $baseKey = getBaseMedName($found['name']) . "_{$lang}";
@@ -595,7 +591,6 @@ if ($route === 'medications/translate' || $route === 'translate') {
         exit;
     }
 
-    // Fallback: Originaltext
     echo json_encode(['translatedText' => $text, 'targetLang' => $targetLang, 'cached' => false]);
     exit;
 }

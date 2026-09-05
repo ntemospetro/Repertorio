@@ -26,18 +26,19 @@ if (empty($GEMINI_API_KEY)) {
     $env_candidates = [
         __DIR__ . '/.env',
         __DIR__ . '/../.env',
-        __DIR__ . '/../../.env',
-        dirname(__DIR__, 2) . '/.env'
+        __DIR__ . '/../../.env'
     ];
     foreach ($env_candidates as $env_file) {
         if (file_exists($env_file) && is_readable($env_file)) {
-            $lines = file($env_file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-            foreach ($lines as $line) {
-                $trimmed = trim($line);
-                if (strpos($trimmed, 'GEMINI_API_KEY=') === 0) {
-                    $GEMINI_API_KEY = trim(substr($trimmed, strlen('GEMINI_API_KEY=')));
-                    $GEMINI_API_KEY = trim($GEMINI_API_KEY, '"\'');
-                    break 2;
+            $lines = @file($env_file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+            if (is_array($lines)) {
+                foreach ($lines as $line) {
+                    $trimmed = trim($line);
+                    if (strpos($trimmed, 'GEMINI_API_KEY=') === 0) {
+                        $GEMINI_API_KEY = trim(substr($trimmed, strlen('GEMINI_API_KEY=')));
+                        $GEMINI_API_KEY = trim($GEMINI_API_KEY, '"\'');
+                        break 2;
+                    }
                 }
             }
         }
