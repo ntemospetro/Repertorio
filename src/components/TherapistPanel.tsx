@@ -198,6 +198,26 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
   const [saveToast, setSaveToast] = useState<string | null>(null);
   const hauptbeschwerdeRef = useRef<HTMLTextAreaElement>(null);
 
+  // Collapsible sidebar user menu state
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(() => 
+    ['profile', 'tariff', 'documentation'].includes(getStoredTherapistTab())
+  );
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setIsUserMenuOpen(false);
+      }
+    };
+    if (isUserMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isUserMenuOpen]);
+
   // Step 6 (Summary) Accordion & Section Confirmation States
   const [summaryAccordionOpen, setSummaryAccordionOpen] = useState<{
     stammdaten: boolean;
@@ -1174,65 +1194,100 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
           </div>
         </div>
         
-        {/* Sidebar Footer - Cleanly flush and anchored at bottom */}
-        <div className="p-4 border-t border-slate-200 space-y-1 bg-slate-100 mt-auto shrink-0">
-          <div className="flex items-center gap-3 px-2.5 py-2.5 mb-1.5 bg-white/70 rounded-xl border border-slate-200/60 shadow-2xs">
-            <div className="w-9 h-9 rounded-full bg-teal-700 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs">
-              {therapist.vorname[0]}{therapist.nachname[0]}
-            </div>
-            <div className="overflow-hidden min-w-0">
-              <div className="text-xs font-bold text-slate-900 truncate">{therapist.vorname} {therapist.nachname}</div>
-              <div className="text-[11px] text-slate-500 truncate">{therapist.email}</div>
-            </div>
-          </div>
-          
-          <button 
-            type="button"
-            onClick={() => handleSelectTab('profile')}
-            className={`w-full text-left px-3.5 py-2 rounded-xl text-xs sm:text-sm font-medium flex items-center gap-3 transition-colors cursor-pointer ${
-              panelTab === 'profile'
-                ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/50'
-                : 'text-slate-600 hover:bg-slate-200/50 hover:text-slate-900'
-            }`}
-          >
-            <User className="w-4 h-4 text-slate-500" />
-            <span>{t('navProfile' as TranslationKey)}</span>
-          </button>
-          
-          <button 
-            type="button"
-            onClick={() => handleSelectTab('tariff')}
-            className={`w-full text-left px-3.5 py-2 rounded-xl text-xs sm:text-sm font-medium flex items-center gap-3 transition-colors cursor-pointer ${
-              panelTab === 'tariff'
-                ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/50'
-                : 'text-slate-600 hover:bg-slate-200/50 hover:text-slate-900'
-            }`}
-          >
-            <Settings className="w-4 h-4 text-slate-500" />
-            <span>{t('navSettings' as TranslationKey)}</span>
-          </button>
-
+        {/* Sidebar Footer - User Profile & Collapsible Menu */}
+        <div ref={userMenuRef} className="p-3 border-t border-slate-200 bg-slate-100 mt-auto shrink-0 relative">
           <button
             type="button"
-            onClick={() => handleSelectTab('documentation')}
-            className={`w-full text-left px-3.5 py-2 rounded-xl text-xs sm:text-sm font-medium flex items-center gap-3 transition-colors cursor-pointer ${
-              panelTab === 'documentation'
-                ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/50'
-                : 'text-slate-600 hover:bg-slate-200/50 hover:text-slate-900'
+            id="sidebar-user-menu-trigger"
+            onClick={() => setIsUserMenuOpen(prev => !prev)}
+            className={`w-full flex items-center gap-2.5 p-2 rounded-xl border transition-all text-left cursor-pointer group select-none ${
+              isUserMenuOpen
+                ? 'bg-white border-teal-400/80 shadow-xs ring-2 ring-teal-500/10'
+                : 'bg-white/80 hover:bg-white border-slate-200/80 hover:border-slate-300 shadow-2xs'
             }`}
+            aria-expanded={isUserMenuOpen}
+            aria-controls="sidebar-user-submenu"
+            aria-label={t('navProfile' as TranslationKey)}
           >
-            <FileText className="w-4 h-4 text-teal-600" />
-            <span>{t('tabDocumentation')}</span>
+            <div className="w-8 h-8 rounded-full bg-teal-700 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+              {therapist.vorname[0]}{therapist.nachname[0]}
+            </div>
+            <div className="overflow-hidden min-w-0 flex-1">
+              <div className="text-xs font-bold text-slate-900 truncate group-hover:text-teal-900 transition-colors">
+                {therapist.vorname} {therapist.nachname}
+              </div>
+              <div className="text-[11px] text-slate-500 truncate">
+                {therapist.email}
+              </div>
+            </div>
+            <ChevronDown 
+              className={`w-4 h-4 text-slate-400 group-hover:text-slate-700 transition-transform duration-250 shrink-0 ${
+                isUserMenuOpen ? 'rotate-180 text-teal-600' : ''
+              }`} 
+            />
           </button>
           
-          <button 
-            type="button"
-            onClick={() => onLogout && onLogout()}
-            className="w-full text-left px-3.5 py-2 rounded-xl text-xs sm:text-sm font-medium flex items-center gap-3 text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors cursor-pointer"
+          {/* Klappt nach unten auf */}
+          <div
+            id="sidebar-user-submenu"
+            className={`overflow-hidden transition-all duration-250 ease-in-out ${
+              isUserMenuOpen
+                ? 'max-h-64 opacity-100 mt-2 space-y-1'
+                : 'max-h-0 opacity-0 pointer-events-none mt-0'
+            }`}
           >
-            <LogOut className="w-4 h-4" />
-            <span>{t('navLogout' as TranslationKey)}</span>
-          </button>
+            <button 
+              type="button"
+              id="sidebar-nav-tab-profile"
+              onClick={() => handleSelectTab('profile')}
+              className={`w-full text-left px-3.5 py-2 rounded-xl text-xs sm:text-sm font-medium flex items-center gap-3 transition-colors cursor-pointer ${
+                panelTab === 'profile'
+                  ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/50'
+                  : 'text-slate-600 hover:bg-slate-200/50 hover:text-slate-900'
+              }`}
+            >
+              <User className="w-4 h-4 text-slate-500" />
+              <span>{t('navProfile' as TranslationKey)}</span>
+            </button>
+            
+            <button 
+              type="button"
+              id="sidebar-nav-tab-tariff"
+              onClick={() => handleSelectTab('tariff')}
+              className={`w-full text-left px-3.5 py-2 rounded-xl text-xs sm:text-sm font-medium flex items-center gap-3 transition-colors cursor-pointer ${
+                panelTab === 'tariff'
+                  ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/50'
+                  : 'text-slate-600 hover:bg-slate-200/50 hover:text-slate-900'
+              }`}
+            >
+              <Settings className="w-4 h-4 text-slate-500" />
+              <span>{t('navSettings' as TranslationKey)}</span>
+            </button>
+
+            <button
+              type="button"
+              id="sidebar-nav-tab-documentation"
+              onClick={() => handleSelectTab('documentation')}
+              className={`w-full text-left px-3.5 py-2 rounded-xl text-xs sm:text-sm font-medium flex items-center gap-3 transition-colors cursor-pointer ${
+                panelTab === 'documentation'
+                  ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/50'
+                  : 'text-slate-600 hover:bg-slate-200/50 hover:text-slate-900'
+              }`}
+            >
+              <FileText className="w-4 h-4 text-teal-600" />
+              <span>{t('tabDocumentation')}</span>
+            </button>
+            
+            <button 
+              type="button"
+              id="sidebar-nav-logout"
+              onClick={() => onLogout && onLogout()}
+              className="w-full text-left px-3.5 py-2 rounded-xl text-xs sm:text-sm font-medium flex items-center gap-3 text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors cursor-pointer"
+            >
+              <LogOut className="w-4 h-4" />
+              <span>{t('navLogout' as TranslationKey)}</span>
+            </button>
+          </div>
         </div>
       </div>
 

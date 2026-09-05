@@ -222,10 +222,26 @@ async function startServer() {
     }
   };
 
+  // Helper to safely extract Gemini API key from various common environment variable names
+  const getGeminiApiKey = (): string | undefined => {
+    return (
+      process.env.GEMINI_API_KEY ||
+      process.env.GOOGLE_API_KEY ||
+      process.env.API_KEY ||
+      process.env.VITE_GEMINI_API_KEY ||
+      process.env.VITE_GOOGLE_API_KEY
+    );
+  };
+
   // API Routes
   app.post("/api/analyze", async (req, res) => {
     try {
       const { caseData, language = "de" } = req.body;
+
+      const apiKey = getGeminiApiKey();
+      if (!apiKey) {
+        return res.status(503).json({ error: "GEMINI_API_KEY is not configured" });
+      }
 
       const langNames: Record<string, string> = {
         de: "German (Deutsch)",
@@ -238,7 +254,7 @@ async function startServer() {
       };
       const targetLanguageName = langNames[language] || "German (Deutsch)";
       
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const ai = new GoogleGenAI({ apiKey });
       
       const prompt = `
 Du bist ein medizinischer Analyseassistent und homöopathischer Experte.
@@ -431,11 +447,12 @@ Beachte alle Details aus den Fall-Daten. Keine Daten erfinden, fehlende Daten al
       };
       const targetLanguageName = langNames[language] || "German (Deutsch)";
 
-      if (!process.env.GEMINI_API_KEY) {
+      const apiKey = getGeminiApiKey();
+      if (!apiKey) {
         return res.status(503).json({ error: "GEMINI_API_KEY is not configured" });
       }
 
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const ai = new GoogleGenAI({ apiKey });
       const prompt = `
 Du bist das logische Hintergrund-Modul (Backend-Engine) einer bestehenden Homöopathie-App. Deine Aufgabe ist es, den eingegebenen Patienten-Freitext (via Sprache oder Text) präzise zu analysieren und ein lückenloses, homöopathisches Ausschlussverfahren (Repertorisation) im Hintergrund zu berechnen.
 
@@ -645,12 +662,13 @@ Antworte AUSSCHLIESSLICH mit einem validen JSON-Objekt im folgenden Format (ohne
 
       const trimmedText = text.trim();
 
+      const apiKey = getGeminiApiKey();
       // If no API key or in case of offline fallback, evaluate quickly
-      if (!process.env.GEMINI_API_KEY) {
+      if (!apiKey) {
         return res.json({ isRelevant: true, reason: "no_api_key_passthrough" });
       }
 
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const ai = new GoogleGenAI({ apiKey });
       const prompt = `Du bist ein strenger medizinischer Relevanzfilter für eine professionelle Anwendung zur Erfassung von Informationen für eine medizinische bzw. homöopathische Anamnese und Befunddokumentation.
 
 AUFGABE:
@@ -778,11 +796,12 @@ oder
         return res.json({ results: medicationSearchCache.get(cacheKey) });
       }
 
-      if (!process.env.GEMINI_API_KEY) {
+      const apiKey = getGeminiApiKey();
+      if (!apiKey) {
         return res.json({ results: [] });
       }
 
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const ai = new GoogleGenAI({ apiKey });
       const prompt = `Führe eine vollständige Live-Suche im Internet nach existierenden realen Medikamenten und Präparaten durch, die zur Suchanfrage "${q}" passen (Handelsnamen in Deutschland/Österreich/Schweiz/international, Generika, Wirkstoffe, Fertigarzneimittel).
 Ermittle für bis zu 5 gefundene Medikamente aus dem Internet:
 - name: Offizieller Handelsname / Präparatename
@@ -847,11 +866,12 @@ Antworte AUSSCHLIESSLICH mit einem validen JSON-Array:
         return res.json({ details: medicationDetailsCache.get(cacheKey) });
       }
 
-      if (!process.env.GEMINI_API_KEY) {
+      const apiKey = getGeminiApiKey();
+      if (!apiKey) {
         return res.json({ details: null });
       }
 
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const ai = new GoogleGenAI({ apiKey });
       const prompt = `Führe eine vollständige und gründliche Live-Suche im Internet nach dem Medikament bzw. Wirkstoff "${name}" durch.
 Recherchiere alle medizinischen und pharmazeutischen Fakten aus verlässlichen Quellen:
 - name: Name des Medikaments / Präparats
@@ -912,9 +932,9 @@ Antworte AUSSCHLIESSLICH als valides JSON-Objekt:
     smtpHost: process.env.SMTP_HOST || 'smtp.hostinger.com',
     smtpPort: parseInt(process.env.SMTP_PORT || '465', 10),
     smtpSecure: process.env.SMTP_SECURE !== 'false',
-    smtpUser: process.env.SMTP_USER || 'therapie@homeopilot360.com',
-    smtpPassword: process.env.SMTP_PASSWORD || 'Othonospet@19071963',
-    fromEmail: process.env.FROM_EMAIL || 'therapie@homeopilot360.com',
+    smtpUser: process.env.SMTP_USER || process.env.EMAIL_USER || 'therapie@homeopilot360.com',
+    smtpPassword: process.env.SMTP_PASSWORD || process.env.EMAIL_PASS || process.env.EMAIL_PASSWORD || 'Othonospet@19071963',
+    fromEmail: process.env.FROM_EMAIL || process.env.EMAIL_USER || process.env.SMTP_USER || 'therapie@homeopilot360.com',
     fromName: process.env.FROM_NAME || 'HomeoPilot 360',
     imapHost: process.env.IMAP_HOST || 'imap.hostinger.com',
     imapPort: parseInt(process.env.IMAP_PORT || '993', 10),
