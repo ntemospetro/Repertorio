@@ -22,6 +22,10 @@ async function startServer() {
 
   app.use(express.json({ limit: "50mb" }));
 
+  app.get("/api/health", (req, res) => {
+    res.json({ status: "ok" });
+  });
+
   // Persistent Data Directory & File Paths
   const DATA_DIR = path.join(process.cwd(), 'data');
   const ADMIN_CONFIG_FILE = path.join(DATA_DIR, 'admin_config.json');
@@ -29,6 +33,28 @@ async function startServer() {
   const EMAIL_CONFIG_FILE = path.join(DATA_DIR, 'email_config.json');
   const TOKEN_USAGE_FILE = path.join(DATA_DIR, 'token_usage_logs.json');
   const TOKEN_RATES_FILE = path.join(DATA_DIR, 'token_rates.json');
+  const MEDICATION_TRANSLATIONS_FILE = path.join(DATA_DIR, 'medication_translations.json');
+
+  const getMedicationTranslations = (): Record<string, string> => {
+    ensureDataDir();
+    if (fs.existsSync(MEDICATION_TRANSLATIONS_FILE)) {
+      try {
+        return JSON.parse(fs.readFileSync(MEDICATION_TRANSLATIONS_FILE, 'utf-8'));
+      } catch {}
+    }
+    return {};
+  };
+
+  const saveMedicationTranslation = (key: string, text: string) => {
+    try {
+      ensureDataDir();
+      const map = getMedicationTranslations();
+      map[key] = text;
+      fs.writeFileSync(MEDICATION_TRANSLATIONS_FILE, JSON.stringify(map, null, 2), 'utf-8');
+    } catch (err) {
+      console.error("Error saving medication translation:", err);
+    }
+  };
 
   const DEFAULT_TOKEN_RATES = {
     inputPerMillionEur: 0.075,
@@ -829,12 +855,23 @@ oder
   app.get("/api/medications/details", async (req, res) => {
     try {
       const name = (req.query.name as string || '').trim();
+      const lang = (req.query.lang as string || 'de').trim();
       if (!name || name.length < 1) return res.status(400).json({ error: "Missing name" });
 
       const apiKey = getGeminiApiKey();
       const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
       const outcome = await run3StepMedicationDetails(name, ai, extractJsonFromText);
+
+      // If requested language is not German and details exist, check if translation is cached
+      if (outcome && outcome.details && lang && lang !== 'de') {
+        const cacheKey = `${name.toLowerCase().trim()}_${lang}`;
+        const cache = getMedicationTranslations();
+        if (cache[cacheKey]) {
+          outcome.details.monographText = cache[cacheKey];
+        }
+      }
+
       res.json(outcome);
     } catch (error) {
       console.error("[MedicationAssistant] API Details Error:", error);
@@ -848,6 +885,85 @@ oder
       } catch {
         res.status(500).json({ error: "Details lookup failed", details: null });
       }
+    }
+  });
+
+  // Dedicated translation endpoint for full clinical monograph into any app language
+  app.post("/api/medications/translate", async (req, res) => {
+    try {
+      const { text, targetLang = "de", medName } = req.body;
+      if (!text || typeof text !== 'string' || !text.trim()) {
+        return res.status(400).json({ error: "text is required" });
+      }
+
+      if (targetLang === "de") {
+        return res.json({ translatedText: text, targetLang: "de", cached: true });
+      }
+
+      const cacheKey = `${(medName || 'text').toLowerCase().trim()}_${targetLang}`;
+      const cache = getMedicationTranslations();
+      if (cache[cacheKey]) {
+        return res.json({ translatedText: cache[cacheKey], targetLang, cached: true });
+      }
+
+      const apiKey = getGeminiApiKey();
+      if (!apiKey) {
+        return res.status(503).json({ error: "GEMINI_API_KEY is not configured" });
+      }
+
+      const langNames: Record<string, string> = {
+        de: "German (Deutsch)",
+        en: "English",
+        el: "Greek (Ελληνικά)",
+        es: "Spanish (Español)",
+        fr: "French (Français)",
+        it: "Italian (Italiano)",
+        ru: "Russian (Русский)"
+      };
+      const targetLanguageName = langNames[targetLang] || "English";
+
+      const ai = new GoogleGenAI({ apiKey });
+      const prompt = `You are a licensed medical and pharmaceutical translator for clinical staff.
+Translate the following official medication monograph into ${targetLanguageName}.
+
+CRITICAL REQUIREMENTS:
+1. Maintain the exact 5-section structure and emoji headers:
+   📝 1. [Active substance and ingredients]
+   💊 2. [Dosage & administration]
+   ⚠️ 3. [Side effects]
+   🚫 4. [Contraindications]
+   ❌ 5. [Dangerous drug interactions]
+2. Preserve all numbers, dosages, units, and brand names.
+3. Translate all clinical warnings, side effect frequencies (very common, common, uncommon, rare, very rare), and contraindications accurately and completely.
+4. Output ONLY the translated monograph in ${targetLanguageName} without markdown code blocks, conversational comments, or explanations.
+
+Monograph text to translate:
+${text}`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-flash-latest",
+        contents: prompt
+      });
+
+      const translatedText = response.text ? response.text.trim() : "";
+      if (translatedText && translatedText.length > 50) {
+        saveMedicationTranslation(cacheKey, translatedText);
+
+        recordTokenUsage({
+          endpoint: '/api/medications/translate',
+          actionName: `Medikamenten-Monographie Übersetzung (${targetLang.toUpperCase()})`,
+          model: 'gemini-flash-latest',
+          promptTokens: response.usageMetadata?.promptTokenCount || 400,
+          candidatesTokens: response.usageMetadata?.candidatesTokenCount || 600
+        });
+
+        return res.json({ translatedText, targetLang, cached: false });
+      }
+
+      res.status(500).json({ error: "Empty translation result" });
+    } catch (err) {
+      console.error("[MedicationTranslation] Error:", err);
+      res.status(500).json({ error: "Translation failed" });
     }
   });
 

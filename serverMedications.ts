@@ -21,7 +21,12 @@ export interface StoredMedication {
   sideEffectsByFrequency?: SideEffectsByFrequency;
   sideEffects: string[];
   interactions: string[];
+  contraindications?: {
+    absolute?: string[];
+    relative?: string[];
+  };
   warnings?: string;
+  monographText?: string;
   authoritySource?: string;
   lastUpdated?: string;
   savedAt?: string;
@@ -372,6 +377,8 @@ Wenn der Nutzer nach einem Medikament, dessen Dosierungen, Packungsgrößen oder
 
 Recherchiere das Medikament / den Wirkstoff: "${query}".
 
+WICHTIGSTE VORGABE: Es dürfen KEINE Daten erfunden oder geschätzt werden. Alle Angaben müssen zwingend der behördlichen Fachinformation (BfArM, EMA, Rote Liste, SPC) entsprechen. Wenn zu einem Bereich keine Daten gefunden werden, darf nichts hinzugedacht werden – schreibe dann strikt 'Keine behördlichen Angaben in der Fachinformation hinterlegt'.
+
 Extrahiere daraus exakt:
 1. Handelsname (offizieller Präparatename)
 2. Wirkstoff (INN)
@@ -387,7 +394,21 @@ Extrahiere daraus exakt:
    - rare: Selten (≥ 1/10.000 bis < 1/1.000)
    - veryRare: Sehr selten (< 1/10.000)
 9. Relevante Wechselwirkungen mit anderen Arzneimitteln, Nahrungsmitteln oder Alkohol
-10. Wichtige Kontraindikationen und Warnhinweise
+10. Wichtige Kontraindikationen gegliedert nach "absolute" (Anwendung ausgeschlossen) und "relative" (Besondere Vorsicht)
+11. Zusammenfassende Warnhinweise ("warnings")
+12. Erzeuge das Feld "monographText": Einen zusammenhängenden, flüssigen Fließtext (keine Tabelle) mit exakt folgender Gliederung und fetten Überschriften:
+    Hier ist die komplette Übersicht zu [Handelsname] ([Wirkstoff]) mit allen wichtigen Informationen zu Inhaltsstoffen, Dosierung, Nebenwirkungen, Kontraindikationen und Wechselwirkungen, übersichtlich für dich zusammengefasst.
+
+    📝 1. Wirkstoff und Inhaltsstoffe
+    ...
+    💊 2. Dosierung & Anwendung
+    ...
+    ⚠️ 3. Nebenwirkungen
+    ...
+    🚫 4. Kontraindikationen (Gegenanzeigen)
+    ...
+    ❌ 5. Gefährliche Wechselwirkungen
+    ...
 
 Antworte AUSSCHLIESSLICH mit einem validen JSON-Array (auch wenn nur 1 Medikament gefunden wird, Array verwenden):
 [
@@ -408,7 +429,12 @@ Antworte AUSSCHLIESSLICH mit einem validen JSON-Array (auch wenn nur 1 Medikamen
     },
     "sideEffects": ["..."],
     "interactions": ["..."],
+    "contraindications": {
+      "absolute": ["..."],
+      "relative": ["..."]
+    },
     "warnings": "...",
+    "monographText": "...",
     "authoritySource": "Offizielle Fachinformation (BfArM / EMA / EOF)"
   }
 ]`;
@@ -513,6 +539,79 @@ export function save_to_database(daten_json: StoredMedication | StoredMedication
   }
 }
 
+function buildServerMedicationMonograph(m: {
+  name: string;
+  activeSubstance?: string;
+  category?: string;
+  dosages?: string[];
+  commonForms?: string[];
+  recommendedIntake?: string;
+  sideEffectsByFrequency?: SideEffectsByFrequency;
+  sideEffects?: string[];
+  interactions?: string[];
+  contraindications?: { absolute?: string[]; relative?: string[] };
+  warnings?: string;
+}): string {
+  const name = m.name;
+  const activeSub = m.activeSubstance || name;
+  const intro = `Hier ist die komplette Übersicht zu ${name} (${activeSub}) mit allen wichtigen Informationen zu Inhaltsstoffen, Dosierung, Nebenwirkungen, Kontraindikationen und Wechselwirkungen, übersichtlich für dich zusammengefasst.`;
+
+  // 1. Wirkstoff und Inhaltsstoffe
+  const cat = m.category || 'Fachinformation';
+  const forms = Array.isArray(m.commonForms) && m.commonForms.length > 0 ? m.commonForms.join(', ') : 'Tablette';
+  const sec1 = `📝 1. Wirkstoff und Inhaltsstoffe\n${name} gehört zur Gruppe: ${cat}.\nHauptwirkstoff: ${activeSub}.\nDarreichungsformen: ${forms}. Hilfsstoffe sind der jeweiligen herstellerspezifischen Packungsbeilage zu entnehmen.`;
+
+  // 2. Dosierung & Anwendung
+  const dosages = Array.isArray(m.dosages) && m.dosages.length > 0 ? m.dosages.join(', ') : 'Standard';
+  const intake = m.recommendedIntake || 'Nach ärztlicher Anweisung einnehmen.';
+  const sec2 = `💊 2. Dosierung & Anwendung\nDie Dosierung von ${name} (${activeSub}) wird von der behandelnden Ärztin oder dem Arzt streng individuell festgelegt. Es gilt der Grundsatz, das Medikament so niedrig dosiert und so kurz bzw. indikationsgerecht wie möglich anzuwenden, um Risiken zu minimieren.\nVerfügbare Dosierungsstärken: ${dosages}.\nEinnahmeempfehlung: ${intake}\nÄltere oder geschwächte Patienten: Bei älteren Personen oder Personen mit eingeschränkter Organfunktion ist eine Dosisanpassung nach ärztlicher Rücksprache essenziell.`;
+
+  // 3. Nebenwirkungen
+  let nwContent = '';
+  if (m.sideEffectsByFrequency && typeof m.sideEffectsByFrequency === 'object') {
+    const parts: string[] = [];
+    if (m.sideEffectsByFrequency.veryCommon?.length) parts.push(`Sehr häufig (≥ 1/10): ${m.sideEffectsByFrequency.veryCommon.join(', ')}.`);
+    if (m.sideEffectsByFrequency.common?.length) parts.push(`Häufig (≥ 1/100 bis < 1/10): ${m.sideEffectsByFrequency.common.join(', ')}.`);
+    if (m.sideEffectsByFrequency.uncommon?.length) parts.push(`Gelegentlich (≥ 1/1.000 bis < 1/100): ${m.sideEffectsByFrequency.uncommon.join(', ')}.`);
+    if (m.sideEffectsByFrequency.rare?.length) parts.push(`Selten (≥ 1/10.000 bis < 1/1.000): ${m.sideEffectsByFrequency.rare.join(', ')}.`);
+    if (m.sideEffectsByFrequency.veryRare?.length) parts.push(`Sehr selten (< 1/10.000): ${m.sideEffectsByFrequency.veryRare.join(', ')}.`);
+    if (parts.length > 0) nwContent = parts.join('\n');
+  }
+  if (!nwContent && Array.isArray(m.sideEffects) && m.sideEffects.length > 0) {
+    nwContent = `Häufige Begleiterscheinungen:\n${m.sideEffects.join('; ')}.`;
+  }
+  if (!nwContent) {
+    nwContent = 'Keine behördlichen Angaben zu Nebenwirkungen in der Fachinformations-Kurzfassung hinterlegt.';
+  }
+  const risks = m.warnings || 'Keine gesonderten Risikohinweise in der Kurzinformation vermerkt.';
+  const sec3 = `⚠️ 3. Nebenwirkungen\n${nwContent}\nBesondere Risiken:\n${risks}`;
+
+  // 4. Kontraindikationen (Gegenanzeigen)
+  let sec4 = `🚫 4. Kontraindikationen (Gegenanzeigen)\nUnter bestimmten gesundheitlichen Bedingungen darf ${name} entweder gar nicht oder nur nach strenger ärztlicher Nutzen-Risiko-Abwägung angewendet werden.`;
+  if (m.contraindications && (m.contraindications.absolute?.length || m.contraindications.relative?.length)) {
+    if (m.contraindications.absolute?.length) {
+      sec4 += `\nAbsolute Gegenanzeigen (Anwendung ausgeschlossen):\n${m.contraindications.absolute.join(';\n')}.`;
+    }
+    if (m.contraindications.relative?.length) {
+      sec4 += `\nRelative Gegenanzeigen (Besondere Vorsicht erforderlich):\n${m.contraindications.relative.join(';\n')}.`;
+    }
+  } else if (m.warnings) {
+    sec4 += `\nBehördliche Gegenanzeigen & Vorsichtsmaßnahmen:\n${m.warnings}`;
+  } else {
+    sec4 += `\nKeine gesonderten behördlichen Gegenanzeigen in den erfassten Daten hinterlegt.`;
+  }
+
+  // 5. Gefährliche Wechselwirkungen
+  let sec5 = `❌ 5. Gefährliche Wechselwirkungen\nDie Kombination von ${name} mit bestimmten anderen Substanzen kann die Wirkung unvorhersehbar verändern oder unerwünschte Reaktionen hervorrufen.`;
+  if (Array.isArray(m.interactions) && m.interactions.length > 0) {
+    sec5 += '\n' + m.interactions.map(i => `${i}.`).join('\n');
+  } else {
+    sec5 += '\nKeine spezifischen Wechselwirkungen in den erfassten behördlichen Daten hinterlegt.';
+  }
+
+  return `${intro}\n\n${sec1}\n\n${sec2}\n\n${sec3}\n\n${sec4}\n\n${sec5}`;
+}
+
 // Helper to normalize and guarantee complete data shape
 function normalizeMedicationItem(raw: any): StoredMedication {
   const name = String(raw.name || "").trim();
@@ -563,8 +662,36 @@ function normalizeMedicationItem(raw: any): StoredMedication {
     ? raw.interactions.map((i: any) => String(i).trim()).filter(Boolean)
     : [];
 
+  let contraindications: { absolute?: string[]; relative?: string[] } | undefined = undefined;
+  if (raw.contraindications && typeof raw.contraindications === "object") {
+    contraindications = {
+      absolute: Array.isArray(raw.contraindications.absolute) ? raw.contraindications.absolute.map(String) : [],
+      relative: Array.isArray(raw.contraindications.relative) ? raw.contraindications.relative.map(String) : []
+    };
+  }
+
   const warnings = raw.warnings ? String(raw.warnings).trim() : undefined;
   const authoritySource = raw.authoritySource || "BfArM / EMA / EOF Fachinformation";
+
+  let monographText = raw.monographText && typeof raw.monographText === "string" && raw.monographText.trim().length > 30
+    ? raw.monographText.trim()
+    : undefined;
+
+  if (!monographText) {
+    monographText = buildServerMedicationMonograph({
+      name,
+      activeSubstance,
+      category,
+      dosages,
+      commonForms,
+      recommendedIntake,
+      sideEffectsByFrequency,
+      sideEffects,
+      interactions,
+      contraindications,
+      warnings
+    });
+  }
 
   return {
     name,
@@ -577,7 +704,9 @@ function normalizeMedicationItem(raw: any): StoredMedication {
     sideEffectsByFrequency,
     sideEffects,
     interactions,
+    contraindications,
     warnings,
+    monographText,
     authoritySource,
     fromDatabase: true
   };

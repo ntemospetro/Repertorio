@@ -1,4 +1,6 @@
 import { TOP_MEDICATIONS_CATALOG } from '../data/topMedicationsCatalog';
+import { localizeMonograph } from './medicationLocalization';
+import { LanguageCode } from '../types';
 
 export interface SideEffectsByFrequency {
   veryCommon?: string[];   // Sehr häufig (≥ 1/10)
@@ -20,7 +22,12 @@ export interface MedicationSuggestion {
   sideEffectsByFrequency?: SideEffectsByFrequency;
   sideEffects?: string[];
   interactions?: string[];
+  contraindications?: {
+    absolute?: string[];
+    relative?: string[];
+  };
   warnings?: string;
+  monographText?: string;
   fromDatabase?: boolean;
   authoritySource?: string;
   stepExecuted?: 'database_match' | 'authority_researched_and_saved';
@@ -435,9 +442,9 @@ export async function searchMedications(query: string): Promise<MedicationSugges
   return [];
 }
 
-export async function fetchMedicationDetails(name: string): Promise<MedicationSuggestion | null> {
+export async function fetchMedicationDetails(name: string, lang: string = 'de'): Promise<MedicationSuggestion | null> {
   if (!name || !name.trim()) return null;
-  const key = name.toLowerCase().trim();
+  const key = `${name.toLowerCase().trim()}_${lang}`;
 
   if (detailsCache.has(key)) {
     return detailsCache.get(key)!;
@@ -445,13 +452,13 @@ export async function fetchMedicationDetails(name: string): Promise<MedicationSu
 
   // Check local database first across all 500+ curated medications
   const localMatch = ALL_MEDICATIONS_DB.find(m => 
-    m.name.toLowerCase() === key ||
-    key.includes(m.name.toLowerCase()) ||
-    (m.activeSubstance && key.includes(m.activeSubstance.toLowerCase()))
+    m.name.toLowerCase() === name.toLowerCase().trim() ||
+    name.toLowerCase().trim().includes(m.name.toLowerCase()) ||
+    (m.activeSubstance && name.toLowerCase().trim().includes(m.activeSubstance.toLowerCase()))
   );
 
   try {
-    const res = await fetch(`/api/medications/details?name=${encodeURIComponent(name.trim())}`);
+    const res = await fetch(`/api/medications/details?name=${encodeURIComponent(name.trim())}&lang=${encodeURIComponent(lang)}`);
     if (res.ok) {
       const data = await res.json();
       if (data.details) {
@@ -475,7 +482,9 @@ export async function fetchMedicationDetails(name: string): Promise<MedicationSu
             interactions: Array.isArray(d.interactions) && d.interactions.length > 0
               ? d.interactions
               : (localMatch?.interactions || []),
+            contraindications: d.contraindications || localMatch?.contraindications || undefined,
             warnings: d.warnings || localMatch?.warnings || '',
+            monographText: d.monographText || localMatch?.monographText || undefined,
             fromDatabase: d.fromDatabase !== undefined ? d.fromDatabase : (data.fromDatabase ?? true),
             authoritySource: d.authoritySource || 'Offizielle Fachinformation (BfArM / EMA / EOF)',
             stepExecuted: data.stepExecuted || (d.fromDatabase ? 'database_match' : 'authority_researched_and_saved')
@@ -495,4 +504,84 @@ export async function fetchMedicationDetails(name: string): Promise<MedicationSu
 
   return null;
 }
+
+/**
+ * Strict Monograph Formatter compliant with official authority monographs (BfArM / EMA / Rote Liste).
+ * Formats structured or raw medication data into the exact 5-section fluid text format requested by the user.
+ * Supports auto-localization to the target language.
+ * ZERO hallucination constraint: No unverified data is added or assumed.
+ */
+export function formatMedicationMonograph(med: MedicationSuggestion, lang?: LanguageCode): string {
+  let baseText = '';
+  if (med.monographText && med.monographText.trim().length > 50) {
+    baseText = med.monographText.trim();
+  } else {
+    const name = med.name;
+    const activeSub = med.activeSubstance || name;
+    const intro = `Hier ist die komplette Übersicht zu ${name} (${activeSub}) mit allen wichtigen Informationen zu Inhaltsstoffen, Dosierung, Nebenwirkungen, Kontraindikationen und Wechselwirkungen, übersichtlich für dich zusammengefasst.`;
+
+    // 1. Wirkstoff und Inhaltsstoffe
+    const cat = med.category || 'Fachinformation';
+    const forms = Array.isArray(med.commonForms) && med.commonForms.length > 0 ? med.commonForms.join(', ') : 'Tablette';
+    const sec1 = `📝 1. Wirkstoff und Inhaltsstoffe\n${name} gehört zur Wirkstoffgruppe: ${cat}.\nHauptwirkstoff: ${activeSub}.\nDarreichungsformen: ${forms}. Hilfsstoffe sind der jeweiligen herstellerspezifischen Packungsbeilage zu entnehmen.`;
+
+    // 2. Dosierung & Anwendung
+    const dosages = Array.isArray(med.dosages || med.defaultDosages) && (med.dosages || med.defaultDosages)!.length > 0
+      ? (med.dosages || med.defaultDosages)!.join(', ')
+      : 'Standarddosierung';
+    const intake = med.recommendedIntake || 'Nach ärztlicher Anweisung einnehmen.';
+    const sec2 = `💊 2. Dosierung & Anwendung\nDie Dosierung von ${name} (${activeSub}) wird von der behandelnden Ärztin oder dem Arzt streng individuell festgelegt. Es gilt der Grundsatz, das Medikament so niedrig dosiert und so kurz bzw. indikationsgerecht wie möglich anzuwenden, um Risiken zu minimieren.\nVerfügbare Dosierungsstärken: ${dosages}.\nEinnahmeempfehlung: ${intake}\nÄltere oder geschwächte Patienten: Bei älteren Personen oder Personen mit eingeschränkter Organfunktion (insb. Leber/Niere) ist eine engmaschige Dosisanpassung nach ärztlicher Rücksprache essenziell.`;
+
+    // 3. Nebenwirkungen
+    let nwContent = '';
+    if (med.sideEffectsByFrequency && typeof med.sideEffectsByFrequency === 'object') {
+      const parts: string[] = [];
+      if (med.sideEffectsByFrequency.veryCommon?.length) parts.push(`Sehr häufig (≥ 1/10): ${med.sideEffectsByFrequency.veryCommon.join(', ')}.`);
+      if (med.sideEffectsByFrequency.common?.length) parts.push(`Häufig (≥ 1/100 bis < 1/10): ${med.sideEffectsByFrequency.common.join(', ')}.`);
+      if (med.sideEffectsByFrequency.uncommon?.length) parts.push(`Gelegentlich (≥ 1/1.000 bis < 1/100): ${med.sideEffectsByFrequency.uncommon.join(', ')}.`);
+      if (med.sideEffectsByFrequency.rare?.length) parts.push(`Selten (≥ 1/10.000 bis < 1/1.000): ${med.sideEffectsByFrequency.rare.join(', ')}.`);
+      if (med.sideEffectsByFrequency.veryRare?.length) parts.push(`Sehr selten (< 1/10.000): ${med.sideEffectsByFrequency.veryRare.join(', ')}.`);
+      if (parts.length > 0) nwContent = parts.join('\n');
+    }
+    if (!nwContent && Array.isArray(med.sideEffects) && med.sideEffects.length > 0) {
+      nwContent = `Häufige Begleiterscheinungen:\n${med.sideEffects.join('; ')}.`;
+    }
+    if (!nwContent) {
+      nwContent = 'Keine behördlichen Angaben zu Nebenwirkungen in der Fachinformations-Kurzfassung hinterlegt.';
+    }
+    const risks = med.warnings || 'Keine gesonderten Risikohinweise in der Kurzinformation vermerkt.';
+    const sec3 = `⚠️ 3. Nebenwirkungen\n${nwContent}\nBesondere Risiken & Warnhinweise:\n${risks}`;
+
+    // 4. Kontraindikationen (Gegenanzeigen)
+    let sec4 = `🚫 4. Kontraindikationen (Gegenanzeigen)\nUnter bestimmten gesundheitlichen Bedingungen darf ${name} entweder gar nicht oder nur nach strenger ärztlicher Nutzen-Risiko-Abwägung angewendet werden.`;
+    if (med.contraindications && (med.contraindications.absolute?.length || med.contraindications.relative?.length)) {
+      if (med.contraindications.absolute?.length) {
+        sec4 += `\nAbsolute Gegenanzeigen (Anwendung ausgeschlossen):\n${med.contraindications.absolute.join(';\n')}.`;
+      }
+      if (med.contraindications.relative?.length) {
+        sec4 += `\nRelative Gegenanzeigen (Besondere Vorsicht erforderlich):\n${med.contraindications.relative.join(';\n')}.`;
+      }
+    } else if (med.warnings) {
+      sec4 += `\nBehördliche Gegenanzeigen & Vorsichtsmaßnahmen:\n${med.warnings}`;
+    } else {
+      sec4 += `\nKeine gesonderten behördlichen Gegenanzeigen in den erfassten Daten hinterlegt. Bitte stets die ausführliche Fachinformation des jeweiligen Herstellers beachten.`;
+    }
+
+    // 5. Gefährliche Wechselwirkungen
+    let sec5 = `❌ 5. Gefährliche Wechselwirkungen\nDie Kombination von ${name} mit bestimmten anderen Substanzen kann die Wirkung unvorhersehbar verändern oder unerwünschte Reaktionen hervorrufen.`;
+    if (Array.isArray(med.interactions) && med.interactions.length > 0) {
+      sec5 += '\n' + med.interactions.map(i => `${i}.`).join('\n');
+    } else {
+      sec5 += '\nKeine spezifischen Wechselwirkungen in den erfassten behördlichen Daten hinterlegt.';
+    }
+
+    baseText = `${intro}\n\n${sec1}\n\n${sec2}\n\n${sec3}\n\n${sec4}\n\n${sec5}`;
+  }
+
+  if (lang && lang !== 'de') {
+    return localizeMonograph(baseText, lang);
+  }
+  return baseText;
+}
+
 

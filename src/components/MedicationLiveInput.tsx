@@ -1,7 +1,31 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { searchMedications, fetchMedicationDetails, MedicationSuggestion, COMMON_MEDICATIONS_DB, SideEffectsByFrequency } from '../services/medicationDatabase';
-import { Pill, Search, Globe, ChevronDown, ChevronUp, AlertTriangle, ShieldAlert, Sparkles, Loader2, Trash2, X, Database, CheckCircle2, PackageCheck } from 'lucide-react';
+import {
+  searchMedications,
+  fetchMedicationDetails,
+  MedicationSuggestion,
+  COMMON_MEDICATIONS_DB,
+  SideEffectsByFrequency,
+  formatMedicationMonograph
+} from '../services/medicationDatabase';
+import {
+  Pill,
+  Search,
+  Globe,
+  ChevronDown,
+  ChevronUp,
+  AlertTriangle,
+  ShieldAlert,
+  Sparkles,
+  Loader2,
+  Trash2,
+  X,
+  Database,
+  CheckCircle2,
+  PackageCheck
+} from 'lucide-react';
 import { TranslationKey } from '../i18n/translations';
+import { useLanguage } from '../i18n/LanguageContext';
+import { MedicationMonographView } from './MedicationMonographView';
 
 export interface MedicationData {
   name: string;
@@ -14,7 +38,12 @@ export interface MedicationData {
   nebenwirkungenGegliedert?: SideEffectsByFrequency;
   nebenwirkungen?: string[];
   wechselwirkungen?: string[];
+  kontraindikationen?: {
+    absolute?: string[];
+    relative?: string[];
+  };
   risiken?: string;
+  monographText?: string;
   datenbankQuelle?: 'datenbank' | 'behoerden_recherche';
   authoritySource?: string;
 }
@@ -34,6 +63,7 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
   onRemove,
   t
 }) => {
+  const { language } = useLanguage();
   const [query, setQuery] = useState(med.name || '');
   const [suggestions, setSuggestions] = useState<MedicationSuggestion[]>([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -41,6 +71,7 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [selectedSuggestion, setSelectedSuggestion] = useState<MedicationSuggestion | null>(null);
   const [isDetailsExpanded, setIsDetailsExpanded] = useState(false);
+  const [viewMode, setViewMode] = useState<'fluid' | 'structured'>('fluid');
   const containerRef = useRef<HTMLDivElement>(null);
   const searchTimeoutRef = useRef<any>(null);
 
@@ -72,7 +103,7 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
   useEffect(() => {
     if (med.name && med.name.trim().length >= 2 && !med.nebenwirkungen && !med.wechselwirkungen) {
       let isMounted = true;
-      fetchMedicationDetails(med.name).then(details => {
+      fetchMedicationDetails(med.name, language).then(details => {
         if (isMounted && details) {
           setSelectedSuggestion(details);
           onChange({
@@ -83,7 +114,9 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
             nebenwirkungenGegliedert: med.nebenwirkungenGegliedert || details.sideEffectsByFrequency,
             nebenwirkungen: med.nebenwirkungen || details.sideEffects,
             wechselwirkungen: med.wechselwirkungen || details.interactions,
+            kontraindikationen: med.kontraindikationen || details.contraindications,
             risiken: med.risiken || details.warnings,
+            monographText: med.monographText || details.monographText,
             datenbankQuelle: details.fromDatabase ? 'datenbank' : 'behoerden_recherche',
             authoritySource: details.authoritySource,
           });
@@ -171,7 +204,9 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
         nebenwirkungenGegliedert: suggestion.sideEffectsByFrequency,
         nebenwirkungen: suggestion.sideEffects || [],
         wechselwirkungen: suggestion.interactions || [],
+        kontraindikationen: suggestion.contraindications,
         risiken: suggestion.warnings || '',
+        monographText: suggestion.monographText,
         datenbankQuelle: suggestion.fromDatabase ? 'datenbank' : 'behoerden_recherche',
         authoritySource: suggestion.authoritySource,
       });
@@ -189,7 +224,7 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
       });
 
       try {
-        const fullDetails = await fetchMedicationDetails(suggestion.name);
+        const fullDetails = await fetchMedicationDetails(suggestion.name, language);
         if (fullDetails) {
           setSelectedSuggestion(fullDetails);
           onChange({
@@ -203,7 +238,9 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
             nebenwirkungenGegliedert: fullDetails.sideEffectsByFrequency || suggestion.sideEffectsByFrequency,
             nebenwirkungen: fullDetails.sideEffects || [],
             wechselwirkungen: fullDetails.interactions || [],
+            kontraindikationen: fullDetails.contraindications || suggestion.contraindications,
             risiken: fullDetails.warnings || '',
+            monographText: fullDetails.monographText || suggestion.monographText,
             datenbankQuelle: fullDetails.fromDatabase ? 'datenbank' : 'behoerden_recherche',
             authoritySource: fullDetails.authoritySource,
           });
@@ -233,7 +270,22 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
   const isFromDatabase = med.datenbankQuelle === 'datenbank' || currentDbMatch?.fromDatabase;
   const isAuthorityResearched = med.datenbankQuelle === 'behoerden_recherche' || (!isFromDatabase && (hasValidName && Boolean(activeSubstance || sideEffects.length > 0)));
 
+  const computedMonograph = med.monographText || currentDbMatch?.monographText || (hasValidName ? formatMedicationMonograph(currentDbMatch || {
+    name: med.name,
+    activeSubstance,
+    category,
+    dosages: med.dosierung ? [med.dosierung] : undefined,
+    packageSizes,
+    recommendedIntake: med.einnahmeart,
+    sideEffectsByFrequency: sideEffectsByFreq,
+    sideEffects,
+    interactions,
+    contraindications: med.kontraindikationen,
+    warnings
+  }, language) : '');
+
   const hasResearchData = hasValidName && Boolean(
+    computedMonograph ||
     activeSubstance || 
     (packageSizes && packageSizes.length > 0) ||
     sideEffectsByFreq ||
@@ -384,7 +436,7 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
           </label>
           <input
             type="text"
-            placeholder="z.B. 400 mg"
+            placeholder={t('medDosagePlaceholder' as TranslationKey) || "z.B. 400 mg"}
             value={med.dosierung || ''}
             onChange={(e) => onChange({ ...med, dosierung: e.target.value })}
             className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 transition-shadow"
@@ -418,14 +470,19 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
           </label>
           <input
             type="text"
-            placeholder="z.B. 1-2x täglich, bei Bedarf"
+            placeholder={t('medIntakePlaceholder' as TranslationKey) || "z.B. 1-2x täglich, bei Bedarf"}
             value={med.einnahmeart || ''}
             onChange={(e) => onChange({ ...med, einnahmeart: e.target.value })}
             className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 transition-shadow"
           />
 
           <div className="flex flex-wrap gap-1 mt-1.5">
-            {['1x täglich', '2x täglich', 'Bei Bedarf', 'Morgens nüchtern'].map((freq, fIdx) => (
+            {[
+              t('medFreq1xDaily' as TranslationKey) || '1x täglich',
+              t('medFreq2xDaily' as TranslationKey) || '2x täglich',
+              t('medFreqAsNeeded' as TranslationKey) || 'Bei Bedarf',
+              t('medFreqMorningFasting' as TranslationKey) || 'Morgens nüchtern'
+            ].map((freq, fIdx) => (
               <button
                 key={fIdx}
                 type="button"
@@ -472,129 +529,169 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
 
           {/* Expanded Research Details */}
           {isDetailsExpanded && (
-            <div className="mt-2.5 p-3.5 rounded-xl bg-slate-50 border border-teal-200/70 space-y-3 animate-in fade-in duration-150">
-              {/* Active Substance & Category Header */}
-              {(activeSubstance || category) && (
-                <div className="flex flex-wrap items-center gap-2 pb-2 border-b border-slate-200/70">
-                  {activeSubstance && (
-                    <span className="text-xs text-slate-700">
-                      <strong className="text-slate-900 font-bold">{t('medActiveSubstance' as TranslationKey) || 'Wirkstoff'}:</strong> {activeSubstance}
-                    </span>
-                  )}
-                  {category && (
-                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 font-semibold">
-                      {category}
-                    </span>
-                  )}
-                  {isFromDatabase ? (
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold flex items-center gap-1">
-                      <Database className="w-3 h-3 text-emerald-600" />
-                      <span>{t('medStepDbMatch' as TranslationKey) || 'Praxis-DB'}</span>
-                    </span>
-                  ) : (
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 font-semibold flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3 text-teal-600" />
-                      <span>{t('medSourceSavedToDb' as TranslationKey) || 'In Praxisdatenbank gesichert'}</span>
-                    </span>
-                  )}
+            <div className="mt-2.5 space-y-2.5 animate-in fade-in duration-150">
+              {/* View Switcher: Fließtext-Monographie (default) vs Kompaktansicht */}
+              <div className="flex items-center justify-between gap-2 px-1">
+                <div className="flex items-center gap-1.5 p-0.5 rounded-lg bg-slate-100 border border-slate-200 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('fluid')}
+                    className={`px-2.5 py-1 rounded-md font-semibold transition-all cursor-pointer ${
+                      viewMode === 'fluid'
+                        ? 'bg-white text-teal-900 shadow-2xs border border-slate-200/80'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    {t('medViewModeFluid' as TranslationKey) || 'Fließtext-Monographie'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('structured')}
+                    className={`px-2.5 py-1 rounded-md font-semibold transition-all cursor-pointer ${
+                      viewMode === 'structured'
+                        ? 'bg-white text-teal-900 shadow-2xs border border-slate-200/80'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    {t('medViewModeStructured' as TranslationKey) || 'Kompaktansicht'}
+                  </button>
                 </div>
-              )}
+              </div>
 
-              {/* Package sizes */}
-              {packageSizes && packageSizes.length > 0 && (
-                <div className="space-y-1.5">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
-                    <PackageCheck className="w-3.5 h-3.5 text-teal-600" />
-                    <span>{t('medPackageSizes' as TranslationKey) || 'Verfügbare Packungsgrößen'}:</span>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {packageSizes.map((pkg, pIdx) => (
-                      <span key={pIdx} className="text-xs px-2.5 py-0.5 rounded-md bg-white border border-slate-200 text-slate-800 font-medium shadow-2xs">
-                        {pkg}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Graded Side Effects by Frequency */}
-              {sideEffectsByFreq && Object.values(sideEffectsByFreq).some(arr => Array.isArray(arr) && arr.length > 0) ? (
-                <div className="space-y-2 pt-2 border-t border-slate-200/60">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900">
-                    <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
-                    <span>{t('medSideEffectsByFrequency' as TranslationKey) || 'Nebenwirkungen nach Häufigkeit (Fachinformation)'}:</span>
-                  </div>
-                  
-                  <div className="space-y-1.5 text-xs pl-1">
-                    {sideEffectsByFreq.veryCommon && sideEffectsByFreq.veryCommon.length > 0 && (
-                      <div className="p-2 rounded-lg bg-rose-50/70 border border-rose-200/60">
-                        <span className="font-bold text-rose-900 block mb-0.5 text-[11px]">{t('medFreqVeryCommon' as TranslationKey) || 'Sehr häufig (≥ 1/10)'}:</span>
-                        <p className="text-slate-700 leading-relaxed">{sideEffectsByFreq.veryCommon.join(', ')}</p>
-                      </div>
-                    )}
-                    {sideEffectsByFreq.common && sideEffectsByFreq.common.length > 0 && (
-                      <div className="p-2 rounded-lg bg-amber-50/70 border border-amber-200/60">
-                        <span className="font-bold text-amber-900 block mb-0.5 text-[11px]">{t('medFreqCommon' as TranslationKey) || 'Häufig (≥ 1/100 bis < 1/10)'}:</span>
-                        <p className="text-slate-700 leading-relaxed">{sideEffectsByFreq.common.join(', ')}</p>
-                      </div>
-                    )}
-                    {sideEffectsByFreq.uncommon && sideEffectsByFreq.uncommon.length > 0 && (
-                      <div className="p-2 rounded-lg bg-yellow-50/70 border border-yellow-200/60">
-                        <span className="font-bold text-yellow-900 block mb-0.5 text-[11px]">{t('medFreqUncommon' as TranslationKey) || 'Gelegentlich (≥ 1/1.000 bis < 1/100)'}:</span>
-                        <p className="text-slate-700 leading-relaxed">{sideEffectsByFreq.uncommon.join(', ')}</p>
-                      </div>
-                    )}
-                    {sideEffectsByFreq.rare && sideEffectsByFreq.rare.length > 0 && (
-                      <div className="p-2 rounded-lg bg-blue-50/70 border border-blue-200/60">
-                        <span className="font-bold text-blue-900 block mb-0.5 text-[11px]">{t('medFreqRare' as TranslationKey) || 'Selten (≥ 1/10.000 bis < 1/1.000)'}:</span>
-                        <p className="text-slate-700 leading-relaxed">{sideEffectsByFreq.rare.join(', ')}</p>
-                      </div>
-                    )}
-                    {sideEffectsByFreq.veryRare && sideEffectsByFreq.veryRare.length > 0 && (
-                      <div className="p-2 rounded-lg bg-purple-50/70 border border-purple-200/60">
-                        <span className="font-bold text-purple-900 block mb-0.5 text-[11px]">{t('medFreqVeryRare' as TranslationKey) || 'Sehr selten (< 1/10.000)'}:</span>
-                        <p className="text-slate-700 leading-relaxed">{sideEffectsByFreq.veryRare.join(', ')}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
+              {viewMode === 'fluid' && computedMonograph ? (
+                <MedicationMonographView
+                  monographText={computedMonograph}
+                  medName={med.name}
+                  activeSubstance={activeSubstance}
+                  authoritySource={med.authoritySource || currentDbMatch?.authoritySource}
+                  t={t}
+                />
               ) : (
-                /* Fallback Side Effects */
-                sideEffects && sideEffects.length > 0 && (
-                  <div className="space-y-1.5 pt-2 border-t border-slate-200/60">
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900">
-                      <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
-                      <span>{t('medSideEffects' as TranslationKey) || 'Bekannte Nebenwirkungen'}:</span>
+                <div className="p-3.5 rounded-xl bg-slate-50 border border-teal-200/70 space-y-3">
+                  {/* Active Substance & Category Header */}
+                  {(activeSubstance || category) && (
+                    <div className="flex flex-wrap items-center gap-2 pb-2 border-b border-slate-200/70">
+                      {activeSubstance && (
+                        <span className="text-xs text-slate-700">
+                          <strong className="text-slate-900 font-bold">{t('medActiveSubstance' as TranslationKey) || 'Wirkstoff'}:</strong> {activeSubstance}
+                        </span>
+                      )}
+                      {category && (
+                        <span className="text-[11px] px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 font-semibold">
+                          {category}
+                        </span>
+                      )}
+                      {isFromDatabase ? (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold flex items-center gap-1">
+                          <Database className="w-3 h-3 text-emerald-600" />
+                          <span>{t('medStepDbMatch' as TranslationKey) || 'Praxis-DB'}</span>
+                        </span>
+                      ) : (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 font-semibold flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3 text-teal-600" />
+                          <span>{t('medSourceSavedToDb' as TranslationKey) || 'In Praxisdatenbank gesichert'}</span>
+                        </span>
+                      )}
                     </div>
-                    <ul className="list-disc list-inside space-y-0.5 text-xs text-slate-700 pl-1">
-                      {sideEffects.map((effect, effIdx) => (
-                        <li key={effIdx} className="leading-relaxed">{effect}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )
-              )}
+                  )}
 
-              {/* Interactions */}
-              {interactions && interactions.length > 0 && (
-                <div className="space-y-1.5 pt-2 border-t border-slate-200/60">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-rose-900">
-                    <ShieldAlert className="w-3.5 h-3.5 text-rose-600" />
-                    <span>{t('medInteractions' as TranslationKey) || 'Relevante Wechselwirkungen (Interaktionen)'}:</span>
-                  </div>
-                  <ul className="list-disc list-inside space-y-0.5 text-xs text-slate-700 pl-1">
-                    {interactions.map((inter, intIdx) => (
-                      <li key={intIdx} className="leading-relaxed">{inter}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+                  {/* Package sizes */}
+                  {packageSizes && packageSizes.length > 0 && (
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                        <PackageCheck className="w-3.5 h-3.5 text-teal-600" />
+                        <span>{t('medPackageSizes' as TranslationKey) || 'Verfügbare Packungsgrößen'}:</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {packageSizes.map((pkg, pIdx) => (
+                          <span key={pIdx} className="text-xs px-2.5 py-0.5 rounded-md bg-white border border-slate-200 text-slate-800 font-medium shadow-2xs">
+                            {pkg}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
-              {/* Warnings & Contraindications */}
-              {warnings && (
-                <div className="p-2.5 rounded-lg bg-rose-50 border border-rose-200/80 text-xs text-rose-900 leading-relaxed">
-                  <span className="font-bold block mb-0.5">{t('medWarnings' as TranslationKey) || 'Wichtige Warnhinweise & Kontraindikationen'}:</span>
-                  {warnings}
+                  {/* Graded Side Effects by Frequency */}
+                  {sideEffectsByFreq && Object.values(sideEffectsByFreq).some(arr => Array.isArray(arr) && arr.length > 0) ? (
+                    <div className="space-y-2 pt-2 border-t border-slate-200/60">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900">
+                        <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                        <span>{t('medSideEffectsByFrequency' as TranslationKey) || 'Nebenwirkungen nach Häufigkeit (Fachinformation)'}:</span>
+                      </div>
+                      
+                      <div className="space-y-1.5 text-xs pl-1">
+                        {sideEffectsByFreq.veryCommon && sideEffectsByFreq.veryCommon.length > 0 && (
+                          <div className="p-2 rounded-lg bg-rose-50/70 border border-rose-200/60">
+                            <span className="font-bold text-rose-900 block mb-0.5 text-[11px]">{t('medFreqVeryCommon' as TranslationKey) || 'Sehr häufig (≥ 1/10)'}:</span>
+                            <p className="text-slate-700 leading-relaxed">{sideEffectsByFreq.veryCommon.join(', ')}</p>
+                          </div>
+                        )}
+                        {sideEffectsByFreq.common && sideEffectsByFreq.common.length > 0 && (
+                          <div className="p-2 rounded-lg bg-amber-50/70 border border-amber-200/60">
+                            <span className="font-bold text-amber-900 block mb-0.5 text-[11px]">{t('medFreqCommon' as TranslationKey) || 'Häufig (≥ 1/100 bis < 1/10)'}:</span>
+                            <p className="text-slate-700 leading-relaxed">{sideEffectsByFreq.common.join(', ')}</p>
+                          </div>
+                        )}
+                        {sideEffectsByFreq.uncommon && sideEffectsByFreq.uncommon.length > 0 && (
+                          <div className="p-2 rounded-lg bg-yellow-50/70 border border-yellow-200/60">
+                            <span className="font-bold text-yellow-900 block mb-0.5 text-[11px]">{t('medFreqUncommon' as TranslationKey) || 'Gelegentlich (≥ 1/1.000 bis < 1/100)'}:</span>
+                            <p className="text-slate-700 leading-relaxed">{sideEffectsByFreq.uncommon.join(', ')}</p>
+                          </div>
+                        )}
+                        {sideEffectsByFreq.rare && sideEffectsByFreq.rare.length > 0 && (
+                          <div className="p-2 rounded-lg bg-blue-50/70 border border-blue-200/60">
+                            <span className="font-bold text-blue-900 block mb-0.5 text-[11px]">{t('medFreqRare' as TranslationKey) || 'Selten (≥ 1/10.000 bis < 1/1.000)'}:</span>
+                            <p className="text-slate-700 leading-relaxed">{sideEffectsByFreq.rare.join(', ')}</p>
+                          </div>
+                        )}
+                        {sideEffectsByFreq.veryRare && sideEffectsByFreq.veryRare.length > 0 && (
+                          <div className="p-2 rounded-lg bg-purple-50/70 border border-purple-200/60">
+                            <span className="font-bold text-purple-900 block mb-0.5 text-[11px]">{t('medFreqVeryRare' as TranslationKey) || 'Sehr selten (< 1/10.000)'}:</span>
+                            <p className="text-slate-700 leading-relaxed">{sideEffectsByFreq.veryRare.join(', ')}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    /* Fallback Side Effects */
+                    sideEffects && sideEffects.length > 0 && (
+                      <div className="space-y-1.5 pt-2 border-t border-slate-200/60">
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900">
+                          <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                          <span>{t('medSideEffects' as TranslationKey) || 'Bekannte Nebenwirkungen'}:</span>
+                        </div>
+                        <ul className="list-disc list-inside space-y-0.5 text-xs text-slate-700 pl-1">
+                          {sideEffects.map((effect, effIdx) => (
+                            <li key={effIdx} className="leading-relaxed">{effect}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )
+                  )}
+
+                  {/* Interactions */}
+                  {interactions && interactions.length > 0 && (
+                    <div className="space-y-1.5 pt-2 border-t border-slate-200/60">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-rose-900">
+                        <ShieldAlert className="w-3.5 h-3.5 text-rose-600" />
+                        <span>{t('medInteractions' as TranslationKey) || 'Relevante Wechselwirkungen (Interaktionen)'}:</span>
+                      </div>
+                      <ul className="list-disc list-inside space-y-0.5 text-xs text-slate-700 pl-1">
+                        {interactions.map((inter, intIdx) => (
+                          <li key={intIdx} className="leading-relaxed">{inter}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Warnings & Contraindications */}
+                  {warnings && (
+                    <div className="p-2.5 rounded-lg bg-rose-50 border border-rose-200/80 text-xs text-rose-900 leading-relaxed">
+                      <span className="font-bold block mb-0.5">{t('medWarnings' as TranslationKey) || 'Wichtige Warnhinweise & Kontraindikationen'}:</span>
+                      {warnings}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
