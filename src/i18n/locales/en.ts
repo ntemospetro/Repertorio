@@ -1499,6 +1499,8 @@ export const en = {
   medFreqVeryRare: "Very rare (< 1/10,000)",
   medSourceAuthority: "Official Health Authority SPC (BfArM / EMA / EOF)",
   medSourceSavedToDb: "Permanently saved in practice database",
+  medForceLiveSearch: "Search online & drug monographs (BfArM / EMA / FDA)",
+  medSearchingLive: "Searching official health authorities live...",
   acuteExpertAlgoBadge: "Classical Acute Repertorisation",
   acuteExpertSub: "Hahnemann & Boenninghausen • Simile Differentiation",
   btnOpenDecisionTree: "View Decision Tree & Flowchart",

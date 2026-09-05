@@ -1493,6 +1493,8 @@ export const es = {
   "medFreqVeryRare": "Muy raras (< 1/10.000)",
   "medSourceAuthority": "Ficha técnica oficial de las autoridades (BfArM / EMA / EOF)",
   "medSourceSavedToDb": "Guardado permanentemente en la base de datos de la consulta",
+  "medForceLiveSearch": "Buscar en internet y fichas técnicas (EMA / AEMPS)",
+  "medSearchingLive": "Buscando información oficial en vivo...",
   "acuteExpertAlgoBadge": "Repertorización Aguda Clásica",
   "acuteExpertSub": "Hahnemann y Boenninghausen • Diferenciación del símil",
   "btnOpenDecisionTree": "Ver árbol de decisiones y diagrama de flujo",

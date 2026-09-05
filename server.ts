@@ -831,8 +831,9 @@ oder
 
       const apiKey = getGeminiApiKey();
       const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
+      const force = req.query.force === '1' || req.query.force === 'true';
 
-      const outcome = await run3StepMedicationSearch(q, ai, extractJsonFromText);
+      const outcome = await run3StepMedicationSearch(q, ai, extractJsonFromText, force);
       res.json(outcome);
     } catch (error) {
       console.error("[MedicationAssistant] API Search Error:", error);

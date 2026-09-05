@@ -366,25 +366,27 @@ for (const m of [...COMMON_MEDICATIONS_DB, ...TOP_MEDICATIONS_CATALOG]) {
 const searchCache = new Map<string, MedicationSuggestion[]>();
 const detailsCache = new Map<string, MedicationSuggestion>();
 
-export async function searchMedications(query: string): Promise<MedicationSuggestion[]> {
+export async function searchMedications(query: string, forceLive: boolean = false): Promise<MedicationSuggestion[]> {
   if (!query || query.trim().length < 1) return [];
   const q = query.toLowerCase().trim();
+  const cacheKey = `${q}_${forceLive ? 'force' : 'std'}`;
 
-  // Return cached result if available
-  if (searchCache.has(q)) {
-    return searchCache.get(q)!;
+  // Return cached result if available (only if not forcing live search)
+  if (!forceLive && searchCache.has(cacheKey)) {
+    return searchCache.get(cacheKey)!;
   }
 
-  // Check local database for immediate matches across all 500+ curated medications
+  // Check local database for immediate matches across all curated medications
   const localMatches = ALL_MEDICATIONS_DB.filter(m => 
     m.name.toLowerCase().includes(q) || 
     (m.activeSubstance && m.activeSubstance.toLowerCase().includes(q)) ||
     (m.category && m.category.toLowerCase().includes(q))
   );
 
-  // Always perform a live internet search via the server endpoint
+  // Perform live internet & authority search via the server endpoint
   try {
-    const res = await fetch(`/api/medications/search?q=${encodeURIComponent(query.trim())}`);
+    const url = `/api/medications/search?q=${encodeURIComponent(query.trim())}${forceLive ? '&force=1' : ''}`;
+    const res = await fetch(url);
     if (res.ok) {
       const data = await res.json();
       if (data.results && Array.isArray(data.results) && data.results.length > 0) {
@@ -409,6 +411,7 @@ export async function searchMedications(query: string): Promise<MedicationSugges
         const seenNames = new Set<string>();
         const merged: MedicationSuggestion[] = [];
 
+        // Put server results first
         for (const item of liveResults) {
           const key = item.name.toLowerCase().replace(/[^a-z0-9]/g, '');
           if (!seenNames.has(key)) {
@@ -417,6 +420,7 @@ export async function searchMedications(query: string): Promise<MedicationSugges
           }
         }
 
+        // Add remaining local matches if not forcing live-only
         for (const item of localMatches) {
           const key = item.name.toLowerCase().replace(/[^a-z0-9]/g, '');
           if (!seenNames.has(key)) {
@@ -425,7 +429,7 @@ export async function searchMedications(query: string): Promise<MedicationSugges
           }
         }
 
-        searchCache.set(q, merged);
+        searchCache.set(cacheKey, merged);
         return merged;
       }
     }
@@ -435,7 +439,7 @@ export async function searchMedications(query: string): Promise<MedicationSugges
 
   // If live search returned empty or errored, return local matches
   if (localMatches.length > 0) {
-    searchCache.set(q, localMatches);
+    searchCache.set(cacheKey, localMatches);
     return localMatches;
   }
 

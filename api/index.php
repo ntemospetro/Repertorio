@@ -162,48 +162,31 @@ function callGeminiApi($prompt, $withSearch = false) {
     $apiKey = getGeminiKey();
     if (empty($apiKey)) return null;
 
-    $model = 'gemini-2.5-flash';
-    $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key=" . urlencode($apiKey);
+    $models = ['gemini-3.8-flash', 'gemini-flash-latest'];
 
-    $payload = [
-        'contents' => [
-            [
-                'parts' => [
-                    ['text' => $prompt]
+    foreach ($models as $model) {
+        $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key=" . urlencode($apiKey);
+
+        $payload = [
+            'contents' => [
+                [
+                    'parts' => [
+                        ['text' => $prompt]
+                    ]
                 ]
             ]
-        ]
-    ];
-
-    if ($withSearch) {
-        $payload['tools'] = [
-            ['googleSearch' => (object)[]]
         ];
-    }
 
-    $jsonPayload = json_encode($payload);
+        if ($withSearch) {
+            $payload['tools'] = [
+                ['googleSearch' => (object)[]]
+            ];
+        }
 
-    $response = null;
-    if (function_exists('curl_init')) {
-        $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Content-Type: application/json',
-            'Content-Length: ' . strlen($jsonPayload)
-        ]);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $jsonPayload);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 25);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+        $jsonPayload = json_encode($payload);
+        $response = null;
 
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        // Falls mit googleSearch ein Fehler auftrat, Fallback ohne Tool
-        if (($httpCode < 200 || $httpCode >= 300) && $withSearch) {
-            unset($payload['tools']);
-            $jsonPayload = json_encode($payload);
+        if (function_exists('curl_init')) {
             $ch = curl_init($url);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_POST, true);
@@ -212,29 +195,54 @@ function callGeminiApi($prompt, $withSearch = false) {
                 'Content-Length: ' . strlen($jsonPayload)
             ]);
             curl_setopt($ch, CURLOPT_POSTFIELDS, $jsonPayload);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 25);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 35);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+
             $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             curl_close($ch);
+
+            // Falls mit googleSearch fehlschlägt, Fallback ohne Tool
+            if (($httpCode < 200 || $httpCode >= 300) && $withSearch) {
+                unset($payload['tools']);
+                $jsonPayloadNoSearch = json_encode($payload);
+                $ch = curl_init($url);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_POST, true);
+                curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                    'Content-Type: application/json',
+                    'Content-Length: ' . strlen($jsonPayloadNoSearch)
+                ]);
+                curl_setopt($ch, CURLOPT_POSTFIELDS, $jsonPayloadNoSearch);
+                curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+                $response = curl_exec($ch);
+                curl_close($ch);
+            }
+        } else {
+            $opts = [
+                'http' => [
+                    'method' => 'POST',
+                    'header' => "Content-Type: application/json\r\n",
+                    'content' => $jsonPayload,
+                    'timeout' => 35
+                ]
+            ];
+            $context = stream_context_create($opts);
+            $response = @file_get_contents($url, false, $context);
         }
-    } else {
-        $opts = [
-            'http' => [
-                'method' => 'POST',
-                'header' => "Content-Type: application/json\r\n",
-                'content' => $jsonPayload,
-                'timeout' => 25
-            ]
-        ];
-        $context = stream_context_create($opts);
-        $response = @file_get_contents($url, false, $context);
+
+        if ($response) {
+            $decoded = @json_decode($response, true);
+            if (isset($decoded['candidates'][0]['content']['parts'][0]['text'])) {
+                $text = trim($decoded['candidates'][0]['content']['parts'][0]['text']);
+                if (!empty($text)) {
+                    return $text;
+                }
+            }
+        }
     }
 
-    if (!$response) return null;
-    $decoded = @json_decode($response, true);
-    if (!isset($decoded['candidates'][0]['content']['parts'][0]['text'])) {
-        return null;
-    }
-    return trim($decoded['candidates'][0]['content']['parts'][0]['text']);
+    return null;
 }
 
 // -------------------------------------------------------------------------
@@ -334,24 +342,43 @@ if ($route === 'medications/search' || $route === 'search') {
         exit;
     }
 
+    $force = (isset($_GET['force']) && ($_GET['force'] === '1' || $_GET['force'] === 'true'))
+        || (isset($body['force']) && ($body['force'] === true || $body['force'] === 1 || $body['force'] === '1'));
+
     $db = loadMedicationsDatabase();
     $normQ = strtolower($q);
 
     // Schritt 1: Lokale Datenbank durchsuchen
-    $matches = [];
+    $exactMatches = [];
+    $partialMatches = [];
     foreach ($db as $item) {
         $name = strtolower($item['name'] ?? '');
         $sub = strtolower($item['activeSubstance'] ?? '');
         $cat = strtolower($item['category'] ?? '');
-        if (strpos($name, $normQ) !== false || strpos($sub, $normQ) !== false || strpos($cat, $normQ) !== false) {
+        if ($name === $normQ || $sub === $normQ) {
             $item['fromDatabase'] = true;
-            $matches[] = $item;
+            $exactMatches[] = $item;
+        } elseif (strpos($name, $normQ) !== false || strpos($sub, $normQ) !== false || strpos($cat, $normQ) !== false) {
+            $item['fromDatabase'] = true;
+            $partialMatches[] = $item;
         }
     }
 
-    if (!empty($matches)) {
+    $allMatches = array_merge($exactMatches, $partialMatches);
+
+    // Prüfen, ob bereits ein vollständiger exakter Treffer in der Datenbank existiert
+    $hasCompleteExact = false;
+    if (!empty($exactMatches)) {
+        $best = $exactMatches[0];
+        $hasCompleteExact = !empty($best['name']) &&
+            !empty($best['dosages']) &&
+            (!empty($best['sideEffects']) || !empty($best['sideEffectsByFrequency']));
+    }
+
+    // Wenn NICHT forciert und ein vollständiger exakter Treffer vorliegt -> Sofort zurückgeben
+    if (!$force && $hasCompleteExact) {
         echo json_encode([
-            'results' => $matches,
+            'results' => $allMatches,
             'fromDatabase' => true,
             'stepExecuted' => 'database_match',
             'totalInDb' => count($db)
@@ -415,8 +442,29 @@ Antworte AUSSCHLIESSLICH mit einem validen JSON-Array:
 
             if (!empty($newItems)) {
                 saveToMedicationsDatabase($newItems);
+
+                // Live gefundene Treffer an den Anfang setzen, danach Teil-Treffer
+                $merged = [];
+                $seen = [];
+                foreach ($newItems as $it) {
+                    $key = strtolower($it['name'] ?? '');
+                    if (!empty($key) && !isset($seen[$key])) {
+                        $seen[$key] = true;
+                        $it['fromDatabase'] = false;
+                        $merged[] = $it;
+                    }
+                }
+                foreach ($allMatches as $it) {
+                    $key = strtolower($it['name'] ?? '');
+                    if (!empty($key) && !isset($seen[$key])) {
+                        $seen[$key] = true;
+                        $it['fromDatabase'] = true;
+                        $merged[] = $it;
+                    }
+                }
+
                 echo json_encode([
-                    'results' => $newItems,
+                    'results' => $merged,
                     'fromDatabase' => false,
                     'stepExecuted' => 'authority_researched_and_saved',
                     'totalInDb' => count(loadMedicationsDatabase())
@@ -426,8 +474,9 @@ Antworte AUSSCHLIESSLICH mit einem validen JSON-Array:
         }
     }
 
+    // Fallback: Datenbank-Treffer zurückgeben
     echo json_encode([
-        'results' => $matches,
+        'results' => $allMatches,
         'fromDatabase' => true,
         'stepExecuted' => 'database_match',
         'totalInDb' => count($db)

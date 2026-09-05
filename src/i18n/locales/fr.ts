@@ -1493,6 +1493,8 @@ export const fr = {
   "medFreqVeryRare": "Très rare (< 1/10 000)",
   "medSourceAuthority": "RCP officiel des autorités de santé (BfArM / EMA / EOF)",
   "medSourceSavedToDb": "Enregistré de façon permanente dans la base du cabinet",
+  "medForceLiveSearch": "Rechercher en ligne & monographies (EMA / ANSM)",
+  "medSearchingLive": "Recherche en direct auprès des autorités de santé...",
   "acuteExpertAlgoBadge": "Répertorisation Aiguë Classique",
   "acuteExpertSub": "Hahnemann & Boenninghausen • Différenciation du similé",
   "btnOpenDecisionTree": "Afficher l'arbre décisionnel & le diagramme",

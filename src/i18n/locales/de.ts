@@ -1499,6 +1499,8 @@ export const de = {
   medFreqVeryRare: "Sehr selten (< 1/10.000)",
   medSourceAuthority: "Offizielle Behörden-Fachinformation (BfArM / EMA / EOF)",
   medSourceSavedToDb: "Dauerhaft in eigener Praxisdatenbank gesichert",
+  medForceLiveSearch: "Im Internet & Fachinformation recherchieren (BfArM / EMA / Rote Liste)",
+  medSearchingLive: "Recherchiere behördliche Fachinformationen live...",
   acuteExpertAlgoBadge: "Klassische Akut-Repertorisation",
   acuteExpertSub: "Hahnemann & Boenninghausen • Simile-Differenzierung",
   btnOpenDecisionTree: "Entscheidungsbaum & Flussdiagramm anzeigen",

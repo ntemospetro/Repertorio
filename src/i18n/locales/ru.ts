@@ -1493,6 +1493,8 @@ export const ru = {
   "medFreqVeryRare": "Очень редко (< 1/10 000)",
   "medSourceAuthority": "Официальная инструкция регуляторных органов (BfArM / EMA / EOF)",
   "medSourceSavedToDb": "Надежно сохранено в локальной базе данных клиники",
+  "medForceLiveSearch": "Искать в интернете и официальных базах (EMA / BfArM)",
+  "medSearchingLive": "Поиск в официальных медицинских базах...",
   "acuteExpertAlgoBadge": "Классическая острая реперторизация",
   "acuteExpertSub": "Ганеман и Беннингхаузен • Дифференциация симилиума",
   "btnOpenDecisionTree": "Показать дерево решений и блок-схему",

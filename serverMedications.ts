@@ -722,7 +722,8 @@ function normalizeMedicationItem(raw: any): StoredMedication {
 export async function run3StepMedicationSearch(
   query: string,
   ai: GoogleGenAI | null,
-  extractJsonFn: (text: string) => any
+  extractJsonFn: (text: string) => any,
+  force: boolean = false
 ): Promise<{
   results: StoredMedication[];
   fromDatabase: boolean;
@@ -735,9 +736,9 @@ export async function run3StepMedicationSearch(
     return { results: [], fromDatabase: false, stepExecuted: "database_match", totalInDb: 0 };
   }
 
-  // SCHRITT 1: Datenbank prüfen
+  // SCHRITT 1: Datenbank prüfen (falls nicht explizit live erzwungen)
   const dbCheck = search_database(trimmed);
-  if (dbCheck.found && dbCheck.isComplete && dbCheck.matches.length > 0) {
+  if (!force && dbCheck.found && dbCheck.isComplete && dbCheck.matches.length > 0) {
     // Liegt vollständig in der Datenbank vor: Verwende ausschließlich diese Daten!
     return {
       results: dbCheck.matches,

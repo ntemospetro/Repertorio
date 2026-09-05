@@ -126,7 +126,7 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
     }
   }, [med.name]);
 
-  const executeSearch = async (val: string) => {
+  const executeSearch = async (val: string, forceLive: boolean = false) => {
     if (!val || val.trim().length < 1) {
       setSuggestions([]);
       setIsOpen(false);
@@ -135,10 +135,11 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
     }
 
     setIsSearching(true);
+    setIsOpen(true);
     try {
-      const results = await searchMedications(val);
+      const results = await searchMedications(val, forceLive);
       setSuggestions(results);
-      setIsOpen(results.length > 0);
+      setIsOpen(true);
     } catch (e) {
       console.error(e);
     } finally {
@@ -356,6 +357,14 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
                   executeSearch(query);
                 }
               }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  if (query.trim().length >= 1) {
+                    executeSearch(query, true);
+                  }
+                }
+              }}
               className="w-full pl-8 pr-12 py-2 border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 transition-shadow"
             />
             <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
@@ -381,7 +390,7 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
 
           {/* Suggestions Dropdown */}
           {isOpen && suggestions.length > 0 && (
-            <div className="absolute left-0 right-0 top-full mt-1 z-30 bg-white rounded-lg border border-slate-200 shadow-xl max-h-60 overflow-y-auto py-1 animate-in fade-in-50 duration-100">
+            <div className="absolute left-0 right-0 top-full mt-1 z-30 bg-white rounded-lg border border-slate-200 shadow-xl max-h-64 overflow-y-auto py-1 animate-in fade-in-50 duration-100 divide-y divide-slate-100">
               <div className="px-3 py-1 bg-teal-50/70 border-b border-teal-100 flex items-center justify-between text-[10px] text-teal-800 font-semibold">
                 <span className="flex items-center gap-1">
                   <Database className="w-3 h-3 text-teal-600" />
@@ -394,7 +403,7 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
                   key={sIdx}
                   type="button"
                   onClick={() => handleSelectMedication(s)}
-                  className="w-full text-left px-3 py-2 hover:bg-teal-50/80 transition-colors flex items-center justify-between text-xs border-b border-slate-50 last:border-none cursor-pointer"
+                  className="w-full text-left px-3 py-2 hover:bg-teal-50/80 transition-colors flex items-center justify-between text-xs cursor-pointer"
                 >
                   <div className="pr-2">
                     <div className="flex items-center gap-1.5 flex-wrap">
@@ -425,6 +434,68 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
                   )}
                 </button>
               ))}
+
+              {/* Explicit Live Search Button in dropdown */}
+              {query.trim().length >= 2 && (
+                <button
+                  type="button"
+                  id={`btn-force-live-search-${index}`}
+                  onClick={() => executeSearch(query, true)}
+                  disabled={isSearching}
+                  className="w-full text-left px-3 py-2 bg-slate-50 hover:bg-teal-50 transition-colors flex items-center justify-between text-xs text-teal-800 font-medium cursor-pointer"
+                >
+                  <span className="flex items-center gap-1.5 truncate">
+                    {isSearching ? (
+                      <Loader2 className="w-3.5 h-3.5 text-teal-600 animate-spin shrink-0" />
+                    ) : (
+                      <Globe className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+                    )}
+                    <span className="truncate">
+                      {isSearching
+                        ? (t('medSearchingLive' as TranslationKey) || 'Recherchiere Fachinformationen live...')
+                        : (t('medForceLiveSearch' as TranslationKey) || 'Im Internet & Fachinformation recherchieren')}: <span className="font-bold text-slate-900">"{query}"</span>
+                    </span>
+                  </span>
+                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-600 text-white font-bold shrink-0 ml-2">
+                    LIVE
+                  </span>
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Empty state with Live Research Option */}
+          {isOpen && suggestions.length === 0 && query.trim().length >= 2 && (
+            <div className="absolute left-0 right-0 top-full mt-1 z-30 bg-white rounded-lg border border-slate-200 shadow-xl p-3 animate-in fade-in-50 duration-100 space-y-2">
+              {isSearching ? (
+                <div className="flex items-center gap-2 text-xs text-teal-800 font-medium">
+                  <Loader2 className="w-4 h-4 text-teal-600 animate-spin shrink-0" />
+                  <span>{t('medSearchingLive' as TranslationKey) || 'Recherchiere behördliche Fachinformationen live...'}</span>
+                </div>
+              ) : (
+                <>
+                  <div className="text-[11px] text-slate-500 flex items-center gap-1.5">
+                    <Database className="w-3.5 h-3.5 text-slate-400" />
+                    <span>{t('noResultsFound' as TranslationKey) || 'Nicht in der Praxis-Datenbank gefunden.'}</span>
+                  </div>
+                  <button
+                    type="button"
+                    id={`btn-empty-live-search-${index}`}
+                    onClick={() => executeSearch(query, true)}
+                    className="w-full text-left px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-900 rounded-md transition-colors flex items-center justify-between text-xs border border-blue-200 cursor-pointer font-medium"
+                  >
+                    <span className="flex items-center gap-1.5 truncate">
+                      <Globe className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                      <span className="truncate">
+                        {t('medForceLiveSearch' as TranslationKey) || 'Im Internet & Fachinformation recherchieren'}: <strong>"{query}"</strong>
+                      </span>
+                    </span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-600 text-white font-bold shrink-0 ml-2">
+                      LIVE
+                    </span>
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>
