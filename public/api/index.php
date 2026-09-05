@@ -337,6 +337,8 @@ if ($route === 'health' || $route === 'status' || empty($route)) {
 // =========================================================================
 if ($route === 'medications/search' || $route === 'search') {
     $q = isset($_GET['q']) ? trim($_GET['q']) : (isset($body['query']) ? trim($body['query']) : (isset($body['q']) ? trim($body['q']) : ''));
+    $lang = isset($_GET['lang']) ? trim($_GET['lang']) : (isset($body['lang']) ? trim($body['lang']) : 'de');
+
     if (empty($q)) {
         echo json_encode(['results' => [], 'fromDatabase' => false, 'totalInDb' => count(loadMedicationsDatabase())]);
         exit;
@@ -366,17 +368,9 @@ if ($route === 'medications/search' || $route === 'search') {
 
     $allMatches = array_merge($exactMatches, $partialMatches);
 
-    // Prüfen, ob bereits ein vollständiger exakter Treffer in der Datenbank existiert
-    $hasCompleteExact = false;
-    if (!empty($exactMatches)) {
-        $best = $exactMatches[0];
-        $hasCompleteExact = !empty($best['name']) &&
-            !empty($best['dosages']) &&
-            (!empty($best['sideEffects']) || !empty($best['sideEffectsByFrequency']));
-    }
-
-    // Wenn NICHT forciert und ein vollständiger exakter Treffer vorliegt -> Sofort zurückgeben
-    if (!$force && $hasCompleteExact) {
+    // TURBO-SPEED: Wenn NICHT forciert -> Sofortige Antwort aus der Datenbank in < 5ms!
+    // Dadurch friert die Eingabe beim Tippen niemals ein.
+    if (!$force) {
         echo json_encode([
             'results' => $allMatches,
             'fromDatabase' => true,
@@ -386,41 +380,39 @@ if ($route === 'medications/search' || $route === 'search') {
         exit;
     }
 
-    // Schritt 2: Live-Internet-Recherche über Gemini, falls Key vorhanden
+    // Schritt 2: Live-Internet-Recherche über Gemini (nur wenn explizit forciert mit force=1)
     $apiKey = getGeminiKey();
     if (!empty($apiKey)) {
-        $prompt = "Du bist ein präzises medizinisches Informationssystem für Fachkreise (Ärztinnen, Ärzte, Apothekerinnen, Apotheker).
-Recherchiere die offizielle behördliche Fachinformation (BfArM, EMA, Rote Liste, Gelbe Liste, Fachinfo-Service, EOF) für das folgende Arzneimittel oder den Wirkstoff:
-Suchbegriff: \"{$q}\"
+        $langNames = [
+            'de' => 'German (Deutsch)',
+            'en' => 'English',
+            'el' => 'Greek (Ελληνικά)',
+            'es' => 'Spanish (Español)',
+            'fr' => 'French (Français)',
+            'it' => 'Italian (Italiano)',
+            'ru' => 'Russian (Русский)'
+        ];
+        $targetLangName = $langNames[$lang] ?? 'German (Deutsch)';
 
-WICHTIGSTE VORGABE: Es dürfen KEINE Daten erfunden oder geschätzt werden. Alle Angaben müssen zwingend der behördlichen Fachinformation (BfArM, EMA, Rote Liste, SPC) entsprechen. Wenn zu einem Bereich keine Daten gefunden werden, darf nichts hinzugedacht werden – schreibe dann strikt 'Keine behördlichen Angaben in der Fachinformation hinterlegt'.
+        $prompt = "Du bist ein schnelles pharmazeutisches Suchsystem.
+Finde das Medikament bzw. den Wirkstoff: \"{$q}\".
+Ermittle schnell:
+1. name: Offizieller Handelsname
+2. activeSubstance: Wirkstoff (INN in {$targetLangName})
+3. category: Wirkstoffgruppe in {$targetLangName}
+4. dosages: Liste aller handelsüblichen Dosierungen (z.B. [\"20 mg\", \"40 mg\", \"80 mg\"])
+5. commonForms: Darreichungsformen in {$targetLangName} (z.B. [\"Tabletten\", \"Kapseln\"])
+6. recommendedIntake: Typische Einnahme in {$targetLangName} (z.B. \"1x täglich morgens\")
 
-Antworte AUSSCHLIESSLICH mit einem validen JSON-Array:
+Antworte AUSSCHLIESSLICH mit einem kompakten JSON-Array:
 [
   {
     \"name\": \"Handelsname\",
     \"activeSubstance\": \"Wirkstoff\",
-    \"category\": \"Wirkstoffklasse\",
+    \"category\": \"Wirkstoffgruppe\",
     \"dosages\": [\"...\"],
-    \"packageSizes\": [\"...\"],
     \"commonForms\": [\"...\"],
-    \"recommendedIntake\": \"...\",
-    \"sideEffectsByFrequency\": {
-      \"veryCommon\": [\"...\"],
-      \"common\": [\"...\"],
-      \"uncommon\": [\"...\"],
-      \"rare\": [\"...\"],
-      \"veryRare\": [\"...\"]
-    },
-    \"sideEffects\": [\"...\"],
-    \"interactions\": [\"...\"],
-    \"contraindications\": {
-      \"absolute\": [\"...\"],
-      \"relative\": [\"...\"]
-    },
-    \"warnings\": \"...\",
-    \"monographText\": \"Hier ist die komplette Übersicht zu [Handelsname]...\",
-    \"authoritySource\": \"Offizielle Fachinformation (BfArM / EMA / EOF)\"
+    \"recommendedIntake\": \"...\"
   }
 ]";
 
@@ -442,6 +434,18 @@ Antworte AUSSCHLIESSLICH mit einem validen JSON-Array:
 
             if (!empty($newItems)) {
                 saveToMedicationsDatabase($newItems);
+
+                // Falls eine andere Sprache als Deutsch gewählt war, sichere das Objekt auch im Übersetzungscache
+                if ($lang !== 'de') {
+                    foreach ($newItems as $item) {
+                        if (!empty($item['name'])) {
+                            $dKey = strtolower(trim($item['name'])) . "_{$lang}";
+                            $bKey = getBaseMedName($item['name']) . "_{$lang}";
+                            saveMedicationTranslation($dKey, $item);
+                            saveMedicationTranslation($bKey, $item);
+                        }
+                    }
+                }
 
                 // Live gefundene Treffer an den Anfang setzen, danach Teil-Treffer
                 $merged = [];
@@ -516,10 +520,53 @@ if ($route === 'medications/details' || $route === 'details') {
         }
     }
 
-    if (!$found) {
+    // Falls gar nicht in lokaler DB oder nur Basis-Daten vorhanden, führe vollständige Behördensuche aus
+    $isComplete = $found && (!empty($found['monographText']) || !empty($found['sideEffects']));
+    if (!$found || !$isComplete) {
         $apiKey = getGeminiKey();
         if (!empty($apiKey)) {
-            $prompt = "Du bist ein präzises medizinisches Informationssystem für Fachkreise. Recherchiere die offizielle behördliche Fachinformation für: {$name}. Antworte ausschließlich mit einem JSON-Array mit 1 Objekt (analog BfArM / EMA / Rote Liste).";
+            $langNames = [
+                'de' => 'German (Deutsch)',
+                'en' => 'English',
+                'el' => 'Greek (Ελληνικά)',
+                'es' => 'Spanish (Español)',
+                'fr' => 'French (Français)',
+                'it' => 'Italian (Italiano)',
+                'ru' => 'Russian (Русский)'
+            ];
+            $targetLangName = $langNames[$lang] ?? 'German (Deutsch)';
+            $prompt = "Du bist ein pharmazeutisches Informationssystem für klinisches Fachpersonal.
+Recherchiere die offizielle behördliche Fachinformation (BfArM, EMA, FDA, EOF, Rote Liste) für: \"{$name}\".
+SPRACHVORGABE: Alle Angaben, Beschreibungen, Nebenwirkungen, Wechselwirkungen, Kontraindikationen und die Monographie MÜSSEN zwingend und vollständig in {$targetLangName} formuliert werden!
+WICHTIG: Keine Daten erfinden.
+Antworte AUSSCHLIESSLICH mit einem validen JSON-Array mit 1 Objekt:
+[
+  {
+    \"name\": \"{$name}\",
+    \"activeSubstance\": \"Wirkstoff in {$targetLangName}\",
+    \"category\": \"Wirkstoffklasse in {$targetLangName}\",
+    \"dosages\": [\"...\"],
+    \"packageSizes\": [\"...\"],
+    \"commonForms\": [\"...\"],
+    \"recommendedIntake\": \"Einnahmeempfehlung in {$targetLangName}\",
+    \"sideEffectsByFrequency\": {
+      \"veryCommon\": [\"...\"],
+      \"common\": [\"...\"],
+      \"uncommon\": [\"...\"],
+      \"rare\": [\"...\"],
+      \"veryRare\": [\"...\"]
+    },
+    \"sideEffects\": [\"...\"],
+    \"interactions\": [\"...\"],
+    \"contraindications\": {
+      \"absolute\": [\"...\"],
+      \"relative\": [\"...\"]
+    },
+    \"warnings\": \"Warnhinweise in {$targetLangName}\",
+    \"monographText\": \"Ausführliche 5-teilige Fachinformation in {$targetLangName}...\",
+    \"authoritySource\": \"Offizielle Fachinformation (BfArM / EMA / EOF)\"
+  }
+]";
             $aiRes = callGeminiApi($prompt, true);
             if ($aiRes) {
                 $parsed = extractJsonFromText($aiRes);
@@ -527,7 +574,7 @@ if ($route === 'medications/details' || $route === 'details') {
                     $item = isset($parsed['name']) ? $parsed : ($parsed[0] ?? null);
                     if ($item && !empty($item['name'])) {
                         saveToMedicationsDatabase([$item]);
-                        $found = $item;
+                        $found = is_array($found) ? array_merge($found, $item) : $item;
                     }
                 }
             }
@@ -535,20 +582,28 @@ if ($route === 'medications/details' || $route === 'details') {
     }
 
     if ($found) {
-        if ($lang !== 'de' && !empty($found['monographText'])) {
+        // Mehrsprachigkeit: Übersetzung aller Felder & dauerhafte Speicherung
+        if ($lang !== 'de') {
             $directKey = strtolower(trim($found['name'])) . "_{$lang}";
             $baseKey = getBaseMedName($found['name']) . "_{$lang}";
             $transCache = loadMedicationTranslations();
 
-            if (!empty($transCache[$directKey])) {
-                $found['monographText'] = $transCache[$directKey];
-            } elseif (!empty($transCache[$baseKey])) {
-                $found['monographText'] = $transCache[$baseKey];
+            $cachedEntry = $transCache[$directKey] ?? ($transCache[$baseKey] ?? null);
+
+            if (!empty($cachedEntry)) {
+                // Sofort aus dem permanenten Übersetzungscache laden (0 Millisekunden!)
+                if (is_array($cachedEntry)) {
+                    $found = array_merge($found, $cachedEntry);
+                } elseif (is_string($cachedEntry)) {
+                    $found['monographText'] = $cachedEntry;
+                }
             } else {
+                // Noch nicht in dieser Sprache übersetzt: Vollständige Übersetzung per Gemini durchführen
+                // und dauerhaft in medication_translations.json sichern
                 $apiKey = getGeminiKey();
                 if (!empty($apiKey)) {
                     $langNames = [
-                        'de' => 'German',
+                        'de' => 'German (Deutsch)',
                         'en' => 'English',
                         'el' => 'Greek (Ελληνικά)',
                         'es' => 'Spanish (Español)',
@@ -557,12 +612,38 @@ if ($route === 'medications/details' || $route === 'details') {
                         'ru' => 'Russian (Русский)'
                     ];
                     $targetLangName = $langNames[$lang] ?? 'English';
-                    $trPrompt = "You are a licensed medical and pharmaceutical translator for clinical staff.\nTranslate the following official medication monograph into {$targetLangName}. Maintain the exact 5-section structure and emoji headers. Output ONLY the translated monograph in {$targetLangName}.\n\n" . $found['monographText'];
-                    $trText = callGeminiApi($trPrompt, false);
-                    if (!empty($trText) && strlen($trText) > 50) {
-                        saveMedicationTranslation($directKey, $trText);
-                        saveMedicationTranslation($baseKey, $trText);
-                        $found['monographText'] = $trText;
+
+                    $toTranslate = [
+                        'activeSubstance' => $found['activeSubstance'] ?? '',
+                        'category' => $found['category'] ?? '',
+                        'recommendedIntake' => $found['recommendedIntake'] ?? '',
+                        'sideEffectsByFrequency' => $found['sideEffectsByFrequency'] ?? null,
+                        'sideEffects' => $found['sideEffects'] ?? [],
+                        'interactions' => $found['interactions'] ?? [],
+                        'contraindications' => $found['contraindications'] ?? null,
+                        'warnings' => $found['warnings'] ?? '',
+                        'monographText' => $found['monographText'] ?? ''
+                    ];
+
+                    $trPrompt = "You are a licensed clinical and medical translator.
+Translate the following medication clinical data accurately into {$targetLangName}.
+CRITICAL INSTRUCTIONS:
+1. Translate all drug categories, active substance name, side effects, interactions, contraindications, warnings, and the 5-section monograph into {$targetLangName}.
+2. Retain the exact JSON key structure.
+3. Return ONLY a valid JSON object matching the input keys without any markdown wrappers.
+
+Input JSON:
+" . json_encode($toTranslate, JSON_UNESCAPED_UNICODE);
+
+                    $trRes = callGeminiApi($trPrompt, false);
+                    if ($trRes) {
+                        $translatedObj = extractJsonFromText($trRes);
+                        if (is_array($translatedObj) && (!empty($translatedObj['monographText']) || !empty($translatedObj['sideEffects']))) {
+                            // Dauerhaft im Dateisystem sichern
+                            saveMedicationTranslation($directKey, $translatedObj);
+                            saveMedicationTranslation($baseKey, $translatedObj);
+                            $found = array_merge($found, $translatedObj);
+                        }
                     }
                 }
             }

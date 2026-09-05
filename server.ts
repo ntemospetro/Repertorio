@@ -35,7 +35,7 @@ async function startServer() {
   const TOKEN_RATES_FILE = path.join(DATA_DIR, 'token_rates.json');
   const MEDICATION_TRANSLATIONS_FILE = path.join(DATA_DIR, 'medication_translations.json');
 
-  const getMedicationTranslations = (): Record<string, string> => {
+  const getMedicationTranslations = (): Record<string, any> => {
     ensureDataDir();
     if (fs.existsSync(MEDICATION_TRANSLATIONS_FILE)) {
       try {
@@ -45,11 +45,11 @@ async function startServer() {
     return {};
   };
 
-  const saveMedicationTranslation = (key: string, text: string) => {
+  const saveMedicationTranslation = (key: string, data: any) => {
     try {
       ensureDataDir();
       const map = getMedicationTranslations();
-      map[key] = text;
+      map[key] = data;
       fs.writeFileSync(MEDICATION_TRANSLATIONS_FILE, JSON.stringify(map, null, 2), 'utf-8');
     } catch (err) {
       console.error("Error saving medication translation:", err);
@@ -825,6 +825,7 @@ oder
   app.get("/api/medications/search", async (req, res) => {
     try {
       const q = (req.query.q as string || '').trim();
+      const lang = (req.query.lang as string || 'de').trim();
       if (!q || q.length < 1) {
         return res.json({ results: [], fromDatabase: false, totalInDb: getDatabaseCount() });
       }
@@ -833,7 +834,7 @@ oder
       const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
       const force = req.query.force === '1' || req.query.force === 'true';
 
-      const outcome = await run3StepMedicationSearch(q, ai, extractJsonFromText, force);
+      const outcome = await run3StepMedicationSearch(q, ai, extractJsonFromText, force, lang);
       res.json(outcome);
     } catch (error) {
       console.error("[MedicationAssistant] API Search Error:", error);
@@ -871,7 +872,7 @@ oder
       const apiKey = getGeminiApiKey();
       const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
-      const outcome = await run3StepMedicationDetails(name, ai, extractJsonFromText);
+      const outcome = await run3StepMedicationDetails(name, ai, extractJsonFromText, lang);
 
       // If requested language is not German and details exist, check if translation is cached or translate live
       if (outcome && outcome.details && lang && lang !== 'de') {
@@ -879,9 +880,14 @@ oder
         const baseKey = `${getBaseMedName(name)}_${lang}`;
         const cache = getMedicationTranslations();
         const cached = cache[directKey] || cache[baseKey];
+
         if (cached) {
-          outcome.details.monographText = cached;
-        } else if (ai && outcome.details.monographText) {
+          if (typeof cached === 'object' && cached !== null) {
+            outcome.details = { ...outcome.details, ...(cached as Record<string, any>) } as any;
+          } else if (typeof cached === 'string') {
+            outcome.details.monographText = cached;
+          }
+        } else if (ai) {
           try {
             const langNames: Record<string, string> = {
               de: "German (Deutsch)",
@@ -893,14 +899,41 @@ oder
               ru: "Russian (Русский)"
             };
             const targetLanguageName = langNames[lang] || "English";
-            const prompt = `You are a licensed medical and pharmaceutical translator for clinical staff.
-Translate the following official medication monograph into ${targetLanguageName}. Maintain the exact 5-section structure and emoji headers. Output ONLY the translated monograph in ${targetLanguageName}.\n\n${outcome.details.monographText}`;
+
+            const toTranslate = {
+              activeSubstance: outcome.details.activeSubstance || '',
+              category: outcome.details.category || '',
+              recommendedIntake: outcome.details.recommendedIntake || '',
+              sideEffectsByFrequency: outcome.details.sideEffectsByFrequency || null,
+              sideEffects: outcome.details.sideEffects || [],
+              interactions: outcome.details.interactions || [],
+              contraindications: outcome.details.contraindications || null,
+              warnings: outcome.details.warnings || '',
+              monographText: outcome.details.monographText || ''
+            };
+
+            const prompt = `You are a licensed clinical and pharmaceutical translator.
+Translate the following medication clinical profile accurately into ${targetLanguageName}.
+CRITICAL INSTRUCTIONS:
+1. Translate active substance name, category, side effects, interactions, contraindications, warnings, and the 5-section monograph into ${targetLanguageName}.
+2. Retain the exact JSON structure.
+3. Return ONLY a valid JSON object matching the input keys.
+
+Input JSON:
+${JSON.stringify(toTranslate, null, 2)}`;
+
             const trRes = await ai.models.generateContent({
               model: "gemini-flash-latest",
               contents: prompt
             });
             const trText = trRes.text ? trRes.text.trim() : "";
-            if (trText && trText.length > 50) {
+            const parsedTr = extractJsonFromText(trText);
+
+            if (parsedTr && typeof parsedTr === 'object' && (parsedTr.monographText || parsedTr.sideEffects)) {
+              saveMedicationTranslation(directKey, parsedTr);
+              saveMedicationTranslation(baseKey, parsedTr);
+              outcome.details = { ...outcome.details, ...parsedTr };
+            } else if (trText && trText.length > 50) {
               saveMedicationTranslation(directKey, trText);
               saveMedicationTranslation(baseKey, trText);
               outcome.details.monographText = trText;

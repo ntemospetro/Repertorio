@@ -357,16 +357,104 @@ export function search_database(medikament_name: string): {
 // Wenn das Medikament nicht in der Datenbank liegt:
 // Nutze das Werkzeug search_health_authority(medikament_name). Suche gezielt auf den offiziellen
 // Behördenseiten (ema.europa.eu, bfarm.de, eof.gr oder Fachinformationen der Hersteller).
+// -----------------------------------------------------------------------------------
+// Schnelle Vorab-Recherche (Phase 1): Findet sofort Handelsname, Wirkstoff, Kategorie und Dosierungen
+// -----------------------------------------------------------------------------------
+export async function search_medication_fast(
+  medikament_name: string,
+  ai: GoogleGenAI,
+  extractJsonFn: (text: string) => any,
+  lang: string = "de"
+): Promise<StoredMedication[]> {
+  const query = medikament_name.trim();
+  if (!query) return [];
+
+  const langNames: Record<string, string> = {
+    de: "German (Deutsch)",
+    en: "English",
+    el: "Greek (Ελληνικά)",
+    es: "Spanish (Español)",
+    fr: "French (Français)",
+    it: "Italian (Italiano)",
+    ru: "Russian (Русский)"
+  };
+  const targetLanguageName = langNames[lang] || "German (Deutsch)";
+
+  const prompt = `Du bist ein schnelles pharmazeutisches Suchsystem.
+Finde das Medikament bzw. den Wirkstoff: "${query}".
+Ermittle schnell:
+1. name: Offizieller Handelsname
+2. activeSubstance: Wirkstoff (INN in ${targetLanguageName})
+3. category: Wirkstoffgruppe in ${targetLanguageName}
+4. dosages: Liste aller handelsüblichen Dosierungen (z.B. ["20 mg", "40 mg", "80 mg"])
+5. commonForms: Darreichungsformen in ${targetLanguageName} (z.B. ["Tabletten", "Kapseln"])
+6. recommendedIntake: Typische Einnahme in ${targetLanguageName} (z.B. "1x täglich morgens")
+
+Antworte AUSSCHLIESSLICH mit einem kompakten JSON-Array:
+[
+  {
+    "name": "Handelsname",
+    "activeSubstance": "Wirkstoff",
+    "category": "Wirkstoffgruppe",
+    "dosages": ["..."],
+    "commonForms": ["..."],
+    "recommendedIntake": "..."
+  }
+]`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3.8-flash",
+      contents: prompt,
+      config: {
+        tools: [{ googleSearch: {} }]
+      }
+    });
+
+    const parsed = extractJsonFn(response.text || "");
+    const list: StoredMedication[] = [];
+
+    if (Array.isArray(parsed)) {
+      for (const item of parsed) {
+        if (item && item.name) {
+          list.push(normalizeMedicationItem(item));
+        }
+      }
+    } else if (parsed && typeof parsed === "object" && parsed.name) {
+      list.push(normalizeMedicationItem(parsed));
+    }
+
+    return list;
+  } catch (err) {
+    console.error("[MedicationAssistant] search_medication_fast error:", err);
+    return [];
+  }
+}
+
+// -----------------------------------------------------------------------------------
+// Schritt 2 (Externe Behördensuche - Vollständige Fachinformation & Monographie):
 // Extrahiere daraus exakt: Handelsname, Wirkstoff, alle verfügbaren Dosierungen, Packungsgrößen
 // und die Nebenwirkungen (gegliedert nach Häufigkeit).
 // -----------------------------------------------------------------------------------
 export async function search_health_authority(
   medikament_name: string,
   ai: GoogleGenAI,
-  extractJsonFn: (text: string) => any
+  extractJsonFn: (text: string) => any,
+  lang: string = "de"
 ): Promise<StoredMedication[]> {
   const query = medikament_name.trim();
   if (!query) return [];
+
+  const langNames: Record<string, string> = {
+    de: "German (Deutsch)",
+    en: "English",
+    el: "Greek (Ελληνικά)",
+    es: "Spanish (Español)",
+    fr: "French (Français)",
+    it: "Italian (Italiano)",
+    ru: "Russian (Русский)"
+  };
+  const targetLanguageName = langNames[lang] || "German (Deutsch)";
 
   const prompt = `Du bist ein pharmazeutischer Assistent für medizinisches und therapeutisches Fachpersonal.
 Wenn der Nutzer nach einem Medikament, dessen Dosierungen, Packungsgrößen oder Nebenwirkungen fragt, recherchiere gezielt auf den offiziellen Behördenseiten:
@@ -377,45 +465,41 @@ Wenn der Nutzer nach einem Medikament, dessen Dosierungen, Packungsgrößen oder
 
 Recherchiere das Medikament / den Wirkstoff: "${query}".
 
+SPRACHVORGABE / LANGUAGE REQUIREMENT:
+Alle Angaben, Beschreibungen, Dosierungshinweise, Nebenwirkungen, Wechselwirkungen, Kontraindikationen, Warnhinweise und die Monographie MÜSSEN zwingend und vollständig in der Sprache ${targetLanguageName} verfasst werden!
+
 WICHTIGSTE VORGABE: Es dürfen KEINE Daten erfunden oder geschätzt werden. Alle Angaben müssen zwingend der behördlichen Fachinformation (BfArM, EMA, Rote Liste, SPC) entsprechen. Wenn zu einem Bereich keine Daten gefunden werden, darf nichts hinzugedacht werden – schreibe dann strikt 'Keine behördlichen Angaben in der Fachinformation hinterlegt'.
 
 Extrahiere daraus exakt:
 1. Handelsname (offizieller Präparatename)
-2. Wirkstoff (INN)
-3. Wirkstoffgruppe / therapeutische Indikation
+2. Wirkstoff (INN in ${targetLanguageName})
+3. Wirkstoffgruppe / therapeutische Indikation in ${targetLanguageName}
 4. Alle verfügbaren Dosierungen (z.B. ["20 mg", "40 mg", "80 mg"])
 5. Packungsgrößen (z.B. ["N1 (14 Stk.)", "N2 (28 Stk.)", "N3 (98 Stk.)", "100 Tabletten"])
-6. Darreichungsformen (z.B. ["Filmtabletten", "Kapseln"])
-7. Empfohlene Einnahmeart & Dosierungsschema (z.B. "1x täglich morgens nüchtern mit Wasser")
-8. Nebenwirkungen gegliedert nach Häufigkeit (streng nach Fachinformations-Kategorien):
+6. Darreichungsformen in ${targetLanguageName}
+7. Empfohlene Einnahmeart & Dosierungsschema in ${targetLanguageName}
+8. Nebenwirkungen gegliedert nach Häufigkeit (streng nach Fachinformations-Kategorien in ${targetLanguageName}):
    - veryCommon: Sehr häufig (≥ 1/10)
    - common: Häufig (≥ 1/100 bis < 1/10)
    - uncommon: Gelegentlich (≥ 1/1.000 bis < 1/100)
    - rare: Selten (≥ 1/10.000 bis < 1/1.000)
    - veryRare: Sehr selten (< 1/10.000)
-9. Relevante Wechselwirkungen mit anderen Arzneimitteln, Nahrungsmitteln oder Alkohol
-10. Wichtige Kontraindikationen gegliedert nach "absolute" (Anwendung ausgeschlossen) und "relative" (Besondere Vorsicht)
-11. Zusammenfassende Warnhinweise ("warnings")
-12. Erzeuge das Feld "monographText": Einen zusammenhängenden, flüssigen Fließtext (keine Tabelle) mit exakt folgender Gliederung und fetten Überschriften:
-    Hier ist die komplette Übersicht zu [Handelsname] ([Wirkstoff]) mit allen wichtigen Informationen zu Inhaltsstoffen, Dosierung, Nebenwirkungen, Kontraindikationen und Wechselwirkungen, übersichtlich für dich zusammengefasst.
-
+9. Relevante Wechselwirkungen mit anderen Arzneimitteln, Nahrungsmitteln oder Alkohol in ${targetLanguageName}
+10. Wichtige Kontraindikationen gegliedert nach "absolute" und "relative" in ${targetLanguageName}
+11. Zusammenfassende Warnhinweise ("warnings") in ${targetLanguageName}
+12. Erzeuge das Feld "monographText": Einen zusammenhängenden, flüssigen Fließtext in ${targetLanguageName} mit 5 Abschnitten:
     📝 1. Wirkstoff und Inhaltsstoffe
-    ...
     💊 2. Dosierung & Anwendung
-    ...
     ⚠️ 3. Nebenwirkungen
-    ...
     🚫 4. Kontraindikationen (Gegenanzeigen)
-    ...
     ❌ 5. Gefährliche Wechselwirkungen
-    ...
 
 Antworte AUSSCHLIESSLICH mit einem validen JSON-Array (auch wenn nur 1 Medikament gefunden wird, Array verwenden):
 [
   {
     "name": "Handelsname",
-    "activeSubstance": "Wirkstoff",
-    "category": "Wirkstoffklasse",
+    "activeSubstance": "Wirkstoff in ${targetLanguageName}",
+    "category": "Wirkstoffklasse in ${targetLanguageName}",
     "dosages": ["..."],
     "packageSizes": ["..."],
     "commonForms": ["..."],
@@ -723,7 +807,8 @@ export async function run3StepMedicationSearch(
   query: string,
   ai: GoogleGenAI | null,
   extractJsonFn: (text: string) => any,
-  force: boolean = false
+  force: boolean = false,
+  lang: string = "de"
 ): Promise<{
   results: StoredMedication[];
   fromDatabase: boolean;
@@ -736,10 +821,10 @@ export async function run3StepMedicationSearch(
     return { results: [], fromDatabase: false, stepExecuted: "database_match", totalInDb: 0 };
   }
 
-  // SCHRITT 1: Datenbank prüfen (falls nicht explizit live erzwungen)
+  // SCHRITT 1: Datenbank prüfen
   const dbCheck = search_database(trimmed);
-  if (!force && dbCheck.found && dbCheck.isComplete && dbCheck.matches.length > 0) {
-    // Liegt vollständig in der Datenbank vor: Verwende ausschließlich diese Daten!
+  if (!force) {
+    // TURBO: Wenn nicht forciert (normales Tippen) -> Sofortige Antwort aus lokaler Datenbank (< 5ms)
     return {
       results: dbCheck.matches,
       fromDatabase: true,
@@ -748,9 +833,9 @@ export async function run3StepMedicationSearch(
     };
   }
 
-  // SCHRITT 2: Externe Behördensuche (falls nicht oder unvollständig in der Datenbank)
+  // SCHRITT 2: Schnelle Live-Suche (Phase 1: Name, Wirkstoff, Dosierungen)
   if (!ai) {
-    // Falls keine KI-Verbindung, gib vorhandene Teil-Treffer aus der DB zurück
+    // Falls keine KI-Verbindung, gib vorhandene Treffer aus der DB zurück
     return {
       results: dbCheck.matches,
       fromDatabase: true,
@@ -759,8 +844,8 @@ export async function run3StepMedicationSearch(
     };
   }
 
-  console.log(`[MedicationAssistant] Step 2: Medication "${trimmed}" not complete in local DB. Searching health authorities (BfArM, EMA, EOF)...`);
-  const authorityResults = await search_health_authority(trimmed, ai, extractJsonFn);
+  console.log(`[MedicationAssistant] Step 2 (Fast Search): Medication "${trimmed}" quick search requested in language "${lang}"...`);
+  const authorityResults = await search_medication_fast(trimmed, ai, extractJsonFn, lang);
 
   if (authorityResults.length > 0) {
     // SCHRITT 3: Automatisch Abspeichern in eigener Datenbank
@@ -787,7 +872,8 @@ export async function run3StepMedicationSearch(
 export async function run3StepMedicationDetails(
   name: string,
   ai: GoogleGenAI | null,
-  extractJsonFn: (text: string) => any
+  extractJsonFn: (text: string) => any,
+  lang: string = "de"
 ): Promise<{
   details: StoredMedication | null;
   fromDatabase: boolean;
@@ -809,7 +895,7 @@ export async function run3StepMedicationDetails(
     };
   }
 
-  // SCHRITT 2: Externe Behördensuche
+  // SCHRITT 2: Externe Behördensuche für vollständige Monographie & Nebenwirkungen
   if (!ai) {
     return {
       details: dbCheck.bestMatch || null,
@@ -818,8 +904,8 @@ export async function run3StepMedicationDetails(
     };
   }
 
-  console.log(`[MedicationAssistant] Step 2: Querying health authorities for details on "${trimmed}"...`);
-  const authorityResults = await search_health_authority(trimmed, ai, extractJsonFn);
+  console.log(`[MedicationAssistant] Step 2: Querying health authorities for full details on "${trimmed}" in language "${lang}"...`);
+  const authorityResults = await search_health_authority(trimmed, ai, extractJsonFn, lang);
 
   if (authorityResults.length > 0) {
     const item = authorityResults[0];

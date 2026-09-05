@@ -366,10 +366,10 @@ for (const m of [...COMMON_MEDICATIONS_DB, ...TOP_MEDICATIONS_CATALOG]) {
 const searchCache = new Map<string, MedicationSuggestion[]>();
 const detailsCache = new Map<string, MedicationSuggestion>();
 
-export async function searchMedications(query: string, forceLive: boolean = false): Promise<MedicationSuggestion[]> {
+export async function searchMedications(query: string, forceLive: boolean = false, lang: string = 'de'): Promise<MedicationSuggestion[]> {
   if (!query || query.trim().length < 1) return [];
   const q = query.toLowerCase().trim();
-  const cacheKey = `${q}_${forceLive ? 'force' : 'std'}`;
+  const cacheKey = `${q}_${forceLive ? 'force' : 'std'}_${lang}`;
 
   // Return cached result if available (only if not forcing live search)
   if (!forceLive && searchCache.has(cacheKey)) {
@@ -385,7 +385,7 @@ export async function searchMedications(query: string, forceLive: boolean = fals
 
   // Perform live internet & authority search via the server endpoint
   try {
-    const url = `/api/medications/search?q=${encodeURIComponent(query.trim())}${forceLive ? '&force=1' : ''}`;
+    const url = `/api/medications/search?q=${encodeURIComponent(query.trim())}${forceLive ? '&force=1' : ''}&lang=${encodeURIComponent(lang)}`;
     const res = await fetch(url);
     if (res.ok) {
       const data = await res.json();
@@ -401,7 +401,9 @@ export async function searchMedications(query: string, forceLive: boolean = fals
           sideEffectsByFrequency: r.sideEffectsByFrequency || undefined,
           sideEffects: Array.isArray(r.sideEffects) ? r.sideEffects : [],
           interactions: Array.isArray(r.interactions) ? r.interactions : [],
+          contraindications: r.contraindications || undefined,
           warnings: r.warnings || '',
+          monographText: r.monographText || undefined,
           fromDatabase: r.fromDatabase !== undefined ? r.fromDatabase : (data.fromDatabase || false),
           authoritySource: r.authoritySource || (r.fromDatabase ? 'Geprüfte Praxisdatenbank (BfArM / EMA)' : 'Offizielle Fachinformation (BfArM / EMA / EOF)'),
           stepExecuted: r.stepExecuted || data.stepExecuted || (r.fromDatabase ? 'database_match' : 'authority_researched_and_saved')
@@ -502,8 +504,13 @@ export async function fetchMedicationDetails(name: string, lang: string = 'de'):
   }
 
   if (localMatch) {
-    detailsCache.set(key, localMatch);
-    return localMatch;
+    const localizedMatch: MedicationSuggestion = { ...localMatch };
+    if (lang && lang !== 'de') {
+      const baseMono = localizedMatch.monographText || formatMedicationMonograph(localizedMatch, 'de');
+      localizedMatch.monographText = localizeMonograph(baseMono, lang as any);
+    }
+    detailsCache.set(key, localizedMatch);
+    return localizedMatch;
   }
 
   return null;

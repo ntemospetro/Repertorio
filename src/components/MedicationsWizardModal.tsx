@@ -175,6 +175,7 @@ export const MedicationsWizardModal: React.FC<Props> = ({
                   med={med}
                   onChange={(updated) => handleUpdateMedication(index, updated)}
                   onRemove={() => handleRemoveMedication(index)}
+                  showResearchDetails={false}
                   t={t}
                 />
               ))}

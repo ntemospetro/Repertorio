@@ -417,6 +417,398 @@ const CLINICAL_PHRASES: Record<string, Record<LanguageCode, string>> = {
     fr: 'Autres médicaments dépresseurs du SNC (antipsychotiques, antidépresseurs, sédatifs, hypnotiques) : Majoration réciproque des effets',
     it: 'Altri farmaci deprimenti il SNC (antipsicotici, antidepressivi, sedativi, ipnotici): Potenziamento reciproco dell’effetto',
     ru: 'Другие средства, угнетающие ЦНС (нейролептики, антидепрессанты, седативные, снотворные): Взаимное усиление действия'
+  },
+  // Analgesics / Antipyretics / Aspirin / NSAIDs
+  'Acetylsalicylsäure / Vitamin C': {
+    de: 'Acetylsalicylsäure / Vitamin C',
+    el: 'Ακετυλοσαλικυλικό οξύ / Βιταμίνη C',
+    en: 'Acetylsalicylic acid / Vitamin C',
+    es: 'Ácido acetilsalicílico / Vitamina C',
+    fr: 'Acide acétylsalicylique / Vitamine C',
+    it: 'Acido acetilsalicilico / Vitamina C',
+    ru: 'Ацетилсалициловая кислота / Витамин C'
+  },
+  'Acetylsalicylsäure': {
+    de: 'Acetylsalicylsäure',
+    el: 'Ακετυλοσαλικυλικό οξύ',
+    en: 'Acetylsalicylic acid',
+    es: 'Ácido acetilsalicílico',
+    fr: 'Acide acétylsalicylique',
+    it: 'Acido acetilsalicilico',
+    ru: 'Ацетилсалициловая кислота'
+  },
+  'Analgetikum & Antipyretikum': {
+    de: 'Analgetikum & Antipyretikum',
+    el: 'Αναλγητικό & αντιπυρετικό',
+    en: 'Analgesic & antipyretic',
+    es: 'Analgésico y antipirético',
+    fr: 'Analgésique et antipyrétique',
+    it: 'Analgesico e antipiretico',
+    ru: 'Анальгетик и антипиретик'
+  },
+  'Analgetika und Antipyretika': {
+    de: 'Analgetika und Antipyretika',
+    el: 'Αναλγητικά και αντιπυρετικά',
+    en: 'Analgesics and antipyretics',
+    es: 'Analgésicos y antipiréticos',
+    fr: 'Analgésiques et antipyrétiques',
+    it: 'Analgesici e antipiretici',
+    ru: 'Анальгетики и антипиретики'
+  },
+  'NSAR / Nichtsteroidales Antirheumatikum': {
+    de: 'NSAR / Nichtsteroidales Antirheumatikum',
+    el: 'ΜΣΑΦ / Μη στεροειδές αντιφλεγμονώδες',
+    en: 'NSAID / Nonsteroidal anti-inflammatory drug',
+    es: 'AINE / Antiinflamatorio no esteroideo',
+    fr: 'AINS / Anti-inflammatoire non stéroïdien',
+    it: 'FANS / Farmaco antinfiammatorio non steroideo',
+    ru: 'НПВП / Нестероидный противовоспалительный препарат'
+  },
+  'Kombiniertes Erkältungsmittel': {
+    de: 'Kombiniertes Erkältungsmittel',
+    el: 'Συνδυασμένο φάρμακο για το κρυολόγημα',
+    en: 'Combination cold remedy',
+    es: 'Medicamento combinado para el resfriado',
+    fr: 'Traitement combiné du rhume',
+    it: 'Antinfluenzale combinato',
+    ru: 'Комбинированное противопростудное средство'
+  },
+  'Kardioselektiver Betablocker': {
+    de: 'Kardioselektiver Betablocker',
+    el: 'Καρδιοεκλεκτικός β-αποκλειστής',
+    en: 'Cardioselective beta-blocker',
+    es: 'Betabloqueante cardioselectivo',
+    fr: 'Bêta-bloquant cardiosélectif',
+    it: 'Betabloccante cardioselettivo',
+    ru: 'Кардиоселективный бета-блокатор'
+  },
+  'ACE-Hemmer (Blutdruck & Herz)': {
+    de: 'ACE-Hemmer (Blutdruck & Herz)',
+    el: 'Αναστολέας ΜΕΑ (Πίεση & καρδιά)',
+    en: 'ACE inhibitor (Blood pressure & heart)',
+    es: 'Inhibidor de la ECA (Presión arterial y corazón)',
+    fr: "Inhibiteur de l'ECA (Tension et cœur)",
+    it: 'ACE-inibitore (Pressione arteriosa e cuore)',
+    ru: 'Ингибитор АПФ (Давление и сердце)'
+  },
+  'Protonenpumpenhemmer (PPI)': {
+    de: 'Protonenpumpenhemmer (PPI)',
+    el: 'Αναστολέας αντλίας πρωτονίων (PPI)',
+    en: 'Proton pump inhibitor (PPI)',
+    es: 'Inhibidor de la bomba de protones (IBP)',
+    fr: 'Inhibiteur de la pompe à protons (IPP)',
+    it: 'Inibitore della pompa protonica (IPP)',
+    ru: 'Ингибитор протонной помпы (ИПП)'
+  },
+  'Schilddrüsenhormon': {
+    de: 'Schilddrüsenhormon',
+    el: 'Θυρεοειδική ορμόνη',
+    en: 'Thyroid hormone',
+    es: 'Hormona tiroidea',
+    fr: 'Hormone thyroïdienne',
+    it: 'Ormone tiroideo',
+    ru: 'Тиреоидный гормон'
+  },
+  // Common side effects
+  'Gastrointestinale Beschwerden, Müdigkeit': {
+    de: 'Gastrointestinale Beschwerden, Müdigkeit',
+    el: 'Γαστρεντερικές ενοχλήσεις, κόπωση',
+    en: 'Gastrointestinal complaints, fatigue',
+    es: 'Molestias gastrointestinales, fatiga',
+    fr: 'Troubles gastro-intestinaux, fatigue',
+    it: 'Disturbi gastrointestinali, affaticamento',
+    ru: 'Желудочно-кишечные расстройства, утомляемость'
+  },
+  'Gastrointestinale Beschwerden': {
+    de: 'Gastrointestinale Beschwerden',
+    el: 'Γαστρεντερικές ενοχλήσεις',
+    en: 'Gastrointestinal complaints',
+    es: 'Molestias gastrointestinales',
+    fr: 'Troubles gastro-intestinaux',
+    it: 'Disturbi gastrointestinali',
+    ru: 'Желудочно-кишечные расстройства'
+  },
+  'Hautausschlag, Kopfschmerzen': {
+    de: 'Hautausschlag, Kopfschmerzen',
+    el: 'Δερματικό εξάνθημα, κεφαλαλγία',
+    en: 'Skin rash, headache',
+    es: 'Erupción cutánea, dolor de cabeza',
+    fr: 'Éruption cutanée, maux de tête',
+    it: 'Eruzione cutanea, cefalea',
+    ru: 'Кожная сыпь, головная боль'
+  },
+  'Hautausschlag': {
+    de: 'Hautausschlag',
+    el: 'Δερματικό εξάνθημα',
+    en: 'Skin rash',
+    es: 'Erupción cutánea',
+    fr: 'Éruption cutanée',
+    it: 'Eruzione cutanea',
+    ru: 'Кожная сыпь'
+  },
+  'Kopfschmerzen': {
+    de: 'Kopfschmerzen',
+    el: 'Κεφαλαλγία',
+    en: 'Headache',
+    es: 'Cefalea',
+    fr: 'Céphalées / Maux de tête',
+    it: 'Cefalea',
+    ru: 'Головная боль'
+  },
+  'Kopfschmerz': {
+    de: 'Kopfschmerz',
+    el: 'Κεφαλαλγία',
+    en: 'Headache',
+    es: 'Cefalea',
+    fr: 'Céphalée',
+    it: 'Cefalea',
+    ru: 'Головная боль'
+  },
+  'Müdigkeit': {
+    de: 'Müdigkeit',
+    el: 'Κόπωση',
+    en: 'Fatigue',
+    es: 'Fatiga',
+    fr: 'Fatigue',
+    it: 'Affaticamento',
+    ru: 'Утомляемость'
+  },
+  'Schwindel': {
+    de: 'Schwindel',
+    el: 'Ζάλη',
+    en: 'Dizziness',
+    es: 'Mareos',
+    fr: 'Vertiges',
+    it: 'Vertigini',
+    ru: 'Головокружение'
+  },
+  'Schwindelgefühl': {
+    de: 'Schwindelgefühl',
+    el: 'Αίσθημα ζάλης',
+    en: 'Dizziness',
+    es: 'Sensación de mareo',
+    fr: 'Sensations vertigineuses',
+    it: 'Senso di vertigine',
+    ru: 'Головокружение'
+  },
+  'Übelkeit': {
+    de: 'Übelkeit',
+    el: 'Ναυτία',
+    en: 'Nausea',
+    es: 'Náuseas',
+    fr: 'Nausées',
+    it: 'Nausea',
+    ru: 'Тошнота'
+  },
+  'Mundtrockenheit': {
+    de: 'Mundtrockenheit',
+    el: 'Ξηροστομία',
+    en: 'Dry mouth',
+    es: 'Boca seca',
+    fr: 'Bouche sèche',
+    it: 'Secchezza delle fauci',
+    ru: 'Сухость во рту'
+  },
+  'Obstipation': {
+    de: 'Obstipation',
+    el: 'Δυσκοιλιότητα',
+    en: 'Constipation',
+    es: 'Estreñimiento',
+    fr: 'Constipation',
+    it: 'Stitichezza / Stipsi',
+    ru: 'Запор'
+  },
+  'Diarrhoe': {
+    de: 'Diarrhoe',
+    el: 'Διάρροια',
+    en: 'Diarrhea',
+    es: 'Diarrea',
+    fr: 'Diarrhée',
+    it: 'Diarrea',
+    ru: 'Диарея'
+  },
+  'Hautreaktionen': {
+    de: 'Hautreaktionen',
+    el: 'Δερματικές αντιδράσεις',
+    en: 'Skin reactions',
+    es: 'Reacciones cutáneas',
+    fr: 'Réactions cutanées',
+    it: 'Reazioni cutanee',
+    ru: 'Кожные реакции'
+  },
+  'Gewichtszunahme': {
+    de: 'Gewichtszunahme',
+    el: 'Αύξηση βάρους',
+    en: 'Weight gain',
+    es: 'Aumento de peso',
+    fr: 'Prise de poids',
+    it: 'Aumento di peso',
+    ru: 'Увеличение веса'
+  },
+  'Bradykardie': {
+    de: 'Bradykardie',
+    el: 'Βραδυκαρδία',
+    en: 'Bradycardia',
+    es: 'Bradicardia',
+    fr: 'Bradycardie',
+    it: 'Bradicardia',
+    ru: 'Брадикардия'
+  },
+  'Hypotonie': {
+    de: 'Hypotonie',
+    el: 'Υπόταση',
+    en: 'Hypotension',
+    es: 'Hipotensión',
+    fr: 'Hypotension',
+    it: 'Ipotensione',
+    ru: 'Гипотензия'
+  },
+  'Blutungen': {
+    de: 'Blutungen',
+    el: 'Αιμορραγία',
+    en: 'Bleeding',
+    es: 'Hemorragias',
+    fr: 'Saignements / Hémorragies',
+    it: 'Emorragie',
+    ru: 'Кровотечения'
+  },
+  'Sedierung': {
+    de: 'Sedierung',
+    el: 'Καταστολή',
+    en: 'Sedation',
+    es: 'Sedación',
+    fr: 'Sédation',
+    it: 'Sedazione',
+    ru: 'Седация'
+  },
+  'Hypoglykämie': {
+    de: 'Hypoglykämie',
+    el: 'Υπογλυκαιμία',
+    en: 'Hypoglycemia',
+    es: 'Hipoglucemia',
+    fr: 'Hypoglycémie',
+    it: 'Ipoglicemia',
+    ru: 'Гипогликемия'
+  },
+  'Hypokaliämie': {
+    de: 'Hypokaliämie',
+    el: 'Υποκαλιαιμία',
+    en: 'Hypokalemia',
+    es: 'Hipopotasemia',
+    fr: 'Hypokaliémie',
+    it: 'Ipokaliemia',
+    ru: 'Гипокалиемия'
+  },
+  'Schläfrigkeit': {
+    de: 'Schläfrigkeit',
+    el: 'Υπνηλία',
+    en: 'Somnolence / Drowsiness',
+    es: 'Somnolencia',
+    fr: 'Somnolence',
+    it: 'Sonnolenza',
+    ru: 'Сонливость'
+  },
+  'Schlafstörungen': {
+    de: 'Schlafstörungen',
+    el: 'Διαταραχές ύπνου',
+    en: 'Sleep disturbances',
+    es: 'Trastornos del sueño',
+    fr: 'Troubles du sommeil',
+    it: 'Disturbi del sonno',
+    ru: 'Нарушения сна'
+  },
+  'Ödeme': {
+    de: 'Ödeme',
+    el: 'Οιδήματα',
+    en: 'Edema',
+    es: 'Edemas',
+    fr: 'Œdèmes',
+    it: 'Edemi',
+    ru: 'Отеки'
+  },
+  // Frequent interactions
+  'Wechselwirkungen mit Begleitmedikation beachten': {
+    de: 'Wechselwirkungen mit Begleitmedikation beachten',
+    el: 'Προσοχή στις αλληλεπιδράσεις με συγχορηγούμενα φάρμακα',
+    en: 'Observe interactions with concomitant medication',
+    es: 'Prestar atención a las interacciones con medicación concomitante',
+    fr: 'Faire attention aux interactions avec les médicaments concomitants',
+    it: 'Prestare attenzione alle interazioni con farmaci concomitanti',
+    ru: 'Учитывать взаимодействия с сопутствующими препаратами'
+  },
+  'Alkohol meiden': {
+    de: 'Alkohol meiden',
+    el: 'Αποφύγετε το αλκοόλ',
+    en: 'Avoid alcohol',
+    es: 'Evitar el alcohol',
+    fr: "Éviter l'alcool",
+    it: "Evitare l'alcol",
+    ru: 'Избегать алкоголя'
+  },
+  'Alkohol': {
+    de: 'Alkohol',
+    el: 'Αλκοόλ',
+    en: 'Alcohol',
+    es: 'Alcohol',
+    fr: 'Alcool',
+    it: 'Alcol',
+    ru: 'Алкоголь'
+  },
+  // Frequent warnings
+  'Gebrauchsinformation beachten. Bei Unverträglichkeit Arzt kontaktieren.': {
+    de: 'Gebrauchsinformation beachten. Bei Unverträglichkeit Arzt kontaktieren.',
+    el: 'Συμβουλευτείτε το φύλλο οδηγιών. Σε περίπτωση δυσανεξίας επικοινωνήστε με ιατρό.',
+    en: 'Consult package leaflet. Contact doctor in case of intolerance.',
+    es: 'Consultar el prospecto. En caso de intolerancia, consultar al médico.',
+    fr: "Consulter la notice. En cas d'intolérance, contacter un médecin.",
+    it: 'Consultare il foglio illustrativo. In caso di intolleranza, contattare il medico.',
+    ru: 'Ознакомьтесь с инструкцией. При непереносимости обратитесь к врачу.'
+  },
+  'Gebrauchsinformation beachten.': {
+    de: 'Gebrauchsinformation beachten.',
+    el: 'Συμβουλευτείτε το φύλλο οδηγιών.',
+    en: 'Consult package leaflet.',
+    es: 'Consultar el prospecto.',
+    fr: 'Consulter la notice.',
+    it: 'Consultare il foglio illustrativo.',
+    ru: 'Ознакомьтесь с инструкцией.'
+  },
+  'Regelmäßige ärztliche Kontrollen empfohlen. Bei Unverträglichkeit Arzt konsultieren.': {
+    de: 'Regelmäßige ärztliche Kontrollen empfohlen. Bei Unverträglichkeit Arzt konsultieren.',
+    el: 'Συνιστώνται τακτικοί ιατρικοί έλεγχοι. Σε περίπτωση δυσανεξίας συμβουλευτείτε ιατρό.',
+    en: 'Regular medical check-ups recommended. Consult doctor if intolerance occurs.',
+    es: 'Se recomiendan controles médicos periódicos. En caso de intolerancia consultar al médico.',
+    fr: "Contrôles médicaux réguliers recommandés. En cas d'intolérance, consulter un médecin.",
+    it: 'Si raccomandano controlli medici regolari. In caso di intolleranza consultare il medico.',
+    ru: 'Рекомендуются регулярные медицинские осмотры. При непереносимости обратитесь к врачу.'
+  },
+  'Regelmäßige ärztliche Kontrollen empfohlen.': {
+    de: 'Regelmäßige ärztliche Kontrollen empfohlen.',
+    el: 'Συνιστώνται τακτικοί ιατρικοί έλεγχοι.',
+    en: 'Regular medical check-ups recommended.',
+    es: 'Se recomiendan controles médicos periódicos.',
+    fr: 'Contrôles médicaux réguliers recommandés.',
+    it: 'Si raccomandano controlli medici regolari.',
+    ru: 'Рекомендуются регулярные медицинские осмотры.'
+  },
+  'Keine behördlichen Angaben in der Fachinformation hinterlegt': {
+    de: 'Keine behördlichen Angaben in der Fachinformation hinterlegt',
+    el: 'Δεν υπάρχουν επίσημα στοιχεία στις πληροφορίες του προϊόντος',
+    en: 'No official information recorded in the summary of product characteristics',
+    es: 'No hay datos oficiales en la ficha técnica',
+    fr: 'Aucune donnée officielle enregistrée dans le résumé des caractéristiques',
+    it: 'Nessuna indicazione ufficiale registrata nelle informazioni sul prodotto',
+    ru: 'В официальной инструкции данных не указано'
+  },
+  // Intake & forms
+  'In Wasser gelöst trinken': {
+    de: 'In Wasser gelöst trinken',
+    el: 'Πίνεται διαλυμένο σε νερό',
+    en: 'Drink dissolved in water',
+    es: 'Beber disuelto en agua',
+    fr: "Boire dissous dans l'eau",
+    it: 'Assumere disciolto in acqua',
+    ru: 'Пить растворенным в воде'
   }
 };
 
@@ -656,3 +1048,451 @@ export async function fetchTranslatedMonograph(
   // 4. Instant deterministic localization fallback (transient, not saved to permanent cache)
   return localizeMonograph(rawMonograph, targetLang);
 }
+
+export interface StructuredMedicationInput {
+  name?: string;
+  activeSubstance?: string;
+  category?: string;
+  dosages?: string[];
+  defaultDosages?: string[];
+  packageSizes?: string[];
+  sideEffectsByFrequency?: {
+    veryCommon?: string[];
+    common?: string[];
+    uncommon?: string[];
+    rare?: string[];
+    veryRare?: string[];
+  };
+  sideEffects?: string[];
+  interactions?: string[];
+  warnings?: string;
+  contraindications?: {
+    absolute?: string[];
+    relative?: string[];
+  } | string;
+  monographText?: string;
+}
+
+export interface LocalizedStructuredData {
+  name?: string;
+  activeSubstance?: string;
+  category?: string;
+  dosages?: string[];
+  defaultDosages?: string[];
+  packageSizes?: string[];
+  sideEffectsByFrequency?: {
+    veryCommon?: string[];
+    common?: string[];
+    uncommon?: string[];
+    rare?: string[];
+    veryRare?: string[];
+  };
+  sideEffects?: string[];
+  interactions?: string[];
+  warnings?: string;
+  contraindications?: {
+    absolute?: string[];
+    relative?: string[];
+  } | string;
+  monographText?: string;
+}
+
+/**
+ * Translates a clinical term or sentence into the target language using the clinical dictionary.
+ */
+export function localizeClinicalText(text: string | undefined, targetLang: LanguageCode): string {
+  if (!text || !text.trim()) return '';
+  if (targetLang === 'de') return text;
+
+  const trimmed = text.trim();
+
+  // 1. Direct match in dictionary
+  if (CLINICAL_PHRASES[trimmed]) {
+    return CLINICAL_PHRASES[trimmed][targetLang] || CLINICAL_PHRASES[trimmed].en || trimmed;
+  }
+
+  // 2. Case-insensitive or normalized match
+  for (const [key, trans] of Object.entries(CLINICAL_PHRASES)) {
+    if (key.toLowerCase() === trimmed.toLowerCase()) {
+      return trans[targetLang] || trans.en || trimmed;
+    }
+  }
+
+  // 3. Substring replacement for composite text
+  let result = trimmed;
+  for (const [key, trans] of Object.entries(CLINICAL_PHRASES)) {
+    if (result.includes(key)) {
+      const replacement = trans[targetLang] || trans.en;
+      result = result.split(key).join(replacement);
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Localizes package sizes (e.g., 'N1 (10-20 Stk.)' -> 'N1 (10-20 pz.)')
+ */
+export function localizePackageSize(pkg: string | undefined, targetLang: LanguageCode): string {
+  if (!pkg) return '';
+  if (targetLang === 'de') return pkg;
+
+  const unitMap: Record<LanguageCode, string> = {
+    de: 'Stk.',
+    en: 'pcs.',
+    it: 'pz.',
+    es: 'uds.',
+    fr: 'pièces',
+    el: 'τεμ.',
+    ru: 'шт.'
+  };
+
+  const formMap: Record<string, Record<LanguageCode, string>> = {
+    'Filmtablette': { de: 'Filmtablette', en: 'Film-coated tablet', it: 'Compressa rivestita con film', es: 'Comprimido recubierto', fr: 'Comprimé pelliculé', el: 'Επικαλυμμένο δισκίο', ru: 'Таблетка, покрытая оболочкой' },
+    'Filmtabletten': { de: 'Filmtabletten', en: 'Film-coated tablets', it: 'Compresse rivestite con film', es: 'Comprimidos recubiertos', fr: 'Comprimés pelliculés', el: 'Επικαλυμμένα δισκία', ru: 'Таблетки, покрытые оболочкой' },
+    'Brausetabletten': { de: 'Brausetabletten', en: 'Effervescent tablets', it: 'Compresse effervescenti', es: 'Comprimidos efervescentes', fr: 'Comprimés effervescents', el: 'Αναβράζοντα δισκία', ru: 'Шипучие таблетки' },
+    'Tabletten': { de: 'Tabletten', en: 'Tablets', it: 'Compresse', es: 'Comprimidos', fr: 'Comprimés', el: 'Δισκία', ru: 'Таблетки' },
+    'Tablette': { de: 'Tablette', en: 'Tablet', it: 'Compressa', es: 'Comprimido', fr: 'Comprimé', el: 'Δισκίο', ru: 'Таблетка' },
+    'Kapseln': { de: 'Kapseln', en: 'Capsules', it: 'Capsule', es: 'Cápsulas', fr: 'Gélules', el: 'Καψάκια', ru: 'Капсулы' },
+    'Kapsel': { de: 'Kapsel', en: 'Capsule', it: 'Capsula', es: 'Cápsula', fr: 'Gélule', el: 'Καψάκιο', ru: 'Капсула' },
+  };
+
+  let out = pkg.replace(/Stk\./g, unitMap[targetLang] || 'pcs.');
+
+  for (const [deForm, trans] of Object.entries(formMap)) {
+    if (out.includes(deForm)) {
+      out = out.split(deForm).join(trans[targetLang] || trans.en);
+    }
+  }
+
+  return out;
+}
+
+/**
+ * Synthesizes a standardized 5-section German monograph from structured medication data
+ * if no full raw monograph text is available.
+ */
+export function synthesizeMonographFromStructured(med: StructuredMedicationInput): string {
+  const name = med.name || 'Präparat';
+  const activeSub = med.activeSubstance || name;
+  const intro = `Hier ist die komplette Übersicht zu ${name} (${activeSub}) mit allen wichtigen Informationen zu Inhaltsstoffen, Dosierung, Nebenwirkungen, Kontraindikationen und Wechselwirkungen, übersichtlich zusammengefasst.`;
+
+  const cat = med.category || 'Fachinformation';
+  const sec1 = `📝 1. Wirkstoff und Inhaltsstoffe\n${name} gehört zur Wirkstoffgruppe: ${cat}.\nHauptwirkstoff: ${activeSub}.`;
+
+  const sec2 = `💊 2. Dosierung & Anwendung\nDie Dosierung von ${name} (${activeSub}) wird von der behandelnden Ärztin oder dem Arzt streng individuell festgelegt.`;
+
+  let nwContent = '';
+  if (med.sideEffectsByFrequency && typeof med.sideEffectsByFrequency === 'object') {
+    const parts: string[] = [];
+    if (med.sideEffectsByFrequency.veryCommon?.length) parts.push(`Sehr häufig (≥ 1/10): ${med.sideEffectsByFrequency.veryCommon.join(', ')}.`);
+    if (med.sideEffectsByFrequency.common?.length) parts.push(`Häufig (≥ 1/100 bis < 1/10): ${med.sideEffectsByFrequency.common.join(', ')}.`);
+    if (med.sideEffectsByFrequency.uncommon?.length) parts.push(`Gelegentlich (≥ 1/1.000 bis < 1/100): ${med.sideEffectsByFrequency.uncommon.join(', ')}.`);
+    if (med.sideEffectsByFrequency.rare?.length) parts.push(`Selten (≥ 1/10000 bis < 1/1000): ${med.sideEffectsByFrequency.rare.join(', ')}.`);
+    if (med.sideEffectsByFrequency.veryRare?.length) parts.push(`Sehr selten (< 1/10000): ${med.sideEffectsByFrequency.veryRare.join(', ')}.`);
+    if (parts.length > 0) nwContent = parts.join('\n');
+  }
+  if (!nwContent && Array.isArray(med.sideEffects) && med.sideEffects.length > 0) {
+    nwContent = `Häufige Begleiterscheinungen:\n${med.sideEffects.join('; ')}.`;
+  }
+  const risks = med.warnings || '';
+  const sec3 = `⚠️ 3. Nebenwirkungen\n${nwContent || 'Keine spezifischen Nebenwirkungen aufgeführt.'}\nBesondere Risiken & Warnhinweise:\n${risks}`;
+
+  let sec4 = `🚫 4. Kontraindikationen (Gegenanzeigen)\nUnter bestimmten gesundheitlichen Bedingungen darf ${name} entweder gar nicht oder nur nach strenger ärztlicher Nutzen-Risiko-Abwägung angewendet werden.`;
+  if (med.contraindications && typeof med.contraindications === 'object') {
+    if (med.contraindications.absolute?.length) {
+      sec4 += `\nAbsolute Gegenanzeigen (Anwendung ausgeschlossen):\n${med.contraindications.absolute.join(';\n')}.`;
+    }
+    if (med.contraindications.relative?.length) {
+      sec4 += `\nRelative Gegenanzeigen (Besondere Vorsicht erforderlich):\n${med.contraindications.relative.join(';\n')}.`;
+    }
+  } else if (typeof med.contraindications === 'string' && med.contraindications) {
+    sec4 += `\nAbsolute Gegenanzeigen (Anwendung ausgeschlossen):\n${med.contraindications}`;
+  }
+
+  let sec5 = `❌ 5. Gefährliche Wechselwirkungen\nDie Kombination von ${name} mit bestimmten anderen Substanzen kann die Wirkung unvorhersehbar verändern.`;
+  if (Array.isArray(med.interactions) && med.interactions.length > 0) {
+    sec5 += '\n' + med.interactions.map(i => `${i}.`).join('\n');
+  }
+
+  return `${intro}\n\n${sec1}\n\n${sec2}\n\n${sec3}\n\n${sec4}\n\n${sec5}`;
+}
+
+/**
+ * Parses structured clinical data out of a monograph text.
+ */
+export function parseStructuredFromMonograph(monographText: string, targetLang?: LanguageCode): {
+  activeSubstance: string;
+  category: string;
+  sideEffectsByFrequency: { veryCommon: string[]; common: string[]; uncommon: string[]; rare: string[]; veryRare: string[] };
+  sideEffects: string[];
+  interactions: string[];
+  warnings: string;
+  contraindications: { absolute: string[]; relative: string[] };
+} {
+  const result = {
+    activeSubstance: '',
+    category: '',
+    sideEffectsByFrequency: { veryCommon: [] as string[], common: [] as string[], uncommon: [] as string[], rare: [] as string[], veryRare: [] as string[] },
+    sideEffects: [] as string[],
+    interactions: [] as string[],
+    warnings: '',
+    contraindications: { absolute: [] as string[], relative: [] as string[] }
+  };
+
+  if (!monographText) return result;
+
+  const lines = monographText.split('\n').map(l => l.trim());
+  let currentSec = 0;
+  let inWarnings = false;
+  let inAbsoluteContra = false;
+  let inRelativeContra = false;
+
+  for (const line of lines) {
+    if (!line) continue;
+    if (line.includes('1. ') || line.includes('📝')) { currentSec = 1; continue; }
+    if (line.includes('2. ') || line.includes('💊')) { currentSec = 2; continue; }
+    if (line.includes('3. ') || line.includes('⚠️')) { currentSec = 3; continue; }
+    if (line.includes('4. ') || line.includes('🚫')) { currentSec = 4; inWarnings = false; continue; }
+    if (line.includes('5. ') || line.includes('❌')) { currentSec = 5; inWarnings = false; continue; }
+
+    if (currentSec === 1) {
+      if (line.match(/(?:Hauptwirkstoff|Principio attivo principale|Main active|Действующее вещество|Δραστική ουσία|Principio activo principal|Substance active):\s*(.*)/i)) {
+        result.activeSubstance = line.replace(/.*:\s*/, '').replace(/\.$/, '').trim();
+      } else if (line.match(/(?:Wirkstoffgruppe|classe terapeutica|drug group|группе|ομάδα|clase terapéutica|classe thérapeutique|groupe pharmacologique):\s*(.*)/i)) {
+        result.category = line.replace(/.*:\s*/, '').replace(/\.$/, '').trim();
+      }
+    } else if (currentSec === 3) {
+      if (line.match(/^(?:Sehr häufig|Molto comune|Very common|Очень часто|Πολύ συχνές|Muy común|Muy frecuentes|Très fréquent).*?:\s*(.*)/i)) {
+        const text = line.replace(/.*:\s*/, '').replace(/\.$/, '').trim();
+        if (text) {
+          result.sideEffectsByFrequency.veryCommon.push(text);
+          result.sideEffects.push(...text.split(/,\s*/));
+        }
+      } else if (line.match(/^(?:Gelegentlich|Non comune|Uncommon|Нечасто|Όχι συχνές|Poco común|Poco frecuentes|Peu fréquent).*?:\s*(.*)/i)) {
+        const text = line.replace(/.*:\s*/, '').replace(/\.$/, '').trim();
+        if (text) {
+          result.sideEffectsByFrequency.uncommon.push(text);
+          result.sideEffects.push(...text.split(/,\s*/));
+        }
+      } else if (line.match(/^(?:Häufig|Comune|Common|Часто|Συχνές|Común|Frecuentes|Fréquent).*?:\s*(.*)/i)) {
+        const text = line.replace(/.*:\s*/, '').replace(/\.$/, '').trim();
+        if (text) {
+          result.sideEffectsByFrequency.common.push(text);
+          result.sideEffects.push(...text.split(/,\s*/));
+        }
+      } else if (line.match(/^(?:Selten|Raro|Rare|Редко|Σπάνιες|Raras).*?:\s*(.*)/i)) {
+        const text = line.replace(/.*:\s*/, '').replace(/\.$/, '').trim();
+        if (text) {
+          result.sideEffectsByFrequency.rare.push(text);
+          result.sideEffects.push(...text.split(/,\s*/));
+        }
+      } else if (line.match(/^(?:Sehr selten|Molto raro|Very rare|Очень редко|Πολύ σπάνιες|Muy raro|Muy raras|Très rare).*?:\s*(.*)/i)) {
+        const text = line.replace(/.*:\s*/, '').replace(/\.$/, '').trim();
+        if (text) {
+          result.sideEffectsByFrequency.veryRare.push(text);
+          result.sideEffects.push(...text.split(/,\s*/));
+        }
+      } else if (line.match(/(?:Risiken|avvertenze|risks|риски|κίνδυνοι|riesgos|risques|Mises en garde|Advertencias)/i)) {
+        inWarnings = true;
+      } else if (inWarnings && line.length > 5 && !line.startsWith('4.') && !line.startsWith('🚫')) {
+        result.warnings = (result.warnings ? result.warnings + ' ' : '') + line;
+      }
+    } else if (currentSec === 4) {
+      if (line.match(/(?:Absolute Gegenanzeigen|Absolute contraindications|Controindicazioni assolute|Contre-indications absolues|Contraindicaciones absolutas|Απόλυτες αντενδείξεις|Абсолютные противопоказания)/i)) {
+        inRelativeContra = false;
+        inAbsoluteContra = true;
+        continue;
+      }
+      if (line.match(/(?:Relative Gegenanzeigen|Relative contraindications|Controindicazioni relative|Contre-indications relatives|Contraindicaciones relativas|Σχετικές αντενδείξεις|Относительные противопоказания)/i)) {
+        inAbsoluteContra = false;
+        inRelativeContra = true;
+        continue;
+      }
+      const isIntro = line.startsWith('🚫') || line.includes('Bedingungen darf') || line.includes('conditions,') || line.includes('condizioni') || line.includes('conditions') || line.includes('condiciones');
+      if (!isIntro && line.length > 2 && !line.startsWith('5.') && !line.startsWith('❌')) {
+        const cleaned = line.replace(/^[•\-\*\s]+/, '').replace(/;$/, '').trim();
+        if (cleaned) {
+          if (inRelativeContra) {
+            result.contraindications.relative.push(cleaned);
+          } else {
+            result.contraindications.absolute.push(cleaned);
+          }
+        }
+      }
+    } else if (currentSec === 5) {
+      const isIntro = line.startsWith('❌') || line.endsWith(':') || /unvorhersehbar|imprevedibile|unpredictably|imprévisible|απρόβλεπτα|непредсказуемо/i.test(line);
+      if (!isIntro && line.length > 3) {
+        result.interactions.push(line.replace(/\.$/, '').trim());
+      }
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Localizes all structured medication fields for the compact view ("Vista compatta" / "Kompaktansicht")
+ * into the user's active UI language synchronously using offline dictionary rules.
+ */
+export function localizeStructuredMedication(
+  med: StructuredMedicationInput,
+  targetLang: LanguageCode
+): LocalizedStructuredData {
+  if (!med) {
+    return {
+      name: '',
+      activeSubstance: '',
+      category: '',
+      dosages: [],
+      defaultDosages: [],
+      packageSizes: [],
+      sideEffectsByFrequency: { veryCommon: [], common: [], uncommon: [], rare: [], veryRare: [] },
+      sideEffects: [],
+      interactions: [],
+      warnings: '',
+      contraindications: { absolute: [], relative: [] }
+    };
+  }
+
+  if (targetLang === 'de') {
+    return {
+      name: med.name,
+      activeSubstance: med.activeSubstance,
+      category: med.category,
+      dosages: med.dosages,
+      defaultDosages: med.defaultDosages,
+      packageSizes: med.packageSizes,
+      sideEffectsByFrequency: med.sideEffectsByFrequency,
+      sideEffects: med.sideEffects,
+      interactions: med.interactions,
+      warnings: med.warnings,
+      contraindications: med.contraindications,
+      monographText: med.monographText
+    };
+  }
+
+  // 1. If monograph text is present, translate or use localized monograph to extract structured content
+  const baseMono = med.monographText || synthesizeMonographFromStructured(med);
+  const localizedMono = baseMono ? localizeMonograph(baseMono, targetLang) : '';
+  const parsedFromMono = localizedMono ? parseStructuredFromMonograph(localizedMono, targetLang) : null;
+
+  // 2. Active substance & Category
+  const activeSubstance = (parsedFromMono?.activeSubstance && parsedFromMono.activeSubstance.length > 0)
+    ? parsedFromMono.activeSubstance
+    : localizeClinicalText(med.activeSubstance, targetLang);
+
+  const category = (parsedFromMono?.category && parsedFromMono.category.length > 0)
+    ? parsedFromMono.category
+    : localizeClinicalText(med.category, targetLang);
+
+  // 3. Package sizes
+  const packageSizes = med.packageSizes?.map(pkg => localizePackageSize(pkg, targetLang));
+
+  // 4. Side effects by frequency
+  const rawFreq = med.sideEffectsByFrequency || {};
+  const sideEffectsByFrequency = {
+    veryCommon: (parsedFromMono?.sideEffectsByFrequency.veryCommon && parsedFromMono.sideEffectsByFrequency.veryCommon.length > 0)
+      ? parsedFromMono.sideEffectsByFrequency.veryCommon
+      : (rawFreq.veryCommon?.map(t => localizeClinicalText(t, targetLang)) || []),
+    common: (parsedFromMono?.sideEffectsByFrequency.common && parsedFromMono.sideEffectsByFrequency.common.length > 0)
+      ? parsedFromMono.sideEffectsByFrequency.common
+      : (rawFreq.common?.map(t => localizeClinicalText(t, targetLang)) || []),
+    uncommon: (parsedFromMono?.sideEffectsByFrequency.uncommon && parsedFromMono.sideEffectsByFrequency.uncommon.length > 0)
+      ? parsedFromMono.sideEffectsByFrequency.uncommon
+      : (rawFreq.uncommon?.map(t => localizeClinicalText(t, targetLang)) || []),
+    rare: (parsedFromMono?.sideEffectsByFrequency.rare && parsedFromMono.sideEffectsByFrequency.rare.length > 0)
+      ? parsedFromMono.sideEffectsByFrequency.rare
+      : (rawFreq.rare?.map(t => localizeClinicalText(t, targetLang)) || []),
+    veryRare: (parsedFromMono?.sideEffectsByFrequency.veryRare && parsedFromMono.sideEffectsByFrequency.veryRare.length > 0)
+      ? parsedFromMono.sideEffectsByFrequency.veryRare
+      : (rawFreq.veryRare?.map(t => localizeClinicalText(t, targetLang)) || [])
+  };
+
+  // 5. Flat side effects
+  const sideEffects = (parsedFromMono?.sideEffects && parsedFromMono.sideEffects.length > 0)
+    ? parsedFromMono.sideEffects
+    : (med.sideEffects?.map(t => localizeClinicalText(t, targetLang)) || []);
+
+  // 6. Interactions
+  const interactions = (parsedFromMono?.interactions && parsedFromMono.interactions.length > 0)
+    ? parsedFromMono.interactions
+    : (med.interactions?.map(t => localizeClinicalText(t, targetLang)) || []);
+
+  // 7. Warnings
+  const warnings = (parsedFromMono?.warnings && parsedFromMono.warnings.length > 0)
+    ? parsedFromMono.warnings
+    : localizeClinicalText(med.warnings, targetLang);
+
+  // 8. Contraindications
+  let contraindications = med.contraindications;
+  if (parsedFromMono?.contraindications && (parsedFromMono.contraindications.absolute.length > 0 || parsedFromMono.contraindications.relative.length > 0)) {
+    contraindications = parsedFromMono.contraindications;
+  } else if (typeof contraindications === 'string') {
+    contraindications = localizeClinicalText(contraindications, targetLang);
+  } else if (contraindications && typeof contraindications === 'object') {
+    contraindications = {
+      absolute: contraindications.absolute?.map(t => localizeClinicalText(t, targetLang)),
+      relative: contraindications.relative?.map(t => localizeClinicalText(t, targetLang))
+    };
+  }
+
+  return {
+    name: med.name,
+    activeSubstance,
+    category,
+    dosages: med.dosages,
+    defaultDosages: med.defaultDosages,
+    packageSizes,
+    sideEffectsByFrequency,
+    sideEffects,
+    interactions,
+    warnings,
+    contraindications,
+    monographText: localizedMono || med.monographText
+  };
+}
+
+/**
+ * Asynchronously translates the structured medication data using the full AI service
+ * and falls back to synchronous local dictionary if unavailable.
+ */
+export async function fetchLocalizedStructuredMedication(
+  med: StructuredMedicationInput,
+  targetLang: LanguageCode
+): Promise<LocalizedStructuredData> {
+  if (!med) return localizeStructuredMedication(med, targetLang);
+  if (targetLang === 'de') return localizeStructuredMedication(med, 'de');
+
+  try {
+    const baseMono = med.monographText || synthesizeMonographFromStructured(med);
+    const translatedMono = await fetchTranslatedMonograph(med.name || 'med', baseMono, targetLang);
+
+    if (translatedMono && translatedMono.trim().length > 50) {
+      const parsed = parseStructuredFromMonograph(translatedMono, targetLang);
+      const packageSizes = med.packageSizes?.map(pkg => localizePackageSize(pkg, targetLang));
+
+      return {
+        name: med.name,
+        activeSubstance: parsed.activeSubstance || localizeClinicalText(med.activeSubstance, targetLang),
+        category: parsed.category || localizeClinicalText(med.category, targetLang),
+        packageSizes,
+        sideEffectsByFrequency: (parsed.sideEffectsByFrequency.veryCommon.length > 0 || parsed.sideEffectsByFrequency.common.length > 0 || parsed.sideEffectsByFrequency.uncommon.length > 0)
+          ? parsed.sideEffectsByFrequency
+          : localizeStructuredMedication(med, targetLang).sideEffectsByFrequency,
+        sideEffects: parsed.sideEffects.length > 0 ? parsed.sideEffects : (med.sideEffects?.map(t => localizeClinicalText(t, targetLang)) || []),
+        interactions: parsed.interactions.length > 0 ? parsed.interactions : (med.interactions?.map(t => localizeClinicalText(t, targetLang)) || []),
+        warnings: parsed.warnings || localizeClinicalText(med.warnings, targetLang),
+        contraindications: (parsed.contraindications.absolute.length > 0 || parsed.contraindications.relative.length > 0)
+          ? parsed.contraindications
+          : localizeStructuredMedication(med, targetLang).contraindications,
+        monographText: translatedMono
+      };
+    }
+  } catch (err) {
+    console.warn('[MedicationLocalization] fetchLocalizedStructuredMedication fallback:', err);
+  }
+
+  return localizeStructuredMedication(med, targetLang);
+}
+

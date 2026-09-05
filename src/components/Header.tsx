@@ -18,6 +18,7 @@ import {
   LayoutDashboard,
   BookOpen,
   Mic,
+  Pill,
   User,
   Settings,
   FileText,
@@ -406,6 +407,29 @@ export const Header: React.FC<HeaderProps> = ({
                   <div className="flex items-center gap-3">
                     <Mic className="w-4 h-4 text-teal-600" />
                     <span>{t('tabQuickIntake')}</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-400" />
+                </button>
+
+                {/* Medikamente & Analyse */}
+                <button
+                  type="button"
+                  id="mobile-nav-tab-medications"
+                  onClick={() => {
+                    setActiveTherapistTab('medications');
+                    navigateTo('therapist', { therapistTab: 'medications' });
+                    window.dispatchEvent(new CustomEvent('homoeo_action_set_therapist_tab', { detail: 'medications' }));
+                    setMobileMenuOpen(false);
+                  }}
+                  className={`w-full px-3.5 py-2.5 rounded-xl text-sm font-medium flex items-center justify-between transition-colors cursor-pointer ${
+                    activeTherapistTab === 'medications'
+                      ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/70'
+                      : 'text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Pill className="w-4 h-4 text-teal-600" />
+                    <span>{t('tabMedications')}</span>
                   </div>
                   <ChevronRight className="w-4 h-4 text-slate-400" />
                 </button>

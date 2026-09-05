@@ -162,9 +162,24 @@ export interface PatientCase {
     grund?: string;
     wirkstoff?: string;
     kategorie?: string;
+    packungsgroessen?: string[];
+    nebenwirkungenGegliedert?: {
+      veryCommon?: string[];
+      common?: string[];
+      uncommon?: string[];
+      rare?: string[];
+      veryRare?: string[];
+    };
     nebenwirkungen?: string[];
     wechselwirkungen?: string[];
+    kontraindikationen?: {
+      absolute?: string[];
+      relative?: string[];
+    };
     risiken?: string;
+    monographText?: string;
+    datenbankQuelle?: 'datenbank' | 'behoerden_recherche';
+    authoritySource?: string;
   }[];
   
   // Analyse-Ergebnis
