@@ -495,16 +495,31 @@ export const PatientDirectoryView: React.FC<PatientDirectoryViewProps> = ({
           </div>
         </div>
 
-        {/* Global Action Stats */}
+        {/* Actions & Stats */}
         <div className="flex items-center gap-3">
-          <div className="bg-slate-50 border border-slate-200 px-3.5 py-1.5 rounded-xl text-center">
-            <span className="block text-xs font-bold text-slate-800">{activePatient ? groupedPatients.length : 0}</span>
-            <span className="block text-[10px] text-slate-400 font-medium">{t('patientsCountLabel')}</span>
+          <div className="hidden sm:flex items-center gap-2">
+            <div className="bg-slate-50 border border-slate-200 px-3.5 py-1.5 rounded-xl text-center">
+              <span className="block text-xs font-bold text-slate-800">{activePatient ? groupedPatients.length : 0}</span>
+              <span className="block text-[10px] text-slate-400 font-medium">{t('patientsCountLabel')}</span>
+            </div>
+            <div className="bg-teal-50 border border-teal-200/60 px-3.5 py-1.5 rounded-xl text-center">
+              <span className="block text-xs font-bold text-teal-800">{activePatient ? cases.length : 0}</span>
+              <span className="block text-[10px] text-teal-600 font-medium">{t('casesTotalLabel')}</span>
+            </div>
           </div>
-          <div className="bg-teal-50 border border-teal-200/60 px-3.5 py-1.5 rounded-xl text-center">
-            <span className="block text-xs font-bold text-teal-800">{activePatient ? cases.length : 0}</span>
-            <span className="block text-[10px] text-teal-600 font-medium">{t('casesTotalLabel')}</span>
-          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              if (onNewCaseForPatient) {
+                onNewCaseForPatient('', {});
+              }
+            }}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-white font-bold text-xs sm:text-sm transition-all shadow-xs cursor-pointer whitespace-nowrap"
+          >
+            <Plus className="w-4 h-4" />
+            <span>{t('btnNewPatientAdmission')}</span>
+          </button>
         </div>
       </div>
 
@@ -514,7 +529,7 @@ export const PatientDirectoryView: React.FC<PatientDirectoryViewProps> = ({
         <div className="lg:col-span-4 space-y-4">
           <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs">
             {/* Search Input */}
-            <div className="relative mb-2.5">
+            <div className="relative mb-3">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="text"
@@ -533,25 +548,21 @@ export const PatientDirectoryView: React.FC<PatientDirectoryViewProps> = ({
               </div>
             </div>
 
-            {/* Quick Open Customer Directory Popup Button */}
-            <button
-              type="button"
-              onClick={() => {
-                setModalSearchQuery('');
-                setIsSelectPatientModalOpen(true);
-              }}
-              className="w-full mb-3 px-3 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer"
-            >
-              <Users className="w-4 h-4" />
-              <span>{t('btnOpenPatientSelectionModal')}</span>
-            </button>
-
             {/* List Header */}
             <div className="flex items-center justify-between px-1 py-1.5 mb-2 border-b border-slate-100 text-xs font-bold text-slate-700">
               <span>{t('patientsListHeader')} ({filteredPatients.length})</span>
-              <span className="text-[11px] text-slate-400 font-normal">
-                {groupedPatients.length > 20 ? t('scrollActiveBadge') : t('clickOpensFileBadge')}
-              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setModalSearchQuery('');
+                  setIsSelectPatientModalOpen(true);
+                }}
+                className="text-[11px] text-teal-700 hover:text-teal-900 font-semibold flex items-center gap-1 hover:underline cursor-pointer"
+                title={t('btnOpenPatientSelectionModal')}
+              >
+                <Users className="w-3.5 h-3.5" />
+                <span>{t('btnOpenPatientSelectionModal')}</span>
+              </button>
             </div>
 
             {/* Scrollable Patient List */}
@@ -726,17 +737,32 @@ export const PatientDirectoryView: React.FC<PatientDirectoryViewProps> = ({
               <p className="text-xs sm:text-sm text-slate-500 max-w-md mx-auto mb-6 leading-relaxed">
                 {t('noPatientSelectedSub')}
               </p>
-              <button
-                type="button"
-                onClick={() => {
-                  setModalSearchQuery('');
-                  setIsSelectPatientModalOpen(true);
-                }}
-                className="px-6 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-white font-bold text-xs sm:text-sm flex items-center gap-2 transition-all shadow-sm cursor-pointer hover:shadow-md"
-              >
-                <Users className="w-4 h-4" />
-                <span>{t('btnOpenPatientSelectionModal')}</span>
-              </button>
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onNewCaseForPatient) {
+                      onNewCaseForPatient('', {});
+                    }
+                  }}
+                  className="px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-white font-bold text-xs sm:text-sm flex items-center gap-2 transition-all shadow-xs cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>{t('btnNewPatientAdmission')}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setModalSearchQuery('');
+                    setIsSelectPatientModalOpen(true);
+                  }}
+                  className="px-5 py-2.5 rounded-xl bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold text-xs sm:text-sm flex items-center gap-2 transition-all shadow-xs cursor-pointer"
+                >
+                  <Users className="w-4 h-4 text-teal-600" />
+                  <span>{t('btnOpenPatientSelectionModal')}</span>
+                </button>
+              </div>
             </div>
           ) : (
             <>
