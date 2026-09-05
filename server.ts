@@ -5,6 +5,14 @@ import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
 import nodemailer from "nodemailer";
+import {
+  run3StepMedicationSearch,
+  run3StepMedicationDetails,
+  search_database,
+  save_to_database,
+  getDatabaseCount,
+  ensureMedicationsDatabase
+} from "./serverMedications";
 
 dotenv.config();
 
@@ -782,139 +790,78 @@ oder
     }
   }
 
-  const medicationSearchCache = new Map<string, any>();
-  const medicationDetailsCache = new Map<string, any>();
-
-  // Full internet live search for medications with all dosages, side effects, interactions
+  // -----------------------------------------------------------------------------------------
+  // 3-Stufen Pharmazeutischer Assistent Workflow:
+  // Schritt 1 (Datenbank prüfen): search_database(q)
+  // Schritt 2 (Externe Behördensuche): search_health_authority(q) mit BfArM, EMA, EOF & Fachinformation
+  // Schritt 3 (Automatisch Abspeichern): save_to_database(results)
+  // -----------------------------------------------------------------------------------------
   app.get("/api/medications/search", async (req, res) => {
     try {
       const q = (req.query.q as string || '').trim();
-      if (!q || q.length < 1) return res.json({ results: [] });
-
-      const cacheKey = q.toLowerCase();
-      if (medicationSearchCache.has(cacheKey)) {
-        return res.json({ results: medicationSearchCache.get(cacheKey) });
+      if (!q || q.length < 1) {
+        return res.json({ results: [], fromDatabase: false, totalInDb: getDatabaseCount() });
       }
 
       const apiKey = getGeminiApiKey();
-      if (!apiKey) {
-        return res.json({ results: [] });
-      }
+      const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
-      const ai = new GoogleGenAI({ apiKey });
-      const prompt = `Führe eine vollständige Live-Suche im Internet nach existierenden realen Medikamenten und Präparaten durch, die zur Suchanfrage "${q}" passen (Handelsnamen in Deutschland/Österreich/Schweiz/international, Generika, Wirkstoffe, Fertigarzneimittel).
-Ermittle für bis zu 5 gefundene Medikamente aus dem Internet:
-- name: Offizieller Handelsname / Präparatename
-- activeSubstance: Wirkstoff (INN)
-- category: Indikationsgruppe / Wirkstoffklasse
-- dosages: Typische, reale Dosierungsstärken (Array von Strings, z.B. ["200 mg", "400 mg", "600 mg"])
-- commonForms: Darreichungsformen (Array von Strings, z.B. ["Filmtablette", "Kapsel", "Tropfen"])
-- recommendedIntake: Typische Einnahmeart und Einnahmehinweise (z.B. "1-2x täglich mit Wasser nach den Mahlzeiten")
-- sideEffects: Vollständige Liste aller wichtigen und häufigen Nebenwirkungen (Array von kurzen Strings)
-- interactions: Vollständige Liste aller relevanten Wechselwirkungen mit anderen Medikamenten, Nahrungsmitteln oder Alkohol (Array von kurzen Strings)
-- warnings: Kontraindikationen und wichtige Warnhinweise
-
-Antworte AUSSCHLIESSLICH mit einem validen JSON-Array:
-[
-  {
-    "name": "Medikament Name",
-    "activeSubstance": "Wirkstoff",
-    "category": "Wirkstoffgruppe",
-    "dosages": ["..."],
-    "commonForms": ["..."],
-    "recommendedIntake": "...",
-    "sideEffects": ["..."],
-    "interactions": ["..."],
-    "warnings": "..."
-  }
-]`;
-
-      const response = await ai.models.generateContent({
-        model: "gemini-3.8-flash",
-        contents: prompt,
-        config: {
-          tools: [{ googleSearch: {} }],
-        },
-      });
-
-      const parsed = extractJsonFromText(response.text || '');
-      const results = Array.isArray(parsed) ? parsed : [];
-      medicationSearchCache.set(cacheKey, results);
-
-      // Pre-populate details cache
-      results.forEach((item: any) => {
-        if (item && item.name) {
-          medicationDetailsCache.set(item.name.toLowerCase(), item);
-        }
-      });
-
-      res.json({ results });
+      const outcome = await run3StepMedicationSearch(q, ai, extractJsonFromText);
+      res.json(outcome);
     } catch (error) {
-      console.error("Gemini Medications Search Error:", error);
-      res.status(500).json({ error: "Search failed" });
+      console.error("[MedicationAssistant] API Search Error:", error);
+      // Fail-safe: Try local database search even if exception occurred
+      try {
+        const fallback = search_database(req.query.q as string || '');
+        return res.json({
+          results: fallback.matches,
+          fromDatabase: true,
+          stepExecuted: "database_match",
+          totalInDb: getDatabaseCount()
+        });
+      } catch {
+        res.status(500).json({ error: "Search failed", results: [] });
+      }
     }
   });
 
-  // Dedicated endpoint for full internet profile of any specific medication name
+  // Dedicated endpoint for full pharmaceutical profile with 3-step flow
   app.get("/api/medications/details", async (req, res) => {
     try {
       const name = (req.query.name as string || '').trim();
       if (!name || name.length < 1) return res.status(400).json({ error: "Missing name" });
 
-      const cacheKey = name.toLowerCase();
-      if (medicationDetailsCache.has(cacheKey)) {
-        return res.json({ details: medicationDetailsCache.get(cacheKey) });
-      }
-
       const apiKey = getGeminiApiKey();
-      if (!apiKey) {
-        return res.json({ details: null });
-      }
+      const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
-      const ai = new GoogleGenAI({ apiKey });
-      const prompt = `Führe eine vollständige und gründliche Live-Suche im Internet nach dem Medikament bzw. Wirkstoff "${name}" durch.
-Recherchiere alle medizinischen und pharmazeutischen Fakten aus verlässlichen Quellen:
-- name: Name des Medikaments / Präparats
-- activeSubstance: Wirkstoff (INN)
-- category: Wirkstoffgruppe / therapeutische Kategorie
-- dosages: Reale Standard- und Einzeldosierungen (Array von Strings, z.B. ["20 mg", "40 mg"])
-- commonForms: Darreichungsformen (Array von Strings)
-- recommendedIntake: Einnahmeempfehlung / Häufigkeit (z.B. "1x täglich morgens nüchtern mit Wasser")
-- sideEffects: Vollständige Liste aller relevanten und häufigen Nebenwirkungen (Array von Strings)
-- interactions: Vollständige Liste aller bekannten und kritischen Wechselwirkungen (Array von Strings, z.B. mit NSAR, Antikoagulanzien, Alkohol, etc.)
-- warnings: Wichtige Gegenanzeigen, Kontraindikationen und Risikogruppen
-
-Antworte AUSSCHLIESSLICH als valides JSON-Objekt:
-{
-  "name": "${name}",
-  "activeSubstance": "...",
-  "category": "...",
-  "dosages": ["..."],
-  "commonForms": ["..."],
-  "recommendedIntake": "...",
-  "sideEffects": ["..."],
-  "interactions": ["..."],
-  "warnings": "..."
-}`;
-
-      const response = await ai.models.generateContent({
-        model: "gemini-3.8-flash",
-        contents: prompt,
-        config: {
-          tools: [{ googleSearch: {} }],
-        },
-      });
-
-      const parsed = extractJsonFromText(response.text || '');
-      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-        medicationDetailsCache.set(cacheKey, parsed);
-        return res.json({ details: parsed });
-      }
-
-      res.json({ details: null });
+      const outcome = await run3StepMedicationDetails(name, ai, extractJsonFromText);
+      res.json(outcome);
     } catch (error) {
-      console.error("Gemini Medications Details Error:", error);
-      res.status(500).json({ error: "Details lookup failed" });
+      console.error("[MedicationAssistant] API Details Error:", error);
+      try {
+        const fallback = search_database(req.query.name as string || '');
+        return res.json({
+          details: fallback.bestMatch || null,
+          fromDatabase: Boolean(fallback.bestMatch),
+          stepExecuted: "database_match"
+        });
+      } catch {
+        res.status(500).json({ error: "Details lookup failed", details: null });
+      }
+    }
+  });
+
+  // Endpoint to inspect pharmaceutical database stats
+  app.get("/api/medications/database", (req, res) => {
+    try {
+      const count = getDatabaseCount();
+      res.json({
+        totalCount: count,
+        source: "BfArM / EMA / EOF & verifizierte Praxisdatenbank",
+        status: "ready"
+      });
+    } catch (err) {
+      res.status(500).json({ error: "Failed to read database stats" });
     }
   });
 

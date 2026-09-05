@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { searchMedications, fetchMedicationDetails, MedicationSuggestion, COMMON_MEDICATIONS_DB } from '../services/medicationDatabase';
-import { Pill, Search, Globe, ChevronDown, ChevronUp, AlertTriangle, ShieldAlert, Sparkles, Loader2, Trash2, X } from 'lucide-react';
+import { searchMedications, fetchMedicationDetails, MedicationSuggestion, COMMON_MEDICATIONS_DB, SideEffectsByFrequency } from '../services/medicationDatabase';
+import { Pill, Search, Globe, ChevronDown, ChevronUp, AlertTriangle, ShieldAlert, Sparkles, Loader2, Trash2, X, Database, CheckCircle2, PackageCheck } from 'lucide-react';
 import { TranslationKey } from '../i18n/translations';
 
 export interface MedicationData {
@@ -10,9 +10,13 @@ export interface MedicationData {
   grund?: string;
   wirkstoff?: string;
   kategorie?: string;
+  packungsgroessen?: string[];
+  nebenwirkungenGegliedert?: SideEffectsByFrequency;
   nebenwirkungen?: string[];
   wechselwirkungen?: string[];
   risiken?: string;
+  datenbankQuelle?: 'datenbank' | 'behoerden_recherche';
+  authoritySource?: string;
 }
 
 interface MedicationLiveInputProps {
@@ -75,9 +79,13 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
             ...med,
             wirkstoff: med.wirkstoff || details.activeSubstance,
             kategorie: med.kategorie || details.category,
+            packungsgroessen: med.packungsgroessen || details.packageSizes,
+            nebenwirkungenGegliedert: med.nebenwirkungenGegliedert || details.sideEffectsByFrequency,
             nebenwirkungen: med.nebenwirkungen || details.sideEffects,
             wechselwirkungen: med.wechselwirkungen || details.interactions,
             risiken: med.risiken || details.warnings,
+            datenbankQuelle: details.fromDatabase ? 'datenbank' : 'behoerden_recherche',
+            authoritySource: details.authoritySource,
           });
         }
       });
@@ -130,9 +138,13 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
         name: '',
         wirkstoff: undefined,
         kategorie: undefined,
+        packungsgroessen: undefined,
+        nebenwirkungenGegliedert: undefined,
         nebenwirkungen: undefined,
         wechselwirkungen: undefined,
         risiken: undefined,
+        datenbankQuelle: undefined,
+        authoritySource: undefined,
       });
     }
   };
@@ -155,9 +167,13 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
         einnahmeart: newIntake,
         wirkstoff: suggestion.activeSubstance || '',
         kategorie: suggestion.category || '',
+        packungsgroessen: suggestion.packageSizes,
+        nebenwirkungenGegliedert: suggestion.sideEffectsByFrequency,
         nebenwirkungen: suggestion.sideEffects || [],
         wechselwirkungen: suggestion.interactions || [],
         risiken: suggestion.warnings || '',
+        datenbankQuelle: suggestion.fromDatabase ? 'datenbank' : 'behoerden_recherche',
+        authoritySource: suggestion.authoritySource,
       });
       setIsDetailsExpanded(true);
     } else {
@@ -183,9 +199,13 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
             einnahmeart: newIntake || fullDetails.recommendedIntake || '',
             wirkstoff: fullDetails.activeSubstance || suggestion.activeSubstance || '',
             kategorie: fullDetails.category || suggestion.category || '',
+            packungsgroessen: fullDetails.packageSizes || suggestion.packageSizes,
+            nebenwirkungenGegliedert: fullDetails.sideEffectsByFrequency || suggestion.sideEffectsByFrequency,
             nebenwirkungen: fullDetails.sideEffects || [],
             wechselwirkungen: fullDetails.interactions || [],
             risiken: fullDetails.warnings || '',
+            datenbankQuelle: fullDetails.fromDatabase ? 'datenbank' : 'behoerden_recherche',
+            authoritySource: fullDetails.authoritySource,
           });
           setIsDetailsExpanded(true);
         }
@@ -205,10 +225,22 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
 
   const activeSubstance = hasValidName ? (med.wirkstoff || currentDbMatch?.activeSubstance) : undefined;
   const category = hasValidName ? (med.kategorie || currentDbMatch?.category) : undefined;
+  const packageSizes = hasValidName ? (med.packungsgroessen || currentDbMatch?.packageSizes) : undefined;
+  const sideEffectsByFreq = hasValidName ? (med.nebenwirkungenGegliedert || currentDbMatch?.sideEffectsByFrequency) : undefined;
   const sideEffects = hasValidName ? (med.nebenwirkungen || currentDbMatch?.sideEffects || []) : [];
   const interactions = hasValidName ? (med.wechselwirkungen || currentDbMatch?.interactions || []) : [];
   const warnings = hasValidName ? (med.risiken || currentDbMatch?.warnings) : undefined;
-  const hasResearchData = hasValidName && Boolean(activeSubstance || (sideEffects && sideEffects.length > 0) || (interactions && interactions.length > 0) || warnings);
+  const isFromDatabase = med.datenbankQuelle === 'datenbank' || currentDbMatch?.fromDatabase;
+  const isAuthorityResearched = med.datenbankQuelle === 'behoerden_recherche' || (!isFromDatabase && (hasValidName && Boolean(activeSubstance || sideEffects.length > 0)));
+
+  const hasResearchData = hasValidName && Boolean(
+    activeSubstance || 
+    (packageSizes && packageSizes.length > 0) ||
+    sideEffectsByFreq ||
+    (sideEffects && sideEffects.length > 0) || 
+    (interactions && interactions.length > 0) || 
+    warnings
+  );
 
   return (
     <div className="p-3.5 bg-white rounded-xl border border-slate-200 shadow-2xs space-y-3 relative group transition-all duration-200 hover:border-teal-300">
@@ -220,10 +252,22 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
           <span className="text-xs font-bold text-teal-950 flex items-center gap-1.5">
             <span>{t('medication' as TranslationKey) || 'Medikament'}</span>
           </span>
-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-teal-50 text-[10px] font-semibold text-teal-700 border border-teal-200/60">
-            <Globe className="w-2.5 h-2.5" />
-            <span>{t('medLiveSearchInternetBadge' as TranslationKey) || 'Live-Recherche'}</span>
-          </span>
+          {isFromDatabase ? (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-[10px] font-semibold text-emerald-700 border border-emerald-200/80 shadow-2xs">
+              <Database className="w-2.5 h-2.5 text-emerald-600" />
+              <span>{t('medStepDbMatch' as TranslationKey) || 'Praxis-Datenbank (BfArM / EMA)'}</span>
+            </span>
+          ) : isAuthorityResearched ? (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-teal-50 text-[10px] font-semibold text-teal-700 border border-teal-200/80 shadow-2xs">
+              <CheckCircle2 className="w-2.5 h-2.5 text-teal-600" />
+              <span>{t('medStepAuthoritySearch' as TranslationKey) || 'Behörden-Recherche'}</span>
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-slate-50 text-[10px] font-semibold text-slate-600 border border-slate-200/60">
+              <Globe className="w-2.5 h-2.5" />
+              <span>{t('medLiveSearchInternetBadge' as TranslationKey) || 'Live-Recherche'}</span>
+            </span>
+          )}
         </div>
         <button
           type="button"
@@ -288,8 +332,8 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
             <div className="absolute left-0 right-0 top-full mt-1 z-30 bg-white rounded-lg border border-slate-200 shadow-xl max-h-60 overflow-y-auto py-1 animate-in fade-in-50 duration-100">
               <div className="px-3 py-1 bg-teal-50/70 border-b border-teal-100 flex items-center justify-between text-[10px] text-teal-800 font-semibold">
                 <span className="flex items-center gap-1">
-                  <Globe className="w-3 h-3 text-teal-600" />
-                  <span>{t('medLiveSearchInternetBadge' as TranslationKey) || 'Internet-Recherche'}</span>
+                  <Database className="w-3 h-3 text-teal-600" />
+                  <span>{t('medStepDbMatch' as TranslationKey) || 'Praxis-Datenbank & Fachinformation'}</span>
                 </span>
                 <span>{suggestions.length} {t('recommendationsCountBadge' as TranslationKey) || 'Treffer'}</span>
               </div>
@@ -301,7 +345,18 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
                   className="w-full text-left px-3 py-2 hover:bg-teal-50/80 transition-colors flex items-center justify-between text-xs border-b border-slate-50 last:border-none cursor-pointer"
                 >
                   <div className="pr-2">
-                    <span className="font-bold text-slate-900 block">{s.name}</span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-bold text-slate-900">{s.name}</span>
+                      {s.fromDatabase ? (
+                        <span className="text-[9px] px-1 py-0.2 rounded bg-emerald-50 text-emerald-700 border border-emerald-200/60 font-semibold">
+                          DB
+                        </span>
+                      ) : (
+                        <span className="text-[9px] px-1 py-0.2 rounded bg-blue-50 text-blue-700 border border-blue-200/60 font-semibold">
+                          Live
+                        </span>
+                      )}
+                    </div>
                     {s.activeSubstance && s.activeSubstance !== s.name && (
                       <span className="text-[10px] text-slate-500 block">
                         {t('medActiveSubstance' as TranslationKey) || 'Wirkstoff'}: {s.activeSubstance}
@@ -431,22 +486,93 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
                       {category}
                     </span>
                   )}
+                  {isFromDatabase ? (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold flex items-center gap-1">
+                      <Database className="w-3 h-3 text-emerald-600" />
+                      <span>{t('medStepDbMatch' as TranslationKey) || 'Praxis-DB'}</span>
+                    </span>
+                  ) : (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 font-semibold flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3 text-teal-600" />
+                      <span>{t('medSourceSavedToDb' as TranslationKey) || 'In Praxisdatenbank gesichert'}</span>
+                    </span>
+                  )}
                 </div>
               )}
 
-              {/* Side Effects */}
-              {sideEffects && sideEffects.length > 0 && (
+              {/* Package sizes */}
+              {packageSizes && packageSizes.length > 0 && (
                 <div className="space-y-1.5">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                    <PackageCheck className="w-3.5 h-3.5 text-teal-600" />
+                    <span>{t('medPackageSizes' as TranslationKey) || 'Verfügbare Packungsgrößen'}:</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {packageSizes.map((pkg, pIdx) => (
+                      <span key={pIdx} className="text-xs px-2.5 py-0.5 rounded-md bg-white border border-slate-200 text-slate-800 font-medium shadow-2xs">
+                        {pkg}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Graded Side Effects by Frequency */}
+              {sideEffectsByFreq && Object.values(sideEffectsByFreq).some(arr => Array.isArray(arr) && arr.length > 0) ? (
+                <div className="space-y-2 pt-2 border-t border-slate-200/60">
                   <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900">
                     <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
-                    <span>{t('medSideEffects' as TranslationKey) || 'Bekannte Nebenwirkungen'}:</span>
+                    <span>{t('medSideEffectsByFrequency' as TranslationKey) || 'Nebenwirkungen nach Häufigkeit (Fachinformation)'}:</span>
                   </div>
-                  <ul className="list-disc list-inside space-y-0.5 text-xs text-slate-700 pl-1">
-                    {sideEffects.map((effect, effIdx) => (
-                      <li key={effIdx} className="leading-relaxed">{effect}</li>
-                    ))}
-                  </ul>
+                  
+                  <div className="space-y-1.5 text-xs pl-1">
+                    {sideEffectsByFreq.veryCommon && sideEffectsByFreq.veryCommon.length > 0 && (
+                      <div className="p-2 rounded-lg bg-rose-50/70 border border-rose-200/60">
+                        <span className="font-bold text-rose-900 block mb-0.5 text-[11px]">{t('medFreqVeryCommon' as TranslationKey) || 'Sehr häufig (≥ 1/10)'}:</span>
+                        <p className="text-slate-700 leading-relaxed">{sideEffectsByFreq.veryCommon.join(', ')}</p>
+                      </div>
+                    )}
+                    {sideEffectsByFreq.common && sideEffectsByFreq.common.length > 0 && (
+                      <div className="p-2 rounded-lg bg-amber-50/70 border border-amber-200/60">
+                        <span className="font-bold text-amber-900 block mb-0.5 text-[11px]">{t('medFreqCommon' as TranslationKey) || 'Häufig (≥ 1/100 bis < 1/10)'}:</span>
+                        <p className="text-slate-700 leading-relaxed">{sideEffectsByFreq.common.join(', ')}</p>
+                      </div>
+                    )}
+                    {sideEffectsByFreq.uncommon && sideEffectsByFreq.uncommon.length > 0 && (
+                      <div className="p-2 rounded-lg bg-yellow-50/70 border border-yellow-200/60">
+                        <span className="font-bold text-yellow-900 block mb-0.5 text-[11px]">{t('medFreqUncommon' as TranslationKey) || 'Gelegentlich (≥ 1/1.000 bis < 1/100)'}:</span>
+                        <p className="text-slate-700 leading-relaxed">{sideEffectsByFreq.uncommon.join(', ')}</p>
+                      </div>
+                    )}
+                    {sideEffectsByFreq.rare && sideEffectsByFreq.rare.length > 0 && (
+                      <div className="p-2 rounded-lg bg-blue-50/70 border border-blue-200/60">
+                        <span className="font-bold text-blue-900 block mb-0.5 text-[11px]">{t('medFreqRare' as TranslationKey) || 'Selten (≥ 1/10.000 bis < 1/1.000)'}:</span>
+                        <p className="text-slate-700 leading-relaxed">{sideEffectsByFreq.rare.join(', ')}</p>
+                      </div>
+                    )}
+                    {sideEffectsByFreq.veryRare && sideEffectsByFreq.veryRare.length > 0 && (
+                      <div className="p-2 rounded-lg bg-purple-50/70 border border-purple-200/60">
+                        <span className="font-bold text-purple-900 block mb-0.5 text-[11px]">{t('medFreqVeryRare' as TranslationKey) || 'Sehr selten (< 1/10.000)'}:</span>
+                        <p className="text-slate-700 leading-relaxed">{sideEffectsByFreq.veryRare.join(', ')}</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
+              ) : (
+                /* Fallback Side Effects */
+                sideEffects && sideEffects.length > 0 && (
+                  <div className="space-y-1.5 pt-2 border-t border-slate-200/60">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900">
+                      <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                      <span>{t('medSideEffects' as TranslationKey) || 'Bekannte Nebenwirkungen'}:</span>
+                    </div>
+                    <ul className="list-disc list-inside space-y-0.5 text-xs text-slate-700 pl-1">
+                      {sideEffects.map((effect, effIdx) => (
+                        <li key={effIdx} className="leading-relaxed">{effect}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )
               )}
 
               {/* Interactions */}

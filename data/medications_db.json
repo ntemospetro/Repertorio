@@ -1,0 +1,407 @@
+[
+  {
+    "name": "Ibuprofen",
+    "activeSubstance": "Ibuprofen",
+    "category": "NSAR / Nichtsteroidales Antirheumatikum",
+    "dosages": [
+      "200 mg",
+      "400 mg",
+      "600 mg",
+      "800 mg"
+    ],
+    "packageSizes": [
+      "N1 (10-20 Stk.)",
+      "N2 (50 Stk.)",
+      "N3 (100 Stk.)"
+    ],
+    "commonForms": [
+      "Filmtablette",
+      "Granulat",
+      "Zäpfchen",
+      "Suspension"
+    ],
+    "recommendedIntake": "1-3x täglich unzerkaut mit einem Glas Wasser nach den Mahlzeiten",
+    "sideEffectsByFrequency": {
+      "veryCommon": [
+        "Magen-Darm-Beschwerden wie Sodbrennen, Bauchschmerzen, Übelkeit, Dyspepsie"
+      ],
+      "common": [
+        "Diarrhoe, Erbrechen, Obstipation, Blähungen, geringfügige Magen-Darm-Blutverluste",
+        "Kopfschmerzen, Schwindelgefühl, Müdigkeit"
+      ],
+      "uncommon": [
+        "Magen- oder Zwölffingerdarmgeschwüre (mit Blutungs- oder Perforationsgefahr)",
+        "Ulzerative Stomatitis, Gastritis",
+        "Hautausschläge, Pruritus, Urtikaria"
+      ],
+      "rare": [
+        "Tinnitus, Hörstörungen",
+        "Nierengewebsschädigungen (Papillennekrosen), Hyperurikämie"
+      ],
+      "veryRare": [
+        "Agranulozytose, Thrombozytopenie, Leukopenie",
+        "Schwere Hautreaktionen (Stevens-Johnson-Syndrom, DRESS)",
+        "Herzinsuffizienz, Ödeme, Hypertonie"
+      ]
+    },
+    "sideEffects": [
+      "Magen-Darm-Beschwerden (Sodbrennen, Bauchschmerzen, Übelkeit)",
+      "Erhöhtes Risiko für Magengeschwüre und gastrointestinale Blutungen",
+      "Kopfschmerzen, Schwindel, Müdigkeit",
+      "Beeinträchtigung der Nierenfunktion bei Dehydrierung oder Dauergebrauch",
+      "Allergische Hautreaktionen oder Asthma-Anfälle"
+    ],
+    "interactions": [
+      "Andere NSAR und Acetylsalicylsäure (ASS): Stark erhöhtes Risiko für gastrointestinale Ulzera und Blutungen",
+      "Antikoagulanzien und Thrombozytenaggregationshemmer (Marcumar, DOAK, ASS): Erhöhte Blutungsgefahr",
+      "Antihypertensiva (ACE-Hemmer, Sartane, Betablocker): Wirkungsabschwächung der Blutdrucksenkung",
+      "Lithium, Methotrexat, Digoxin: Erhöhte Serumspiegel und Toxizität",
+      "Glukokortikoide: Verstärktes Risiko gastrointestinaler Läsionen",
+      "Alkohol: Erhöhtes Risiko von Magenschleimhautblutungen"
+    ],
+    "warnings": "Kontraindiziert bei aktiven peptischen Ulzera, schwerer Leber-, Nieren- oder Herzinsuffizienz sowie im 3. Schwangerschaftstrimester.",
+    "authoritySource": "BfArM / EMA Fachinformation",
+    "fromDatabase": true
+  },
+  {
+    "name": "Paracetamol",
+    "activeSubstance": "Paracetamol",
+    "category": "Analgetikum / Antipyretikum",
+    "dosages": [
+      "125 mg",
+      "250 mg",
+      "500 mg",
+      "1000 mg"
+    ],
+    "packageSizes": [
+      "N1 (10 Stk.)",
+      "N2 (20 Stk.)",
+      "N3 (30 Stk.)"
+    ],
+    "commonForms": [
+      "Tablette",
+      "Brausetablette",
+      "Zäpfchen",
+      "Sirup"
+    ],
+    "recommendedIntake": "Alle 6-8 Stunden bei Schmerzen oder Fieber (Einzeldosis max. 1000 mg, Tageshöchstdosis 4000 mg)",
+    "sideEffectsByFrequency": {
+      "rare": [
+        "Leichter Anstieg der Serumtransaminasen",
+        "Hautausschlag, Erythem, Urtikaria"
+      ],
+      "veryRare": [
+        "Thrombozytopenie, Leukopenie, Agranulozytose",
+        "Bronchospasmus bei Analgetika-Asthma",
+        "Schwere kutane Reaktionen (AGEP, TEN, SJS)"
+      ]
+    },
+    "sideEffects": [
+      "Hepatotoxizität (Leberschäden) bei Überdosierung (> 4 g/Tag)",
+      "Selten allergische Hautreaktionen (Exanthem, Urtikaria)",
+      "Sehr selten hämatologische Veränderungen (Thrombozytopenie, Leukopenie)"
+    ],
+    "interactions": [
+      "Alkohol: Stark erhöhtes Risiko für toxische Leberschäden",
+      "Enzyminduktoren (Carbamazepin, Phenytoin, Rifampicin): Erhöhte Bildung lebertoxischer Metaboliten",
+      "Cumarin-Antikoagulanzien (Warfarin, Phenprocoumon): Verstärkung der gerinnungshemmenden Wirkung bei Langzeiteinnahme"
+    ],
+    "warnings": "Kontraindiziert bei schwerer Leberfunktionsstörung. Streng auf die maximale Tagesdosis achten.",
+    "authoritySource": "BfArM / EMA Fachinformation",
+    "fromDatabase": true
+  },
+  {
+    "name": "Ramipril",
+    "activeSubstance": "Ramipril",
+    "category": "ACE-Hemmer (Antihypertensivum)",
+    "dosages": [
+      "1.25 mg",
+      "2.5 mg",
+      "5 mg",
+      "10 mg"
+    ],
+    "packageSizes": [
+      "N1 (20-28 Stk.)",
+      "N2 (50 Stk.)",
+      "N3 (98-100 Stk.)"
+    ],
+    "commonForms": [
+      "Tablette"
+    ],
+    "recommendedIntake": "1x täglich morgens zur gleichen Zeit unabhängig von den Mahlzeiten mit etwas Wasser",
+    "sideEffectsByFrequency": {
+      "common": [
+        "Trockener Reizhusten (charakteristischer ACE-Hemmer-Husten)",
+        "Hypotonie, orthostatische Dysregulation, Schwindel",
+        "Kopfschmerzen, Müdigkeit",
+        "Hyperkaliämie (erhöhter Serumkaliumspiegel)"
+      ],
+      "uncommon": [
+        "Gastrointestinale Beschwerden, Bauchschmerzen, Übelkeit",
+        "Pruritus, Exanthem",
+        "Vorübergehende Einschränkung der Nierenfunktion"
+      ],
+      "rare": [
+        "Angioödem (Quincke-Ödem von Gesicht, Lippen, Zunge oder Glottis)",
+        "Leukopenie, Neutropenie",
+        "Cholestatische Gelbsucht"
+      ]
+    },
+    "sideEffects": [
+      "Trockener Reizhusten (charakteristischer ACE-Hemmer-Husten)",
+      "Hypotonie, Schwindel, Müdigkeit",
+      "Hyperkaliämie (erhöhter Kaliumspiegel)",
+      "Angioödem (selten, aber potenziell lebensbedrohlich)",
+      "Verschlechterung der Nierenfunktion"
+    ],
+    "interactions": [
+      "Kaliumsparende Diuretika (Spironolacton, Eplerenon) und Kaliumpräparate: Schwere Hyperkaliämie-Gefahr",
+      "NSAR (Ibuprofen, Diclofenac): Wirkungsabschwächung und Verschlechterung der Nierenfunktion",
+      "Lithium: Verminderte Lithiumausscheidung und erhöhte Toxizität",
+      "Andere Antihypertensiva: Additive Blutdrucksenkung"
+    ],
+    "warnings": "Kontraindiziert bei anamnestischem Angioödem, hämodynamisch relevanter Nierenarterienstenose und Schwangerschaft.",
+    "authoritySource": "BfArM / EMA / EOF Fachinformation",
+    "fromDatabase": true
+  },
+  {
+    "name": "Pantoprazol",
+    "activeSubstance": "Pantoprazol",
+    "category": "Protonenpumpeninhibitor (PPI / Magenschutz)",
+    "dosages": [
+      "20 mg",
+      "40 mg"
+    ],
+    "packageSizes": [
+      "N1 (14-15 Stk.)",
+      "N2 (30 Stk.)",
+      "N3 (60-100 Stk.)"
+    ],
+    "commonForms": [
+      "Magensaftresistente Tablette"
+    ],
+    "recommendedIntake": "1x täglich morgens ca. 30-60 Minuten vor dem Frühstück nüchtern mit Wasser",
+    "sideEffectsByFrequency": {
+      "common": [
+        "Magen-Darm-Beschwerden (Bauchschmerzen, Diarrhoe, Obstipation, Flatulenz)",
+        "Kopfschmerzen",
+        "Fundusdrüsenpolypen"
+      ],
+      "uncommon": [
+        "Schlafstörungen, Schwindel",
+        "Hautausschlag, Pruritus",
+        "Übelkeit, Erbrechen",
+        "Leichter Anstieg der Leberenzyme"
+      ],
+      "rare": [
+        "Agranulozytose, Thrombozytopenie",
+        "Geschmacksstörungen, Sehstörungen",
+        "Myalgie, Arthralgie"
+      ]
+    },
+    "sideEffects": [
+      "Kopfschmerzen, Schwindelgefühl",
+      "Gastrointestinale Beschwerden (Durchfall, Verstopfung, Blähungen)",
+      "Bei Langzeitanwendung: verminderte Aufnahme von Vitamin B12, Magnesium und Calcium",
+      "Erhöhtes Risiko für Clostridioides-difficile-Infektionen"
+    ],
+    "interactions": [
+      "Wirkstoffe mit pH-abhängiger Resorption (Ketoconazol, Eisenpräparate, Atazanavir)",
+      "Cumarin-Antikoagulanzien (INR-Schwankungen)",
+      "Methotrexat: Mögliche Erhöhung des Methotrexat-Spiegels"
+    ],
+    "warnings": "Langzeittherapie regelmäßig auf Indikation überprüfen. Beim Absetzen ausschleichen, um Säurerebound zu verhindern.",
+    "authoritySource": "BfArM / EMA / EOF Fachinformation",
+    "fromDatabase": true
+  },
+  {
+    "name": "L-Thyroxin",
+    "activeSubstance": "Levothyroxin-Natrium",
+    "category": "Schilddrüsenhormon",
+    "dosages": [
+      "25 µg",
+      "50 µg",
+      "75 µg",
+      "88 µg",
+      "100 µg",
+      "112 µg",
+      "125 µg",
+      "137 µg",
+      "150 µg",
+      "175 µg",
+      "200 µg"
+    ],
+    "packageSizes": [
+      "N1 (28-30 Stk.)",
+      "N2 (50 Stk.)",
+      "N3 (84-100 Stk.)"
+    ],
+    "commonForms": [
+      "Tablette"
+    ],
+    "recommendedIntake": "1x täglich morgens nüchtern mindestens 30 Minuten vor dem Frühstück nur mit Wasser",
+    "sideEffectsByFrequency": {
+      "veryCommon": [
+        "Bei Überdosierung: Tachykardie, Palpitationen, Herzrhythmusstörungen, Angina Pectoris"
+      ],
+      "common": [
+        "Kopfschmerzen, Muskelschwäche, Hitzegefühl, Schwitzen, Gewichtsverlust, Diarrhoe",
+        "Innere Unruhe, Tremor, Schlaflosigkeit"
+      ]
+    },
+    "sideEffects": [
+      "Bei Überdosierung: Herzrasen, Herzrhythmusstörungen, innere Unruhe, Zittern, Schwitzen, Schlafstörungen, Gewichtsabnahme"
+    ],
+    "interactions": [
+      "Calcium-, Eisen-, Aluminium- und Magnesiumpräparate: Mindestens 2 Stunden zeitlicher Abstand erforderlich",
+      "Sojaprodukte und ballaststoffreiche Nahrungsmittel: Verminderte Levothyroxin-Aufnahme",
+      "Cumarin-Derivate: Wirkungsverstärkung der Blutgerinnungshemmung",
+      "Antidiabetika: Mögliche Abschwächung der blutzuckersenkenden Wirkung"
+    ],
+    "warnings": "Nicht zur Gewichtsreduktion verwenden. Dosierung regelmäßig durch Serum-TSH-Werte kontrollieren.",
+    "authoritySource": "BfArM / EMA / EOF Fachinformation",
+    "fromDatabase": true
+  },
+  {
+    "name": "Metformin",
+    "activeSubstance": "Metforminhydrochlorid",
+    "category": "Oraler Antidiabetikum (Biguanid)",
+    "dosages": [
+      "500 mg",
+      "850 mg",
+      "1000 mg"
+    ],
+    "packageSizes": [
+      "N1 (30 Stk.)",
+      "N2 (60-100 Stk.)",
+      "N3 (120-180 Stk.)"
+    ],
+    "commonForms": [
+      "Filmtablette"
+    ],
+    "recommendedIntake": "Mit oder direkt nach den Mahlzeiten einnehmen, um gastrointestinale Nebenwirkungen zu minimieren",
+    "sideEffectsByFrequency": {
+      "veryCommon": [
+        "Magen-Darm-Beschwerden (Übelkeit, Erbrechen, Diarrhoe, Bauchschmerzen, Appetitverlust)"
+      ],
+      "common": [
+        "Geschmacksstörungen (metallischer Geschmack)",
+        "Vitamin-B12-Mangel bei Langzeitbehandlung"
+      ],
+      "veryRare": [
+        "Laktatazidose (schwerwiegende metabolische Komplikation)",
+        "Abnorme Leberfunktionswerte, Hepatitis",
+        "Erythem, Pruritus, Urtikaria"
+      ]
+    },
+    "sideEffects": [
+      "Gastrointestinale Beschwerden (Übelkeit, Diarrhoe, Blähungen, metallischer Geschmack)",
+      "Laktatazidose (sehr selten, aber potenziell lebensbedrohlich bei Niereninsuffizienz)",
+      "Vitamin-B12-Mangel bei Dauertherapie"
+    ],
+    "interactions": [
+      "Jodhaltige Kontrastmittel: Risiko von Laktatazidose und akutem Nierenversagen (Metformin vorab absetzen)",
+      "Alkohol: Stark erhöhtes Risiko für Laktatazidose",
+      "NSAR und ACE-Hemmer: Risiko einer Nierenfunktionseinschränkung"
+    ],
+    "warnings": "Kontraindiziert bei schwerer Niereninsuffizienz (GFR < 30 ml/min), Dehydratation, Sepsis, Herz- oder Ateminsuffizienz.",
+    "authoritySource": "BfArM / EMA / EOF Fachinformation",
+    "fromDatabase": true
+  },
+  {
+    "name": "Amlodipin",
+    "activeSubstance": "Amlodipin",
+    "category": "Calciumkanalblocker (Dihydropyridin-Typ)",
+    "dosages": [
+      "5 mg",
+      "10 mg"
+    ],
+    "packageSizes": [
+      "N1 (20-30 Stk.)",
+      "N2 (50 Stk.)",
+      "N3 (98-100 Stk.)"
+    ],
+    "commonForms": [
+      "Tablette"
+    ],
+    "recommendedIntake": "1x täglich morgens unzerkaut mit einem Glas Wasser",
+    "sideEffectsByFrequency": {
+      "veryCommon": [
+        "Periphere Ödeme (Knöchelschwellungen)"
+      ],
+      "common": [
+        "Kopfschmerzen, Schwindel, Somnolenz",
+        "Flush (Gesichtsrötung mit Hitzegefühl), Palpitationen",
+        "Bauchschmerzen, Übelkeit, Dyspepsie",
+        "Müdigkeit, Asthenie"
+      ],
+      "uncommon": [
+        "Hypotonie, Synkope, Bradykardie",
+        "Pruritus, Rash, Alopezie",
+        "Muskelkrämpfe, Arthralgien"
+      ]
+    },
+    "sideEffects": [
+      "Periphere Ödeme (Knöchelschwellungen)",
+      "Kopfschmerzen, Schwindel, Flush",
+      "Müdigkeit, Palpitationen"
+    ],
+    "interactions": [
+      "Grapefruitsaft: Erhöht die Bioverfügbarkeit von Amlodipin und verstärkt hypotensive Wirkung",
+      "Simvastatin: Erhöhtes Risiko für Rhabdomyolyse; Simvastatin-Tagesdosis auf max. 20 mg begrenzen",
+      "CYP3A4-Inhibitoren (Ketoconazol, Clarithromycin): Verstärkte Amlodipin-Wirkung"
+    ],
+    "warnings": "Vorsicht bei schwerer Aortenstenose und dekompensierter Herzinsuffizienz.",
+    "authoritySource": "BfArM / EMA / EOF Fachinformation",
+    "fromDatabase": true
+  },
+  {
+    "name": "Bisoprolol",
+    "activeSubstance": "Bisoprolol",
+    "category": "Kardioselektiver Betablocker",
+    "dosages": [
+      "1.25 mg",
+      "2.5 mg",
+      "3.75 mg",
+      "5 mg",
+      "7.5 mg",
+      "10 mg"
+    ],
+    "packageSizes": [
+      "N1 (20-30 Stk.)",
+      "N2 (50 Stk.)",
+      "N3 (98-100 Stk.)"
+    ],
+    "commonForms": [
+      "Tablette"
+    ],
+    "recommendedIntake": "1x täglich morgens mit etwas Flüssigkeit zum Frühstück",
+    "sideEffectsByFrequency": {
+      "common": [
+        "Bradykardie (verlangsamter Puls), Blutdruckabfall",
+        "Kältegefühl oder Taubheit in den Extremitäten",
+        "Kopfschmerzen, Schwindelgefühl",
+        "Gastrointestinale Beschwerden, Müdigkeit"
+      ],
+      "uncommon": [
+        "AV-Überleitungsstörungen, Verschlechterung der Herzinsuffizienz",
+        "Bronchospasmus bei Asthma bronchiale",
+        "Muskelschwäche, Krämpfe"
+      ]
+    },
+    "sideEffects": [
+      "Bradykardie, Hypotonie, Schwindel, Müdigkeit",
+      "Kältegefühl in Händen und Füßen",
+      "Gastrointestinale Beschwerden",
+      "Bronchospasmus bei vorbestehendem Asthma"
+    ],
+    "interactions": [
+      "Calciumantagonisten vom Verapamil- oder Diltiazem-Typ: Gefahr schwerer Bradykardie und AV-Block",
+      "Antidiabetika / Insulin: Maskierung von Warnsymptomen einer Unterzuckerung (wie Tachykardie)",
+      "Digitalisglykoside: Additive Verlangsamung der kardialen Überleitung"
+    ],
+    "warnings": "Niemals abrupt absetzen (Rebound-Phänomen). Schrittweise über mindestens 1-2 Wochen ausschleichen.",
+    "authoritySource": "BfArM / EMA / EOF Fachinformation",
+    "fromDatabase": true
+  }
+]

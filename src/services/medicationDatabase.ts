@@ -1,13 +1,26 @@
+export interface SideEffectsByFrequency {
+  veryCommon?: string[];   // Sehr häufig (≥ 1/10)
+  common?: string[];       // Häufig (≥ 1/100 bis < 1/10)
+  uncommon?: string[];     // Gelegentlich (≥ 1/1.000 bis < 1/100)
+  rare?: string[];         // Selten (≥ 1/10.000 bis < 1/1.000)
+  veryRare?: string[];     // Sehr selten (< 1/10.000)
+}
+
 export interface MedicationSuggestion {
   name: string;
   category?: string;
   defaultDosages: string[];
+  packageSizes?: string[];
   commonForms?: string[];
   activeSubstance?: string;
   recommendedIntake?: string;
+  sideEffectsByFrequency?: SideEffectsByFrequency;
   sideEffects?: string[];
   interactions?: string[];
   warnings?: string;
+  fromDatabase?: boolean;
+  authoritySource?: string;
+  stepExecuted?: 'database_match' | 'authority_researched_and_saved';
 }
 
 export const COMMON_MEDICATIONS_DB: MedicationSuggestion[] = [
@@ -348,12 +361,17 @@ export async function searchMedications(query: string): Promise<MedicationSugges
           name: r.name || query,
           activeSubstance: r.activeSubstance || '',
           category: r.category || '',
-          defaultDosages: Array.isArray(r.dosages) && r.dosages.length > 0 ? r.dosages : ['Standard'],
+          defaultDosages: Array.isArray(r.dosages) && r.dosages.length > 0 ? r.dosages : (r.defaultDosages || ['Standard']),
+          packageSizes: Array.isArray(r.packageSizes) ? r.packageSizes : [],
           commonForms: Array.isArray(r.commonForms) ? r.commonForms : [],
           recommendedIntake: r.recommendedIntake || '',
+          sideEffectsByFrequency: r.sideEffectsByFrequency || undefined,
           sideEffects: Array.isArray(r.sideEffects) ? r.sideEffects : [],
           interactions: Array.isArray(r.interactions) ? r.interactions : [],
-          warnings: r.warnings || ''
+          warnings: r.warnings || '',
+          fromDatabase: r.fromDatabase !== undefined ? r.fromDatabase : (data.fromDatabase || false),
+          authoritySource: r.authoritySource || (r.fromDatabase ? 'Geprüfte Praxisdatenbank (BfArM / EMA)' : 'Offizielle Fachinformation (BfArM / EMA / EOF)'),
+          stepExecuted: r.stepExecuted || data.stepExecuted || (r.fromDatabase ? 'database_match' : 'authority_researched_and_saved')
         }));
 
         // Merge live results with local matches, deduplicating by normalized name
@@ -413,25 +431,33 @@ export async function fetchMedicationDetails(name: string): Promise<MedicationSu
     if (res.ok) {
       const data = await res.json();
       if (data.details) {
-        const item: MedicationSuggestion = {
-          name: data.details.name || name,
-          activeSubstance: data.details.activeSubstance || localMatch?.activeSubstance || '',
-          category: data.details.category || localMatch?.category || '',
-          defaultDosages: Array.isArray(data.details.dosages) && data.details.dosages.length > 0
-            ? data.details.dosages
-            : (localMatch?.defaultDosages || ['Standard']),
-          commonForms: Array.isArray(data.details.commonForms) ? data.details.commonForms : (localMatch?.commonForms || []),
-          recommendedIntake: data.details.recommendedIntake || localMatch?.recommendedIntake || '',
-          sideEffects: Array.isArray(data.details.sideEffects) && data.details.sideEffects.length > 0
-            ? data.details.sideEffects
-            : (localMatch?.sideEffects || []),
-          interactions: Array.isArray(data.details.interactions) && data.details.interactions.length > 0
-            ? data.details.interactions
-            : (localMatch?.interactions || []),
-          warnings: data.details.warnings || localMatch?.warnings || ''
-        };
-        detailsCache.set(key, item);
-        return item;
+          const d = data.details;
+          const item: MedicationSuggestion = {
+            name: d.name || name,
+            activeSubstance: d.activeSubstance || localMatch?.activeSubstance || '',
+            category: d.category || localMatch?.category || '',
+            defaultDosages: Array.isArray(d.dosages) && d.dosages.length > 0
+              ? d.dosages
+              : (localMatch?.defaultDosages || ['Standard']),
+            packageSizes: Array.isArray(d.packageSizes) && d.packageSizes.length > 0
+              ? d.packageSizes
+              : (localMatch?.packageSizes || []),
+            commonForms: Array.isArray(d.commonForms) ? d.commonForms : (localMatch?.commonForms || []),
+            recommendedIntake: d.recommendedIntake || localMatch?.recommendedIntake || '',
+            sideEffectsByFrequency: d.sideEffectsByFrequency || localMatch?.sideEffectsByFrequency || undefined,
+            sideEffects: Array.isArray(d.sideEffects) && d.sideEffects.length > 0
+              ? d.sideEffects
+              : (localMatch?.sideEffects || []),
+            interactions: Array.isArray(d.interactions) && d.interactions.length > 0
+              ? d.interactions
+              : (localMatch?.interactions || []),
+            warnings: d.warnings || localMatch?.warnings || '',
+            fromDatabase: d.fromDatabase !== undefined ? d.fromDatabase : (data.fromDatabase ?? true),
+            authoritySource: d.authoritySource || 'Offizielle Fachinformation (BfArM / EMA / EOF)',
+            stepExecuted: data.stepExecuted || (d.fromDatabase ? 'database_match' : 'authority_researched_and_saved')
+          };
+          detailsCache.set(key, item);
+          return item;
       }
     }
   } catch (err) {
