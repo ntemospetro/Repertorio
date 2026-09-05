@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Copy, Check, ShieldCheck, FileText, Globe, Languages, Loader2 } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Copy, Check, ShieldCheck, FileText, Globe, Loader2 } from 'lucide-react';
 import { TranslationKey } from '../i18n/translations';
 import { useLanguage } from '../i18n/LanguageContext';
 import { localizeMonograph, fetchTranslatedMonograph } from '../services/medicationLocalization';
@@ -21,8 +21,13 @@ export const MedicationMonographView: React.FC<MedicationMonographViewProps> = (
 }) => {
   const { language } = useLanguage();
   const [copied, setCopied] = useState(false);
-  const [showOriginal, setShowOriginal] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
+
+  // Keep a reference to the base German text so translations to any language are always accurate
+  const baseTextRef = useRef<string>(monographText);
+  if (monographText && (monographText.includes('Wirkstoff') || monographText.includes('Inhaltsstoffe') || !baseTextRef.current)) {
+    baseTextRef.current = monographText;
+  }
 
   // Initialize with immediate structural localization
   const [currentMonograph, setCurrentMonograph] = useState<string>(() => {
@@ -30,28 +35,29 @@ export const MedicationMonographView: React.FC<MedicationMonographViewProps> = (
     return language === 'de' ? monographText : localizeMonograph(monographText, language);
   });
 
-  // Whenever monographText or language changes, synchronize immediately and fetch AI translation
+  // Whenever monographText or language changes, synchronize immediately and fetch complete translation
   useEffect(() => {
-    if (!monographText) {
+    const sourceText = baseTextRef.current || monographText;
+    if (!sourceText) {
       setCurrentMonograph('');
       return;
     }
 
     if (language === 'de') {
-      setCurrentMonograph(monographText);
+      setCurrentMonograph(sourceText);
       setIsTranslating(false);
       return;
     }
 
     // Step 1: Instant localization with zero flicker
-    const immediate = localizeMonograph(monographText, language);
+    const immediate = localizeMonograph(sourceText, language);
     setCurrentMonograph(immediate);
 
     // Step 2: Asynchronous AI translation via backend
     let isCancelled = false;
     setIsTranslating(true);
 
-    fetchTranslatedMonograph(medName, monographText, language)
+    fetchTranslatedMonograph(medName, sourceText, language)
       .then((translated) => {
         if (!isCancelled && translated) {
           setCurrentMonograph(translated);
@@ -71,7 +77,7 @@ export const MedicationMonographView: React.FC<MedicationMonographViewProps> = (
     };
   }, [monographText, medName, language]);
 
-  const activeText = showOriginal ? monographText : currentMonograph;
+  const activeText = currentMonograph || monographText;
 
   const handleCopy = async () => {
     try {
@@ -175,7 +181,7 @@ export const MedicationMonographView: React.FC<MedicationMonographViewProps> = (
               {activeSubstance}
             </span>
           )}
-          {language !== 'de' && !showOriginal && (
+          {language !== 'de' && (
             <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold flex items-center gap-1">
               <Globe className="w-3 h-3 text-emerald-600" />
               <span>{t('medTranslatedBadge' as TranslationKey) || 'Lokalisiert'}</span>
@@ -190,18 +196,6 @@ export const MedicationMonographView: React.FC<MedicationMonographViewProps> = (
         </div>
 
         <div className="flex items-center gap-2">
-          {language !== 'de' && (
-            <button
-              type="button"
-              onClick={() => setShowOriginal(!showOriginal)}
-              className="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200/80 transition-colors cursor-pointer"
-              title={showOriginal ? (t('medViewTranslated' as TranslationKey) || 'Übersetzung anzeigen') : (t('medOriginalGerman' as TranslationKey) || 'Original (Deutsch)')}
-            >
-              <Languages className="w-3 h-3 text-slate-600" />
-              <span>{showOriginal ? (t('medViewTranslated' as TranslationKey) || 'Übersetzung') : (t('medOriginalGerman' as TranslationKey) || 'Original')}</span>
-            </button>
-          )}
-
           <button
             type="button"
             onClick={handleCopy}

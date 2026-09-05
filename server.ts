@@ -851,6 +851,15 @@ oder
     }
   });
 
+  function getBaseMedName(name: string): string {
+    if (!name) return 'text';
+    return name.toLowerCase()
+      .replace(/\b\d+(\s*,\s*\d+)?\s*(mg|g|µg|ug|ml|ie)\b/gi, '')
+      .replace(/\b(al|ratiopharm|1a pharma|heumann|hexal|stada|pfizer|bayer|novartis|teva)\b/gi, '')
+      .replace(/[®™]/g, '')
+      .trim();
+  }
+
   // Dedicated endpoint for full pharmaceutical profile with 3-step flow
   app.get("/api/medications/details", async (req, res) => {
     try {
@@ -863,12 +872,41 @@ oder
 
       const outcome = await run3StepMedicationDetails(name, ai, extractJsonFromText);
 
-      // If requested language is not German and details exist, check if translation is cached
+      // If requested language is not German and details exist, check if translation is cached or translate live
       if (outcome && outcome.details && lang && lang !== 'de') {
-        const cacheKey = `${name.toLowerCase().trim()}_${lang}`;
+        const directKey = `${name.toLowerCase().trim()}_${lang}`;
+        const baseKey = `${getBaseMedName(name)}_${lang}`;
         const cache = getMedicationTranslations();
-        if (cache[cacheKey]) {
-          outcome.details.monographText = cache[cacheKey];
+        const cached = cache[directKey] || cache[baseKey];
+        if (cached) {
+          outcome.details.monographText = cached;
+        } else if (ai && outcome.details.monographText) {
+          try {
+            const langNames: Record<string, string> = {
+              de: "German (Deutsch)",
+              en: "English",
+              el: "Greek (Ελληνικά)",
+              es: "Spanish (Español)",
+              fr: "French (Français)",
+              it: "Italian (Italiano)",
+              ru: "Russian (Русский)"
+            };
+            const targetLanguageName = langNames[lang] || "English";
+            const prompt = `You are a licensed medical and pharmaceutical translator for clinical staff.
+Translate the following official medication monograph into ${targetLanguageName}. Maintain the exact 5-section structure and emoji headers. Output ONLY the translated monograph in ${targetLanguageName}.\n\n${outcome.details.monographText}`;
+            const trRes = await ai.models.generateContent({
+              model: "gemini-flash-latest",
+              contents: prompt
+            });
+            const trText = trRes.text ? trRes.text.trim() : "";
+            if (trText && trText.length > 50) {
+              saveMedicationTranslation(directKey, trText);
+              saveMedicationTranslation(baseKey, trText);
+              outcome.details.monographText = trText;
+            }
+          } catch (trErr) {
+            console.warn("[MedicationDetails] Live translation error:", trErr);
+          }
         }
       }
 
@@ -900,10 +938,11 @@ oder
         return res.json({ translatedText: text, targetLang: "de", cached: true });
       }
 
-      const cacheKey = `${(medName || 'text').toLowerCase().trim()}_${targetLang}`;
+      const directKey = `${(medName || 'text').toLowerCase().trim()}_${targetLang}`;
+      const baseKey = `${getBaseMedName(medName || 'text')}_${targetLang}`;
       const cache = getMedicationTranslations();
-      if (cache[cacheKey]) {
-        return res.json({ translatedText: cache[cacheKey], targetLang, cached: true });
+      if (cache[directKey] || cache[baseKey]) {
+        return res.json({ translatedText: cache[directKey] || cache[baseKey], targetLang, cached: true });
       }
 
       const apiKey = getGeminiApiKey();
@@ -947,7 +986,8 @@ ${text}`;
 
       const translatedText = response.text ? response.text.trim() : "";
       if (translatedText && translatedText.length > 50) {
-        saveMedicationTranslation(cacheKey, translatedText);
+        saveMedicationTranslation(directKey, translatedText);
+        saveMedicationTranslation(baseKey, translatedText);
 
         recordTokenUsage({
           endpoint: '/api/medications/translate',

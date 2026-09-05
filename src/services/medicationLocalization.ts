@@ -4,7 +4,14 @@ import { LanguageCode } from '../types';
 const translationCache = new Map<string, string>();
 
 // Local storage key for persistent client cache
-const CLIENT_TRANSLATION_STORAGE_KEY = 'homoeo_med_translations_v1';
+const CLIENT_TRANSLATION_STORAGE_KEY = 'homoeo_med_translations_v2';
+
+// Clear old faulty cache
+try {
+  if (typeof localStorage !== 'undefined') {
+    localStorage.removeItem('homoeo_med_translations_v1');
+  }
+} catch {}
 
 function getStoredCache(): Record<string, string> {
   try {
@@ -606,7 +613,8 @@ export async function fetchTranslatedMonograph(
   if (!rawMonograph || !rawMonograph.trim()) return '';
   if (targetLang === 'de') return rawMonograph;
 
-  const cacheKey = `${medName.toLowerCase().trim()}_${targetLang}`;
+  const normalizedName = (medName || 'text').toLowerCase().trim();
+  const cacheKey = `${normalizedName}_${targetLang}`;
 
   // 1. Check in-memory map
   if (translationCache.has(cacheKey)) {
@@ -628,7 +636,7 @@ export async function fetchTranslatedMonograph(
       body: JSON.stringify({
         text: rawMonograph,
         targetLang,
-        medName
+        medName: normalizedName
       })
     });
 
@@ -645,9 +653,6 @@ export async function fetchTranslatedMonograph(
     console.warn('[MedicationLocalization] Translation API error:', err);
   }
 
-  // 4. Instant deterministic localization fallback
-  const localizedFallback = localizeMonograph(rawMonograph, targetLang);
-  translationCache.set(cacheKey, localizedFallback);
-  saveToStoredCache(cacheKey, localizedFallback);
-  return localizedFallback;
+  // 4. Instant deterministic localization fallback (transient, not saved to permanent cache)
+  return localizeMonograph(rawMonograph, targetLang);
 }
