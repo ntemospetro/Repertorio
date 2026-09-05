@@ -1,4 +1,9 @@
-[
+// Auto-generated curated Top Medications Catalog
+// Contains 520 verified medications for instant offline & client-side lookup.
+
+import { MedicationSuggestion } from '../services/medicationDatabase';
+
+export const TOP_MEDICATIONS_CATALOG: MedicationSuggestion[] = [
   {
     "name": "Ibuprofen",
     "activeSubstance": "Ibuprofen",
@@ -21296,4 +21301,4 @@
     "authoritySource": "BfArM / EMA / Rote Liste Fachinformation",
     "fromDatabase": true
   }
-]
+];

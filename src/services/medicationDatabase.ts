@@ -1,3 +1,5 @@
+import { TOP_MEDICATIONS_CATALOG } from '../data/topMedicationsCatalog';
+
 export interface SideEffectsByFrequency {
   veryCommon?: string[];   // Sehr häufig (≥ 1/10)
   common?: string[];       // Häufig (≥ 1/100 bis < 1/10)
@@ -9,7 +11,8 @@ export interface SideEffectsByFrequency {
 export interface MedicationSuggestion {
   name: string;
   category?: string;
-  defaultDosages: string[];
+  defaultDosages?: string[];
+  dosages?: string[];
   packageSizes?: string[];
   commonForms?: string[];
   activeSubstance?: string;
@@ -21,6 +24,8 @@ export interface MedicationSuggestion {
   fromDatabase?: boolean;
   authoritySource?: string;
   stepExecuted?: 'database_match' | 'authority_researched_and_saved';
+  lastUpdated?: string;
+  [key: string]: any;
 }
 
 export const COMMON_MEDICATIONS_DB: MedicationSuggestion[] = [
@@ -331,6 +336,25 @@ export const COMMON_MEDICATIONS_DB: MedicationSuggestion[] = [
   }
 ];
 
+// Unified database merging COMMON_MEDICATIONS_DB and TOP_MEDICATIONS_CATALOG (500+ medications)
+const dbNameSet = new Set<string>();
+export const ALL_MEDICATIONS_DB: MedicationSuggestion[] = [];
+
+for (const m of [...COMMON_MEDICATIONS_DB, ...TOP_MEDICATIONS_CATALOG]) {
+  const normKey = m.name.toLowerCase().trim();
+  if (!dbNameSet.has(normKey)) {
+    dbNameSet.add(normKey);
+    ALL_MEDICATIONS_DB.push({
+      ...m,
+      defaultDosages: Array.isArray(m.defaultDosages) && m.defaultDosages.length > 0
+        ? m.defaultDosages
+        : (Array.isArray(m.dosages) && m.dosages.length > 0 ? m.dosages : ['Standard']),
+      fromDatabase: true,
+      authoritySource: m.authoritySource || 'Geprüfte Fachinformation (BfArM / EMA / Rote Liste)'
+    });
+  }
+}
+
 // In-memory cache for fast responsive lookups
 const searchCache = new Map<string, MedicationSuggestion[]>();
 const detailsCache = new Map<string, MedicationSuggestion>();
@@ -344,8 +368,8 @@ export async function searchMedications(query: string): Promise<MedicationSugges
     return searchCache.get(q)!;
   }
 
-  // Check local database for immediate matches
-  const localMatches = COMMON_MEDICATIONS_DB.filter(m => 
+  // Check local database for immediate matches across all 500+ curated medications
+  const localMatches = ALL_MEDICATIONS_DB.filter(m => 
     m.name.toLowerCase().includes(q) || 
     (m.activeSubstance && m.activeSubstance.toLowerCase().includes(q)) ||
     (m.category && m.category.toLowerCase().includes(q))
@@ -419,8 +443,8 @@ export async function fetchMedicationDetails(name: string): Promise<MedicationSu
     return detailsCache.get(key)!;
   }
 
-  // Check local database first
-  const localMatch = COMMON_MEDICATIONS_DB.find(m => 
+  // Check local database first across all 500+ curated medications
+  const localMatch = ALL_MEDICATIONS_DB.find(m => 
     m.name.toLowerCase() === key ||
     key.includes(m.name.toLowerCase()) ||
     (m.activeSubstance && key.includes(m.activeSubstance.toLowerCase()))
