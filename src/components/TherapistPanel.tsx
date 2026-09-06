@@ -22,6 +22,7 @@ import { useTranslation, useLanguage } from '../i18n/LanguageContext';
 import { TranslationKey } from '../i18n/translations';
 import { localizeStructuredMedication } from '../services/medicationLocalization';
 import { COMMON_MEDICATIONS_DB } from '../services/medicationDatabase';
+import { anamnesisSchema } from '../data/anamnesisSchema';
 import { CaseAnalysisModal } from './CaseAnalysisModal';
 import { ExtendedAnamnesisWizard } from './ExtendedAnamnesisWizard';
 import { FindingsWizardModal } from './FindingsWizardModal';
@@ -89,6 +90,8 @@ import {
   UserCheck,
   UserPlus,
   Mic,
+  X,
+  PanelLeft,
 } from 'lucide-react';
 
 interface TherapistPanelProps {
@@ -283,6 +286,8 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
   const [isUnconfirmedSummaryModalOpen, setIsUnconfirmedSummaryModalOpen] = useState(false);
   const [isAnalysisAlreadyCreatedModalOpen, setIsAnalysisAlreadyCreatedModalOpen] = useState(false);
   const [adoptionBlockedSection, setAdoptionBlockedSection] = useState<'stammdaten' | 'hauptbeschwerde' | null>(null);
+  const [isCasesDrawerOpen, setIsCasesDrawerOpen] = useState(false);
+  const [isSidebarPinned, setIsSidebarPinned] = useState(false);
 
   const toggleSummaryAccordion = (section: 'stammdaten' | 'hauptbeschwerde' | 'fragebogen' | 'befund' | 'medikamente') => {
     setSummaryAccordionOpen(prev => ({
@@ -375,62 +380,118 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
       case 'stammdaten': { // Stammdaten
         const hasName = Boolean(currentCase.patientName && currentCase.patientName.trim());
         const hasAgeOrBirth = currentCase.patientAge !== undefined || Boolean(currentCase.patientBirthDate && currentCase.patientBirthDate.trim());
+        const hasGender = Boolean(currentCase.patientGender);
         const hasHeight = currentCase.patientHeightCm !== undefined && currentCase.patientHeightCm > 0;
         const hasWeight = currentCase.patientWeightKg !== undefined && currentCase.patientWeightKg > 0;
-        const hasAny = hasName || hasAgeOrBirth || hasHeight || hasWeight || Boolean(currentCase.patientEmail) || Boolean(currentCase.patientPhone) || Boolean(currentCase.patientMaritalStatus) || (Boolean(currentCase.customStammdaten && currentCase.customStammdaten.length > 0));
-        if (!hasAny) return { status: 'empty', percent: 0 };
-
-        const pregnancyOk = currentCase.patientGender !== 'weiblich' || !currentCase.isPregnant || Boolean(currentCase.pregnancyMonth);
+        const hasContact = Boolean(currentCase.patientEmail && currentCase.patientEmail.trim()) || Boolean(currentCase.patientPhone && currentCase.patientPhone.trim());
+        const hasMaritalOrCustom = Boolean(currentCase.patientMaritalStatus) || Boolean(currentCase.customStammdaten && currentCase.customStammdaten.length > 0);
+        
+        const isFemale = (currentCase.patientGender || 'weiblich') === 'weiblich';
+        const pregnancyOk = !isFemale || !currentCase.isPregnant || Boolean(currentCase.pregnancyMonth);
         const childrenOk = !currentCase.hasChildren || (Boolean(currentCase.childrenList && currentCase.childrenList.length > 0) && currentCase.childrenList!.every(c => c.name && c.name.trim()));
 
-        if (hasName && hasAgeOrBirth && pregnancyOk && childrenOk) {
-          return { status: 'complete', percent: 100 };
+        if (!hasName && !hasAgeOrBirth && !hasGender && !hasHeight && !hasWeight && !hasContact && !hasMaritalOrCustom) {
+          return { status: 'empty', percent: 0 };
         }
 
-        let p = 25;
-        if (hasName) p += 35;
-        if (hasAgeOrBirth) p += 15;
-        if (hasHeight || hasWeight) p += 15;
-        if (pregnancyOk && childrenOk) p += 10;
-        return { status: 'partial', percent: Math.min(90, Math.max(25, p)) };
+        let pts = 0;
+        if (hasName) pts += 25;
+        if (hasAgeOrBirth) pts += 25;
+        if (hasGender) pts += 15;
+        if (hasHeight) pts += 7.5;
+        if (hasWeight) pts += 7.5;
+        if (hasContact) pts += 10;
+        if (hasMaritalOrCustom || (currentCase.patientGender && pregnancyOk && childrenOk)) pts += 10;
+
+        const calculated = Math.min(100, Math.round(pts));
+        if (calculated >= 95 && hasName && hasAgeOrBirth && pregnancyOk && childrenOk) {
+          return { status: 'complete', percent: 100 };
+        }
+        return { status: calculated > 0 ? 'partial' : 'empty', percent: calculated };
       }
 
       case 'hauptbeschwerde': { // Hauptbeschwerde & Dynamische Fragen
-        const hasComplaint = Boolean(currentCase.hauptbeschwerde && currentCase.hauptbeschwerde.trim().length >= 3);
+        const complaint = currentCase.hauptbeschwerde?.trim() || '';
         const questions = currentCase.anamnesisQuestions || [];
         const answeredQuestions = questions.filter(q => 
-          Boolean(q.answerScaleCurrent !== undefined) ||
-          Boolean(q.answerScaleWorst !== undefined) ||
+          q.answerScaleCurrent !== undefined ||
+          q.answerScaleWorst !== undefined ||
           Boolean(q.answerChoice && q.answerChoice.trim()) ||
           Boolean(q.answerMultiChoice && q.answerMultiChoice.length > 0) ||
           Boolean(q.answerText && q.answerText.trim())
         ).length;
 
-        if (!hasComplaint && answeredQuestions === 0) return { status: 'empty', percent: 0 };
-
-        if (hasComplaint) {
-          if (questions.length > 0) {
-            if (answeredQuestions === questions.length) return { status: 'complete', percent: 100 };
-            const qPercent = Math.round((answeredQuestions / questions.length) * 50);
-            return { status: 'partial', percent: 50 + qPercent };
-          } else {
-            if (currentCase.hauptbeschwerde!.trim().length >= 15) return { status: 'complete', percent: 100 };
-            return { status: 'partial', percent: 50 };
-          }
+        if (!complaint && answeredQuestions === 0) {
+          return { status: 'empty', percent: 0 };
         }
-        return { status: 'partial', percent: 35 };
+
+        let complaintScore = 0;
+        if (complaint.length >= 25) {
+          complaintScore = 40;
+        } else if (complaint.length >= 10) {
+          complaintScore = 25;
+        } else if (complaint.length > 0) {
+          complaintScore = 15;
+        }
+
+        let questionsScore = 0;
+        if (questions.length > 0) {
+          questionsScore = Math.round((answeredQuestions / questions.length) * 60);
+        } else if (complaint.length >= 40) {
+          questionsScore = 20;
+        }
+
+        const total = Math.min(100, complaintScore + questionsScore);
+        if (total >= 95 || (complaint.length >= 15 && questions.length > 0 && answeredQuestions === questions.length)) {
+          return { status: 'complete', percent: 100 };
+        }
+        return { status: total > 0 ? 'partial' : 'empty', percent: Math.max(10, total) };
       }
 
-      case 'fragebogen': { // Fragebogen (Erweiterte Anamnese)
+      case 'fragebogen': { // Fragebogen (Erweiterte Homöopathische Anamnese)
         const ext = currentCase.extendedAnamnesis || {};
-        const answeredKeys = Object.entries(ext).filter(([_, v]) => 
-          v !== undefined && v !== null && v !== '' && (!Array.isArray(v) || v.length > 0)
+        
+        const answeredKeys = Object.entries(ext).filter(([_, v]) => {
+          if (v === undefined || v === null || v === '') return false;
+          if (Array.isArray(v)) return v.length > 0;
+          return true;
+        });
+
+        const schemaStepsWithAnswers = anamnesisSchema.filter(step => 
+          step.fields.some(f => {
+            const val = ext[f.id];
+            if (val === undefined || val === null || val === '') return false;
+            if (Array.isArray(val)) return val.length > 0;
+            return true;
+          })
         ).length;
 
-        if (answeredKeys === 0) return { status: 'empty', percent: 0 };
-        if (answeredKeys >= 8) return { status: 'complete', percent: 100 };
-        const calculated = Math.round((answeredKeys / 8) * 100);
-        return { status: 'partial', percent: Math.max(20, Math.min(85, calculated)) };
+        const legacyCount = [
+          currentCase.spontanbericht,
+          currentCase.modalitaetenBesser,
+          currentCase.modalitaetenSchlechter,
+          currentCase.gemuetPsyche,
+          currentCase.koerperAllgemein,
+          currentCase.lokalsymptome,
+          currentCase.bisherigeMittel
+        ].filter(v => typeof v === 'string' && v.trim().length > 0).length;
+
+        if (answeredKeys.length === 0 && legacyCount === 0) {
+          return { status: 'empty', percent: 0 };
+        }
+
+        const effectiveCategories = Math.max(schemaStepsWithAnswers, Math.min(10, legacyCount * 2));
+        const categoryScore = Math.min(60, Math.round((effectiveCategories / 16) * 60));
+
+        const totalItems = answeredKeys.length + legacyCount;
+        const depthScore = Math.min(40, Math.round((totalItems / 25) * 40));
+
+        const totalPercent = Math.min(100, Math.max(5, categoryScore + depthScore));
+
+        if (totalPercent >= 90 || (schemaStepsWithAnswers >= 14 && answeredKeys.length >= 20)) {
+          return { status: 'complete', percent: 100 };
+        }
+        return { status: 'partial', percent: totalPercent };
       }
 
       case 'medikamente': { // Medikamente
@@ -439,57 +500,97 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
         if (validMeds.length === 0) {
           return { status: 'empty', percent: 0 };
         }
-        return { status: 'complete', percent: 100 };
+        const fullySpecifiedMeds = validMeds.filter(m => Boolean(m.dosierung && m.dosierung.trim()) && Boolean(m.einnahmeart && m.einnahmeart.trim())).length;
+        if (fullySpecifiedMeds === validMeds.length) {
+          return { status: 'complete', percent: 100 };
+        }
+        const percent = Math.max(30, Math.round((fullySpecifiedMeds / validMeds.length) * 100));
+        return { status: 'partial', percent };
       }
 
-      case 'befund': { // Befund
+      case 'befund': { // Befund (Klinische Untersuchung)
         const bd = currentCase.befundDetails || {};
         const customCount = bd.customFelder?.filter((cf: any) => cf.name?.trim() || cf.value?.trim()).length || 0;
-        const filledDetailsCount = [
-          bd.gesamtbeurteilung, 
-          bd.blutdruck, 
-          bd.puls, 
-          bd.temperatur, 
-          bd.spo2, 
-          bd.gewicht,
+        
+        const vitals = [bd.blutdruck, bd.puls, bd.temperatur, bd.spo2, bd.gewicht].filter(v => typeof v === 'string' && v.trim().length > 0).length;
+        const hasAssessment = Boolean((bd.gesamtbeurteilung && bd.gesamtbeurteilung.trim()) || (currentCase.befundText && currentCase.befundText.trim()));
+        const organExam = [
           bd.allgemeinzustand,
           bd.herzLunge,
           bd.abdomen,
           bd.hautSchleimhaeute,
           bd.neurologisch,
-          bd.weitereBefunde,
-          currentCase.befundText
+          bd.weitereBefunde
         ].filter(v => typeof v === 'string' && v.trim().length > 0).length + customCount;
 
-        if (filledDetailsCount === 0) return { status: 'empty', percent: 0 };
-        if (filledDetailsCount >= 3) return { status: 'complete', percent: 100 };
-        const calculated = Math.round((filledDetailsCount / 3) * 100);
-        return { status: 'partial', percent: Math.max(25, Math.min(85, calculated)) };
+        if (vitals === 0 && !hasAssessment && organExam === 0) {
+          return { status: 'empty', percent: 0 };
+        }
+
+        let pts = 0;
+        if (hasAssessment) pts += 35;
+        pts += Math.min(35, vitals * 8);
+        pts += Math.min(30, organExam * 10);
+
+        const calculated = Math.min(100, Math.max(15, Math.round(pts)));
+        if (calculated >= 85 || (hasAssessment && vitals >= 2 && organExam >= 1)) {
+          return { status: 'complete', percent: 100 };
+        }
+        return { status: 'partial', percent: calculated };
       }
 
-      case 'uebersicht': { // Übersicht
-        const s1 = getStepInfo(1).status;
-        const s2 = getStepInfo(2).status;
-        const befundStepIdx = wizardSteps.findIndex(s => s.id === 'befund');
-        const sBefund = befundStepIdx >= 0 ? getStepInfo(befundStepIdx + 1).status : 'complete';
-        const medStepIdx = wizardSteps.findIndex(s => s.id === 'medikamente');
-        const sMeds = medStepIdx >= 0 ? getStepInfo(medStepIdx + 1).status : 'complete';
+      case 'uebersicht': { // Übersicht & Bestätigung
+        const totalChecklist = hasRecordedMedications ? 5 : 4;
+        const confirmedCount = [
+          summaryConfirmedSections.stammdaten,
+          summaryConfirmedSections.hauptbeschwerde,
+          summaryConfirmedSections.fragebogen,
+          summaryConfirmedSections.befund,
+          ...(hasRecordedMedications ? [summaryConfirmedSections.medikamente] : [])
+        ].filter(Boolean).length;
 
-        if (s1 === 'complete' && s2 === 'complete' && sBefund === 'complete' && sMeds === 'complete') {
+        if (confirmedCount === totalChecklist) {
           return { status: 'complete', percent: 100 };
+        }
+        if (confirmedCount > 0) {
+          const p = Math.round((confirmedCount / totalChecklist) * 100);
+          return { status: 'partial', percent: p };
+        }
+
+        const s1 = getStepInfo(1).percent;
+        const s2 = getStepInfo(2).percent;
+        const s3 = getStepInfo(3).percent;
+        const priorAvg = Math.round((s1 + s2 + s3) / 3);
+        if (priorAvg > 0) {
+          return { status: 'partial', percent: Math.round(priorAvg * 0.4) };
         }
         return { status: 'empty', percent: 0 };
       }
 
-      case 'analyse': { // Analyse & Auswertung
-        if (clinicalAnalysis) return { status: 'complete', percent: 100 };
+      case 'analyse': { // Analyse & Repertorisation
+        if (clinicalAnalysis || (currentCase.remedySuggestions && currentCase.remedySuggestions.length > 0)) {
+          return { status: 'complete', percent: 100 };
+        }
+        if (isAnalyzing) {
+          return { status: 'partial', percent: 50 };
+        }
         return { status: 'empty', percent: 0 };
       }
 
       case 'empfehlungen': { // Empfehlungen & Verordnung
+        const hasInitialPrescription = Boolean(
+          currentCase.initialPrescription?.remedy && 
+          currentCase.initialPrescription.remedy.trim().length > 0
+        );
         const rec = currentCase.therapyRecommendations;
-        if (rec && rec.remedies && rec.remedies.some(r => r.isSelected)) return { status: 'complete', percent: 100 };
-        if (rec) return { status: 'partial', percent: 50 };
+        const hasSelectedRemedy = Boolean(rec?.remedies && rec.remedies.some(r => r.isSelected));
+
+        if (hasInitialPrescription || hasSelectedRemedy) {
+          return { status: 'complete', percent: 100 };
+        }
+        if (rec) {
+          return { status: 'partial', percent: 50 };
+        }
         return { status: 'empty', percent: 0 };
       }
 
@@ -497,6 +598,75 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
         return { status: 'empty', percent: 0 };
     }
   };
+
+  const getActiveSectionHint = (id: WizardStepId): string => {
+    switch (id) {
+      case 'stammdaten':
+        return t('sectionHintStammdaten');
+      case 'hauptbeschwerde':
+        return t('sectionHintHauptbeschwerde');
+      case 'fragebogen':
+        return t('sectionHintFragebogen');
+      case 'medikamente':
+        return t('sectionHintMedikamente');
+      case 'befund':
+        return t('sectionHintBefund');
+      case 'uebersicht':
+        return t('sectionHintUebersicht');
+      case 'analyse':
+        return t('sectionHintAnalyse');
+      case 'empfehlungen':
+        return t('sectionHintEmpfehlungen');
+      default:
+        return '';
+    }
+  };
+
+  const patientCasesCount = useMemo(() => {
+    if (!currentCase.patientName) return 1;
+    const norm = currentCase.patientName.trim().toLowerCase();
+    const matches = cases.filter(c => c.patientName && c.patientName.trim().toLowerCase() === norm);
+    return matches.length > 0 ? matches.length : 1;
+  }, [currentCase.patientName, cases]);
+
+  const patientInitials = useMemo(() => {
+    return (currentCase.patientName || 'P')
+      .trim()
+      .split(' ')
+      .filter(Boolean)
+      .map(n => n[0])
+      .slice(0, 2)
+      .join('')
+      .toUpperCase() || 'P';
+  }, [currentCase.patientName]);
+
+  const lastConsultationFormatted = useMemo(() => {
+    return currentCase.anamneseDatum
+      ? new Date(currentCase.anamneseDatum).toLocaleDateString(language)
+      : (currentCase.patientName ? new Date().toLocaleDateString(language) : (t('unknownDate' as TranslationKey) || '—'));
+  }, [currentCase.anamneseDatum, currentCase.patientName, language, t]);
+
+  const activePatientCases = useMemo(() => {
+    if (!currentCase.patientName) return [];
+    const norm = currentCase.patientName.trim().toLowerCase();
+    return cases.filter(c => c.patientName && c.patientName.trim().toLowerCase() === norm);
+  }, [currentCase.patientName, cases]);
+
+  const activeCaseNumber = useMemo(() => {
+    if (!selectedCaseId || activePatientCases.length === 0) return 1;
+    const idx = activePatientCases.findIndex(c => c.id === selectedCaseId);
+    return idx >= 0 ? activePatientCases.length - idx : 1;
+  }, [selectedCaseId, activePatientCases]);
+
+  const overallProgress = useMemo(() => {
+    if (!totalWizardSteps || totalWizardSteps === 0) return 0;
+    let totalPercent = 0;
+    for (let i = 1; i <= totalWizardSteps; i++) {
+      totalPercent += getStepInfo(i).percent;
+    }
+    const avg = Math.round(totalPercent / totalWizardSteps);
+    return Math.min(100, Math.max(0, avg));
+  }, [currentCase, totalWizardSteps, wizardSteps, summaryConfirmedSections]);
 
   const getMissingStammdatenFields = (): string[] => {
     const missing: string[] = [];
@@ -1212,6 +1382,189 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
     }
   }, [hasPatientData, currentStep]);
 
+  const renderCasesListContent = (isDrawerMode = false) => {
+    let displayCases: PatientCase[] = [];
+
+    if (caseSearchQuery.trim()) {
+      const q = caseSearchQuery.toLowerCase();
+      displayCases = cases.filter(
+        (c) =>
+          (c.patientName && c.patientName.toLowerCase().includes(q)) ||
+          (c.hauptbeschwerde && c.hauptbeschwerde.toLowerCase().includes(q)) ||
+          (c.spontanbericht && c.spontanbericht.toLowerCase().includes(q))
+      );
+    } else if (selectedCaseId) {
+      const activeCaseObj = cases.find((c) => c.id === selectedCaseId);
+      const activePatientName = (activeCaseObj?.patientName || currentCase.patientName || '').trim().toLowerCase();
+      if (activePatientName) {
+        displayCases = cases.filter(
+          (c) => c.patientName && c.patientName.trim().toLowerCase() === activePatientName
+        );
+      } else {
+        displayCases = cases.filter((c) => c.id === selectedCaseId);
+      }
+    } else if (currentCase.patientName && currentCase.patientName.trim()) {
+      const activePatientName = currentCase.patientName.trim().toLowerCase();
+      const matchingCases = cases.filter(
+        (c) => c.patientName && c.patientName.trim().toLowerCase() === activePatientName
+      );
+      if (matchingCases.length > 0) {
+        displayCases = matchingCases;
+      }
+    }
+
+    if (displayCases.length === 0) {
+      if (caseSearchQuery.trim()) {
+        return (
+          <div className="mt-3 text-center py-6 text-slate-400 text-xs">
+            <span>{t('noMatchingCasesFound')}</span>
+          </div>
+        );
+      }
+
+      const hasCustomerData = Boolean(
+        (currentCase.patientName && currentCase.patientName.trim()) ||
+        currentCase.patientBirthDate ||
+        (currentCase.patientPhone && currentCase.patientPhone.trim()) ||
+        (currentCase.patientEmail && currentCase.patientEmail.trim()) ||
+        selectedCaseId
+      );
+
+      if (!hasCustomerData) {
+        return (
+          <div className="mt-3 text-center py-6 px-3 bg-slate-50/70 rounded-xl border border-dashed border-slate-200 text-xs space-y-2.5">
+            <p className="text-slate-400 text-xs">{t('noCasesRecordedYet' as TranslationKey) || 'Noch keine Fälle vorhanden'}</p>
+          </div>
+        );
+      }
+
+      return (
+        <div className="mt-3 text-center py-6 px-3 bg-slate-50/70 rounded-xl border border-dashed border-slate-200 text-xs space-y-2.5">
+          <div className="w-9 h-9 rounded-full bg-teal-50 text-teal-700 mx-auto flex items-center justify-center border border-teal-100">
+            <UserCheck className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="font-bold text-slate-800 text-xs">{t('newAdmissionActive')}</div>
+            <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+              {t('newAdmissionEmptyDesc')}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              openModal('patient_select');
+              setIsPatientSelectionModalOpen(true);
+              if (isDrawerMode) setIsCasesDrawerOpen(false);
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-[11px] font-semibold text-slate-700 hover:text-teal-800 hover:border-teal-300 shadow-2xs transition-colors cursor-pointer"
+          >
+            <Users className="w-3.5 h-3.5 text-teal-600" />
+            <span>{t('selectExistingPatientBtn')}</span>
+          </button>
+        </div>
+      );
+    }
+
+    const patientMap = new Map<string, PatientCase[]>();
+    displayCases.forEach(c => {
+      const nameKey = (c.patientName || 'Unbenannter Patient').trim();
+      if (!patientMap.has(nameKey)) {
+        patientMap.set(nameKey, []);
+      }
+      patientMap.get(nameKey)!.push(c);
+    });
+
+    patientMap.forEach((pList) => {
+      pList.sort((a, b) => {
+        const da = new Date(a.anamneseDatum || a.analyzedAt || 0).getTime();
+        const db = new Date(b.anamneseDatum || b.analyzedAt || 0).getTime();
+        if (db !== da) return db - da;
+        return (b.id || '').localeCompare(a.id || '');
+      });
+    });
+
+    return (
+      <div className={`mt-3 space-y-3 ${isDrawerMode ? 'max-h-[calc(100vh-280px)]' : 'max-h-[480px]'} overflow-y-auto pr-1 custom-scrollbar`}>
+        {Array.from(patientMap.entries()).map(([patientName, pCases]) => {
+          const hasManyCases = pCases.length > 10;
+
+          return (
+            <div key={patientName} className="bg-slate-50/80 p-2.5 rounded-xl border border-slate-200/80 space-y-1.5">
+              <div className="flex items-center justify-between px-1 pb-1 border-b border-slate-200/60">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <div className="w-6 h-6 rounded-full bg-teal-700 text-white font-bold text-[10px] flex items-center justify-center shrink-0 font-serif">
+                    {patientName.split(' ').map(n => n[0]).slice(0, 2).join('') || 'P'}
+                  </div>
+                  <span className="font-bold text-slate-900 text-xs truncate">
+                    {patientName}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <span className="text-[10px] font-semibold text-slate-600 bg-white px-2 py-0.5 rounded-md border border-slate-200 shrink-0">
+                    {pCases.length} {pCases.length === 1 ? t('singleCase') : t('multipleCases')}
+                  </span>
+                </div>
+              </div>
+
+              <div className={`space-y-1 ${hasManyCases ? 'max-h-[300px] overflow-y-auto pr-1 custom-scrollbar border border-slate-200/60 p-1 rounded-lg bg-white/70' : ''}`}>
+                {pCases.map((c, cIdx) => {
+                  const isSelected = selectedCaseId === c.id;
+                  const dateFormatted = c.anamneseDatum 
+                    ? new Date(c.anamneseDatum).toLocaleDateString(language) 
+                    : t('admissionPending');
+
+                  return (
+                    <div
+                      key={c.id}
+                      onClick={() => {
+                        handleSelectCase(c);
+                        if (isDrawerMode) setIsCasesDrawerOpen(false);
+                      }}
+                      className={`p-2.5 rounded-lg border text-xs cursor-pointer transition-all flex items-start justify-between group ${
+                        isSelected
+                          ? 'bg-teal-50/90 border-teal-300 text-teal-950 font-medium shadow-2xs'
+                          : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700'
+                      }`}
+                    >
+                      <div className="min-w-0 pr-2 space-y-0.5">
+                        <div className="flex items-center gap-1.5 text-[11px]">
+                          <span className="font-bold text-teal-800">
+                            {t('caseNumber').replace('{num}', pCases.length > 1 ? String(pCases.length - cIdx) : '1')}
+                          </span>
+                          <span className="text-slate-400">•</span>
+                          <span className="text-slate-500 font-medium">
+                            {t('admissionDatePrefix')}: {dateFormatted}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-slate-700 line-clamp-1 font-normal">
+                          {c.hauptbeschwerde || t('caseNotAnalyzed')}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1 shrink-0 mt-0.5">
+                        {c.analyzedAt && (
+                          <span className="w-2 h-2 rounded-full bg-teal-500" title="Analysiert" />
+                        )}
+                        <button
+                          onClick={(e) => handleDeleteCase(c.id, e)}
+                          title="Löschen"
+                          className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-rose-600 rounded transition-opacity"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                        <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   return (
     <div className="flex flex-col md:flex-row h-full min-h-[calc(100vh-4rem)] bg-slate-50 w-full">
       {/* Sidebar (Sticky on desktop, bottom-aligned with viewport) */}
@@ -1503,63 +1856,199 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
       {/* TAB CONTENT 5: CASE RECORDS & SEQUENTIAL REPERTORISATION WORKFLOW */}
       {panelTab === 'cases' && (
         <>
-          {/* Main Workspace Layout */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            {/* Left Column: Cases List Grouped by Patient */}
-            <div className="lg:col-span-4 space-y-5">
-              <div className="card p-5">
-                <div className="flex flex-wrap items-center justify-between gap-2 mb-3 pb-2 border-b border-slate-100">
-                  <h3 className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
-                    <FileText className="w-4 h-4 text-teal-600" />
-                    <span>
-                      {selectedCaseId
-                        ? t('patientCasesCount').replace('{count}', String(cases.filter(c => c.patientName && currentCase.patientName && c.patientName.trim().toLowerCase() === currentCase.patientName.trim().toLowerCase()).length || 1))
-                        : caseSearchQuery.trim()
-                        ? t('searchResultsCount').replace('{count}', String(cases.length))
-                        : t('patientCasesNewAdmission')}
-                    </span>
-                  </h3>
-                  <div className="flex items-center gap-1.5">
-                    {Boolean(selectedCaseId) && (
+          {/* DISCREET FLOATING TAB (Left Edge): 1-click access to cases */}
+          {!isSidebarPinned && (
+            <button
+              type="button"
+              id="btn-floating-cases-tab"
+              onClick={() => setIsCasesDrawerOpen(true)}
+              className="fixed left-0 top-1/2 -translate-y-1/2 z-30 bg-teal-700 hover:bg-teal-800 text-white py-3 px-2 rounded-r-xl shadow-lg flex flex-col items-center gap-2 cursor-pointer transition-all hover:pl-3 group select-none border-y border-r border-teal-600/70"
+              title={t('viewAllCases' as TranslationKey) || 'Patientenfälle anzeigen'}
+            >
+              <FileText className="w-4 h-4 text-teal-100 group-hover:scale-110 transition-transform" />
+              <span className="text-[10px] font-bold tracking-wider uppercase [writing-mode:vertical-lr] rotate-180 text-teal-50">
+                {t('patientCasesTab' as TranslationKey) || 'Fälle'} ({patientCasesCount})
+              </span>
+            </button>
+          )}
+
+          {/* DISCREET SLIDE-OVER CASES DRAWER (Modal Drawer) */}
+          {isCasesDrawerOpen && (
+            <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in-50 duration-150">
+              {/* Backdrop */}
+              <div 
+                className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity cursor-pointer"
+                onClick={() => setIsCasesDrawerOpen(false)}
+              />
+
+              <div className="fixed inset-y-0 left-0 max-w-full flex">
+                <div className="w-screen max-w-sm sm:max-w-md bg-white shadow-2xl border-r border-slate-200 flex flex-col animate-in slide-in-from-left duration-200">
+                  {/* Drawer Header */}
+                  <div className="p-4 sm:p-5 border-b border-slate-200 bg-slate-50/90 flex items-center justify-between">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-9 h-9 rounded-xl bg-teal-700 text-white flex items-center justify-center shadow-xs font-serif font-bold text-sm shrink-0">
+                        {patientInitials}
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="font-bold text-slate-900 text-sm sm:text-base truncate">
+                          {t('patientCasesTab' as TranslationKey) || 'Patientenfälle'} ({patientCasesCount})
+                        </h3>
+                        <p className="text-[11px] text-slate-500 truncate">
+                          {currentCase.patientName || t('unnamedPatient')}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {/* Pin / Unpin Split-View */}
                       <button
-                        id="btn-new-case"
-                        onClick={handleNewCase}
-                        title={t('btnNewPatientAdmission')}
-                        className="flex items-center gap-1 text-xs font-semibold text-teal-700 hover:text-teal-900 bg-teal-50 hover:bg-teal-100 px-2.5 py-1 rounded-md transition-colors cursor-pointer border border-teal-200/60"
+                        type="button"
+                        onClick={() => {
+                          setIsSidebarPinned(true);
+                          setIsCasesDrawerOpen(false);
+                        }}
+                        className="p-2 rounded-lg text-slate-500 hover:text-teal-700 hover:bg-slate-200/70 text-xs flex items-center gap-1 transition-colors cursor-pointer"
+                        title={t('pinSidebar' as TranslationKey) || 'Seitenleiste anheften'}
+                      >
+                        <PanelLeft className="w-4 h-4" />
+                        <span className="hidden sm:inline text-[11px] font-semibold">{t('pinSidebar' as TranslationKey) || 'Anheften'}</span>
+                      </button>
+
+                      {/* Close Button */}
+                      <button
+                        type="button"
+                        onClick={() => setIsCasesDrawerOpen(false)}
+                        className="p-2 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/70 transition-colors cursor-pointer"
+                        title={t('closeCases' as TranslationKey) || 'Schließen'}
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Drawer Body */}
+                  <div className="p-4 sm:p-5 flex-1 overflow-y-auto custom-scrollbar space-y-4">
+                    {/* Action buttons */}
+                    <div className="flex items-center justify-between gap-2">
+                      <button
+                        id="btn-drawer-new-case"
+                        onClick={() => {
+                          handleNewCase();
+                          setIsCasesDrawerOpen(false);
+                        }}
+                        className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold text-teal-700 hover:text-teal-900 bg-teal-50 hover:bg-teal-100 py-2 px-3 rounded-xl transition-colors cursor-pointer border border-teal-200/70 shadow-2xs"
                       >
                         <Plus className="w-3.5 h-3.5" />
                         <span>{t('newCaseBtn')}</span>
                       </button>
-                    )}
-                    <button
-                      type="button"
-                      id="btn-open-patient-selection-modal"
-                      onClick={() => {
-                        openModal('patient_select');
-                        setIsPatientSelectionModalOpen(true);
-                      }}
-                      title={t('patientFilesTab')}
-                      className="flex items-center gap-1 text-xs font-semibold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded-md transition-colors cursor-pointer border border-slate-200"
-                    >
-                      <Users className="w-3.5 h-3.5 text-teal-700" />
-                      <span>{t('patientFilesTab')}</span>
-                    </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          openModal('patient_select');
+                          setIsPatientSelectionModalOpen(true);
+                          setIsCasesDrawerOpen(false);
+                        }}
+                        className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 py-2 px-3 rounded-xl transition-colors cursor-pointer border border-slate-200 shadow-2xs"
+                      >
+                        <Users className="w-3.5 h-3.5 text-teal-700" />
+                        <span>{t('patientFilesTab')}</span>
+                      </button>
+                    </div>
+
+                    {/* Search box */}
+                    <div className="relative flex items-center">
+                      <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        placeholder={t('searchExistingPatientPlaceholder')}
+                        value={caseSearchQuery}
+                        onChange={(e) => setCaseSearchQuery(e.target.value)}
+                        className="w-full pl-9 pr-9 py-2 rounded-xl border border-slate-300 bg-white text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-teal-600 h-[38px] shadow-2xs"
+                      />
+                      <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                        <VoiceInputButton
+                          value={caseSearchQuery}
+                          onChange={(val) => setCaseSearchQuery(val)}
+                          size="xs"
+                          mode="append"
+                          id="btn-voice-drawer-case-search"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Render Cases */}
+                    {renderCasesListContent(true)}
                   </div>
                 </div>
+              </div>
+            </div>
+          )}
 
-                {/* Search Cases */}
-                <div className="mb-0">
+          {/* MAIN WORKSPACE LAYOUT (Bild 2: Full Width when not pinned) */}
+          <div className={isSidebarPinned ? "grid grid-cols-1 lg:grid-cols-12 gap-6 items-start" : "w-full max-w-7xl mx-auto"}>
+            {/* Left Column (ONLY displayed if user chose to pin sidebar) */}
+            {isSidebarPinned && (
+              <div className="lg:col-span-4 space-y-5">
+                <div className="card p-5">
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-3 pb-2 border-b border-slate-100">
+                    <h3 className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
+                      <FileText className="w-4 h-4 text-teal-600" />
+                      <span>
+                        {selectedCaseId
+                          ? t('patientCasesCount').replace('{count}', String(cases.filter(c => c.patientName && currentCase.patientName && c.patientName.trim().toLowerCase() === currentCase.patientName.trim().toLowerCase()).length || 1))
+                          : caseSearchQuery.trim()
+                          ? t('searchResultsCount').replace('{count}', String(cases.length))
+                          : t('patientCasesNewAdmission')}
+                      </span>
+                    </h3>
+                    <div className="flex items-center gap-1.5">
+                      {Boolean(selectedCaseId) && (
+                        <button
+                          id="btn-new-case"
+                          onClick={handleNewCase}
+                          title={t('btnNewPatientAdmission')}
+                          className="flex items-center gap-1 text-xs font-semibold text-teal-700 hover:text-teal-900 bg-teal-50 hover:bg-teal-100 px-2.5 py-1 rounded-md transition-colors cursor-pointer border border-teal-200/60"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>{t('newCaseBtn')}</span>
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        id="btn-open-patient-selection-modal"
+                        onClick={() => {
+                          openModal('patient_select');
+                          setIsPatientSelectionModalOpen(true);
+                        }}
+                        title={t('patientFilesTab')}
+                        className="flex items-center gap-1 text-xs font-semibold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded-md transition-colors cursor-pointer border border-slate-200"
+                      >
+                        <Users className="w-3.5 h-3.5 text-teal-700" />
+                        <span>{t('patientFilesTab')}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setIsSidebarPinned(false)}
+                        className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                        title={t('unpinSidebar' as TranslationKey) || 'Seitenleiste minimieren'}
+                      >
+                        <PanelLeft className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Search Cases */}
                   <div className="relative flex items-center">
-                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                     <input
-                      id="input-case-search"
                       type="text"
                       placeholder={t('searchExistingPatientPlaceholder')}
                       value={caseSearchQuery}
                       onChange={(e) => setCaseSearchQuery(e.target.value)}
-                      className="w-full pl-8 pr-8 py-1.5 rounded-md border border-slate-300 bg-white text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-teal-600 h-[34px]"
+                      className="w-full pl-9 pr-9 py-2 rounded-xl border border-slate-300 bg-white text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-teal-600 h-[38px] shadow-2xs"
                     />
-                    <div className="absolute right-1 top-1/2 -translate-y-1/2">
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2">
                       <VoiceInputButton
                         value={caseSearchQuery}
                         onChange={(val) => setCaseSearchQuery(val)}
@@ -1569,288 +2058,330 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                       />
                     </div>
                   </div>
+
+                  {renderCasesListContent(false)}
                 </div>
-
-                {(() => {
-                  // Determine which cases to show
-                  let displayCases: PatientCase[] = [];
-
-                  if (caseSearchQuery.trim()) {
-                    const q = caseSearchQuery.toLowerCase();
-                    displayCases = cases.filter(
-                      (c) =>
-                        (c.patientName && c.patientName.toLowerCase().includes(q)) ||
-                        (c.hauptbeschwerde && c.hauptbeschwerde.toLowerCase().includes(q)) ||
-                        (c.spontanbericht && c.spontanbericht.toLowerCase().includes(q))
-                    );
-                  } else if (selectedCaseId) {
-                    const activeCaseObj = cases.find((c) => c.id === selectedCaseId);
-                    const activePatientName = (activeCaseObj?.patientName || currentCase.patientName || '').trim().toLowerCase();
-                    if (activePatientName) {
-                      displayCases = cases.filter(
-                        (c) => c.patientName && c.patientName.trim().toLowerCase() === activePatientName
-                      );
-                    } else {
-                      displayCases = cases.filter((c) => c.id === selectedCaseId);
-                    }
-                  } else if (currentCase.patientName && currentCase.patientName.trim()) {
-                    const activePatientName = currentCase.patientName.trim().toLowerCase();
-                    const matchingCases = cases.filter(
-                      (c) => c.patientName && c.patientName.trim().toLowerCase() === activePatientName
-                    );
-                    if (matchingCases.length > 0) {
-                      displayCases = matchingCases;
-                    }
-                  }
-
-                  // Empty state when recording a new patient / start state
-                  if (displayCases.length === 0) {
-                    if (caseSearchQuery.trim()) {
-                      return (
-                        <div className="mt-3 text-center py-6 text-slate-400 text-xs">
-                          <span>{t('noMatchingCasesFound')}</span>
-                        </div>
-                      );
-                    }
-
-                    const hasCustomerData = Boolean(
-                      (currentCase.patientName && currentCase.patientName.trim()) ||
-                      currentCase.patientBirthDate ||
-                      (currentCase.patientPhone && currentCase.patientPhone.trim()) ||
-                      (currentCase.patientEmail && currentCase.patientEmail.trim()) ||
-                      selectedCaseId
-                    );
-
-                    if (!hasCustomerData) {
-                      return null;
-                    }
-
-                    return (
-                      <div className="mt-3 text-center py-6 px-3 bg-slate-50/70 rounded-xl border border-dashed border-slate-200 text-xs space-y-2.5">
-                        <div className="w-9 h-9 rounded-full bg-teal-50 text-teal-700 mx-auto flex items-center justify-center border border-teal-100">
-                          <UserCheck className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <div className="font-bold text-slate-800 text-xs">{t('newAdmissionActive')}</div>
-                          <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                            {t('newAdmissionEmptyDesc')}
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            openModal('patient_select');
-                            setIsPatientSelectionModalOpen(true);
-                          }}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-[11px] font-semibold text-slate-700 hover:text-teal-800 hover:border-teal-300 shadow-2xs transition-colors cursor-pointer"
-                        >
-                          <Users className="w-3.5 h-3.5 text-teal-600" />
-                          <span>{t('selectExistingPatientBtn')}</span>
-                        </button>
-                      </div>
-                    );
-                  }
-
-                  // Group cases by patient name
-                  const patientMap = new Map<string, PatientCase[]>();
-                  displayCases.forEach(c => {
-                    const nameKey = (c.patientName || 'Unbenannter Patient').trim();
-                    if (!patientMap.has(nameKey)) {
-                      patientMap.set(nameKey, []);
-                    }
-                    patientMap.get(nameKey)!.push(c);
-                  });
-
-                  // Ensure each patient's cases are sorted chronologically descending (newest first)
-                  patientMap.forEach((pList) => {
-                    pList.sort((a, b) => {
-                      const da = new Date(a.anamneseDatum || a.analyzedAt || 0).getTime();
-                      const db = new Date(b.anamneseDatum || b.analyzedAt || 0).getTime();
-                      if (db !== da) return db - da;
-                      return (b.id || '').localeCompare(a.id || '');
-                    });
-                  });
-
-                  return (
-                    <div className="mt-3 space-y-3 max-h-[480px] overflow-y-auto pr-1 custom-scrollbar">
-                      {Array.from(patientMap.entries()).map(([patientName, pCases]) => {
-                        const hasManyCases = pCases.length > 10;
-
-                        return (
-                          <div key={patientName} className="bg-slate-50/80 p-2.5 rounded-xl border border-slate-200/80 space-y-1.5">
-                            {/* Patient Header Card */}
-                            <div className="flex items-center justify-between px-1 pb-1 border-b border-slate-200/60">
-                              <div className="flex items-center gap-1.5 min-w-0">
-                                <div className="w-6 h-6 rounded-full bg-teal-700 text-white font-bold text-[10px] flex items-center justify-center shrink-0">
-                                  {patientName.split(' ').map(n => n[0]).slice(0, 2).join('') || 'P'}
-                                </div>
-                                <span className="font-bold text-slate-900 text-xs truncate">
-                                  {patientName}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-1 shrink-0">
-                                {hasManyCases && (
-                                  <span className="text-[9px] font-semibold text-teal-700 bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200/60">
-                                    Scrollbar
-                                  </span>
-                                )}
-                                <span className="text-[10px] font-semibold text-slate-600 bg-white px-2 py-0.5 rounded-md border border-slate-200 shrink-0">
-                                  {pCases.length} {pCases.length === 1 ? t('singleCase') : t('multipleCases')}
-                                </span>
-                              </div>
-                            </div>
-
-                            {/* Cases for this patient (Scrollbar active if > 10 cases) */}
-                            <div className={`space-y-1 ${hasManyCases ? 'max-h-[300px] overflow-y-auto pr-1 custom-scrollbar border border-slate-200/60 p-1 rounded-lg bg-white/70' : ''}`}>
-                              {pCases.map((c, cIdx) => {
-                                const isSelected = selectedCaseId === c.id;
-                                const dateFormatted = c.anamneseDatum 
-                                  ? new Date(c.anamneseDatum).toLocaleDateString() 
-                                  : t('admissionPending');
-
-                                return (
-                                  <div
-                                    key={c.id}
-                                    onClick={() => handleSelectCase(c)}
-                                    className={`p-2.5 rounded-lg border text-xs cursor-pointer transition-all flex items-start justify-between group ${
-                                      isSelected
-                                        ? 'bg-teal-50/90 border-teal-300 text-teal-950 font-medium shadow-2xs'
-                                        : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700'
-                                    }`}
-                                  >
-                                    <div className="min-w-0 pr-2 space-y-0.5">
-                                      <div className="flex items-center gap-1.5 text-[11px]">
-                                        <span className="font-bold text-teal-800">
-                                          {t('caseNumber').replace('{num}', pCases.length > 1 ? String(pCases.length - cIdx) : '1')}
-                                        </span>
-                                        <span className="text-slate-400">•</span>
-                                        <span className="text-slate-500 font-medium">
-                                          {t('admissionDatePrefix')}: {dateFormatted}
-                                        </span>
-                                      </div>
-                                      <div className="text-[11px] text-slate-700 line-clamp-1 font-normal">
-                                        {c.hauptbeschwerde || t('caseNotAnalyzed')}
-                                      </div>
-                                    </div>
-
-                                    <div className="flex items-center gap-1 shrink-0 mt-0.5">
-                                      {c.analyzedAt && (
-                                        <span className="w-2 h-2 rounded-full bg-teal-500" title="Analysiert" />
-                                      )}
-                                      <button
-                                        onClick={(e) => handleDeleteCase(c.id, e)}
-                                        title="Löschen"
-                                        className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-rose-600 rounded transition-opacity"
-                                      >
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                      </button>
-                                      <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                })()}
               </div>
-            </div>
+            )}
 
             {/* Right Column: SEQUENTIAL CASE INPUT WIZARD */}
-            <div className="lg:col-span-8 card p-6 sm:p-8">
-              {/* Wizard Progress & Header */}
-              <div className={`border-b border-slate-200 ${hasPatientData ? 'pb-5 mb-6' : 'pb-4 mb-4'}`}>
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      {hasPatientData && (
-                        <span className="text-[11px] font-bold px-2 py-0.5 bg-teal-100 text-teal-800 rounded-md">
-                          {t('stepProgress', { current: currentStep, total: totalWizardSteps })}
-                        </span>
-                      )}
-                      {selectedCaseId ? (
-                        <span className="text-xs text-slate-500 font-medium truncate max-w-[200px]">
-                          {currentCase.patientName || t('unnamedPatient')}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-slate-500 font-medium">
-                          {t('newCaseBtn')}
-                        </span>
-                      )}
+            <div className={isSidebarPinned ? "lg:col-span-8 card p-6 sm:p-8" : "card p-6 sm:p-8"}>
+              {/* 1. KUNDENDATEN / PATIENT HEADER & STAMMDATEN CARD (Immer oben erste Stelle wie auf Bild 2) */}
+              {hasPatientData && (
+                <div className="w-full bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-xs relative overflow-hidden mb-5">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+                    <div className="flex items-center gap-3.5">
+                      <div className="w-12 h-12 rounded-full bg-teal-700 text-white flex items-center justify-center font-bold text-base shadow-xs shrink-0 font-serif">
+                        {patientInitials}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2.5 flex-wrap">
+                          <h2 className="text-xl font-bold text-slate-900 font-serif">
+                            {currentCase.patientName || t('unnamedPatient')}
+                          </h2>
+                          {/* Interactive discreet case count badge (Bild 2) */}
+                          <button
+                            type="button"
+                            id="btn-header-cases-badge"
+                            onClick={() => setIsCasesDrawerOpen(true)}
+                            className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200/80 transition-all flex items-center gap-1 cursor-pointer shadow-2xs"
+                            title={t('viewAllCases' as TranslationKey) || 'Patientenfälle anzeigen'}
+                          >
+                            <span>
+                              {patientCasesCount === 1
+                                ? t('registeredCaseSingle')
+                                : t('registeredCases').replace('{count}', String(patientCasesCount))}
+                            </span>
+                            <ChevronDown className="w-3 h-3 text-teal-600" />
+                          </button>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          {t('patientRecord')} • {t('lastConsultation')}: {lastConsultationFormatted}
+                        </p>
+                      </div>
                     </div>
-                    <h2 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight mt-1 flex items-center gap-2">
-                      <ListOrdered className="w-5 h-5 text-teal-600 flex-shrink-0" />
-                      <span>{currentStepConfig.name}</span>
-                    </h2>
+
+                    {/* Header Actions */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {/* Active case indicator */}
+                      <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-700">
+                        <span className="w-2 h-2 rounded-full bg-teal-500 shrink-0" />
+                        <span className="text-slate-500 font-normal">{t('activeCasePrefix')}:</span>
+                        <span className="font-semibold text-slate-900 truncate max-w-[170px]">
+                          {t('caseNumber').replace('{num}', String(activeCaseNumber))}
+                          {currentCase.hauptbeschwerde ? ` • ${currentCase.hauptbeschwerde}` : ''}
+                        </span>
+                      </div>
+
+                      {/* Discreet Cases Drawer Toggle */}
+                      <button
+                        type="button"
+                        id="btn-header-open-cases"
+                        onClick={() => setIsCasesDrawerOpen(prev => !prev)}
+                        className="px-3 py-1.5 rounded-xl border border-teal-200 bg-teal-50/70 hover:bg-teal-100 text-teal-800 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
+                        title={t('viewAllCases' as TranslationKey) || 'Patientenfälle anzeigen'}
+                      >
+                        <FileText className="w-3.5 h-3.5 text-teal-600" />
+                        <span>{t('patientCasesTab' as TranslationKey) || 'Fälle'} ({patientCasesCount})</span>
+                      </button>
+
+                      {/* Master data edit button */}
+                      <button
+                        type="button"
+                        id="btn-edit-master-data"
+                        onClick={() => {
+                          openModal('stammdaten');
+                          setIsStammdatenModalOpen(true);
+                        }}
+                        className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
+                      >
+                        <Edit3 className="w-3.5 h-3.5 text-slate-500" />
+                        <span className="hidden md:inline">{t('editMasterData')}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Structured 5-Column Stammdaten Grid (Bild 2) */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 mt-4 text-xs">
+                    <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                      <span className="block text-[10px] text-slate-400 font-medium">{t('birthdateAndAge')}</span>
+                      <span className="font-semibold text-slate-800">
+                        {currentCase.patientBirthDate || '—'} 
+                        {currentCase.patientAge ? ` (${currentCase.patientAge} ${t('years')})` : ''}
+                      </span>
+                    </div>
+
+                    <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                      <span className="block text-[10px] text-slate-400 font-medium">{t('genderAndStatus')}</span>
+                      <span className="font-semibold text-slate-800">
+                        {getGenderLabel(currentCase.patientGender)}
+                        {currentCase.isPregnant 
+                          ? ` • ${t('isPregnantYes')}${currentCase.pregnancyMonth ? ` (${currentCase.pregnancyMonth}. ${t('pregnancyMonthLabel')})` : ''}` 
+                          : (currentCase.patientMaritalStatus ? ` • ${getMaritalStatusLabel(currentCase.patientMaritalStatus)}` : '')}
+                      </span>
+                    </div>
+
+                    <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                      <span className="block text-[10px] text-slate-400 font-medium">{t('heightAndWeight')}</span>
+                      <span className="font-semibold text-slate-800">
+                        {currentCase.patientHeightCm ? `${currentCase.patientHeightCm} cm` : '—'} 
+                        {currentCase.patientWeightKg ? ` / ${currentCase.patientWeightKg} kg` : ''}
+                      </span>
+                    </div>
+
+                    <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                      <span className="block text-[10px] text-slate-400 font-medium">{t('hasChildren')}</span>
+                      <span className="font-semibold text-slate-800">
+                        {currentCase.hasChildren 
+                          ? (currentCase.childrenList && currentCase.childrenList.length > 0
+                              ? `${currentCase.childrenList.length} (${currentCase.childrenList.map(c => c.name || t('childEntryLabel', { index: '' })).join(', ')})`
+                              : t('childrenCountLabel').replace('{count}', (currentCase.childrenCount || 1).toString()))
+                          : t('noChildren')}
+                      </span>
+                    </div>
+
+                    <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 col-span-2 sm:col-span-1">
+                      <span className="block text-[10px] text-slate-400 font-medium">{t('contactData')}</span>
+                      <div className="flex flex-col gap-0.5 font-semibold text-slate-800 mt-0.5 truncate">
+                        {currentCase.patientPhone && (
+                          <a href={`tel:${currentCase.patientPhone}`} className="hover:text-teal-700 flex items-center gap-1 truncate text-[11px]">
+                            <Phone className="w-3 h-3 text-slate-400 shrink-0" />
+                            <span className="truncate">{currentCase.patientPhone}</span>
+                          </a>
+                        )}
+                        {currentCase.patientEmail && (
+                          <a href={`mailto:${currentCase.patientEmail}`} className="hover:text-teal-700 flex items-center gap-1 truncate text-[11px]">
+                            <Mail className="w-3 h-3 text-slate-400 shrink-0" />
+                            <span className="truncate">{currentCase.patientEmail}</span>
+                          </a>
+                        )}
+                        {!currentCase.patientPhone && !currentCase.patientEmail && (
+                          <span className="text-slate-400">{t('noContactData')}</span>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
+              )}
 
-                {/* Interactive Wizard Step Bar - ONLY appears when customer data is present */}
-                {hasPatientData && (
-                  <div className={`grid grid-cols-4 ${totalWizardSteps >= 8 ? 'sm:grid-cols-8' : totalWizardSteps === 7 ? 'sm:grid-cols-7' : totalWizardSteps === 6 ? 'sm:grid-cols-6' : 'sm:grid-cols-5'} gap-1.5 pt-3`}>
-                    {wizardSteps.map((step, index) => {
-                      const stepNum = index + 1;
-                      const isActive = currentStep === stepNum;
-                      const { status, percent } = getStepInfo(stepNum);
-                      const isComplete = status === 'complete';
-                      const isPartial = status === 'partial';
+              {/* 2. STEP NAVIGATION BAR: Uniform gray for inactive, green for active */}
+              {hasPatientData && (
+                <div className={`grid grid-cols-4 ${totalWizardSteps >= 8 ? 'sm:grid-cols-8' : totalWizardSteps === 7 ? 'sm:grid-cols-7' : totalWizardSteps === 6 ? 'sm:grid-cols-6' : 'sm:grid-cols-5'} gap-2 pb-1`}>
+                  {wizardSteps.map((step, index) => {
+                    const stepNum = index + 1;
+                    const isActive = currentStep === stepNum;
+                    const { status } = getStepInfo(stepNum);
+                    const isComplete = status === 'complete';
+                    const isPartial = status === 'partial';
 
-                      let btnClasses = '';
-                      let numColorClass = '';
-
-                      if (isActive) {
-                        btnClasses = 'bg-teal-600 text-white font-bold shadow-xs border border-teal-600';
-                        numColorClass = 'text-white';
-                      } else if (isComplete) {
-                        btnClasses = 'bg-teal-50 text-teal-900 border border-teal-200 hover:bg-teal-100/90';
-                        numColorClass = 'text-teal-700';
-                      } else if (isPartial) {
-                        btnClasses = 'bg-teal-50 text-teal-900 border border-teal-200 hover:bg-teal-100/90';
-                        numColorClass = 'text-teal-800 font-bold';
-                      } else {
-                        btnClasses = 'bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200';
-                        numColorClass = 'text-slate-500';
-                      }
-
-                      return (
-                        <button
-                          key={step.id}
-                          onClick={() => setCurrentStep(stepNum)}
-                          className={`group relative flex flex-col items-center p-2 rounded-lg text-center transition-all cursor-pointer overflow-hidden ${btnClasses}`}
-                          title={
-                            isComplete
-                              ? t('stepTooltipComplete', { name: step.name })
-                              : isPartial
-                              ? t('stepTooltipPartial', { name: step.name })
-                              : t('stepTooltipEmpty', { name: step.name })
-                          }
+                    return (
+                      <button
+                        key={step.id}
+                        type="button"
+                        onClick={() => setCurrentStep(stepNum)}
+                        className={`group relative flex flex-col items-center justify-center p-2.5 rounded-xl text-center transition-all cursor-pointer ${
+                          isActive
+                            ? 'bg-emerald-600 text-white font-bold border-2 border-emerald-700 shadow-sm ring-2 ring-emerald-500/20 after:content-[""] after:absolute after:-bottom-2.5 after:left-1/2 after:-translate-x-1/2 after:border-solid after:border-t-emerald-600 after:border-t-[8px] after:border-x-transparent after:border-x-[6px] after:border-b-0 after:z-20'
+                            : 'bg-slate-100/90 text-slate-600 border border-slate-200/90 hover:bg-slate-200/80 hover:text-slate-900'
+                        }`}
+                        title={
+                          isComplete
+                            ? t('stepTooltipComplete', { name: step.name })
+                            : isPartial
+                            ? t('stepTooltipPartial', { name: step.name })
+                            : t('stepTooltipEmpty', { name: step.name })
+                        }
+                      >
+                        <div
+                          className={`flex items-center justify-center w-5 h-5 rounded-full text-[11px] mb-1 font-mono font-bold ${
+                            isActive
+                              ? 'bg-emerald-700/90 text-white'
+                              : 'bg-slate-200/90 text-slate-600'
+                          }`}
                         >
-                          {/* Partial progress bar overlay filled with orange on right for missing part */}
-                          {!isActive && isPartial && (
-                            <div
-                              className="absolute inset-y-0 right-0 bg-amber-300/55 border-l border-amber-400/60 transition-all duration-300 pointer-events-none"
-                              style={{ width: `${100 - percent}%` }}
-                            />
+                          {!isActive && isComplete ? (
+                            <Check className="w-3.5 h-3.5 text-slate-600 stroke-[2.5]" />
+                          ) : (
+                            <span>{stepNum}</span>
                           )}
+                        </div>
+                        <span className={`text-[11px] leading-tight truncate w-full block ${isActive ? 'font-bold text-white' : 'font-medium'}`}>
+                          {step.shortName || step.name.split('. ')[1] || step.name}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
 
-                          <div className={`relative z-10 flex items-center justify-center w-5 h-5 rounded-full text-[11px] mb-1 font-mono font-bold ${numColorClass}`}>
-                            {!isActive && isComplete ? (
-                              <Check className="w-3.5 h-3.5 text-teal-700 stroke-[2.5]" />
-                            ) : (
-                              <span>{stepNum}</span>
-                            )}
+              {/* 3. DEDICATED SECTION PROGRESS FRAME & ACTIVE AREA CONNECTION */}
+              {hasPatientData && (() => {
+                const currentStepInfo = getStepInfo(currentStep);
+                return (
+                  <div className="w-full my-3 sm:my-4 rounded-xl border border-emerald-200 bg-gradient-to-b from-emerald-50/50 via-white to-white p-3.5 sm:p-4 shadow-xs relative transition-all duration-300">
+                    {/* Active section header row */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2.5 border-b border-emerald-100/70">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs">
+                          {currentStep}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider">
+                              {t('activeSectionProgressTitle')}
+                            </span>
+                            <span className="text-[11px] text-slate-400">•</span>
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100/80 text-emerald-900 border border-emerald-200/60">
+                              {t('stepProgress', { current: currentStep, total: totalWizardSteps })}
+                            </span>
+                            <span className="text-[11px] text-slate-400">•</span>
+                            <span className="text-xs sm:text-sm font-bold text-slate-900 truncate">
+                              {currentStepConfig.name}
+                            </span>
                           </div>
-                          <span className="relative z-10 text-[10px] leading-tight truncate w-full block">
-                            {step.shortName || step.name.split('. ')[1] || step.name}
+                          <p className="text-[11px] text-slate-500 line-clamp-1 mt-0.5">
+                            {getActiveSectionHint(currentStepConfig.id)}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                        {/* Active Section Completion Badge */}
+                        {currentStepInfo.status === 'complete' ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs">
+                            <Check className="w-3.5 h-3.5 text-emerald-700 stroke-[2.5]" />
+                            <span>100% {t('activeSectionCompletedBadge')}</span>
                           </span>
-                        </button>
-                      );
-                    })}
+                        ) : currentStepInfo.percent > 0 ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 shadow-2xs">
+                            <Clock className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>{currentStepInfo.percent}% {t('activeSectionIncompleteBadge')}</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200 shadow-2xs">
+                            <span>0% {t('activeSectionEmptyBadge')}</span>
+                          </span>
+                        )}
+
+                        {/* Overall Progress Indicator Badge */}
+                        <span 
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200"
+                          title={`${t('anamnesisProgress')}: ${overallProgress}%`}
+                        >
+                          <span className="text-slate-500">{t('activeSectionOverallProgress')}:</span>
+                          <span className="font-bold text-slate-800">{overallProgress}%</span>
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Section Progress Bar */}
+                    <div className="pt-3 space-y-2.5">
+                      <div>
+                        <div className="flex items-center justify-between text-[11px] font-medium text-slate-700 mb-1.5">
+                          <span className="flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                            <span className="font-semibold text-slate-800">
+                              {t('sectionCompletionRate')}: <span className="text-emerald-900 font-bold">{currentStepConfig.shortName || currentStepConfig.name}</span>
+                            </span>
+                          </span>
+                          <span className="font-bold text-emerald-900 font-mono text-xs">
+                            {currentStepInfo.percent}%
+                          </span>
+                        </div>
+
+                        {/* Progress Track & Fill */}
+                        <div 
+                          className="w-full h-3 bg-slate-100 rounded-full border border-slate-200/90 overflow-hidden relative shadow-inner flex items-center"
+                          role="progressbar"
+                          aria-valuenow={currentStepInfo.percent}
+                          aria-valuemin={0}
+                          aria-valuemax={100}
+                        >
+                          <div 
+                            className="h-full bg-gradient-to-r from-emerald-600 to-teal-600 rounded-full transition-all duration-500 relative"
+                            style={{ width: `${Math.max(currentStepInfo.percent > 0 ? 3 : 0, Math.min(100, currentStepInfo.percent))}%` }}
+                          />
+                        </div>
+
+                        {/* Milestone labels below bar for clarity */}
+                        <div className="flex justify-between text-[10px] text-slate-400 pt-1 font-mono">
+                          <span>0%</span>
+                          <span>25%</span>
+                          <span>50%</span>
+                          <span>75%</span>
+                          <span>100%</span>
+                        </div>
+                      </div>
+
+                      {/* Overall Progress Sub-Bar */}
+                      <div className="pt-2 border-t border-emerald-100/60 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-[11px] text-slate-500">
+                        <div className="flex items-center gap-2">
+                          <span className="text-slate-600 font-medium">{t('caseOverallProgress')}:</span>
+                          <span className="font-bold text-slate-800 font-mono">{overallProgress}%</span>
+                          <span className="text-slate-300">•</span>
+                          <span className="text-slate-500">{t('stepProgress', { current: currentStep, total: totalWizardSteps })}</span>
+                        </div>
+                        <div className="w-full sm:w-48 h-1.5 bg-slate-100 rounded-full border border-slate-200 overflow-hidden">
+                          <div 
+                            className="h-full bg-teal-600 rounded-full transition-all duration-500"
+                            style={{ width: `${Math.max(overallProgress > 0 ? 3 : 0, Math.min(100, overallProgress))}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                )}
+                );
+              })()}
+
+              {/* Active Step Section Header (Bild 2) */}
+              <div className="flex items-center justify-between pb-3 mb-5 border-b border-slate-100">
+                <h3 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight flex items-center gap-2">
+                  <ListOrdered className="w-5 h-5 text-teal-600 shrink-0" />
+                  <span>{currentStepConfig.name}</span>
+                </h3>
+                <span className="text-[11px] font-bold px-2.5 py-1 bg-teal-100 text-teal-800 rounded-lg">
+                  {t('stepProgress', { current: currentStep, total: totalWizardSteps })}
+                </span>
               </div>
 
               {/* SEQUENTIAL STEP BODIES */}
@@ -1858,126 +2389,80 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                 {/* 1. STAMMDATEN */}
                 {currentStepConfig.id === 'stammdaten' && (
                   <div className="space-y-5 animate-in fade-in-50 duration-150">
-                    <div className="bg-teal-50/60 p-3 rounded-lg border border-teal-100 text-teal-950 text-xs flex items-center gap-2">
-                      <User className="w-4 h-4 text-teal-600 shrink-0" />
-                      <span><strong>{t('patientDataTitle')}:</strong> {t('patientDataDesc')}</span>
-                    </div>
-
-                    {/* PATIENT STAMMDATEN CARD - Identical layout to Bild 2 */}
-                    <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-xs relative overflow-hidden">
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
-                        <div className="flex items-center gap-3.5">
-                          <div className="w-12 h-12 rounded-2xl bg-teal-600 text-white flex items-center justify-center font-bold text-base shadow-xs shrink-0">
-                            {(currentCase.patientName || '').trim() 
-                              ? currentCase.patientName.trim().split(' ').map(n => n[0]).filter(Boolean).slice(0, 2).join('').toUpperCase()
-                              : <User className="w-6 h-6 text-white" />
-                            }
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <h2 className="text-xl font-bold text-slate-900 font-serif">
-                                {currentCase.patientName?.trim() || t('noPatientEntered')}
-                              </h2>
-                            </div>
-                            <p className="text-xs text-slate-500 mt-0.5">
-                              {t('patientRecord')} • {t('lastConsultation')}: {currentCase.anamneseDatum ? new Date(currentCase.anamneseDatum).toLocaleDateString(language) : (currentCase.patientName ? new Date().toLocaleDateString(language) : t('unknownDate'))}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Action: Stammdaten bearbeiten / erfassen */}
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <button
-                            type="button"
-                            id="btn-edit-master-data"
-                            onClick={() => {
-                              openModal('stammdaten');
-                              setIsStammdatenModalOpen(true);
-                            }}
-                            className="px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors shadow-xs"
-                          >
-                            <Edit3 className="w-3.5 h-3.5 text-slate-500" />
-                            <span>{currentCase.patientName?.trim() ? t('editMasterData') : t('enterMasterData')}</span>
-                          </button>
+                    <div className="bg-teal-50/60 p-4 rounded-xl border border-teal-100 text-teal-950 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5">
+                        <UserCheck className="w-5 h-5 text-teal-700 shrink-0" />
+                        <div>
+                          <span className="font-bold text-slate-800 block text-xs">{t('patientDataTitle')}</span>
+                          <span className="text-slate-600 text-[11px]">{t('patientDataDesc')}</span>
                         </div>
                       </div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            openModal('stammdaten');
+                            setIsStammdatenModalOpen(true);
+                          }}
+                          className="px-3.5 py-1.5 rounded-lg bg-teal-700 hover:bg-teal-800 text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer shadow-2xs transition-colors"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                          <span>{hasPatientData ? t('editMasterData') : t('enterMasterData')}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            openModal('patient_select');
+                            setIsPatientSelectionModalOpen(true);
+                          }}
+                          className="px-3.5 py-1.5 rounded-lg bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-semibold flex items-center gap-1.5 cursor-pointer shadow-2xs transition-colors"
+                        >
+                          <Users className="w-3.5 h-3.5 text-teal-600" />
+                          <span>{t('selectExistingPatientBtn')}</span>
+                        </button>
+                      </div>
+                    </div>
 
-                      {/* Structured Stammdaten Grid */}
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 mt-4 text-xs">
-                        <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                          <span className="block text-[10px] text-slate-400 font-medium">{t('birthdateAndAge')}</span>
-                          <span className="font-semibold text-slate-800">
-                            {currentCase.patientBirthDate || '—'} 
-                            {currentCase.patientAge ? ` (${currentCase.patientAge} ${t('yearsOld')})` : ''}
-                          </span>
-                        </div>
-
-                        <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                          <span className="block text-[10px] text-slate-400 font-medium">{t('genderAndStatus')}</span>
-                          <span className="font-semibold text-slate-800">
-                            {getGenderLabel(currentCase.patientGender)}
-                            {currentCase.isPregnant 
-                              ? ` • ${t('isPregnantYes')}${currentCase.pregnancyMonth ? ` (${currentCase.pregnancyMonth}. ${t('pregnancyMonthLabel')})` : ''}` 
-                              : (currentCase.patientMaritalStatus ? ` • ${getMaritalStatusLabel(currentCase.patientMaritalStatus)}` : '')}
-                          </span>
-                        </div>
-
-                        <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                          <span className="block text-[10px] text-slate-400 font-medium">{t('heightAndWeight')}</span>
-                          <span className="font-semibold text-slate-800">
-                            {currentCase.patientHeightCm ? `${currentCase.patientHeightCm} cm` : '—'} 
-                            {currentCase.patientWeightKg ? ` / ${currentCase.patientWeightKg} kg` : ''}
-                          </span>
-                        </div>
-
-                        <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                          <span className="block text-[10px] text-slate-400 font-medium">{t('hasChildren')}</span>
-                          <span className="font-semibold text-slate-800">
-                            {currentCase.hasChildren 
-                              ? (currentCase.childrenList && currentCase.childrenList.length > 0
-                                  ? `${currentCase.childrenList.length} (${currentCase.childrenList.map(c => c.name || t('childEntryLabel', { index: '' })).join(', ')})`
-                                  : t('childrenCountLabel').replace('{count}', (currentCase.childrenCount || 1).toString()))
-                              : t('noChildren')}
-                          </span>
-                        </div>
-
-                        <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 col-span-2 sm:col-span-4">
-                          <span className="block text-[10px] text-slate-400 font-medium">{t('contactData')}</span>
-                          <div className="flex items-center gap-4 font-semibold text-slate-800 mt-0.5 truncate flex-wrap">
-                            {currentCase.patientPhone && (
-                              <a href={`tel:${currentCase.patientPhone}`} className="hover:text-teal-700 flex items-center gap-1 truncate">
-                                <Phone className="w-3 h-3 text-slate-400 shrink-0" />
-                                <span>{currentCase.patientPhone}</span>
-                              </a>
-                            )}
-                            {currentCase.patientEmail && (
-                              <a href={`mailto:${currentCase.patientEmail}`} className="hover:text-teal-700 flex items-center gap-1 truncate">
-                                <Mail className="w-3 h-3 text-slate-400 shrink-0" />
-                                <span className="truncate">{currentCase.patientEmail}</span>
-                              </a>
-                            )}
-                            {!currentCase.patientPhone && !currentCase.patientEmail && (
-                              <span className="text-slate-400">{t('noContactData')}</span>
-                            )}
+                    {/* Additional Patient Details if available */}
+                    {hasPatientData && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {currentCase.hasChildren && currentCase.childrenList && currentCase.childrenList.length > 0 && (
+                          <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-2">
+                            <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                              <Baby className="w-4 h-4 text-teal-600" />
+                              <span>{t('hasChildren')} ({currentCase.childrenList.length})</span>
+                            </h4>
+                            <div className="space-y-1.5">
+                              {currentCase.childrenList.map((ch, idx) => (
+                                <div key={ch.id || idx} className="text-xs bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-100 flex items-center justify-between">
+                                  <span className="font-semibold text-slate-800">{ch.name || t('childEntryLabel', { index: idx + 1 })}</span>
+                                  <span className="text-slate-500">
+                                    {ch.birthDate ? `${ch.birthDate}${ch.age ? ` (${ch.age} J.)` : ''}` : (ch.age ? `${ch.age} Jahre` : '')}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
                           </div>
-                        </div>
+                        )}
 
-                        {/* Custom Stammdaten / Freie Felder */}
                         {currentCase.customStammdaten && currentCase.customStammdaten.length > 0 && (
-                          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 col-span-2 sm:col-span-4">
-                            <span className="block text-[10px] text-slate-400 font-medium">{t('extraFields')}</span>
-                            <div className="flex flex-wrap gap-2 mt-1">
+                          <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-2">
+                            <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                              <Layers className="w-4 h-4 text-teal-600" />
+                              <span>{t('extraFields')} ({currentCase.customStammdaten.length})</span>
+                            </h4>
+                            <div className="flex flex-wrap gap-2">
                               {currentCase.customStammdaten.map((cs) => (
-                                <span key={cs.id} className="inline-flex items-center gap-1 bg-white px-2.5 py-1 rounded-lg border border-slate-200 text-xs shadow-2xs">
-                                  <strong className="text-slate-600">{cs.name || t('extraFields')}:</strong> 
-                                  <span className="text-slate-800">{cs.value || '—'}</span>
-                                </span>
+                                <div key={cs.id} className="text-xs bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-100">
+                                  <strong className="text-slate-600">{cs.name}: </strong>
+                                  <span className="text-slate-800 font-semibold">{cs.value || '—'}</span>
+                                </div>
                               ))}
                             </div>
                           </div>
                         )}
                       </div>
-                    </div>
+                    )}
                   </div>
                 )}
 

@@ -42,6 +42,7 @@ const STORAGE_KEYS = {
   ACTIVE_VIEW: 'homoeo_saas_active_view_v1',
   THERAPIST_TAB: 'homoeo_saas_therapist_tab_v1',
   ADMIN_TAB: 'homoeo_saas_admin_tab_v1',
+  RECENT_EDITED_PATIENTS: 'homoeo_recent_edited_patients_v1',
 };
 
 /**
@@ -1150,6 +1151,26 @@ export function upgradeTherapistToPro(therapistId: string): Therapist | null {
 }
 
 // Cases
+export function getRecentlyEditedPatientNames(): { name: string; timestamp: number }[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.RECENT_EDITED_PATIENTS);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function recordPatientEdited(patientName: string): void {
+  if (!patientName || !patientName.trim()) return;
+  const cleanName = patientName.trim();
+  const current = getRecentlyEditedPatientNames().filter(p => p.name.toLowerCase() !== cleanName.toLowerCase());
+  current.unshift({ name: cleanName, timestamp: Date.now() });
+  safeLocalStorageSetItem(STORAGE_KEYS.RECENT_EDITED_PATIENTS, JSON.stringify(current.slice(0, 25)));
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('homoeo_patient_edited', { detail: { patientName: cleanName } }));
+  }
+}
+
 export function getPatientCases(therapistId?: string): PatientCase[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.CASES);
@@ -1172,6 +1193,7 @@ export function savePatientCase(caseData: Omit<PatientCase, 'id'> & { id?: strin
   const newOrUpdated: PatientCase = {
     ...caseData,
     id,
+    updatedAt: caseData.updatedAt || new Date().toISOString(),
   };
   
   const existingIdx = all.findIndex(c => c.id === id);
@@ -1182,6 +1204,9 @@ export function savePatientCase(caseData: Omit<PatientCase, 'id'> & { id?: strin
   }
   
   safeLocalStorageSetItem(STORAGE_KEYS.CASES, JSON.stringify(all));
+  if (newOrUpdated.patientName) {
+    recordPatientEdited(newOrUpdated.patientName);
+  }
   window.dispatchEvent(new Event('homoeo_cases_updated'));
   return newOrUpdated;
 }
@@ -1210,6 +1235,9 @@ export function addFollowUpToCase(caseId: string, followUpData: Omit<FollowUpEnt
   };
 
   safeLocalStorageSetItem(STORAGE_KEYS.CASES, JSON.stringify(all));
+  if (all[caseIdx].patientName) {
+    recordPatientEdited(all[caseIdx].patientName);
+  }
   window.dispatchEvent(new Event('homoeo_cases_updated'));
   return newEntry;
 }
@@ -1238,6 +1266,9 @@ export function updateFollowUpInCase(caseId: string, followUpId: string, updates
   };
 
   safeLocalStorageSetItem(STORAGE_KEYS.CASES, JSON.stringify(all));
+  if (currentCase.patientName) {
+    recordPatientEdited(currentCase.patientName);
+  }
   window.dispatchEvent(new Event('homoeo_cases_updated'));
   return updatedEntry;
 }
@@ -1275,6 +1306,9 @@ export function updateInitialPrescriptionInCase(caseId: string, prescription: In
   };
 
   safeLocalStorageSetItem(STORAGE_KEYS.CASES, JSON.stringify(all));
+  if (all[caseIdx].patientName) {
+    recordPatientEdited(all[caseIdx].patientName);
+  }
   window.dispatchEvent(new Event('homoeo_cases_updated'));
   return true;
 }
@@ -1296,6 +1330,7 @@ export function updatePatientStammdatenAcrossCases(therapistId: string, patientN
 
   if (modified) {
     safeLocalStorageSetItem(STORAGE_KEYS.CASES, JSON.stringify(updatedAll));
+    recordPatientEdited(patientName);
     window.dispatchEvent(new Event('homoeo_cases_updated'));
   }
 }

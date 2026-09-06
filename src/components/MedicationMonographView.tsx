@@ -1,5 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Copy, Check, ShieldCheck, FileText, Globe, Loader2 } from 'lucide-react';
+import {
+  Copy,
+  Check,
+  ShieldCheck,
+  FileText,
+  Globe,
+  Loader2,
+  Pill,
+  Clock,
+  AlertTriangle,
+  ShieldAlert
+} from 'lucide-react';
 import { TranslationKey } from '../i18n/translations';
 import { useLanguage } from '../i18n/LanguageContext';
 import { localizeMonograph, fetchTranslatedMonograph } from '../services/medicationLocalization';
@@ -10,6 +21,13 @@ interface MedicationMonographViewProps {
   activeSubstance?: string;
   authoritySource?: string;
   t: (key: TranslationKey | any) => string;
+}
+
+interface MonographSection {
+  id: string;
+  title: string;
+  iconType: 'indication' | 'dosage' | 'sideEffects' | 'contraindications' | 'interactions' | 'general';
+  paragraphs: string[];
 }
 
 export const MedicationMonographView: React.FC<MedicationMonographViewProps> = ({
@@ -25,7 +43,12 @@ export const MedicationMonographView: React.FC<MedicationMonographViewProps> = (
 
   // Keep a reference to the base German text so translations to any language are always accurate
   const baseTextRef = useRef<string>(monographText);
-  if (monographText && (monographText.includes('Wirkstoff') || monographText.includes('Inhaltsstoffe') || !baseTextRef.current)) {
+  if (
+    monographText &&
+    (monographText.includes('Wirkstoff') ||
+      monographText.includes('Inhaltsstoffe') ||
+      !baseTextRef.current)
+  ) {
     baseTextRef.current = monographText;
   }
 
@@ -89,100 +112,220 @@ export const MedicationMonographView: React.FC<MedicationMonographViewProps> = (
     }
   };
 
-  const lines = (activeText || '').split('\n');
+  // Parse narrative monograph text into clean, structured sections matching Kompaktansicht
+  const parseMonographText = (rawText: string): { intro: string; sections: MonographSection[] } => {
+    if (!rawText || !rawText.trim()) {
+      return { intro: '', sections: [] };
+    }
 
-  // Identify section header lines across languages
-  const isSectionHeader = (line: string): boolean => {
-    const trimmed = line.trim();
-    return (
-      trimmed.startsWith('📝') ||
-      trimmed.startsWith('💊') ||
-      trimmed.startsWith('⚠️') ||
-      trimmed.startsWith('🚫') ||
-      trimmed.startsWith('❌') ||
-      /^[1-5]\.\s/.test(trimmed)
-    );
+    const lines = rawText.split('\n');
+    let intro = '';
+    const sections: MonographSection[] = [];
+    let currentSection: MonographSection | null = null;
+
+    for (let i = 0; i < lines.length; i++) {
+      const rawLine = lines[i];
+      const trimmed = rawLine.trim();
+
+      if (!trimmed) continue;
+
+      // Check for introductory overview sentence before any section
+      if (sections.length === 0 && !currentSection) {
+        const isIntro =
+          trimmed.startsWith('Hier ist die komplette Übersicht') ||
+          trimmed.startsWith('Here is the complete') ||
+          trimmed.startsWith('Εδώ είναι η πλήρης') ||
+          trimmed.startsWith('Aquí está el resumen') ||
+          trimmed.startsWith('Voici la vue') ||
+          trimmed.startsWith('Ecco la panoramica') ||
+          trimmed.startsWith('Вот полный обзор') ||
+          (trimmed.toLowerCase().includes('vollständige fachinformation') && !trimmed.match(/^\d+\./));
+
+        if (isIntro) {
+          intro = trimmed;
+          continue;
+        }
+      }
+
+      // Detect section header:
+      // Pattern 1: Numbered line (e.g. "1. Indikation und Pharmakologie: ...")
+      // Pattern 2: Emoji marker (e.g. "📝 1. Wirkstoff...")
+      // Pattern 3: Markdown heading (e.g. "## 1. ...")
+      const isNumbered = /^\d+\.\s/.test(trimmed);
+      const isEmoji = /^[📝💊⚠️🚫❌]/.test(trimmed);
+      const isMd = /^#{1,4}\s/.test(trimmed);
+      const isKnownSection =
+        /^(Indikation|Wirkstoff|Dosierung|Verabreichung|Gegenanzeigen|Kontraindikationen|Warnhinweise|Nebenwirkungen|Toxikologie|Wechselwirkungen|Pharmakokinetik|Indication|Dosage|Side effects|Contraindications|Interactions)/i.test(
+          trimmed
+        ) && trimmed.length < 80;
+
+      if (isNumbered || isEmoji || isMd || isKnownSection) {
+        const cleanHeaderLine = trimmed
+          .replace(/^#{1,4}\s*/, '')
+          .replace(/^[📝💊⚠️🚫❌]\s*/, '')
+          .trim();
+
+        let title = cleanHeaderLine;
+        let inlineContent = '';
+
+        // If title and content are separated by colon (e.g. "1. Indikation und Pharmakologie: Magnesium ist...")
+        const colonIdx = cleanHeaderLine.indexOf(':');
+        if (colonIdx > 0 && colonIdx < 55) {
+          title = cleanHeaderLine.slice(0, colonIdx).trim();
+          inlineContent = cleanHeaderLine.slice(colonIdx + 1).trim();
+        }
+
+        // Determine icon type from title
+        const lower = title.toLowerCase();
+        let iconType: MonographSection['iconType'] = 'general';
+        if (
+          lower.includes('indikation') ||
+          lower.includes('wirkstoff') ||
+          lower.includes('inhaltsstoff') ||
+          lower.includes('pharmakolog') ||
+          lower.includes('indication') ||
+          lower.includes('substance') ||
+          lower.includes('ουσί') ||
+          lower.includes('ένδειξ')
+        ) {
+          iconType = 'indication';
+        } else if (
+          lower.includes('dosier') ||
+          lower.includes('anwend') ||
+          lower.includes('verabreich') ||
+          lower.includes('dosage') ||
+          lower.includes('administr') ||
+          lower.includes('δοσολογ') ||
+          lower.includes('posologie')
+        ) {
+          iconType = 'dosage';
+        } else if (
+          lower.includes('nebenwirkung') ||
+          lower.includes('toxikolog') ||
+          lower.includes('adverse') ||
+          lower.includes('side effect') ||
+          lower.includes('indésirables') ||
+          lower.includes('ανεπιθύμητ')
+        ) {
+          iconType = 'sideEffects';
+        } else if (
+          lower.includes('kontraindikation') ||
+          lower.includes('gegenanzeig') ||
+          lower.includes('warnhinweis') ||
+          lower.includes('contraindication') ||
+          lower.includes('warning') ||
+          lower.includes('mise en garde') ||
+          lower.includes('αντένδειξ')
+        ) {
+          iconType = 'contraindications';
+        } else if (
+          lower.includes('wechselwirkung') ||
+          lower.includes('interaktion') ||
+          lower.includes('pharmakokinetik') ||
+          lower.includes('interaction') ||
+          lower.includes('αλληλεπίδρασ')
+        ) {
+          iconType = 'interactions';
+        }
+
+        currentSection = {
+          id: `sec-${sections.length + 1}`,
+          title,
+          iconType,
+          paragraphs: inlineContent ? [inlineContent] : []
+        };
+        sections.push(currentSection);
+      } else if (currentSection) {
+        currentSection.paragraphs.push(trimmed);
+      } else {
+        if (!intro) {
+          intro = trimmed;
+        } else {
+          currentSection = {
+            id: 'sec-general',
+            title: t('medMonographOverview' as TranslationKey) || 'Fachinformation & Monographie',
+            iconType: 'general',
+            paragraphs: [trimmed]
+          };
+          sections.push(currentSection);
+        }
+      }
+    }
+
+    // Fallback if no structured sections could be parsed
+    if (sections.length === 0) {
+      const fallbackParas = rawText
+        .split(/\n\s*\n/)
+        .map((p) => p.trim())
+        .filter(Boolean);
+      sections.push({
+        id: 'sec-fallback',
+        title: t('medMonographOverview' as TranslationKey) || 'Fachinformation & Monographie',
+        iconType: 'general',
+        paragraphs: fallbackParas
+      });
+      intro = '';
+    }
+
+    return { intro, sections };
   };
 
-  // Identify intro paragraph across all 7 supported languages
-  const isIntro = (line: string): boolean => {
-    const trimmed = line.trim();
-    return (
-      trimmed.startsWith('Hier ist die komplette Übersicht') ||
-      trimmed.startsWith('Here is the complete') ||
-      trimmed.startsWith('Εδώ είναι η πλήρης') ||
-      trimmed.startsWith('Aquí está el resumen') ||
-      trimmed.startsWith('Voici la vue') ||
-      trimmed.startsWith('Ecco la panoramica') ||
-      trimmed.startsWith('Вот полный обзор')
-    );
-  };
+  const { intro, sections } = parseMonographText(activeText);
 
-  // Render a line with bold prefix if it has a label followed by a colon
-  const renderLineContent = (line: string, lineIndex: number) => {
-    const trimmed = line.trim();
+  // Render individual paragraph inside section card matching Kompaktansicht font and styling
+  const renderParagraph = (pText: string, pIdx: number) => {
+    const trimmed = pText.trim();
     if (!trimmed) return null;
 
-    if (isSectionHeader(trimmed)) {
+    // Bullet point item
+    if (trimmed.startsWith('- ') || trimmed.startsWith('* ') || trimmed.startsWith('• ')) {
+      const clean = trimmed.replace(/^[-*•]\s*/, '');
       return (
-        <h5
-          key={lineIndex}
-          className="font-bold text-slate-900 text-xs sm:text-sm pt-2.5 pb-1 border-b border-slate-200/70 flex items-center gap-1.5"
-        >
-          {trimmed}
-        </h5>
+        <div key={pIdx} className="flex items-start gap-2 pl-0.5 text-slate-700">
+          <span className="text-teal-600 font-bold mt-0.5 select-none">•</span>
+          <span className="font-normal text-xs sm:text-[13px] leading-relaxed">{clean}</span>
+        </div>
       );
     }
 
-    if (isIntro(trimmed)) {
+    // Label with colon prefix (e.g. "Hauptwirkstoff: Magnesium" or "Sehr häufig: Diarrhö")
+    const colonIdx = trimmed.indexOf(':');
+    if (colonIdx > 0 && colonIdx <= 55) {
+      const prefix = trimmed.slice(0, colonIdx + 1);
+      const rest = trimmed.slice(colonIdx + 1).trim();
+
       return (
-        <p
-          key={lineIndex}
-          className="text-xs sm:text-[13px] font-medium text-teal-950 bg-teal-50/70 p-2.5 rounded-lg border border-teal-200/60 leading-relaxed mb-2"
-        >
-          {trimmed}
-        </p>
+        <div key={pIdx} className="text-xs sm:text-[13px] text-slate-700 leading-relaxed pl-0.5">
+          <strong className="font-semibold text-slate-900">{prefix} </strong>
+          <span className="font-normal text-slate-700">{rest}</span>
+        </div>
       );
     }
 
-    // Check for bold prefix patterns like "Label:" or "Label (sub):"
-    const colonIndex = trimmed.indexOf(':');
-    if (colonIndex > 0 && colonIndex <= 65) {
-      const prefix = trimmed.slice(0, colonIndex + 1);
-      const rest = trimmed.slice(colonIndex + 1);
-
-      return (
-        <p key={lineIndex} className="text-xs text-slate-700 leading-relaxed pl-1">
-          <strong className="font-bold text-slate-900">{prefix}</strong>
-          {rest}
-        </p>
-      );
-    }
-
-    // Standard fluid paragraph
+    // Normal text paragraph: clean, normal weight, identical font family and size to Kompaktansicht
     return (
-      <p key={lineIndex} className="text-xs text-slate-700 leading-relaxed pl-1">
+      <p key={pIdx} className="text-xs sm:text-[13px] text-slate-700 font-normal leading-relaxed pl-0.5">
         {trimmed}
       </p>
     );
   };
 
   return (
-    <div className="rounded-xl bg-white border border-teal-200/80 shadow-2xs overflow-hidden">
-      {/* Header bar */}
-      <div className="bg-gradient-to-r from-teal-50/90 to-slate-50 px-3.5 py-2.5 border-b border-teal-200/60 flex flex-wrap items-center justify-between gap-2">
+    <div className="space-y-4 max-w-4xl">
+      {/* Top Header Card: Title, substance badge, translation indicator & Copy action */}
+      <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 shadow-2xs flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          <FileText className="w-4 h-4 text-teal-700" />
-          <span className="font-bold text-xs text-slate-800">
+          <FileText className="w-4 h-4 text-teal-700 shrink-0" />
+          <span className="font-bold text-xs sm:text-sm text-slate-800">
             {t('medMonographOverview' as TranslationKey) || 'Vollständige Fachinformation & Monographie'}
           </span>
           {activeSubstance && (
-            <span className="text-[11px] px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 font-medium">
+            <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-teal-50 text-teal-800 border border-teal-200/80 font-medium">
               {activeSubstance}
             </span>
           )}
           {language !== 'de' && (
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold flex items-center gap-1">
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200/80 font-semibold flex items-center gap-1">
               <Globe className="w-3 h-3 text-emerald-600" />
               <span>{t('medTranslatedBadge' as TranslationKey) || 'Lokalisiert'}</span>
             </span>
@@ -199,13 +342,13 @@ export const MedicationMonographView: React.FC<MedicationMonographViewProps> = (
           <button
             type="button"
             onClick={handleCopy}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 shadow-2xs transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 shadow-2xs transition-colors cursor-pointer"
             title={t('medCopyMonograph' as TranslationKey) || 'Volltext kopieren'}
           >
             {copied ? (
               <>
                 <Check className="w-3.5 h-3.5 text-emerald-600" />
-                <span className="text-emerald-700">
+                <span className="text-emerald-700 font-medium">
                   {t('medMonographCopied' as TranslationKey) || 'Kopiert!'}
                 </span>
               </>
@@ -219,13 +362,62 @@ export const MedicationMonographView: React.FC<MedicationMonographViewProps> = (
         </div>
       </div>
 
-      {/* Narrative Monograph Content */}
-      <div className="p-3.5 sm:p-4 space-y-1.5 font-sans">
-        {lines.map((l, i) => renderLineContent(l, i))}
+      {/* Authority Notice Banner (Identical to Kompaktansicht) */}
+      <div className="flex items-center gap-2 text-xs text-slate-500 bg-slate-100/80 px-3.5 py-2.5 rounded-xl border border-slate-200">
+        <ShieldCheck className="w-4 h-4 text-teal-600 shrink-0" />
+        <span>
+          {t('medNoHallucinationNotice' as TranslationKey) ||
+            'Strikte behördliche Datenbasis: Es werden keine Daten erfunden oder abgeleitet.'}
+        </span>
       </div>
 
-      {/* Footer Authority & Zero Hallucination Guarantee */}
-      <div className="px-3.5 py-2 bg-slate-50/90 border-t border-slate-200/70 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500">
+      {/* Intro Summary Note if present */}
+      {intro && (
+        <div className="p-3.5 rounded-xl bg-teal-50/70 border border-teal-200/70 text-xs sm:text-[13px] text-teal-950 font-normal leading-relaxed">
+          {intro}
+        </div>
+      )}
+
+      {/* Structured Section Cards: Formatted, spaced, and styled identical to Kompaktansicht */}
+      {sections.map((sec, sIdx) => {
+        const isInteractions = sec.iconType === 'interactions';
+        const isContraindications = sec.iconType === 'contraindications';
+        const isSideEffects = sec.iconType === 'sideEffects';
+        const isDosage = sec.iconType === 'dosage';
+
+        return (
+          <div
+            key={sec.id || sIdx}
+            className={`bg-white p-4 rounded-xl border shadow-2xs space-y-3 ${
+              isInteractions ? 'border-rose-200/80' : 'border-slate-200'
+            }`}
+          >
+            {/* Header with uppercase tracking-wider label & matching icon */}
+            <h3
+              className={`font-bold text-xs uppercase tracking-wider flex items-center gap-2 ${
+                isInteractions ? 'text-rose-900' : 'text-slate-700'
+              }`}
+            >
+              {isDosage && <Clock className="w-4 h-4 text-teal-600 shrink-0" />}
+              {isSideEffects && <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />}
+              {isContraindications && <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0" />}
+              {isInteractions && <ShieldAlert className="w-4 h-4 text-rose-600 shrink-0" />}
+              {!isDosage && !isSideEffects && !isContraindications && !isInteractions && (
+                <Pill className="w-4 h-4 text-teal-600 shrink-0" />
+              )}
+              <span>{sec.title}</span>
+            </h3>
+
+            {/* Paragraphs in clean, normal-weight text */}
+            <div className="space-y-2.5 text-xs sm:text-[13px] text-slate-700 font-normal leading-relaxed">
+              {sec.paragraphs.map((para, pIdx) => renderParagraph(para, pIdx))}
+            </div>
+          </div>
+        );
+      })}
+
+      {/* Footer Authority Badge (Identical to Kompaktansicht) */}
+      <div className="px-3.5 py-2.5 bg-slate-100/70 rounded-xl border border-slate-200 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500">
         <div className="flex items-center gap-1.5 text-emerald-700 font-medium">
           <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
           <span>

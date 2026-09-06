@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { TranslationKey } from '../i18n/translations';
 import { MedicationLiveInput, MedicationData } from './MedicationLiveInput';
-import { X, Plus, Pill, Save, Check } from 'lucide-react';
+import { X, Plus, Pill, Save, Check, AlertCircle } from 'lucide-react';
 
 interface Props {
   isOpen: boolean;
@@ -22,6 +22,7 @@ const createEmptyMedication = (): MedicationItem => ({
   name: '',
   dosierung: '',
   einnahmeart: '',
+  isSaved: false,
   grund: '',
   wirkstoff: undefined,
   kategorie: undefined,
@@ -48,6 +49,7 @@ export const MedicationsWizardModal: React.FC<Props> = ({
       if (medikamenteList && medikamenteList.length > 0) {
         setList(medikamenteList.map(m => ({
           ...m,
+          isSaved: m.isSaved !== undefined ? m.isSaved : Boolean(m.name?.trim()),
           _id: (m as any)._id || ('med_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9))
         })));
       } else {
@@ -61,8 +63,14 @@ export const MedicationsWizardModal: React.FC<Props> = ({
 
   if (!isOpen) return null;
 
+  const hasUnsavedItem = list.some(item => {
+    const isSaved = item.isSaved !== undefined ? item.isSaved : Boolean(item.name?.trim());
+    return !isSaved;
+  });
+
   const handleAddMedication = () => {
-    setList(prev => [...prev, createEmptyMedication()]);
+    if (hasUnsavedItem) return;
+    setList(prev => [createEmptyMedication(), ...prev]);
   };
 
   const handleUpdateMedication = (index: number, updated: MedicationData) => {
@@ -88,7 +96,7 @@ export const MedicationsWizardModal: React.FC<Props> = ({
     // Wenn alles leer bleibt, nimmt er keine Medikamente ein und es werden keine berücksichtigt
     const cleanedList = list
       .filter(m => m.name && m.name.trim() !== '')
-      .map(({ _id, ...rest }) => rest);
+      .map(({ _id, ...rest }) => ({ ...rest, isSaved: true }));
     const finalTakes = cleanedList.length > 0;
     onSave({
       nimmtMedikamente: finalTakes,
@@ -136,17 +144,40 @@ export const MedicationsWizardModal: React.FC<Props> = ({
 
         {/* Body Content */}
         <div className="flex-1 overflow-y-auto p-6 bg-white space-y-6">
-          {/* Subtitle / Description Box */}
-          <div className="bg-teal-50/40 border border-teal-200/80 rounded-2xl p-4 sm:p-5 flex items-start gap-3">
-            <Pill className="w-5 h-5 text-teal-600 shrink-0 mt-0.5" />
-            <div className="space-y-1 text-xs">
-              <p className="font-bold text-slate-800 text-sm">
-                {t('takeMedication' as TranslationKey)}
-              </p>
-              <p className="text-slate-600 leading-relaxed">
-                {t('addMedInfo' as TranslationKey)}
-              </p>
+          {/* Subtitle / Description Box with integrated Add Button */}
+          <div className="bg-teal-50/40 border border-teal-200/80 rounded-2xl p-4 sm:p-5 flex flex-col gap-3">
+            <div className="flex items-start gap-3">
+              <Pill className="w-5 h-5 text-teal-600 shrink-0 mt-0.5" />
+              <div className="space-y-1 text-xs flex-1">
+                <p className="font-bold text-slate-800 text-sm">
+                  {t('takeMedication' as TranslationKey)}
+                </p>
+                <p className="text-slate-600 leading-relaxed">
+                  {t('addMedInfo' as TranslationKey)}
+                </p>
+              </div>
             </div>
+
+            <button
+              type="button"
+              id="btn-add-medication-in-box"
+              onClick={handleAddMedication}
+              disabled={hasUnsavedItem}
+              className={`w-full py-2.5 px-4 border-2 border-dashed rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-2xs mt-1 ${
+                hasUnsavedItem
+                  ? "border-slate-200 bg-slate-100/70 text-slate-400 cursor-not-allowed opacity-60"
+                  : "border-teal-300 hover:border-teal-500 bg-white hover:bg-teal-50/60 text-teal-700 cursor-pointer"
+              }`}
+            >
+              <Plus className="w-4 h-4" />
+              <span>{t('addMedication' as TranslationKey)}</span>
+            </button>
+            {hasUnsavedItem && (
+              <p className="text-[11px] text-amber-800 bg-amber-50/90 border border-amber-200/80 px-3 py-1.5 rounded-lg flex items-center gap-1.5 mt-0.5">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0 text-amber-600" />
+                <span>{t('unsavedMedicationWarning' as TranslationKey) || 'Ein Medikament befindet sich noch in Bearbeitung. Bitte speichern oder löschen Sie dieses zuerst, bevor Sie ein weiteres hinzufügen.'}</span>
+              </p>
+            )}
           </div>
 
           {/* Medication List */}
@@ -156,15 +187,6 @@ export const MedicationsWizardModal: React.FC<Props> = ({
                 <Pill className="w-4 h-4 text-teal-600" />
                 <span>{t('medications' as TranslationKey)} ({list.length})</span>
               </h4>
-              <button
-                type="button"
-                id="btn-add-medication-top"
-                onClick={handleAddMedication}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-800 text-xs font-bold transition-colors border border-teal-200 cursor-pointer"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>{t('addMedication' as TranslationKey)}</span>
-              </button>
             </div>
 
             <div className="space-y-3">
@@ -180,16 +202,6 @@ export const MedicationsWizardModal: React.FC<Props> = ({
                 />
               ))}
             </div>
-
-            <button
-              type="button"
-              id="btn-add-medication-bottom"
-              onClick={handleAddMedication}
-              className="w-full py-3 px-4 border-2 border-dashed border-teal-300 hover:border-teal-500 bg-white hover:bg-teal-50/40 text-teal-700 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-2xs"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>{t('addMedication' as TranslationKey)}</span>
-            </button>
           </div>
         </div>
 

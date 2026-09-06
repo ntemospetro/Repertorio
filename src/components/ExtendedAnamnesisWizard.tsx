@@ -9,7 +9,7 @@ import { MedicationLiveInput, MedicationData } from './MedicationLiveInput';
 import { MedicationsWizardModal } from './MedicationsWizardModal';
 import { 
   X, ArrowRight, ArrowLeft, Plus, Trash2, Save, CheckCircle2, Check,
-  Pill, ExternalLink, ClipboardList, Database, CornerDownRight
+  Pill, ExternalLink, ClipboardList, Database, CornerDownRight, AlertCircle
 } from 'lucide-react';
 
 export interface MedicationItem extends MedicationData {
@@ -21,6 +21,7 @@ export const createEmptyMedication = (): MedicationItem => ({
   name: '',
   dosierung: '',
   einnahmeart: '',
+  isSaved: false,
   grund: '',
   wirkstoff: undefined,
   kategorie: undefined,
@@ -74,7 +75,8 @@ export const ExtendedAnamnesisWizard: React.FC<Props> = ({
         nimmt_medikamente: base.nimmt_medikamente || (hasMeds ? 'Ja' : undefined),
         medikamente_liste: existingMeds.map((m: any, idx: number) => ({
           _id: m._id || `med_${idx}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-          ...m
+          ...m,
+          isSaved: m.isSaved !== undefined ? m.isSaved : Boolean(m.name?.trim())
         }))
       });
     }
@@ -96,7 +98,7 @@ export const ExtendedAnamnesisWizard: React.FC<Props> = ({
     const list = Array.isArray(vals.medikamente_liste) ? vals.medikamente_liste : [];
     return list
       .filter((m: any) => m && m.name && m.name.trim() !== '')
-      .map(({ _id, ...rest }: any) => rest);
+      .map(({ _id, ...rest }: any) => ({ ...rest, isSaved: true }));
   };
 
   const handleNext = () => {
@@ -423,8 +425,14 @@ const FieldRenderer: React.FC<{
     if (field.id === 'medikamente_liste') {
       const list: MedicationItem[] = Array.isArray(value) && value.length > 0 ? value : [];
 
+      const hasUnsavedItem = list.some(item => {
+        const isSaved = item.isSaved !== undefined ? item.isSaved : Boolean(item.name?.trim());
+        return !isSaved;
+      });
+
       const handleAddMed = () => {
-        const updated: MedicationItem[] = [...list, createEmptyMedication()];
+        if (hasUnsavedItem) return;
+        const updated: MedicationItem[] = [createEmptyMedication(), ...list];
         onChange(updated);
       };
 
@@ -448,18 +456,41 @@ const FieldRenderer: React.FC<{
       return (
         <div className="space-y-4">
           {/* Subtitle / Description Box matching image.png */}
-          <div className="bg-teal-50/40 border border-teal-200/80 rounded-2xl p-4 sm:p-5 flex items-start gap-3">
-            <div className="w-10 h-10 rounded-full bg-teal-50 border border-teal-200/80 text-teal-600 flex items-center justify-center shrink-0">
-              <Pill className="w-5 h-5" />
+          <div className="bg-teal-50/40 border border-teal-200/80 rounded-2xl p-4 sm:p-5 flex flex-col gap-3">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-full bg-teal-50 border border-teal-200/80 text-teal-600 flex items-center justify-center shrink-0">
+                <Pill className="w-5 h-5" />
+              </div>
+              <div className="space-y-1 text-xs flex-1">
+                <p className="font-bold text-slate-800 text-sm">
+                  {t('takeMedication' as TranslationKey) || 'Welche Medikamente nehmen Sie derzeit?'}
+                </p>
+                <p className="text-slate-600 leading-relaxed">
+                  {t('addMedInfo' as TranslationKey) || 'Hier können Sie die aktuelle Medikation erfassen. Bleiben alle Felder leer, werden keine Medikamente berücksichtigt.'}
+                </p>
+              </div>
             </div>
-            <div className="space-y-1 text-xs">
-              <p className="font-bold text-slate-800 text-sm">
-                {t('takeMedication' as TranslationKey) || 'Welche Medikamente nehmen Sie derzeit?'}
+
+            <button
+              type="button"
+              id="btn-add-medication-anamnesis-in-box"
+              disabled={hasUnsavedItem}
+              onClick={handleAddMed}
+              className={`w-full py-2.5 px-4 border-2 border-dashed rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-2xs mt-1 ${
+                hasUnsavedItem
+                  ? "border-slate-200 bg-slate-100/70 text-slate-400 cursor-not-allowed opacity-60"
+                  : "border-teal-300 hover:border-teal-500 bg-white hover:bg-teal-50/60 text-teal-700 cursor-pointer"
+              }`}
+            >
+              <Plus className="w-4 h-4" />
+              <span>{t('addMedication' as TranslationKey) || '+ Medikament hinzufügen'}</span>
+            </button>
+            {hasUnsavedItem && (
+              <p className="text-[11px] text-amber-800 bg-amber-50/90 border border-amber-200/80 px-3 py-1.5 rounded-lg flex items-center gap-1.5 mt-0.5">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0 text-amber-600" />
+                <span>{t('unsavedMedicationWarning' as TranslationKey) || 'Ein Medikament befindet sich noch in Bearbeitung. Bitte speichern oder löschen Sie dieses zuerst, bevor Sie ein weiteres hinzufügen.'}</span>
               </p>
-              <p className="text-slate-600 leading-relaxed">
-                {t('addMedInfo' as TranslationKey) || 'Hier können Sie die aktuelle Medikation erfassen. Bleiben alle Felder leer, werden keine Medikamente berücksichtigt.'}
-              </p>
-            </div>
+            )}
           </div>
 
           {/* Section Bar */}
@@ -481,15 +512,6 @@ const FieldRenderer: React.FC<{
                   <span>{t('btnOpenInDialog' as TranslationKey) || 'Im Dialog bearbeiten'}</span>
                 </button>
               )}
-              <button
-                type="button"
-                id="btn-add-medication-anamnesis-top"
-                onClick={handleAddMed}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-800 text-xs font-bold transition-colors border border-teal-200 cursor-pointer shadow-2xs"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>{t('addMedication' as TranslationKey) || '+ Medikament hinzufügen'}</span>
-              </button>
             </div>
           </div>
 
@@ -507,17 +529,6 @@ const FieldRenderer: React.FC<{
               />
             ))}
           </div>
-
-          {/* Bottom Add Button */}
-          <button
-            type="button"
-            id="btn-add-medication-anamnesis-bottom"
-            onClick={handleAddMed}
-            className="w-full py-3 px-4 border-2 border-dashed border-teal-300 hover:border-teal-500 bg-white hover:bg-teal-50/40 text-teal-700 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-2xs"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>{t('addMedication' as TranslationKey) || '+ Medikament hinzufügen'}</span>
-          </button>
         </div>
       );
     }

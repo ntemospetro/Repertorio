@@ -18,7 +18,9 @@ import {
   Loader2,
   Calendar,
   Clock,
-  ArrowRight
+  ArrowRight,
+  Mail,
+  Phone
 } from 'lucide-react';
 import { PatientCase } from '../types';
 import { TranslationKey } from '../i18n/translations';
@@ -72,6 +74,53 @@ export const MedicationResearchView: React.FC<MedicationResearchViewProps> = ({
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
   };
+
+  const getGenderLabel = (gender?: string) => {
+    if (!gender) return '—';
+    switch (gender) {
+      case 'weiblich': return t('genderFemale' as TranslationKey) || 'Weiblich';
+      case 'männlich': return t('genderMale' as TranslationKey) || 'Männlich';
+      case 'divers': return t('genderOther' as TranslationKey) || 'Divers';
+      default: return gender;
+    }
+  };
+
+  const getMaritalStatusLabel = (status?: string) => {
+    if (!status) return '';
+    switch (status) {
+      case 'ledig': return t('maritalSingle' as TranslationKey) || 'Ledig';
+      case 'verheiratet': return t('maritalMarried' as TranslationKey) || 'Verheiratet';
+      case 'in Partnerschaft': return t('maritalPartnership' as TranslationKey) || 'In Partnerschaft';
+      case 'geschieden': return t('maritalDivorced' as TranslationKey) || 'Geschieden';
+      case 'getrennt lebend': return t('maritalSeparated' as TranslationKey) || 'Getrennt lebend';
+      case 'verwitwet': return t('maritalWidowed' as TranslationKey) || 'Verwitwet';
+      case 'sonstiges': return t('maritalOther' as TranslationKey) || 'Sonstiges';
+      default: return status;
+    }
+  };
+
+  const patientCasesCount = useMemo(() => {
+    if (!currentCase.patientName) return 1;
+    const norm = currentCase.patientName.trim().toLowerCase();
+    const matches = allCases.filter(c => c.patientName && c.patientName.trim().toLowerCase() === norm);
+    return matches.length > 0 ? matches.length : 1;
+  }, [currentCase.patientName, allCases]);
+
+  const patientInitials = useMemo(() => {
+    return (currentCase.patientName || 'P')
+      .split(' ')
+      .filter(Boolean)
+      .map(n => n[0])
+      .slice(0, 2)
+      .join('')
+      .toUpperCase() || 'P';
+  }, [currentCase.patientName]);
+
+  const lastConsultationFormatted = useMemo(() => {
+    return currentCase.anamneseDatum
+      ? new Date(currentCase.anamneseDatum).toLocaleDateString(language)
+      : (t('unknownDate' as TranslationKey) || '—');
+  }, [currentCase.anamneseDatum, language, t]);
 
   // Perform search in medical database
   useEffect(() => {
@@ -181,24 +230,42 @@ export const MedicationResearchView: React.FC<MedicationResearchViewProps> = ({
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
     if (isLoadingDetail) {
-      setLoadProgress(8);
+      setLoadProgress(6);
       setIsFinishingLoad(false);
       interval = setInterval(() => {
         setLoadProgress(prev => {
-          if (prev < 40) return prev + Math.floor(Math.random() * 6 + 4);
-          if (prev < 75) return prev + Math.floor(Math.random() * 4 + 2);
-          if (prev < 94) return prev + Math.floor(Math.random() * 2 + 1);
-          return 94; // Pause at 94% until loaded
+          // Organic, steady forward movement that never freezes throughout the entire loading duration
+          if (prev < 25) {
+            // Stage 1: Initializing & querying database (~3.5-4s)
+            return Math.min(25, prev + (0.45 + Math.random() * 0.45));
+          }
+          if (prev < 50) {
+            // Stage 2: Authority monographs (~4s)
+            return Math.min(50, prev + (0.28 + Math.random() * 0.32));
+          }
+          if (prev < 75) {
+            // Stage 3: Pharmacology & dosages (~5s)
+            return Math.min(75, prev + (0.18 + Math.random() * 0.24));
+          }
+          if (prev < 90) {
+            // Stage 4: Interactions & warnings (~5s)
+            return Math.min(90, prev + (0.12 + Math.random() * 0.16));
+          }
+          if (prev < 97.5) {
+            // Stage 5: Assembling data - continuously creeps forward smoothly, never stops!
+            return Math.min(97.5, prev + (0.04 + Math.random() * 0.05));
+          }
+          return Math.min(98.8, prev + 0.015);
         });
-      }, 120);
+      }, 90);
     } else if (loadProgress > 0) {
-      // Completed! Shoot to 100% and finish smoothly
+      // Completed! Shoot smoothly to 100% and finish smoothly with green checkmark
       setLoadProgress(100);
       setIsFinishingLoad(true);
       const timer = setTimeout(() => {
         setIsFinishingLoad(false);
         setLoadProgress(0);
-      }, 250);
+      }, 550);
       return () => clearTimeout(timer);
     }
     return () => {
@@ -302,74 +369,104 @@ export const MedicationResearchView: React.FC<MedicationResearchViewProps> = ({
 
       {/* Header Bar */}
       <div className="bg-white border-b border-slate-200 px-6 py-4 shrink-0 shadow-2xs">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="p-1.5 rounded-lg bg-teal-50 text-teal-700 border border-teal-200/70">
-                <Pill className="w-5 h-5" />
-              </span>
-              <h1 className="text-xl font-bold text-slate-900 tracking-tight">
-                {t('medPageTitle' as TranslationKey) || 'Medikamente & Arzneimittelrecherche'}
-              </h1>
-            </div>
-            <p className="text-xs text-slate-500 max-w-3xl">
-              {t('medPageSubtitle' as TranslationKey) || 'Vollständige klinische Monographien, Wechselwirkungen, Nebenwirkungen und Fachdaten der aktuellen Patientenmedikation.'}
-            </p>
-          </div>
+        <div className="flex items-center gap-2 mb-1">
+          <span className="p-1.5 rounded-lg bg-teal-50 text-teal-700 border border-teal-200/70">
+            <Pill className="w-5 h-5" />
+          </span>
+          <h1 className="text-xl font-bold text-slate-900 tracking-tight">
+            {t('medPageTitle' as TranslationKey) || 'Medikamente & Arzneimittelrecherche'}
+          </h1>
+        </div>
+        <p className="text-xs text-slate-500 max-w-3xl">
+          {t('medPageSubtitle' as TranslationKey) || 'Vollständige klinische Monographien, Wechselwirkungen, Nebenwirkungen und Fachdaten der aktuellen Patientenmedikation.'}
+        </p>
+      </div>
 
-          <div className="flex flex-wrap items-center gap-2.5">
-            {/* Active Patient Badge */}
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200 text-xs">
-              <User className="w-3.5 h-3.5 text-teal-600" />
-              <span className="text-slate-500 font-medium">{t('medCurrentPatientBadge' as TranslationKey) || 'Patient'}:</span>
-              <span className="font-bold text-slate-900">
-                {currentCase.patientName || t('unnamedPatient' as TranslationKey) || 'Unbenannt'}
-              </span>
+      {/* Customer Header & Stammdaten Panel (Full Width, Vertically Flush with Grids) */}
+      <div className="w-full bg-white border-b border-slate-200 px-6 py-4 shrink-0 shadow-2xs">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-3.5 border-b border-slate-100">
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-teal-600 text-white flex items-center justify-center font-bold text-base shadow-xs shrink-0">
+              {patientInitials}
             </div>
-
-            {/* Quick Button to Enter / Edit Medications in Modal */}
-            {onOpenMedicationsModal && (
-              <button
-                type="button"
-                onClick={onOpenMedicationsModal}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold transition-colors shadow-xs cursor-pointer"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>{t('medAddOrEditMeds' as TranslationKey) || 'Medikamente erfassen / bearbeiten'}</span>
-              </button>
-            )}
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-xl font-bold text-slate-900 font-serif">
+                  {currentCase.patientName || t('unnamedPatient' as TranslationKey) || 'Unbenannt'}
+                </h2>
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-50 text-teal-800 border border-teal-200">
+                  {patientCasesCount === 1 
+                    ? (t('registeredCaseSingle' as TranslationKey) || '1 Fall registriert') 
+                    : (t('registeredCases' as TranslationKey) || '{count} Fälle registriert').replace('{count}', patientCasesCount.toString())}
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {t('patientRecord' as TranslationKey) || 'Patientenakte'} • {t('lastConsultation' as TranslationKey) || 'Letzte Konsultation'}: {lastConsultationFormatted}
+              </p>
+            </div>
           </div>
         </div>
 
-        {/* Live Search Bar for direct database research */}
-        <div className="mt-3.5 relative">
-          <div className="relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={t('medSearchFreePlaceholder' as TranslationKey) || "Medikament in Fachdatenbank recherchieren (z.B. Ibuprofen, Ramipril, Aspirin)..."}
-              className="w-full pl-10 pr-10 py-2.5 bg-slate-50 hover:bg-white focus:bg-white border border-slate-300 rounded-xl text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 transition-all shadow-2xs"
-            />
-            {isSearching && (
-              <Loader2 className="w-4 h-4 text-teal-600 animate-spin absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-            )}
-            {searchQuery && !isSearching && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs px-1 py-0.5 rounded cursor-pointer"
-              >
-                ✕
-              </button>
-            )}
+        {/* Structured Stammdaten Grid (Full Width) */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 mt-3.5 text-xs">
+          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+            <span className="block text-[10px] text-slate-400 font-medium">{t('birthdateAndAge' as TranslationKey) || 'Geburtsdatum & Alter'}</span>
+            <span className="font-semibold text-slate-800">
+              {currentCase.patientBirthDate || '—'} 
+              {currentCase.patientAge ? ` (${currentCase.patientAge} ${t('yearsOld' as TranslationKey) || 'Jahre'})` : ''}
+            </span>
+          </div>
+
+          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+            <span className="block text-[10px] text-slate-400 font-medium">{t('genderAndStatus' as TranslationKey) || 'Geschlecht & Status'}</span>
+            <span className="font-semibold text-slate-800">
+              {getGenderLabel(currentCase.patientGender)}
+              {currentCase.patientMaritalStatus ? ` • ${getMaritalStatusLabel(currentCase.patientMaritalStatus)}` : ''}
+            </span>
+          </div>
+
+          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+            <span className="block text-[10px] text-slate-400 font-medium">{t('heightAndWeight' as TranslationKey) || 'Größe & Gewicht'}</span>
+            <span className="font-semibold text-slate-800">
+              {currentCase.patientHeightCm ? `${currentCase.patientHeightCm} cm` : '—'} 
+              {currentCase.patientWeightKg ? ` / ${currentCase.patientWeightKg} kg` : ''}
+            </span>
+          </div>
+
+          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+            <span className="block text-[10px] text-slate-400 font-medium">{t('hasChildren' as TranslationKey) || 'Haben Sie Kinder?'}</span>
+            <span className="font-semibold text-slate-800">
+              {currentCase.hasChildren 
+                ? (t('childrenCountLabel' as TranslationKey) || '{count} Kind(er)').replace('{count}', (currentCase.childrenCount || currentCase.childrenList?.length || 1).toString()) 
+                : (t('noChildren' as TranslationKey) || 'Keine')}
+            </span>
+          </div>
+
+          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 col-span-2 sm:col-span-1">
+            <span className="block text-[10px] text-slate-400 font-medium">{t('contactData' as TranslationKey) || 'Kontaktdaten (Telefon & E-Mail)'}</span>
+            <div className="flex flex-col gap-0.5 font-semibold text-slate-800 mt-0.5 truncate">
+              {currentCase.patientPhone && (
+                <a href={`tel:${currentCase.patientPhone}`} className="hover:text-teal-700 flex items-center gap-1 truncate text-[11px]">
+                  <Phone className="w-3 h-3 text-slate-400 shrink-0" />
+                  <span className="truncate">{currentCase.patientPhone}</span>
+                </a>
+              )}
+              {currentCase.patientEmail && (
+                <a href={`mailto:${currentCase.patientEmail}`} className="hover:text-teal-700 flex items-center gap-1 truncate text-[11px]">
+                  <Mail className="w-3 h-3 text-slate-400 shrink-0" />
+                  <span className="truncate">{currentCase.patientEmail}</span>
+                </a>
+              )}
+              {!currentCase.patientPhone && !currentCase.patientEmail && (
+                <span className="text-slate-400">{t('noContactData' as TranslationKey) || 'Keine Kontaktdaten hinterlegt'}</span>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
       {/* Main Split Layout */}
-      <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+      <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0">
         {/* Left Column: Patient Med List & Search Results (38% width) */}
         <div className="w-full md:w-[380px] lg:w-[420px] bg-white border-r border-slate-200 flex flex-col overflow-hidden shrink-0">
           {/* If there are search results, show them on top */}
@@ -440,28 +537,6 @@ export const MedicationResearchView: React.FC<MedicationResearchViewProps> = ({
                   ))}
                 </div>
               )}
-            </div>
-          )}
-
-          {/* Patient Case Selector Header if multiple cases exist */}
-          {allCases.length > 1 && onSelectCase && (
-            <div className="p-3 border-b border-slate-100 bg-slate-50/70">
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
-                {t('medPatientCaseSelector' as TranslationKey) || 'Patient / Fall wechseln'}
-              </label>
-              <select
-                value={currentCase.id}
-                onChange={(e) => onSelectCase(e.target.value)}
-                className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-800 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-teal-600"
-              >
-                {allCases.map(c => (
-                  <option key={c.id} value={c.id}>
-                    {c.patientName || t('medCaseWithoutName' as TranslationKey) || 'Fall ohne Namen'}
-                    {' — '}
-                    {t('medCaseMedsCount' as TranslationKey, { count: c.medikamenteList?.length || 0 })}
-                  </option>
-                ))}
-              </select>
             </div>
           )}
 
@@ -663,7 +738,11 @@ export const MedicationResearchView: React.FC<MedicationResearchViewProps> = ({
                   <div className="py-12 px-4 flex flex-col items-center justify-center">
                     <div className="w-full max-w-md p-6 sm:p-8 bg-white rounded-2xl border border-slate-200/80 shadow-xs text-center animate-in fade-in-50 duration-200">
                       <div className="w-12 h-12 rounded-2xl bg-teal-50 border border-teal-100 flex items-center justify-center mx-auto mb-4 text-teal-600 shadow-2xs">
-                        <Loader2 className="w-6 h-6 animate-spin text-teal-600" />
+                        {loadProgress >= 100 ? (
+                          <CheckCircle2 className="w-6 h-6 text-emerald-600 animate-in zoom-in-50 duration-200" />
+                        ) : (
+                          <Loader2 className="w-6 h-6 animate-spin text-teal-600" />
+                        )}
                       </div>
 
                       <h4 className="text-sm font-bold text-slate-800 mb-1 truncate px-2">
@@ -671,23 +750,43 @@ export const MedicationResearchView: React.FC<MedicationResearchViewProps> = ({
                       </h4>
 
                       <p className="text-xs font-medium text-slate-600 min-h-[34px] flex items-center justify-center px-2 mb-4 transition-all duration-300">
-                        {loadProgress >= 90
+                        {loadProgress >= 100
+                          ? (t('medLoadingComplete' as TranslationKey) || 'Fachinformation vollständig geladen')
+                          : loadProgress >= 90
                           ? (t('medDataCollectedAssembling' as TranslationKey) || 'Alle Daten gesammelt, werden nun zusammengestellt...')
-                          : (t('medLoadingProgress' as TranslationKey) || 'Fachinformation wird geladen & analysiert...')}
+                          : loadProgress >= 75
+                          ? (t('medLoadingInteractions' as TranslationKey) || 'Wechselwirkungen & Gegenanzeigen prüfen...')
+                          : loadProgress >= 50
+                          ? (t('medLoadingPharmacology' as TranslationKey) || 'Pharmakologische Parameter & Dosierungen analysieren...')
+                          : loadProgress >= 25
+                          ? (t('medLoadingAuthorityData' as TranslationKey) || 'Behördliche Monographien (BfArM / EMA) werden abgerufen...')
+                          : (t('medLoadingDbInit' as TranslationKey) || 'Fachdatenbank wird initialisiert & durchsucht...')}
                       </p>
 
-                      {/* Ladebalken */}
+                      {/* Ladebalken with continuous motion and shimmer */}
                       <div className="space-y-1.5">
-                        <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200 p-0.5">
+                        <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200 p-0.5 relative">
                           <div
-                            className="h-full bg-gradient-to-r from-teal-500 to-teal-600 rounded-full transition-all duration-200 ease-out"
-                            style={{ width: `${Math.min(100, Math.max(loadProgress, 8))}%` }}
-                          />
+                            className="h-full bg-gradient-to-r from-teal-500 to-teal-600 rounded-full transition-all duration-150 ease-out relative overflow-hidden"
+                            style={{ width: `${Math.min(100, Math.max(loadProgress, 6))}%` }}
+                          >
+                            <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/40 to-transparent animate-progress-shimmer" />
+                          </div>
                         </div>
                         <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono px-0.5">
                           <span>{Math.min(100, Math.round(loadProgress))}%</span>
-                          <span className="text-[10px] text-slate-500 font-sans">
-                            {loadProgress >= 90 ? '✓ ' + (t('medStatusOnline' as TranslationKey) || 'online') : '...'}
+                          <span className="text-[10px] text-slate-500 font-sans flex items-center gap-1">
+                            {loadProgress >= 100 ? (
+                              <span className="text-emerald-600 font-semibold flex items-center gap-1">
+                                <CheckCircle2 className="w-3 h-3" />
+                                <span>{t('saved' as TranslationKey) || 'Bereit'}</span>
+                              </span>
+                            ) : (
+                              <>
+                                <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse" />
+                                <span>{t('medStatusOnline' as TranslationKey) || 'online...'}</span>
+                              </>
+                            )}
                           </span>
                         </div>
                       </div>

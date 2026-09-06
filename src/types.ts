@@ -76,6 +76,7 @@ export interface PatientChild {
   id: string;
   name: string;
   age?: number;
+  birthDate?: string;
   gender?: 'weiblich' | 'männlich' | 'divers';
 }
 
@@ -200,6 +201,7 @@ export interface PatientCase {
   // Erste Medikation & Verlaufskontrollen
   initialPrescription?: InitialPrescription;
   followUps?: FollowUpEntry[];
+  updatedAt?: string;
 }
 
 export interface TherapyRemedyItem {

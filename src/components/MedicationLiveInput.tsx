@@ -21,7 +21,10 @@ import {
   X,
   Database,
   CheckCircle2,
-  PackageCheck
+  PackageCheck,
+  Check,
+  Pencil,
+  Info
 } from 'lucide-react';
 import { TranslationKey } from '../i18n/translations';
 import { useLanguage } from '../i18n/LanguageContext';
@@ -32,6 +35,7 @@ export interface MedicationData {
   name: string;
   dosierung: string;
   einnahmeart: string;
+  isSaved?: boolean;
   grund?: string;
   wirkstoff?: string;
   kategorie?: string;
@@ -56,6 +60,7 @@ interface MedicationLiveInputProps {
   onRemove: () => void;
   t: (key: TranslationKey | any) => string;
   showResearchDetails?: boolean;
+  onSaveItem?: (updated: MedicationData) => void;
 }
 
 export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
@@ -64,7 +69,8 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
   onChange,
   onRemove,
   t,
-  showResearchDetails = false
+  showResearchDetails = false,
+  onSaveItem
 }) => {
   const { language } = useLanguage();
   const [query, setQuery] = useState(med.name || '');
@@ -158,7 +164,7 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
     }
 
     if (val.trim().length >= 1) {
-      onChange({ ...med, name: val });
+      onChange({ ...med, name: val, isSaved: false });
       setIsSearching(true);
       searchTimeoutRef.current = setTimeout(() => {
         executeSearch(val, false);
@@ -172,6 +178,7 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
       onChange({
         ...med,
         name: '',
+        isSaved: false,
         wirkstoff: undefined,
         kategorie: undefined,
         packungsgroessen: undefined,
@@ -207,6 +214,7 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
       name: suggestion.name,
       dosierung: newDosage,
       einnahmeart: newIntake,
+      isSaved: false,
       wirkstoff: suggestion.activeSubstance || '',
       kategorie: suggestion.category || '',
       packungsgroessen: suggestion.packageSizes,
@@ -236,6 +244,7 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
               name: suggestion.name,
               dosierung: med.dosierung || newDosage,
               einnahmeart: med.einnahmeart || '',
+              isSaved: false,
               wirkstoff: fullDetails.activeSubstance || suggestion.activeSubstance || '',
               kategorie: fullDetails.category || suggestion.category || '',
               packungsgroessen: fullDetails.packageSizes || suggestion.packageSizes,
@@ -335,20 +344,57 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
     warnings
   );
 
+  const isSaved = med.isSaved !== undefined ? med.isSaved : Boolean(med.name?.trim());
+  const isComplete = Boolean(med.name?.trim() && med.dosierung?.trim() && med.einnahmeart?.trim());
+
+  const handleSaveThisMedication = () => {
+    const savedMed: MedicationData = {
+      ...med,
+      isSaved: true
+    };
+    onChange(savedMed);
+    onSaveItem?.(savedMed);
+  };
+
+  const inputBorderClasses = !isSaved
+    ? "border-emerald-300 focus:ring-emerald-500/20 focus:border-emerald-600 bg-white"
+    : "border-slate-300 focus:ring-teal-500/20 focus:border-teal-600 bg-white";
+
   return (
-    <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-2xs space-y-3.5 relative group transition-all duration-200 hover:border-teal-300">
+    <div
+      className={`p-4 rounded-2xl border-2 space-y-3.5 relative group transition-all duration-200 ${
+        !isSaved
+          ? "bg-emerald-50/50 border-emerald-400/90 shadow-sm"
+          : "bg-white border-slate-200 shadow-2xs hover:border-teal-300"
+      }`}
+    >
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold font-mono">
+          <span
+            className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold font-mono transition-colors ${
+              !isSaved
+                ? "bg-emerald-600 text-white shadow-2xs"
+                : "bg-emerald-100 text-emerald-800"
+            }`}
+          >
             {index + 1}
           </span>
           <span className="text-xs font-bold text-slate-800">
             {t('medication' as TranslationKey) || 'Medikament'}
           </span>
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-teal-50 text-[11px] font-semibold text-teal-700 border border-teal-200/80 shadow-2xs">
-            <Database className="w-3 h-3 text-teal-600" />
-            <span>{t('medStepDbMatch' as TranslationKey) || 'Geprüfte Praxisdatenbank (BfArM / EMA)'}</span>
-          </span>
+
+          {!isSaved ? (
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-100 text-[10px] font-bold text-emerald-900 border border-emerald-300 shadow-2xs">
+              <Pencil className="w-2.5 h-2.5 text-emerald-700" />
+              <span>{t('medStatusInEditing' as TranslationKey) || 'Wird bearbeitet / Neu'}</span>
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 text-[10px] font-semibold text-slate-700 border border-slate-200 shadow-2xs">
+              <Check className="w-2.5 h-2.5 text-emerald-600" />
+              <span>{t('medStatusSaved' as TranslationKey) || 'Gespeichert'}</span>
+            </span>
+          )}
+
           {isAuthorityResearched && (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-[10px] font-semibold text-blue-700 border border-blue-200/80 shadow-2xs">
               <CheckCircle2 className="w-2.5 h-2.5 text-blue-600" />
@@ -399,7 +445,7 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
                   }
                 }
               }}
-              className="w-full pl-8 pr-12 py-2 border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 transition-shadow"
+              className={`w-full pl-8 pr-12 py-2 border rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 transition-shadow ${inputBorderClasses}`}
             />
             <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
             <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
@@ -543,8 +589,8 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
             type="text"
             placeholder={t('medDosagePlaceholder' as TranslationKey) || "z.B. 400 mg"}
             value={med.dosierung || ''}
-            onChange={(e) => onChange({ ...med, dosierung: e.target.value })}
-            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 transition-shadow"
+            onChange={(e) => onChange({ ...med, dosierung: e.target.value, isSaved: false })}
+            className={`w-full px-3 py-2 border rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 transition-shadow ${inputBorderClasses}`}
           />
 
           {/* Quick Dosage Badges */}
@@ -563,7 +609,7 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
                   <button
                     key={dIdx}
                     type="button"
-                    onClick={() => onChange({ ...med, dosierung: d })}
+                    onClick={() => onChange({ ...med, dosierung: d, isSaved: false })}
                     className={`text-[10px] px-1.5 py-0.5 rounded font-semibold transition-colors cursor-pointer ${
                       med.dosierung === d
                         ? 'bg-teal-600 text-white'
@@ -634,7 +680,7 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
                           type="button"
                           onClick={() => {
                             const next = Math.max(1, curCount - 1);
-                            onChange({ ...med, einnahmeart: formatFrequency(next) });
+                            onChange({ ...med, einnahmeart: formatFrequency(next), isSaved: false });
                           }}
                           className="px-1.5 py-0.5 hover:bg-slate-100 text-slate-700 font-bold border-r border-slate-200 cursor-pointer select-none text-[11px] transition-colors"
                           title="-"
@@ -648,7 +694,7 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
                           type="button"
                           onClick={() => {
                             const next = numMatch ? Math.min(12, curCount + 1) : 2;
-                            onChange({ ...med, einnahmeart: formatFrequency(next) });
+                            onChange({ ...med, einnahmeart: formatFrequency(next), isSaved: false });
                           }}
                           className="px-1.5 py-0.5 hover:bg-slate-100 text-slate-700 font-bold border-l border-slate-200 cursor-pointer select-none text-[11px] transition-colors"
                           title="+"
@@ -659,7 +705,7 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
                       <button
                         type="button"
                         onClick={() => {
-                          onChange({ ...med, einnahmeart: formatFrequency(curCount) });
+                          onChange({ ...med, einnahmeart: formatFrequency(curCount), isSaved: false });
                         }}
                         className="font-medium text-slate-700 hover:text-slate-900 cursor-pointer text-[11px] select-none px-0.5"
                       >
@@ -670,7 +716,7 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
                     {/* Bei Bedarf */}
                     <button
                       type="button"
-                      onClick={() => onChange({ ...med, einnahmeart: asNeededLabel })}
+                      onClick={() => onChange({ ...med, einnahmeart: asNeededLabel, isSaved: false })}
                       className={`text-[11px] px-2 py-0.5 rounded-md font-medium transition-colors cursor-pointer border ${
                         isAsNeededSelected
                           ? 'bg-slate-100 text-slate-900 border-slate-400 font-semibold shadow-2xs'
@@ -686,14 +732,42 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
                   type="text"
                   placeholder={t('medIntakePlaceholder' as TranslationKey) || "z.B. 1-2x täglich, bei Bedarf"}
                   value={med.einnahmeart || ''}
-                  onChange={(e) => onChange({ ...med, einnahmeart: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 transition-shadow"
+                  onChange={(e) => onChange({ ...med, einnahmeart: e.target.value, isSaved: false })}
+                  className={`w-full px-3 py-2 border rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 transition-shadow ${inputBorderClasses}`}
                 />
               </>
             );
           })()}
         </div>
       </div>
+
+      {/* Save Button & Status Row when !isSaved */}
+      {!isSaved && (
+        <div className="pt-2.5 border-t border-emerald-200/90 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in duration-200">
+          {isComplete ? (
+            <>
+              <div className="flex items-center gap-2 text-xs text-emerald-950 font-semibold">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>{t('allFieldsFilledReadyToSave' as TranslationKey) || 'Alle Felder ausgefüllt – bereit zum Speichern'}</span>
+              </div>
+              <button
+                type="button"
+                id={`btn-save-medication-${index}`}
+                onClick={handleSaveThisMedication}
+                className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 active:bg-emerald-900 text-white text-xs font-bold rounded-xl shadow-xs hover:shadow transition-all flex items-center justify-center gap-2 cursor-pointer shrink-0"
+              >
+                <Check className="w-4 h-4" />
+                <span>{t('saveMedicationEntry' as TranslationKey) || 'Medikament speichern'}</span>
+              </button>
+            </>
+          ) : (
+            <div className="flex items-center gap-2 text-[11px] text-emerald-900/80 font-medium">
+              <Info className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              <span>{t('fillAllFieldsToSave' as TranslationKey) || 'Bitte Medikament, Dosierung und Einnahmeart ausfüllen zum Speichern'}</span>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Internet Research Toggle & Profile Bar (only shown when showResearchDetails=true, hidden in quick entry popup) */}
       {showResearchDetails && (hasResearchData || (hasValidName && med.name)) && (
