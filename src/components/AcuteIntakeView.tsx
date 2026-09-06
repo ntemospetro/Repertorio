@@ -78,7 +78,7 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
   // Quick Intake & Voice State
   const [symptomText, setSymptomText] = useState('');
   const [isRecording, setIsRecording] = useState(false);
-  const [recordSecondsLeft, setRecordSecondsLeft] = useState(15);
+  const [recordSecondsLeft, setRecordSecondsLeft] = useState(60);
   const [recommendations, setRecommendations] = useState<SymptomMatchResult[]>([]);
   const [isSpeechSupported, setIsSpeechSupported] = useState(true);
   const [copySuccess, setCopySuccess] = useState<string | null>(null);
@@ -108,7 +108,7 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
   // Gating State: Differential analysis completed and answers applied
   const [isClarificationApplied, setIsClarificationApplied] = useState<boolean>(false);
 
-  // Hahnemann Organon §§ 81-104 Evaluation State (transferred from wizard)
+  // Hahnemann Organon §§ 83-104 Evaluation State (transferred from wizard)
   const [hahnemannData, setHahnemannData] = useState<{
     matrix: Hahnemann6Pillars;
     summaryText: string;
@@ -170,8 +170,14 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
           const matrix = hahnemannData.matrix;
           const rationale = existingRec?.clinicalRationale || 
             (idx === 0 
-              ? `${found.latinName} entspricht nach Hahnemann (Organon §§ 81–104) exakt der Symptomgesamtheit: Causa (${matrix.causa || 'akut'}), Lokalisation (${matrix.lokalisierung || 'spezifisch'}), Sensation (${matrix.empfindung || 'charakteristisch'}) und Modalitäten (${matrix.modalitaeten || 'prägnant'}).`
-              : `Wichtige Simile-Alternative im Differenzialvergleich: Hohe Relevanz bezüglich Auslöser und Schmerzsymptomatik, Differenzierung über Begleitsymptome und Modalitäten.`);
+              ? t('hahnemannSimileMatchesTotality', {
+                  name: found.latinName,
+                  causa: matrix.causa || 'akut',
+                  lokalisierung: matrix.lokalisierung || 'spezifisch',
+                  empfindung: matrix.empfindung || 'charakteristisch',
+                  modalitaeten: matrix.modalitaeten || 'prägnant'
+                })
+              : t('hahnemannDiffAlternativeNote'));
 
           const matchResult: SymptomMatchResult = {
             remedy: found,
@@ -182,7 +188,7 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
             matchedModalities: existingRec?.matchedModalities || [found.modalitiesBetter[0], found.modalitiesWorse[0]].filter(Boolean),
             clinicalRationale: rationale,
             differentialNote: idx > 0 
-              ? (existingRec?.differentialNote || `Gegenüber ${hahnemannData.differentialRemedies[0]}: Besondere Beachtung von Reaktivität, Durstverhalten und Gemütslage.`)
+              ? (existingRec?.differentialNote || t('hahnemannDiffVersusPrimaryNote', { primary: hahnemannData.differentialRemedies[0] || '' }))
               : undefined,
             isPrimarySimile: idx === 0,
           };
@@ -468,7 +474,7 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
     };
   }, []);
 
-  // Handle Speech Recording (15s Max for Acute Focus)
+  // Handle Speech Recording (60s Max for Acute Focus)
   const startVoiceRecording = () => {
     if (isRecording) {
       stopVoiceRecording();
@@ -623,7 +629,7 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
                   </div>
                 </div>
 
-                {/* 15s Timer Display */}
+                {/* 60s Timer Display */}
                 <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-mono font-bold ${
                   isRecording 
                     ? 'bg-rose-50 border-rose-200 text-rose-700 animate-pulse' 
@@ -645,7 +651,7 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
                   </div>
                   <div className="flex justify-between text-[10px] text-slate-400 font-semibold">
                     <span>{t('voiceRecordingStatus')}</span>
-                    <span>{recordSecondsLeft}s / 60s</span>
+                    <span>{t('voiceMaxSeconds')}</span>
                   </div>
                 </div>
               )}
@@ -762,7 +768,7 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
                 )}
               </div>
 
-              {/* Hahnemann Organon §§ 81-104 Anamnesis Launch or Completed Banner */}
+              {/* Hahnemann Organon §§ 83-104 Anamnesis Launch or Completed Banner */}
               {!hahnemannData ? (
                 <button
                   type="button"
@@ -831,7 +837,7 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
             </div>
           </div>
 
-          {/* Clinical factors integrated confirmation bar / Hahnemann Organon §§ 81-104 Auswertung */}
+          {/* Clinical factors integrated confirmation bar / Hahnemann Organon §§ 83-104 Auswertung */}
           {hahnemannData ? (
             <div className="bg-teal-50/70 border border-teal-200/80 rounded-xl p-3.5 space-y-2 text-xs">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -855,13 +861,13 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
               <div className="flex flex-wrap items-center gap-1.5 pt-1">
                 {hahnemannData.matrix.causa && (
                   <span className="inline-flex items-center gap-1 bg-white border border-slate-200 px-2.5 py-1 rounded-lg text-[11px] text-slate-800 shadow-2xs font-medium">
-                    <span className="font-bold text-blue-700 text-[10px] uppercase">Causa:</span>
+                    <span className="font-bold text-blue-700 text-[10px] uppercase">{t('hahnemannPillarShortCausa')}:</span>
                     <span className="truncate max-w-[220px]">{hahnemannData.matrix.causa}</span>
                   </span>
                 )}
                 {hahnemannData.matrix.lokalisierung && (
                   <span className="inline-flex items-center gap-1 bg-white border border-slate-200 px-2.5 py-1 rounded-lg text-[11px] text-slate-800 shadow-2xs font-medium">
-                    <span className="font-bold text-teal-700 text-[10px] uppercase">Lokalisation:</span>
+                    <span className="font-bold text-teal-700 text-[10px] uppercase">{t('hahnemannPillarShortLokalisation')}:</span>
                     <span className="truncate max-w-[220px]">{hahnemannData.matrix.lokalisierung}</span>
                     {hahnemannData.matrix.strahlungsoptionen && (
                       <span className="text-slate-500 text-[10px]">({hahnemannData.matrix.strahlungsoptionen})</span>
@@ -870,25 +876,25 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
                 )}
                 {hahnemannData.matrix.empfindung && (
                   <span className="inline-flex items-center gap-1 bg-white border border-slate-200 px-2.5 py-1 rounded-lg text-[11px] text-slate-800 shadow-2xs font-medium">
-                    <span className="font-bold text-rose-700 text-[10px] uppercase">Sensation:</span>
+                    <span className="font-bold text-rose-700 text-[10px] uppercase">{t('hahnemannPillarShortSensation')}:</span>
                     <span className="truncate max-w-[220px]">{hahnemannData.matrix.empfindung}</span>
                   </span>
                 )}
                 {hahnemannData.matrix.modalitaeten && (
                   <span className="inline-flex items-center gap-1 bg-white border border-slate-200 px-2.5 py-1 rounded-lg text-[11px] text-slate-800 shadow-2xs font-medium">
-                    <span className="font-bold text-purple-700 text-[10px] uppercase">Modalitäten:</span>
+                    <span className="font-bold text-purple-700 text-[10px] uppercase">{t('hahnemannPillarShortModalitaeten')}:</span>
                     <span className="truncate max-w-[220px]">{hahnemannData.matrix.modalitaeten}</span>
                   </span>
                 )}
                 {hahnemannData.matrix.gemuet && (
                   <span className="inline-flex items-center gap-1 bg-white border border-slate-200 px-2.5 py-1 rounded-lg text-[11px] text-slate-800 shadow-2xs font-medium">
-                    <span className="font-bold text-indigo-700 text-[10px] uppercase">Gemüt:</span>
+                    <span className="font-bold text-indigo-700 text-[10px] uppercase">{t('hahnemannPillarShortGemuet')}:</span>
                     <span className="truncate max-w-[220px]">{hahnemannData.matrix.gemuet}</span>
                   </span>
                 )}
                 {hahnemannData.matrix.begleitsymptome && hahnemannData.matrix.begleitsymptome.length > 0 && (
                   <span className="inline-flex items-center gap-1 bg-white border border-slate-200 px-2.5 py-1 rounded-lg text-[11px] text-slate-800 shadow-2xs font-medium">
-                    <span className="font-bold text-amber-700 text-[10px] uppercase">Begleit:</span>
+                    <span className="font-bold text-amber-700 text-[10px] uppercase">{t('hahnemannPillarShortBegleit')}:</span>
                     <span className="truncate max-w-[220px]">{hahnemannData.matrix.begleitsymptome.join(', ')}</span>
                   </span>
                 )}
@@ -1254,7 +1260,7 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
         />
       )}
 
-      {/* Homoeopathic In-Depth Wizard Modal (Hahnemann Organon §§ 81–104) */}
+      {/* Homoeopathic In-Depth Wizard Modal (Hahnemann Organon §§ 83–104) */}
       <ComplaintQuestionsWizardModal
         isOpen={isHahnemannWizardOpen}
         onClose={() => setIsHahnemannWizardOpen(false)}
@@ -1277,7 +1283,7 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
           }));
 
           if (data.summaryText) {
-            setSymptomText(prev => prev ? `${prev}\n\n[Hahnemann Organon §§ 81–104]\n${data.summaryText}` : data.summaryText);
+            setSymptomText(prev => prev ? `${prev}\n\n[${t('hahnemannOrganonTitle')}]\n${data.summaryText}` : data.summaryText);
           }
         }}
       />

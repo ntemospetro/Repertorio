@@ -90,12 +90,681 @@ export async function runHahnemannAnalysis(
     console.warn('Network error reaching /api/hahnemann-analysis, using local logic engine:', err);
   }
 
-  // Fallback to local rule engine adhering strictly to Organon §§ 81-104
+  // Fallback to local rule engine adhering strictly to Organon §§ 83–104
   return evaluateHahnemannLocally(trimmed, currentMatrix, conversationHistory, language, forceComplete, caseType);
 }
 
+interface LocalizedQuestionData {
+  rationale: string;
+  question: string;
+  options: string[];
+}
+
+const LOCALIZED_QUESTIONS: Record<string, Record<string, LocalizedQuestionData>> = {
+  causality: {
+    de: {
+      rationale: 'Mehrere Beschwerden angegeben. Nach Hahnemann muss zuerst geprüft werden, ob ein ursächlicher Zusammenhang (z. B. derselbe Infekt) besteht, um sie als zusammenhängenden Komplex zu erfassen.',
+      question: 'Besteht zwischen Ihren angegebenen Beschwerden ein ursächlicher Zusammenhang (z. B. durch denselben Infekt, Auslöser oder Beginn)?',
+      options: [
+        'Ja, beide Beschwerden entstanden zeitgleich durch denselben Infekt / Auslöser (Symptomkomplex)',
+        'Nein, es handelt sich um zwei voneinander unabhängige Beschwerden',
+        'Die zweite Beschwerde trat nacheinander als Folge der Erstbeschwerde auf',
+        'Zusammenhang noch unklar / wird separat beobachtet'
+      ]
+    },
+    en: {
+      rationale: 'Multiple complaints reported. According to Hahnemann, a causal connection must first be verified to assess whether they form a coherent symptom complex.',
+      question: 'Is there a causal connection between your stated complaints (e.g. from the same infection, trigger, or simultaneous onset)?',
+      options: [
+        'Yes, both complaints arose simultaneously from the same infection / trigger (symptom complex)',
+        'No, they are two independent complaints',
+        'The second complaint developed consecutively as a consequence of the first',
+        'Connection still unclear / being observed separately'
+      ]
+    },
+    es: {
+      rationale: 'Múltiples síntomas informados. Según Hahnemann, primero debe verificarse si existe una conexión causal para abordarlos como un complejo sintomático.',
+      question: '¿Existe una conexión causal entre los síntomas indicados (p. ej., misma infección, desencadenante o inicio simultáneo)?',
+      options: [
+        'Sí, ambos síntomas surgieron al mismo tiempo por la misma causa/infección (complejo sintomático)',
+        'No, se trata de dos dolencias independientes',
+        'El segundo síntoma apareció consecutivamente como consecuencia del primero',
+        'Relación aún incierta / se observa por separado'
+      ]
+    },
+    fr: {
+      rationale: 'Plusieurs plaintes signalées. Selon Hahnemann, un lien de causalité doit d\'abord être examiné pour les appréhender comme un ensemble cohérent.',
+      question: 'Existe-t-il un lien de causalité entre vos troubles signalés (par ex. même infection, déclencheur ou début simultané) ?',
+      options: [
+        'Oui, les deux troubles sont apparus simultanément suite au même déclencheur (complexe de symptômes)',
+        'Non, il s\'agit de deux affections indépendantes',
+        'Le second trouble est apparu consécutivement comme suite du premier',
+        'Lien encore indéterminé / observé séparément'
+      ]
+    },
+    it: {
+      rationale: 'Segnalati più disturbi. Secondo Hahnemann, occorre verificare prima se esiste un nesso causale per valutarli come complesso sintomatico.',
+      question: 'Esiste un nesso causale tra i disturbi riferiti (es. stessa infezione, fattore scatenante o inizio simultaneo)?',
+      options: [
+        'Sì, entrambi i disturbi sono insorti contemporaneamente dallo stesso fattore (complesso sintomatico)',
+        'No, si tratta di due disturbi reciprocamente indipendenti',
+        'Il secondo disturbo è comparso successivamente come conseguenza del primo',
+        'Nesso non ancora chiaro / da osservare separatamente'
+      ]
+    },
+    el: {
+      rationale: 'Αναφέρθηκαν πολλαπλά ενοχλήματα. Κατά τον Χάνεμαν πρέπει πρώτα να εξακριβωθεί αν υπάρχει αιτιώδης συνάφεια.',
+      question: 'Υπάρχει αιτιώδης συνάφεια μεταξύ των ενοχλημάτων (π.χ. ίδια λοίμωξη, έναυσμα ή ταυτόχρονη έναρξη);',
+      options: [
+        'Ναι, και τα δύο ενοχλήματα προέκυψαν ταυτόχρονα από το ίδιο αίτιο (σύμπλεγμα συμπτωμάτων)',
+        'Όχι, πρόκειται για δύο ανεξάρτητες ενοχλήσεις',
+        'Το δεύτερο ενόχλημα εμφανίστηκε διαδοχικά ως επακόλουθο του πρώτου',
+        'Η συνάφεια παραμένει ασαφής / παρακολουθείται χωριστά'
+      ]
+    },
+    ru: {
+      rationale: 'Указано несколько жалоб. По Ганеману сначала необходимо проверить наличие причинно-следственной связи.',
+      question: 'Существует ли причинная связь между жалобами (например, одна инфекция, триггер или одновременное начало)?',
+      options: [
+        'Да, обе жалобы возникли одновременно от одного триггера/инфекции (симптомокомплекс)',
+        'Нет, это две независимые жалобы',
+        'Вторая жалоба возникла последовательно как следствие первой',
+        'Связь пока не ясна / наблюдается отдельно'
+      ]
+    }
+  },
+  chronicHistory: {
+    de: {
+      rationale: 'Chronischer Fall (§§ 83–98 Organon): Die umfassende Historie inklusive früherer Behandlungen, Unterdrückungen und Dauer muss erforscht werden.',
+      question: 'Wie lange bestehen diese chronischen Beschwerden bereits und welche früheren Behandlungen, Therapien oder Medikationen gab es?',
+      options: [
+        'Besteht seit vielen Monaten/Jahren mit wiederholten allopathischen Behandlungen',
+        'Tritt seit längerer Zeit chronisch-schubweise auf, bisher keine Dauermedikation',
+        'Folge einer früheren unterdrückten Erkrankung oder eines Hautausschlags',
+        'Erstmaliges Auftreten in dieser Form, keine Vorbehandlungen'
+      ]
+    },
+    en: {
+      rationale: 'Chronic case (§§ 83–98 Organon): Comprehensive history including prior treatments, suppressions, and duration must be investigated.',
+      question: 'How long have these chronic complaints existed and what previous treatments, therapies, or medications were used?',
+      options: [
+        'Has existed for many months/years with repeated conventional treatments',
+        'Occurs chronically in episodes over a long time, no long-term medication so far',
+        'Sequela of a previously suppressed illness or skin eruption',
+        'First occurrence in this presentation, no previous treatments'
+      ]
+    },
+    es: {
+      rationale: 'Caso crónico (§§ 83–98 Organon): Debe investigarse el historial completo incluyendo tratamientos previos y supresiones.',
+      question: '¿Cuánto tiempo llevan presentes estas dolencias crónicas y qué tratamientos o medicamentos previos ha recibido?',
+      options: [
+        'Presente desde hace meses/años con tratamientos convencionales repetidos',
+        'Aparece de forma crónica por brotes desde hace tiempo, sin medicación continuada',
+        'Consecuencia de una enfermedad o erupción cutánea suprimida en el pasado',
+        'Primera aparición de esta forma, sin tratamientos previos'
+      ]
+    },
+    fr: {
+      rationale: 'Cas chronique (§§ 83–98 Organon) : L\'historique complet incluant traitements antérieurs, suppressions et durée doit être exploré.',
+      question: 'Depuis combien de temps ces troubles chroniques persistent-ils et quels traitements ou médications antérieurs ont été suivis ?',
+      options: [
+        'Persiste depuis des mois/années avec traitements allopathiques répétés',
+        'Évolue par poussées chroniques depuis longtemps, aucun traitement continu',
+        'Suite d\'une maladie ou éruption cutanée précédemment supprimée',
+        'Première survenue sous cette forme, aucun traitement antérieur'
+      ]
+    },
+    it: {
+      rationale: 'Caso cronico (§§ 83–98 Organon): Occorre indagare la storia completa comprensiva di terapie pregresse e soppressioni.',
+      question: 'Da quanto tempo persistono questi disturbi cronici e quali terapie o farmaci precedenti sono stati assunti?',
+      options: [
+        'Presente da molti mesi/anni con ripetute cure convenzionali',
+        'Si manifesta a fasi croniche da lungo tempo, finora nessuna terapia continuativa',
+        'Conseguenza di una precedente malattia o eruzione cutanea soppressa',
+        'Prima manifestazione in questa forma, nessun trattamento pregresso'
+      ]
+    },
+    el: {
+      rationale: 'Χρόνια περίπτωση (§§ 83–98 Όργανον): Πρέπει να διερευνηθεί το πλήρες ιστορικό, προηγούμενες θεραπείες και καταστολές.',
+      question: 'Πόσο καιρό υφίστανται αυτά τα χρόνια ενοχλήματα και ποιες προηγούμενες θεραπείες ή αγωγές έχουν ληφθεί;',
+      options: [
+        'Υφίσταται εδώ και μήνες/χρόνια με επανειλημμένες συμβατικές αγωγές',
+        'Εμφανίζεται σε χρόνια διαστήματα εξάρσεων, χωρίς μόνιμη αγωγή έως τώρα',
+        'Επακόλουθο προηγούμενης κατασταλμένης νόσου ή δερματικού εξανθήματος',
+        'Πρώτη εμφάνιση με αυτή τη μορφή, χωρίς προηγούμενες θεραπείες'
+      ]
+    },
+    ru: {
+      rationale: 'Хронический случай (§§ 83–98 Органон): Необходим сбор полного анамнеза, включая предшествующее лечение и подавления.',
+      question: 'Как долго длятся эти хронические жалобы и какое лечение, терапия или лекарства применялись ранее?',
+      options: [
+        'Длится много месяцев/лет с неоднократным аллопатическим лечением',
+        'Проявляется приступами на протяжении длительного времени, без постоянной терапии',
+        'Следствие ранее подавленного заболевания или кожной сыпи',
+        'Впервые в такой форме, предшествующего лечения не было'
+      ]
+    }
+  },
+  causa: {
+    de: {
+      rationale: 'Causa (§ 99 Organon): Unmittelbarer Auslöser (Causa) und akuter Beginn müssen exakt erfasst werden.',
+      question: 'Gab es einen konkreten Auslöser oder Beginn für Ihre Beschwerden (z. B. kalte Luft/Wind, Durchnässung, Ärger, Schreck oder Überanstrengung)?',
+      options: [
+        'Kälteeinwirkung (kalter trockener Wind, Zugluft, Unterkühlung)',
+        'Durchnässung, Nässe oder Baden in kaltem Wasser',
+        'Plötzlicher Schreck, Schock oder akute Angst',
+        'Ärger, Zorn, Kränkung oder emotionaler Stress',
+        'Körperliche Überanstrengung oder Verheben',
+        'Kein spezifischer Auslöser erinnerlich / schleichender Beginn'
+      ]
+    },
+    en: {
+      rationale: 'Causa (§ 99 Organon): Immediate exciting cause (causa) and onset must be recorded accurately.',
+      question: 'Was there a specific trigger or onset for your complaints (e.g. cold dry wind, getting drenched, anger, fright, or overexertion)?',
+      options: [
+        'Exposure to cold (cold dry wind, drafts, chilling)',
+        'Getting drenched, wet weather, or bathing in cold water',
+        'Sudden fright, shock, or acute fear',
+        'Anger, vexation, mortification, or emotional stress',
+        'Physical overexertion or heavy lifting',
+        'No specific trigger recalled / gradual onset'
+      ]
+    },
+    es: {
+      rationale: 'Causa (§ 99 Organon): Debe registrarse con precisión el factor desencadenante y el inicio agudo.',
+      question: '¿Hubo un desencadenante o inicio concreto para sus síntomas (p. ej., viento frío, mojarse, enfado, susto o sobreesfuerzo)?',
+      options: [
+        'Exposición al frío (viento frío y seco, corrientes de aire, enfriamiento)',
+        'Mojarse por lluvia, humedad o baño en agua fría',
+        'Susto repentino, conmoción o miedo agudo',
+        'Enojo, ira, disgusto o estrés emocional',
+        'Sobreesfuerzo físico o levantar cargas pesadas',
+        'Sin desencadenante específico recordado / inicio paulatino'
+      ]
+    },
+    fr: {
+      rationale: 'Causa (§ 99 Organon) : La cause déclenchante immédiate et le début doivent être précisément identifiés.',
+      question: 'Y a-t-il eu un déclencheur ou un début précis pour vos troubles (par ex. vent froid, pluie, contrariété, frayeur ou surmenage) ?',
+      options: [
+        'Exposition au froid (vent froid et sec, courants d\'air, refroidissement)',
+        'Pluie, humidité ou bain en eau froide',
+        'Frayeur soudaine, choc ou anxiété aiguë',
+        'Colère, vexation, contrariété ou stress émotionnel',
+        'Surmenage physique ou port de charges lourdes',
+        'Aucun déclencheur précis identifié / début progressif'
+      ]
+    },
+    it: {
+      rationale: 'Causa (§ 99 Organon): Il fattore scatenante immediato e l\'inizio devono essere rilevati esattamente.',
+      question: 'C\'è stato un fattore scatenante o un inizio preciso per i disturbi (es. aria fredda/vento, bagnarsi, collera, spavento, sforzo)?',
+      options: [
+        'Esposizione al freddo (vento freddo e secco, correnti d\'aria, raffreddamento)',
+        'Bagnarsi, umidità o bagno in acqua fredda',
+        'Spavento improvviso, shock o paura acuta',
+        'Rabbia, collera, dispiacere o stress emotivo',
+        'Sovraffaticamento fisico o sollevamento pesi',
+        'Nessun fattore scatenante ricordato / inizio graduale'
+      ]
+    },
+    el: {
+      rationale: 'Causa (§ 99 Όργανον): Το άμεσο έναυσμα και η έναρξη πρέπει να καταγραφούν με ακρίβεια.',
+      question: 'Υπήρξε συγκεκριμένο έναυσμα για τα ενοχλήματά σας (π.χ. κρύος αέρας, βρέξιμο, θυμός, σοκ ή υπερκόπωση);',
+      options: [
+        'Έκθεση σε κρύο (κρύος ξηρός άνεμος, ρεύματα αέρα, υποθερμία)',
+        'Βρέξιμο, υγρασία ή μπάνιο σε παγωμένο νερό',
+        'Ξαφνικός φόβος, σοκ ή έντονη τρομάρα',
+        'Θυμός, οργή, προσβολή ή συναισθηματικό στρες',
+        'Σωματική καταπόνηση ή άρση βάρους',
+        'Χωρίς συγκεκριμένο έναυσμα / σταδιακή έναρξη'
+      ]
+    },
+    ru: {
+      rationale: 'Causa (§ 99 Органон): Непосредственный пусковой фактор (Causa) и начало должны быть точно зафиксированы.',
+      question: 'Был ли конкретный пусковой фактор (например, холодный сухой ветер, промокание, гнев, испуг или перенапряжение)?',
+      options: [
+        'Воздействие холода (холодный сухой ветер, сквозняк, переохлаждение)',
+        'Промокание, сырость или купание в холодной воде',
+        'Внезапный испуг, шок или острый страх',
+        'Гнев, досада, обида или эмоциональный стресс',
+        'Физическое перенапряжение или поднятие тяжестей',
+        'Без конкретного пускового фактора / постепенное начало'
+      ]
+    }
+  },
+  lokalisierung: {
+    de: {
+      rationale: 'Lokalisation (Ort und Strahlungsoptionen): Der genaue anatomische Sitz und etwaige Ausstrahlungen müssen erfasst werden.',
+      question: 'Wo genau manifestieren sich die Beschwerden – und strahlen sie in andere Körperregionen aus?',
+      options: [
+        'Kopf / Stirn / Schläfen mit Ausstrahlung in den Nacken',
+        'Hals / Rachen / Mandeln mit Ausstrahlung in die Ohren',
+        'Brustkorb / Lunge / Bronchien',
+        'Magen-Darm-Trakt / Oberbauch mit Ausstrahlung in den Rücken',
+        'Bewegungsapparat / Gelenke / Glieder',
+        'Ganzkörperlich / Systemisch (Fieber, Frösteln)'
+      ]
+    },
+    en: {
+      rationale: 'Localization (Seat and Radiation): Exact anatomical seat and radiations must be established.',
+      question: 'Where exactly do the symptoms manifest – and do they radiate to other body regions?',
+      options: [
+        'Head / forehead / temples radiating to the neck',
+        'Throat / pharynx / tonsils radiating to the ears',
+        'Chest / lungs / bronchi',
+        'Gastrointestinal tract / upper abdomen radiating to the back',
+        'Locomotor system / joints / limbs',
+        'Whole body / systemic (fever, chills)'
+      ]
+    },
+    es: {
+      rationale: 'Localización: Debe determinarse la sede anatómica exacta y posibles irradiaciones.',
+      question: '¿Dónde se localizan exactamente las molestias y hacia qué regiones irradian?',
+      options: [
+        'Cabeza / frente / sienes con irradiación hacia la nuca',
+        'Garganta / faringe / amígdalas con irradiación hacia los oídos',
+        'Tórax / pulmones / bronquios',
+        'Aparato digestivo / abdomen superior con irradiación hacia la espalda',
+        'Aparato locomotor / articulaciones / extremidades',
+        'Todo el cuerpo / sistémico (fiebre, escalofríos)'
+      ]
+    },
+    fr: {
+      rationale: 'Localisation : Le siège anatomique précis et les irradiations éventuelles doivent être établis.',
+      question: 'Où se situent exactement les troubles et irradient-ils vers d\'autres régions du corps ?',
+      options: [
+        'Tête / front / tempes irradiant vers la nuque',
+        'Gorge / pharynx / amygdales irradiant vers les oreilles',
+        'Poitrine / poumons / bronches',
+        'Tractus gastro-intestinal / épigastre irradiant vers le dos',
+        'Appareil locomoteur / articulations / membres',
+        'Tout le corps / systémique (fièvre, frissons)'
+      ]
+    },
+    it: {
+      rationale: 'Localizzazione: Devono essere rilevate la sede anatomica esatta e le eventuali irradiazioni.',
+      question: 'Dove si manifestano esattamente i disturbi e si irradiano verso altre parti del corpo?',
+      options: [
+        'Testa / fronte / tempie con irradiazione alla nuca',
+        'Gola / faringe / tonsille con irradiazione alle orecchie',
+        'Torace / polmoni / bronchi',
+        'Apparato digerente / addome con irradiazione alla schiena',
+        'Apparato locomotore / articolazioni / arti',
+        'Tutto il corpo / sistemico (febbre, brividi)'
+      ]
+    },
+    el: {
+      rationale: 'Εντόπιση: Πρέπει να καθοριστεί η ακριβής ανατομική θέση και πιθανές αντανακλάσεις.',
+      question: 'Πού ακριβώς εντοπίζονται τα ενοχλήματα και αντανακλούν σε άλλες περιοχές του σώματος;',
+      options: [
+        'Κεφάλι / μέτωπο / κρόταφοι με αντανάκλαση στον αυχένα',
+        'Λαιμός / φάρυγγας / αμυγδαλές με αντανάκλαση στα αυτιά',
+        'Θώρακας / πνεύμονες / βρόγχοι',
+        'Γαστρεντερικό σύστημα / επιγάστριο με αντανάκλαση στην πλάτη',
+        'Μυοσκελετικό σύστημα / αρθρώσεις / άκρα',
+        'Ολόκληρο το σώμα / συστηματικά (πυρετός, ρίγη)'
+      ]
+    },
+    ru: {
+      rationale: 'Локализация: Необходимо выявить точное анатомическое расположение и иррадиацию.',
+      question: 'Где именно локализуются симптомы и отдают ли они в другие части тела?',
+      options: [
+        'Голова / лоб / виски с иррадиацией в затылок и шею',
+        'Горло / глотка / миндалины с иррадиацией в уши',
+        'Грудная клетка / легкие / бронхи',
+        'Желудочно-кишечный тракт / живот с иррадиацией в спину',
+        'Опорно-двигательный аппарат / суставы / конечности',
+        'Все тело / системно (жар, озноб)'
+      ]
+    }
+  },
+  empfindung: {
+    de: {
+      rationale: 'Sensation (Qualität der Beschwerde): Nach Hahnemann und Bönninghausen ist die Schmerz- bzw. Missempfindungsqualität entscheidend.',
+      question: 'Wie fühlt sich die Beschwerde für Sie an – welche Schmerz- oder Empfindungsqualität beschreibt es am besten?',
+      options: [
+        'Klopfend, hämmernd und pulsierend (Belladonna)',
+        'Stechend bei jeder geringsten Bewegung oder Einatmung (Bryonia)',
+        'Dumpf, drückend oder wie eine schwere Last/Band um den Kopf (Gelsemium)',
+        'Wie zerschlagen, wund in allen Gliedern (Eupatorium / Arnica)',
+        'Brennende Hitze mit Ruhelosigkeit (Aconitum / Arsenicum)',
+        'Ziehend und krampfartig (Colocynthis / Magnesia phosphorica)'
+      ]
+    },
+    en: {
+      rationale: 'Sensation (Quality of complaint): According to Hahnemann and Bönninghausen, the precise sensation is crucial.',
+      question: 'How does the complaint feel – which pain or sensation quality best describes it?',
+      options: [
+        'Throbbing, pounding, and pulsating (Belladonna)',
+        'Stitching with the slightest movement or breath (Bryonia)',
+        'Dull, pressing, or like a heavy band around the head (Gelsemium)',
+        'Bruised, aching, as if beaten all over (Eupatorium / Arnica)',
+        'Burning heat with restless drive (Aconitum / Arsenicum)',
+        'Tearing, drawing, or cramp-like (Colocynthis / Magnesia phosphorica)'
+      ]
+    },
+    es: {
+      rationale: 'Sensación (Calidad del dolor): Según Hahnemann y Bönninghausen, la cualidad de la sensación es clave.',
+      question: '¿Cómo siente la molestia – qué tipo de dolor o sensación la describe mejor?',
+      options: [
+        'Pulsátil, martilleante y palpitante (Belladonna)',
+        'Punzante con el menor movimiento o respiración (Bryonia)',
+        'Sordo, opresivo o como una banda pesada alrededor de la cabeza (Gelsemium)',
+        'Como magullado o golpeado en todo el cuerpo (Eupatorium / Arnica)',
+        'Calor ardiente con inquietud (Aconitum / Arsenicum)',
+        'Espasmódico, desgarrador o con calambres (Colocynthis / Magnesia phosphorica)'
+      ]
+    },
+    fr: {
+      rationale: 'Sensation (Qualité de la douleur) : Selon Hahnemann et Bönninghausen, la qualité de la sensation est déterminante.',
+      question: 'Que ressentez-vous – quelle qualité de douleur ou de sensation décrit le mieux votre état ?',
+      options: [
+        'Battante, pulsatile et martelante (Belladonna)',
+        'Piquante au moindre mouvement ou inspiration (Bryonia)',
+        'Sourde, compressive ou comme un bandeau serré autour de la tête (Gelsemium)',
+        'Courbaturé, meurtri dans tout le corps (Eupatorium / Arnica)',
+        'Chaleur brûlante avec agitation anxieuse (Aconitum / Arsenicum)',
+        'Tiraillante ou spasmodique (Colocynthis / Magnesia phosphorica)'
+      ]
+    },
+    it: {
+      rationale: 'Sensazione (Qualità del dolore): Secondo Hahnemann e Bönninghausen, la qualità della sensazione è fondamentale.',
+      question: 'Come percepisce il disturbo – quale qualità del dolore descrive meglio la sensazione?',
+      options: [
+        'Pulsante, martellante e battente (Belladonna)',
+        'Pungente al minimo movimento o respiro (Bryonia)',
+        'Sordo, gravativo o come una fascia stretta attorno alla testa (Gelsemium)',
+        'Come indolenzito, rotto in tutte le membra (Eupatorium / Arnica)',
+        'Calore bruciante con irrequietezza (Aconitum / Arsenicum)',
+        'Spasmodico o crampiforme (Colocynthis / Magnesia phosphorica)'
+      ]
+    },
+    el: {
+      rationale: 'Αίσθηση (Ποιότητα πόνου): Κατά Hahnemann και Bönninghausen, η ποιότητα της αίσθησης είναι καθοριστική.',
+      question: 'Πώς νιώθετε την ενόχληση – ποια ποιότητα πόνου ή αίσθησης την περιγράφει καλύτερα;',
+      options: [
+        'Σφυγμικός, παλλόμενος και έντονος (Belladonna)',
+        'Σουβλιστός με την παραμικρή κίνηση ή αναπνοή (Bryonia)',
+        'Αμβλύς, πιεστικός σαν σφιχτό στεφάνι στο κεφάλι (Gelsemium)',
+        'Σαν δαρμένος / εξουθενωμένος σε όλα τα μέλη (Eupatorium / Arnica)',
+        'Καυστική θερμότητα με ανησυχία (Aconitum / Arsenicum)',
+        'Σπασμωδικός και συσπαστικός (Colocynthis / Magnesia phosphorica)'
+      ]
+    },
+    ru: {
+      rationale: 'Ощущение (Характер боли): По Ганеману и Беннингхаузену, характер боли имеет решающее значение.',
+      question: 'Как ощущается недомогание – какой характер боли или ощущения лучше всего его описывает?',
+      options: [
+        'Пульсирующая, стучащая и бьющая (Belladonna)',
+        'Колющая при малейшем движении или вдохе (Bryonia)',
+        'Тупая, давящая, как тяжелый обруч вокруг головы (Gelsemium)',
+        'Как от побоев, разбитость во всем теле (Eupatorium / Arnica)',
+        'Жгучий жар с двигательным беспокойством (Aconitum / Arsenicum)',
+        'Спастическая или судорожная (Colocynthis / Magnesia phosphorica)'
+      ]
+    }
+  },
+  modalitaeten: {
+    de: {
+      rationale: 'Modalitäten (Verschlechterung / Besserung): Umfassende Bedingungen von Besserung und Verschlimmerung (Wärme, Kälte, Ruhe, Bewegung).',
+      question: 'Was macht Ihren Zustand spürbar besser oder schlechter – reagieren Sie auf Wärme, Kälte, Ruhe oder Bewegung?',
+      options: [
+        'Besserung durch absolute Ruhe, geringste Bewegung verschlimmert',
+        'Besserung durch feste Bandagierung oder festen Druck auf die Stelle',
+        'Besserung durch kühle, frische Luft und Entblößen',
+        'Besserung durch Wärme, warme Auflagen und Einhüllen (Kälte unerträglich)',
+        'Verschlimmerung durch Licht, Geräusche und Erschütterung',
+        'Verschlimmerung abends und nachts im Bett'
+      ]
+    },
+    en: {
+      rationale: 'Modalities (Aggravation / Amelioration): Conditions of improvement and aggravation (heat, cold, rest, motion).',
+      question: 'What makes your condition noticeably better or worse – how do you react to heat, cold, rest, or movement?',
+      options: [
+        'Relief from absolute rest, slightest motion aggravates',
+        'Relief from firm pressure or firm bandaging on the area',
+        'Relief from cool fresh air and uncovering',
+        'Relief from warmth, warm wraps, and covering (cold unbearable)',
+        'Worse from light, noise, and jarring',
+        'Worse in the evening and at night in bed'
+      ]
+    },
+    es: {
+      rationale: 'Modalidades (Mejoría / Empeoramiento): Condiciones de mejoría y empeoramiento (calor, frío, reposo, movimiento).',
+      question: '¿Qué hace que su estado mejore o empeore notablemente – cómo reacciona al calor, frío, reposo o movimiento?',
+      options: [
+        'Mejoría con reposo absoluto, el menor movimiento empeora',
+        'Mejoría con vendaje o presión firme sobre la zona',
+        'Mejoría con aire fresco y descubriéndose',
+        'Mejoría con calor, compresas calientes y abrigo (frío insoportable)',
+        'Empeoramiento con la luz, ruidos y sacudidas',
+        'Empeoramiento al atardecer y de noche en la cama'
+      ]
+    },
+    fr: {
+      rationale: 'Modalités (Amélioration / Aggravation) : Conditions d\'amélioration et d\'aggravation (chaleur, froid, repos, mouvement).',
+      question: 'Qu\'est-ce qui améliore ou aggrave nettement votre état – réagissez-vous à la chaleur, au froid, au repos ou au mouvement ?',
+      options: [
+        'Amélioration par le repos absolu, le moindre mouvement aggrave',
+        'Amélioration par bandage serré ou forte pression locale',
+        'Amélioration par l\'air frais et en se découvrant',
+        'Amélioration par la chaleur, enveloppements chauds (froid intolérable)',
+        'Aggravation par la lumière, le bruit et les secousses',
+        'Aggravation le soir et la nuit au lit'
+      ]
+    },
+    it: {
+      rationale: 'Modalità (Miglioramento / Peggioramento): Condizioni di miglioramento e aggravamento (calore, freddo, riposo, movimento).',
+      question: 'Che cosa migliora o peggiora sensibilmente lo stato – come reagisce a caldo, freddo, riposo o movimento?',
+      options: [
+        'Miglioramento con riposo assoluto, il minimo movimento peggiora',
+        'Miglioramento con fasciatura o forte pressione locale',
+        'Miglioramento con aria fresca e scoprendosi',
+        'Miglioramento con calore e coperte calde (freddo insopportabile)',
+        'Peggioramento con luce, rumori e scuotimento',
+        'Peggioramento la sera e di notte a letto'
+      ]
+    },
+    el: {
+      rationale: 'Τροποποιητικοί παράγοντες (Βελτίωση / Επιδείνωση): Συνθήκες μεταβολής (ζέστη, κρύο, ηρεμία, κίνηση).',
+      question: 'Τι βελτιώνει ή επιδεινώνει αισθητά την κατάστασή σας – πώς αντιδράτε στη ζέστη, το κρύο, την ηρεμία ή την κίνηση;',
+      options: [
+        'Βελτίωση με απόλυτη ηρεμία, η παραμικρή κίνηση επιδεινώνει',
+        'Βελτίωση με σταθερή επίδεση ή πίεση στο σημείο',
+        'Βελτίωση με δροσερό καθαρό αέρα και ξεσκέπασμα',
+        'Βελτίωση με ζέστη, ζεστά επιθέματα και τύλιγμα',
+        'Επιδείνωση από φως, θορύβους και κραδασμούς',
+        'Επιδείνωση το βράδυ και τη νύχτα στο κρεβάτι'
+      ]
+    },
+    ru: {
+      rationale: 'Модальности (Улучшение / Ухудшение): Факторы изменения состояния (тепло, холод, покой, движение).',
+      question: 'Что заметно облегчает или ухудшает состояние – как вы реагируете на тепло, холод, покой или движение?',
+      options: [
+        'Улучшение в абсолютном покое, малейшее движение ухудшает',
+        'Улучшение от тугой повязки или сильного давления на место',
+        'Улучшение от прохладного свежего воздуха и раскрывания',
+        'Улучшение от тепла, теплых укутываний (холод невыносим)',
+        'Ухудшение от света, шума и сотрясения',
+        'Ухудшение вечером и ночью в постели'
+      ]
+    }
+  },
+  begleitsymptome: {
+    de: {
+      rationale: 'Begleitsymptome (Concomitants): Durstverhalten, Schweißbildung und Allgemeinsymptome sichern die Mittelwahl ab.',
+      question: 'Welche Begleitsymptome treten auf – wie verhalten sich Durst, Schweiß und Temperatur?',
+      options: [
+        'Großer, unstillbarer Durst auf eiskaltes Wasser',
+        'Völlige Durstlosigkeit trotz Fieber oder Hitze',
+        'Trockene, brennend heiße Haut ohne jede Schweißbildung',
+        'Profuser, erleichternder Schweiß',
+        'Schüttelfrost bei jeder geringsten Entblößung',
+        'Rotes Gesicht beim Liegen, blass beim Aufrichten'
+      ]
+    },
+    en: {
+      rationale: 'Concomitant Symptoms: Thirst, perspiration, and general symptoms secure the remedy selection.',
+      question: 'What accompanying symptoms occur – how do thirst, perspiration, and temperature behave?',
+      options: [
+        'Great unquenchable thirst for ice-cold water',
+        'Complete thirstlessness despite fever or heat',
+        'Dry, burning hot skin without any perspiration',
+        'Profuse, relieving perspiration',
+        'Chills at the slightest uncovering',
+        'Red face when lying down, pale on rising'
+      ]
+    },
+    es: {
+      rationale: 'Síntomas concomitantes: La sed, sudoración y síntomas generales aseguran la elección del remedio.',
+      question: '¿Qué síntomas acompañantes se presentan – cómo se comportan la sed, el sudor y la temperatura?',
+      options: [
+        'Gran sed insaciable de agua helada',
+        'Ausencia total de sed a pesar de calor o fiebre',
+        'Piel seca y ardiente sin nada de sudor',
+        'Sudor profuso que produce alivio',
+        'Escalofríos al menor destape',
+        'Rostro rojo al estar acostado, pálido al incorporarse'
+      ]
+    },
+    fr: {
+      rationale: 'Symptômes concomitants : La soif, la transpiration et les symptômes généraux confirment le remède.',
+      question: 'Quels symptômes concomitants apparaissent – comment se comportent la soif, la sueur et la température ?',
+      options: [
+        'Grande soif inextinguible d\'eau glacée',
+        'Absence totale de soif malgré la fièvre ou la chaleur',
+        'Peau sèche et brûlante sans aucune transpiration',
+        'Transpiration abondante et soulageante',
+        'Frissons au moindre dénuement',
+        'Visage rouge couché, pâle en se redressant'
+      ]
+    },
+    it: {
+      rationale: 'Sintomi concomitanti: Sete, sudorazione e sintomi generali confermano la scelta del rimedio.',
+      question: 'Quali sintomi concomitanti compaiono – come si comportano sete, sudore e temperatura?',
+      options: [
+        'Grande sete inestinguibile di acqua ghiacciata',
+        'Assenza completa di sete nonostante febbre o calore',
+        'Pelle secca e bollente senza sudorazione',
+        'Sudore profuso che porta sollievo',
+        'Brividi al minimo scoprimento',
+        'Viso rosso da disteso, pallido quando si alza'
+      ]
+    },
+    el: {
+      rationale: 'Συνοδά συμπτώματα: Δίψα, εφίδρωση και γενικά συμπτώματα κατοχυρώνουν την επιλογή φαρμάκου.',
+      question: 'Ποια συνοδά συμπτώματα εμφανίζονται – πώς συμπεριφέρονται η δίψα, ο ιδρώτας και η θερμοκρασία;',
+      options: [
+        'Μεγάλη άσβεστη δίψα για παγωμένο νερό',
+        'Πλήρης απουσία δίψας παρά τον πυρετό ή τη ζέστη',
+        'Ξηρό, καυτό δέρμα χωρίς ίχνος εφίδρωσης',
+        'Άφθονος ιδρώτας που ανακουφίζει',
+        'Ρίγη με το παραμικρό ξεσκέπασμα',
+        'Κόκκινο πρόσωπο όταν είναι ξαπλωμένος, χλωμό όταν σηκώνεται'
+      ]
+    },
+    ru: {
+      rationale: 'Сопутствующие симптомы: Жажда, потливость и общие симптомы подтверждают выбор средства.',
+      question: 'Какие сопутствующие симптомы возникают – как ведут себя жажда, пот и температура?',
+      options: [
+        'Сильная неутолимая жажда ледяной воды',
+        'Полное отсутствие жажды несмотря на жар или лихорадку',
+        'Сухая, горящая кожа без потоотделения',
+        'Обильный пот, приносящий облегчение',
+        'Озноб при малейшем раскрывании',
+        'Красное лицо лежа, бледное при вставании'
+      ]
+    }
+  },
+  gemuet: {
+    de: {
+      rationale: 'Gemüt (Psychischer Zustand): Nach Hahnemann die Krone der Symptome und der wichtigste Wegweiser zum passenden Simile.',
+      question: 'Wie ist Ihre seelische Verfassung / Ihr Gemütszustand während dieser Beschwerden?',
+      options: [
+        'Große Reizbarkeit und Zorn, will absolut in Ruhe gelassen werden (Bryonia)',
+        'Ängstliche, getriebene Unruhe mit Todesfurcht und Herzklopfen (Aconitum)',
+        'Apathisch, schläfrig, wie betäubt, verlangt nach Stille (Gelsemium)',
+        'Weinerlich, verlangt nach Zuwendung, Trost und frischer Luft (Pulsatilla)',
+        'Verzweifelt und ängstlich ruhelos, wandert umher (Arsenicum)',
+        'Ausgeglichen und gefasst, keine spürbare Gemütsveränderung'
+      ]
+    },
+    en: {
+      rationale: 'Mind (Mental State): According to Hahnemann, the highest-ranking symptoms and prime guide to the simile.',
+      question: 'What is your emotional state / mental disposition during these complaints?',
+      options: [
+        'Great irritability and anger, wants to be left completely alone (Bryonia)',
+        'Anxious, restless drive with fear of death and palpitations (Aconitum)',
+        'Apathetic, drowsy, as if benumbed, desires quiet (Gelsemium)',
+        'Weepy, craves attention, consolation, and open air (Pulsatilla)',
+        'Despairing and restlessly pacing about (Arsenicum)',
+        'Calm and equable, no noticeable change of mood'
+      ]
+    },
+    es: {
+      rationale: 'Mente (Estado anímico): Según Hahnemann, los síntomas mentales son la guía principal hacia el simillimum.',
+      question: '¿Cuál es su estado anímico o disposición mental durante estos síntomas?',
+      options: [
+        'Gran irritabilidad e ira, quiere que lo dejen completamente en paz (Bryonia)',
+        'Inquietud motora ansiosa con temor a la muerte y palpitaciones (Aconitum)',
+        'Apático, somnoliento, como aturdido, busca silencio (Gelsemium)',
+        'Lloroso, necesita consuelo, afecto y aire libre (Pulsatilla)',
+        'Desesperado e inquieto, camina de un lado a otro (Arsenicum)',
+        'Sereno y equilibrado, sin cambios anímicos notorios'
+      ]
+    },
+    fr: {
+      rationale: 'Mental (État psychique) : Selon Hahnemann, les symptômes mentaux sont le guide suprême vers le simillimum.',
+      question: 'Quel est votre état d\'esprit / votre humeur pendant ces troubles ?',
+      options: [
+        'Grande irritabilité et colère, veut qu\'on le laisse en paix (Bryonia)',
+        'Agitation motrice anxieuse avec peur de la mort et palpitations (Aconitum)',
+        'Apathique, somnolent, comme hébété, demande le calme (Gelsemium)',
+        'Pleurant facilement, demande réconfort, affection et grand air (Pulsatilla)',
+        'Désespéré et anxieusement agité, déambule (Arsenicum)',
+        'Calme et serein, aucun changement psychique notable'
+      ]
+    },
+    it: {
+      rationale: 'Mente (Stato d\'animo): Secondo Hahnemann, i sintomi mentali sono la guida suprema verso il simile.',
+      question: 'Qual è la sua disposizione d\'animo o stato emotivo durante questi disturbi?',
+      options: [
+        'Forte irritabilità e collera, desidera essere lasciato in pace (Bryonia)',
+        'Irrequietezza motoria ansiosa con paura della morte e palpitazioni (Aconitum)',
+        'Apatico, assonnato, come intontito, vuole quiete (Gelsemium)',
+        'Piangevole, desidera consolazione, affetto e aria aperta (Pulsatilla)',
+        'Disperato e ansiosamente irrequieto, cammina avanti e indietro (Arsenicum)',
+        'Sereno ed equilibrato, nessun cambiamento evidente'
+      ]
+    },
+    el: {
+      rationale: 'Ψυχική διάθεση: Κατά τον Χάνεμαν, τα νοητικά συμπτώματα αποτελούν τον κορυφαίο οδηγό για το όμοιο.',
+      question: 'Ποια είναι η ψυχική σας κατάσταση / διάθεση κατά τη διάρκεια των ενοχλημάτων;',
+      options: [
+        'Μεγάλη ευερεθιστότητα και οργή, επιθυμεί απόλυτη ηρεμία (Bryonia)',
+        'Αγχώδης ανησυχία με φόβο θανάτου και ταχυπαλμία (Aconitum)',
+        'Απαθής, υπνηλέος, σαν ναρκωμένος, ζητά ησυχία (Gelsemium)',
+        'Κλαψιάρικη διάθεση, ανάγκη για παρηγοριά και καθαρό αέρα (Pulsatilla)',
+        'Απελπισμένος και ανήσυχος, περιφέρεται συνεχώς (Arsenicum)',
+        'Ήρεμος και ισόρροπος, χωρίς αξιοσημείωτη αλλαγή διάθεσης'
+      ]
+    },
+    ru: {
+      rationale: 'Душевное состояние: По Ганеману, ментальные симптомы — венец симптомов и главный ориентир к подобию.',
+      question: 'Каково ваше эмоциональное состояние / расположение духа во время этих симптомов?',
+      options: [
+        'Сильная раздражительность и гнев, хочет, чтобы оставили в покое (Bryonia)',
+        'Тревожное двигательное беспокойство со страхом смерти (Aconitum)',
+        'Апатичный, сонный, оглушенный, требует тишины (Gelsemium)',
+        'Плаксивый, ищет утешения, заботы и свежего воздуха (Pulsatilla)',
+        'В отчаянии и тревожном беспокойстве, мечется (Arsenicum)',
+        'Спокойный и уравновешенный, без изменений настроения'
+      ]
+    }
+  }
+};
+
 /**
- * Deterministic local classical homoeopathic logic engine (Hahnemann Organon §§ 81–104)
+ * Deterministic local classical homoeopathic logic engine (Hahnemann Organon §§ 83–104)
  */
 export function evaluateHahnemannLocally(
   newText: string,
@@ -105,6 +774,9 @@ export function evaluateHahnemannLocally(
   forceComplete: boolean = false,
   caseType: CaseType = 'akut'
 ): HahnemannAnalysisResult {
+  const langKey = (_language || 'de').toLowerCase();
+  const lang = ['de', 'en', 'es', 'fr', 'it', 'el', 'ru'].includes(langKey) ? langKey : 'de';
+
   const matrix: Hahnemann6Pillars = {
     causa: existingMatrix?.causa || null,
     lokalisierung: existingMatrix?.lokalisierung || null,
@@ -120,8 +792,7 @@ export function evaluateHahnemannLocally(
   const ignored: string[] = [];
   const textLower = newText.toLowerCase();
 
-  // 1. BEFEHL: FRAGMENTIERUNG & NLP-FILTERUNG (Relevanz-Prüfung)
-  // Extract and filter irrelevant data (names of third parties, objects, smalltalk)
+  // 1. Fragmentierung & Filterung unbedeutender Drittpersonen/Gegenstände
   const thirdPartyRegex = /\b(der\s+[A-ZÄÖÜ][a-zäöü]+|die\s+[A-ZÄÖÜ][a-zäöü]+|hans|peter|klaus|anna|maria|nachbar|chef|kollege|kugelschreiber|tisch|stuhl|fenster|wetter\s+ist\s+schön|hallo|guten\s+tag)\b/gi;
   let match;
   while ((match = thirdPartyRegex.exec(newText)) !== null) {
@@ -131,149 +802,111 @@ export function evaluateHahnemannLocally(
     }
   }
 
-  // 2. BEFEHL: 6-SÄULEN-MATRIX (Strenges Interpretationsverbot: Nur explizit genannte Fakten!)
-
-  // 1. Causa (Auslöser)
-  if (!matrix.causa) {
-    if (textLower.includes('kalte luft') || textLower.includes('kaltem wind') || textLower.includes('kälte') || textLower.includes('unterkühlt') || textLower.includes('zugluft')) {
-      matrix.causa = 'Kälteeinwirkung (in der kalten Luft / Wind gewesen)';
-    } else if (textLower.includes('schreck') || textLower.includes('angst') || textLower.includes('unfall')) {
-      matrix.causa = 'Schreck / plötzliches Schockerlebnis';
-    } else if (textLower.includes('nass') || textLower.includes('durchnässt') || textLower.includes('schwimmbad')) {
-      matrix.causa = 'Durchnässung / Feuchtigkeit';
-    } else if (textLower.includes('ärger') || textLower.includes('wut') || textLower.includes('kränkung')) {
-      matrix.causa = 'Ärger / Emotionale Erregung';
-    } else if (textLower.includes('überanstrengung') || textLower.includes('schwer gehoben')) {
-      matrix.causa = 'Körperliche Überanstrengung';
-    }
-  }
-
-  // 2. Lokalisierung (Wo im Körper?)
-  if (!matrix.lokalisierung) {
-    if (textLower.includes('fieber') || textLower.includes('ganzkörper') || textLower.includes('körper')) {
-      matrix.lokalisierung = 'Ganzkörper / Systemisch (Fieber)';
-    } else if (textLower.includes('kopf') || textLower.includes('stirn') || textLower.includes('schläfe')) {
-      matrix.lokalisierung = 'Kopf';
-    } else if (textLower.includes('hals') || textLower.includes('kehle') || textLower.includes('mandeln')) {
-      matrix.lokalisierung = 'Hals / Pharynx';
-    } else if (textLower.includes('magen') || textLower.includes('bauch') || textLower.includes('darm')) {
-      matrix.lokalisierung = 'Magen-Darm-Trakt';
-    } else if (textLower.includes('brust') || textLower.includes('lunge') || textLower.includes('bronchien')) {
-      matrix.lokalisierung = 'Respirationstrakt / Thorax';
-    }
-  }
-
-  // 3. Empfindung (Wie fühlt es sich an?)
-  if (!matrix.empfindung) {
-    if (textLower.includes('glühend') || textLower.includes('brennend') || textLower.includes('heiße haut') || textLower.includes('hitzegefühl')) {
-      matrix.empfindung = 'Trockene, glühende und brennende Hitze';
-    } else if (textLower.includes('schüttelfrost') || textLower.includes('frösteln') || textLower.includes('zittern vor kälte')) {
-      matrix.empfindung = 'Schüttelfrost und Frösteln trotz Fieber';
-    } else if (textLower.includes('klopfend') || textLower.includes('pochend') || textLower.includes('pulsierend')) {
-      matrix.empfindung = 'Klopfend und pulsierend';
-    } else if (textLower.includes('wie zerschlagen') || textLower.includes('gliederschmerzen') || textLower.includes('schwere')) {
-      matrix.empfindung = 'Wie zerschlagen in allen Gliedern';
-    } else if (textLower.includes('stechend')) {
-      matrix.empfindung = 'Scharf stechend';
-    }
-  }
-
-  // 4. Modalitäten (Besser / Schlechter)
-  if (!matrix.modalitaeten) {
-    if (textLower.includes('wärme') || textLower.includes('zudecken') || textLower.includes('warmes zimmer')) {
-      matrix.modalitaeten = textLower.includes('besser') ? 'Gebessert durch Wärme und Einhüllen' : 'Verschlimmert durch Wärme';
-    } else if (textLower.includes('kälte') || textLower.includes('frische luft') || textLower.includes('abdecken')) {
-      matrix.modalitaeten = textLower.includes('besser') ? 'Gebessert durch kühle Frischluft und Abdecken' : 'Verschlimmert durch kalte Luft und Entblößen';
-    } else if (textLower.includes('bewegung') || textLower.includes('ruhe')) {
-      matrix.modalitaeten = textLower.includes('ruhe') ? 'Besser bei absoluter Ruhe, verschlimmert bei geringster Bewegung' : 'Besser durch langsame Bewegung';
-    }
-  }
-
-  // 5. Begleitsymptome (Concomitants)
-  if (textLower.includes('unstillbarer durst') || textLower.includes('großer durst') || textLower.includes('durst auf kaltes')) {
-    if (!matrix.begleitsymptome.includes('Großer Durst auf große Mengen kaltes Wasser')) {
-      matrix.begleitsymptome.push('Großer Durst auf große Mengen kaltes Wasser');
-    }
-  } else if (textLower.includes('durstlos') || textLower.includes('kein durst')) {
-    if (!matrix.begleitsymptome.includes('Vollständige Durstlosigkeit trotz Hitze')) {
-      matrix.begleitsymptome.push('Vollständige Durstlosigkeit trotz Hitze');
-    }
-  }
-  if (textLower.includes('trockene haut') || textLower.includes('schwitzt nicht') || textLower.includes('kein schweiß')) {
-    if (!matrix.begleitsymptome.includes('Vollkommen trockene Haut ohne Schweißbildung')) {
-      matrix.begleitsymptome.push('Vollkommen trockene Haut ohne Schweißbildung');
-    }
-  } else if (textLower.includes('starker schweiß') || textLower.includes('schwitzt')) {
-    if (!matrix.begleitsymptome.includes('Profuser Schweiß')) {
-      matrix.begleitsymptome.push('Profuser Schweiß');
-    }
-  }
-  if (textLower.includes('rotes gesicht') || textLower.includes('roter kopf')) {
-    if (!matrix.begleitsymptome.includes('Rotes, heißes Gesicht')) {
-      matrix.begleitsymptome.push('Rotes, heißes Gesicht');
-    }
-  }
-
-  // 6. Gemüt (Psychischer Zustand)
-  if (!matrix.gemuet) {
-    if (textLower.includes('unruhe') || textLower.includes('angst') || textLower.includes('panik') || textLower.includes('todesangst') || textLower.includes('getrieben')) {
-      matrix.gemuet = 'Ängstliche, motorische Unruhe mit Furcht';
-    } else if (textLower.includes('apathisch') || textLower.includes('müde') || textLower.includes('schläfrig') || textLower.includes('träge')) {
-      matrix.gemuet = 'Apathie, Schläfrigkeit und Verlangen in Ruhe gelassen zu werden';
-    } else if (textLower.includes('reizbar') || textLower.includes('wütend') || textLower.includes('zornig')) {
-      matrix.gemuet = 'Große Reizbarkeit und Zorn';
-    }
-  }
-
-  // Detect if multiple distinct complaints are present (e.g. fever + headache, cough + sore throat)
-  const hasFever = textLower.includes('fieber') || textLower.includes('temperatur') || textLower.includes('schüttelfrost');
-  const hasHeadache = textLower.includes('kopfschmerz') || textLower.includes('kopfweh') || textLower.includes('migräne') || textLower.includes('stirn');
-  const hasThroatOrCough = textLower.includes('hals') || textLower.includes('husten') || textLower.includes('schlucken') || textLower.includes('heiser');
-  const hasAbdomen = textLower.includes('bauch') || textLower.includes('magen') || textLower.includes('darm') || textLower.includes('übel');
+  // Detect if multiple distinct complaints are present
+  const hasFever = textLower.includes('fieber') || textLower.includes('temperatur') || textLower.includes('schüttelfrost') || textLower.includes('fever') || textLower.includes('fièvre') || textLower.includes('fiebre') || textLower.includes('febbre');
+  const hasHeadache = textLower.includes('kopfschmerz') || textLower.includes('kopfweh') || textLower.includes('migräne') || textLower.includes('stirn') || textLower.includes('headache') || textLower.includes('céphalée') || textLower.includes('dolor de cabeza');
+  const hasThroatOrCough = textLower.includes('hals') || textLower.includes('husten') || textLower.includes('schlucken') || textLower.includes('throat') || textLower.includes('cough') || textLower.includes('toux') || textLower.includes('gorge') || textLower.includes('tos');
+  const hasAbdomen = textLower.includes('bauch') || textLower.includes('magen') || textLower.includes('darm') || textLower.includes('übel') || textLower.includes('stomach') || textLower.includes('belly') || textLower.includes('ventre') || textLower.includes('estómago');
   
   const symptomKeywordsCount = [hasFever, hasHeadache, hasThroatOrCough, hasAbdomen].filter(Boolean).length;
   const multipleComplaints = symptomKeywordsCount >= 2;
 
-  // Extract radiation if mentioned
-  if (!matrix.strahlungsoptionen) {
-    if (textLower.includes('strahlt') || textLower.includes('zieht nach') || textLower.includes('ausstrahlung')) {
-      if (textLower.includes('nacken') || textLower.includes('hinterkopf')) {
-        matrix.strahlungsoptionen = 'Ausstrahlung in den Nacken und Hinterkopf';
-      } else if (textLower.includes('schulter') || textLower.includes('arm')) {
-        matrix.strahlungsoptionen = 'Ausstrahlung in Schulter / Arm';
-      } else if (textLower.includes('stirn') || textLower.includes('auge')) {
-        matrix.strahlungsoptionen = 'Ausstrahlung in Stirn und Augen';
-      } else {
-        matrix.strahlungsoptionen = 'Ausstrahlung in angrenzende Regionen';
+  // 2. Flexible, fehlertolerante Zuordnung von Patienteneingaben:
+  // Wenn der Patient auf eine konkrete Nachfrage geantwortet hat (_history > 0 oder bestehende Matrix hatte offene Felder):
+  const hadExisting = existingMatrix && Object.values(existingMatrix).some(v => v !== null && (!Array.isArray(v) || v.length > 0));
+
+  if (newText.trim().length > 0 && hadExisting) {
+    // Determine which field was pending in existingMatrix
+    if (multipleComplaints && !existingMatrix?.ursaechlicher_zusammenhang) {
+      matrix.ursaechlicher_zusammenhang = newText.trim();
+    } else if (caseType === 'chronisch' && !existingMatrix?.fruehere_behandlungen_und_historie) {
+      matrix.fruehere_behandlungen_und_historie = newText.trim();
+    } else if (!existingMatrix?.causa) {
+      matrix.causa = newText.trim();
+    } else if (!existingMatrix?.lokalisierung) {
+      matrix.lokalisierung = newText.trim();
+    } else if (!existingMatrix?.empfindung) {
+      matrix.empfindung = newText.trim();
+    } else if (!existingMatrix?.modalitaeten) {
+      matrix.modalitaeten = newText.trim();
+    } else if (!existingMatrix?.begleitsymptome || existingMatrix.begleitsymptome.length === 0) {
+      matrix.begleitsymptome = [newText.trim()];
+    } else if (!existingMatrix?.gemuet) {
+      matrix.gemuet = newText.trim();
+    }
+  } else if (newText.trim().length > 0) {
+    // Initial Intake extraction
+    // Causa
+    if (!matrix.causa) {
+      if (textLower.includes('kalt') || textLower.includes('cold') || textLower.includes('wind') || textLower.includes('froid') || textLower.includes('frío') || textLower.includes('freddo') || textLower.includes('холод') || textLower.includes('κρύο')) {
+        matrix.causa = lang === 'en' ? 'Exposure to cold / wind' : (lang === 'fr' ? 'Exposition au froid / vent' : (lang === 'es' ? 'Exposición al frío / viento' : 'Kälteeinwirkung (kalter Wind / Unterkühlung)'));
+      } else if (textLower.includes('schreck') || textLower.includes('angst') || textLower.includes('fright') || textLower.includes('shock') || textLower.includes('peur') || textLower.includes('miedo') || textLower.includes('strah')) {
+        matrix.causa = lang === 'en' ? 'Fright / sudden shock' : (lang === 'fr' ? 'Frayeur / choc soudain' : (lang === 'es' ? 'Susto / conmoción aguda' : 'Schreck / plötzlicher Schock'));
+      } else if (textLower.includes('nass') || textLower.includes('durchnässt') || textLower.includes('wet') || textLower.includes('drenched') || textLower.includes('mouillé') || textLower.includes('mojado')) {
+        matrix.causa = lang === 'en' ? 'Getting wet / drenched' : (lang === 'fr' ? 'Humidité / pluie' : (lang === 'es' ? 'Mojarse / humedad' : 'Durchnässung / Feuchtigkeit'));
+      }
+    }
+
+    // Lokalisierung
+    if (!matrix.lokalisierung) {
+      if (hasFever) {
+        matrix.lokalisierung = lang === 'en' ? 'Systemic / Whole body (Fever)' : (lang === 'fr' ? 'Systémique / Corps entier (Fièvre)' : (lang === 'es' ? 'Sistémico / Todo el cuerpo (Fiebre)' : 'Ganzkörper / Systemisch (Fieber)'));
+      } else if (hasHeadache) {
+        matrix.lokalisierung = lang === 'en' ? 'Head / Forehead' : (lang === 'fr' ? 'Tête / Front' : (lang === 'es' ? 'Cabeza / Frente' : 'Kopf / Stirn'));
+      } else if (hasThroatOrCough) {
+        matrix.lokalisierung = lang === 'en' ? 'Throat / Respiratory tract' : (lang === 'fr' ? 'Gorge / Voies respiratoires' : (lang === 'es' ? 'Garganta / Vías respiratorias' : 'Hals / Atemwege'));
+      } else if (hasAbdomen) {
+        matrix.lokalisierung = lang === 'en' ? 'Gastrointestinal tract' : (lang === 'fr' ? 'Tractus gastro-intestinal' : (lang === 'es' ? 'Tracto gastrointestinal' : 'Magen-Darm-Trakt'));
+      }
+    }
+
+    // Empfindung
+    if (!matrix.empfindung) {
+      if (textLower.includes('klopf') || textLower.includes('throb') || textLower.includes('puls') || textLower.includes('battement')) {
+        matrix.empfindung = lang === 'en' ? 'Pulsating, throbbing' : (lang === 'fr' ? 'Battante, pulsatile' : (lang === 'es' ? 'Pulsátil, palpitante' : 'Klopfend und pulsierend'));
+      } else if (textLower.includes('stech') || textLower.includes('stitch') || textLower.includes('piquant') || textLower.includes('punzante')) {
+        matrix.empfindung = lang === 'en' ? 'Stitching pain' : (lang === 'fr' ? 'Douleur piquante' : (lang === 'es' ? 'Dolor punzante' : 'Stechend'));
+      } else if (textLower.includes('brenn') || textLower.includes('burn') || textLower.includes('brûl') || textLower.includes('ardien')) {
+        matrix.empfindung = lang === 'en' ? 'Burning heat' : (lang === 'fr' ? 'Chaleur brûlante' : (lang === 'es' ? 'Calor ardiente' : 'Brennende Hitze'));
+      } else if (textLower.includes('zerschlag') || textLower.includes('bruis') || textLower.includes('courbatur') || textLower.includes('magullad')) {
+        matrix.empfindung = lang === 'en' ? 'Bruised, aching in limbs' : (lang === 'fr' ? 'Courbaturé, brisé' : (lang === 'es' ? 'Como magullado' : 'Wie zerschlagen in allen Gliedern'));
+      }
+    }
+
+    // Modalitäten
+    if (!matrix.modalitaeten) {
+      if (textLower.includes('ruhe') || textLower.includes('rest') || textLower.includes('repos') || textLower.includes('riposo')) {
+        matrix.modalitaeten = lang === 'en' ? 'Better from absolute rest' : (lang === 'fr' ? 'Amélioration par le repos' : (lang === 'es' ? 'Mejor con reposo absoluto' : 'Besserung durch absolute Ruhe'));
+      } else if (textLower.includes('wärme') || textLower.includes('warm') || textLower.includes('chaleur') || textLower.includes('calor')) {
+        matrix.modalitaeten = lang === 'en' ? 'Better from warmth' : (lang === 'fr' ? 'Amélioration par la chaleur' : (lang === 'es' ? 'Mejor con calor' : 'Besserung durch Wärme'));
+      } else if (textLower.includes('kälte') || textLower.includes('cold') || textLower.includes('froid') || textLower.includes('frío')) {
+        matrix.modalitaeten = lang === 'en' ? 'Better from cool fresh air' : (lang === 'fr' ? 'Amélioration à l\'air frais' : (lang === 'es' ? 'Mejor al aire fresco' : 'Besserung durch frische Luft'));
+      }
+    }
+
+    // Begleitsymptome
+    if (matrix.begleitsymptome.length === 0) {
+      if (textLower.includes('durst') || textLower.includes('thirst') || textLower.includes('soif') || textLower.includes('sed')) {
+        matrix.begleitsymptome.push(lang === 'en' ? 'Thirst for cold drinks' : (lang === 'fr' ? 'Soif de boissons fraîches' : (lang === 'es' ? 'Sed de bebidas frías' : 'Großer Durst auf kaltes Wasser')));
+      }
+      if (textLower.includes('schweiß') || textLower.includes('sweat') || textLower.includes('sueur') || textLower.includes('sudor')) {
+        matrix.begleitsymptome.push(lang === 'en' ? 'Relieving sweat' : (lang === 'fr' ? 'Sueur soulageante' : (lang === 'es' ? 'Sudor que alivia' : 'Erleichternder Schweiß')));
+      }
+    }
+
+    // Gemüt
+    if (!matrix.gemuet) {
+      if (textLower.includes('unruhe') || textLower.includes('restless') || textLower.includes('agitation') || textLower.includes('inquiet')) {
+        matrix.gemuet = lang === 'en' ? 'Anxious restlessness' : (lang === 'fr' ? 'Agitation anxieuse' : (lang === 'es' ? 'Inquietud ansiosa' : 'Ängstliche Unruhe'));
+      } else if (textLower.includes('reizbar') || textLower.includes('irritable') || textLower.includes('zorn') || textLower.includes('anger') || textLower.includes('colère')) {
+        matrix.gemuet = lang === 'en' ? 'Irritable, wants to be left alone' : (lang === 'fr' ? 'Irritable, veut être laissé seul' : (lang === 'es' ? 'Irritable, quiere estar solo' : 'Reizbar, will in Ruhe gelassen werden'));
+      } else if (textLower.includes('apath') || textLower.includes('müde') || textLower.includes('drowsy') || textLower.includes('somnol')) {
+        matrix.gemuet = lang === 'en' ? 'Apathetic, drowsy' : (lang === 'fr' ? 'Apathique, somnolent' : (lang === 'es' ? 'Apático, somnoliento' : 'Apathisch, schläfrig'));
       }
     }
   }
 
-  // Extract causal connection if answered
-  if (!matrix.ursaechlicher_zusammenhang) {
-    if (textLower.includes('zeitgleich') || textLower.includes('derselbe infekt') || textLower.includes('gemeinsamer auslöser') || (textLower.includes('ja') && textLower.includes('zusammenhang'))) {
-      matrix.ursaechlicher_zusammenhang = 'Ja, beide Beschwerden entstanden zeitgleich durch denselben Infekt/Auslöser (Symptomkomplex)';
-    } else if (textLower.includes('unabhängig') || textLower.includes('zwei verschiedene') || (textLower.includes('nein') && textLower.includes('zusammenhang'))) {
-      matrix.ursaechlicher_zusammenhang = 'Nein, es handelt sich um zwei unabhängige Beschwerden';
-    }
-  }
-
-  // Extract chronic history if chronic case
-  if (caseType === 'chronisch' && !matrix.fruehere_behandlungen_und_historie) {
-    if (textLower.includes('monate') || textLower.includes('jahre') || textLower.includes('vorbehandlung') || textLower.includes('medikament') || textLower.includes('unterdrückt')) {
-      matrix.fruehere_behandlungen_und_historie = 'Chronischer Verlauf mit Vorbehandlungen und Vorgeschichte dokumentiert';
-    }
-  }
-
-  // 3. BEFEHL: DIE KONTROLL- UND NACHFRAGESCHLEIFE (Strikte 6-Säulen-Führung nach Hahnemann Organon §§ 81–104)
-  let nextQuestion = '';
-  let rationale = '';
-  let status: 'in_progress' | 'completed' = 'in_progress';
-  const diffRemedies: string[] = [];
-
-  let auswahlOptionen: string[] = [];
-  let auswahlTyp: 'single' | 'multiple' = 'multiple';
-
+  // Check state of 6 pillars
   const hasCausa = Boolean(matrix.causa && matrix.causa !== 'Noch nicht genannt' && matrix.causa.trim().length > 0);
   const hasLokalisierung = Boolean(matrix.lokalisierung && matrix.lokalisierung !== 'Noch nicht genannt' && matrix.lokalisierung.trim().length > 0);
   const hasEmpfindung = Boolean(matrix.empfindung && matrix.empfindung !== 'Noch nicht genannt' && matrix.empfindung.trim().length > 0);
@@ -285,148 +918,108 @@ export function evaluateHahnemannLocally(
 
   const allPillarsCompleted = hasCausa && hasLokalisierung && hasEmpfindung && hasModalitaeten && hasBegleitsymptome && hasGemuet && hasCausalityCheck && hasChronicHistoryCheck;
 
-  // Loop protection & completion check
+  let nextQuestion = '';
+  let rationale = '';
+  let status: 'in_progress' | 'completed' = 'in_progress';
+  let auswahlOptionen: string[] = [];
+  let auswahlTyp: 'single' | 'multiple' = 'single';
+  const diffRemedies: string[] = [];
+
+  const getQ = (key: string): LocalizedQuestionData => {
+    const group = LOCALIZED_QUESTIONS[key];
+    return group?.[lang] || group?.['de'];
+  };
+
   if (forceComplete || allPillarsCompleted || (_history.length >= 6 && hasEmpfindung && hasModalitaeten && hasGemuet)) {
     status = 'completed';
     nextQuestion = '';
     auswahlOptionen = [];
-    rationale = 'Alle Säulen der homöopathischen Anamnese nach Hahnemann (Organon §§ 81–104) wurden vollständig erfasst.';
-    if (matrix.modalitaeten?.includes('Ruhe') || matrix.modalitaeten?.includes('Druck')) {
+    rationale = lang === 'en' 
+      ? 'All pillars of the homoeopathic intake according to Hahnemann (Organon §§ 83–104) have been completely recorded.'
+      : (lang === 'fr' 
+        ? 'Tous les piliers de l\'anamnèse homéopathique selon Hahnemann (Organon §§ 83–104) ont été intégralement recueillis.'
+        : (lang === 'es'
+          ? 'Todos los pilares de la anamnesis según Hahnemann (Organon §§ 83–104) se han registrado por completo.'
+          : 'Alle Säulen der homöopathischen Anamnese nach Hahnemann (Organon §§ 83–104) wurden vollständig erfasst.'));
+
+    if (matrix.modalitaeten?.toLowerCase().includes('ruhe') || matrix.modalitaeten?.toLowerCase().includes('rest') || matrix.modalitaeten?.toLowerCase().includes('druck')) {
       diffRemedies.push('Bryonia alba', 'Silicea', 'Belladonna');
-    } else if (matrix.gemuet?.includes('Unruhe') || matrix.causa?.includes('Kälte')) {
+    } else if (matrix.gemuet?.toLowerCase().includes('unruhe') || matrix.gemuet?.toLowerCase().includes('restless') || matrix.causa?.toLowerCase().includes('kält') || matrix.causa?.toLowerCase().includes('cold')) {
       diffRemedies.push('Aconitum napellus', 'Belladonna', 'Arsenicum album');
     } else {
       diffRemedies.push('Aconitum napellus', 'Belladonna', 'Ferrum phosphoricum', 'Apis mellifica');
     }
   } else if (multipleComplaints && !matrix.ursaechlicher_zusammenhang) {
-    // 0. Multiple symptoms causality check (Hahnemann Organon)
-    rationale = 'Mehrere Beschwerden angegeben. Nach Hahnemann muss zuerst geprüft werden, ob ein ursächlicher Zusammenhang (z. B. derselbe Infekt) besteht, um sie als zusammenhängenden Komplex zu erfassen.';
-    nextQuestion = 'Besteht zwischen Ihren angegebenen Beschwerden ein ursächlicher Zusammenhang (z. B. durch denselben Infekt, Auslöser oder Beginn)?';
+    const qData = getQ('causality');
+    rationale = qData.rationale;
+    nextQuestion = qData.question;
+    auswahlOptionen = qData.options;
     auswahlTyp = 'single';
-    auswahlOptionen = [
-      'Ja, beide Beschwerden entstanden zeitgleich durch denselben Infekt / Auslöser (Symptomkomplex)',
-      'Nein, es handelt sich um zwei voneinander unabhängige Beschwerden',
-      'Die zweite Beschwerde trat nacheinander als Folge der Erstbeschwerde auf',
-      'Zusammenhang noch unklar / wird separat beobachtet'
-    ];
     diffRemedies.push('Aconitum napellus', 'Belladonna', 'Bryonia alba');
   } else if (caseType === 'chronisch' && !matrix.fruehere_behandlungen_und_historie) {
-    // Chronic case history & previous treatments (§§ 83–98 Organon)
-    rationale = 'Chronischer Fall (§§ 83–98 Organon): Die umfassende Historie inklusive früherer Behandlungen, Unterdrückungen und Dauer muss erforscht werden.';
-    nextQuestion = 'Wie lange bestehen diese chronischen Beschwerden bereits und welche früheren Behandlungen, Therapien oder Medikationen gab es?';
+    const qData = getQ('chronicHistory');
+    rationale = qData.rationale;
+    nextQuestion = qData.question;
+    auswahlOptionen = qData.options;
     auswahlTyp = 'single';
-    auswahlOptionen = [
-      'Besteht seit vielen Monaten/Jahren mit wiederholten allopathischen Behandlungen',
-      'Tritt seit längerer Zeit chronisch-schubweise auf, bisher keine Dauermedikation',
-      'Folge einer früheren unterdrückten Erkrankung oder eines Hautausschlags',
-      'Erstmaliges Auftreten in dieser Form, keine Vorbehandlungen'
-    ];
     diffRemedies.push('Sulphur', 'Calcarea carbonica', 'Lycopodium clavatum', 'Silicea');
   } else if (!hasCausa) {
-    // 1. Causa (Auslöser oder Beginn)
-    rationale = caseType === 'akut' 
-      ? 'Akuter Fall (§ 99 Organon): Unmittelbarer Auslöser (Causa) und akuter Beginn müssen exakt erfasst werden.'
-      : 'Causa (Auslöser oder Beginn): Was war der ursprüngliche Anlass für den Beginn der Beschwerden?';
-    nextQuestion = 'Gab es einen konkreten Auslöser oder Beginn für Ihre Beschwerden (z. B. kalte Luft/Wind, Durchnässung, Ärger, Schreck oder Überanstrengung)?';
+    const qData = getQ('causa');
+    rationale = qData.rationale;
+    nextQuestion = qData.question;
+    auswahlOptionen = qData.options;
     auswahlTyp = 'single';
-    auswahlOptionen = [
-      'Kälteeinwirkung (kalter trockener Wind, Zugluft, Unterkühlung)',
-      'Durchnässung, Nässe oder Baden in kaltem Wasser',
-      'Plötzlicher Schreck, Schock oder akute Angst',
-      'Ärger, Zorn, Kränkung oder emotionaler Stress',
-      'Körperliche Überanstrengung oder Verheben',
-      'Kein spezifischer Auslöser erinnerlich / schleichender Beginn'
-    ];
     diffRemedies.push('Aconitum napellus', 'Belladonna', 'Bryonia alba', 'Rhus toxicodendron');
   } else if (!hasLokalisierung) {
-    // 2. Lokalisation (Ort und Strahlungsoptionen)
-    rationale = 'Lokalisation (Ort und Strahlungsoptionen): Der genaue anatomische Sitz und etwaige Ausstrahlungen müssen erfasst werden.';
-    nextQuestion = 'Wo genau manifestieren sich die Beschwerden – und strahlen sie in andere Körperregionen aus?';
+    const qData = getQ('lokalisierung');
+    rationale = qData.rationale;
+    nextQuestion = qData.question;
+    auswahlOptionen = qData.options;
     auswahlTyp = 'single';
-    auswahlOptionen = [
-      'Kopf / Stirn / Schläfen mit Ausstrahlung in den Nacken',
-      'Hals / Rachen / Mandeln mit Ausstrahlung in die Ohren',
-      'Brustkorb / Lunge / Bronchien',
-      'Magen-Darm-Trakt / Oberbauch mit Ausstrahlung in den Rücken',
-      'Bewegungsapparat / Gelenke / Glieder',
-      'Ganzkörperlich / Systemisch (Fieber, Frösteln)'
-    ];
     diffRemedies.push('Belladonna', 'Bryonia alba', 'Gelsemium sempervirens');
   } else if (!hasEmpfindung) {
-    // 3. Sensation (Qualität der Beschwerde)
-    rationale = 'Sensation (Qualität der Beschwerde): Nach Hahnemann und Bönninghausen ist die Schmerz- bzw. Missempfindungsqualität entscheidend.';
-    nextQuestion = 'Wie fühlt sich die Beschwerde für Sie an – welche Schmerz- oder Empfindungsqualität beschreibt es am besten?';
+    const qData = getQ('empfindung');
+    rationale = qData.rationale;
+    nextQuestion = qData.question;
+    auswahlOptionen = qData.options;
     auswahlTyp = 'single';
-    auswahlOptionen = [
-      'Klopfend, hämmernd und pulsierend (Belladonna)',
-      'Stechend bei jeder geringsten Bewegung oder Einatmung (Bryonia)',
-      'Dumpf, drückend oder wie eine schwere Last/Band um den Kopf (Gelsemium)',
-      'Wie zerschlagen, wund in allen Gliedern (Eupatorium / Arnica)',
-      'Brennende Hitze mit Ruhelosigkeit (Aconitum / Arsenicum)',
-      'Ziehend und krampfartig (Colocynthis / Magnesia phosphorica)'
-    ];
     diffRemedies.push('Aconitum napellus', 'Belladonna', 'Bryonia alba', 'Ferrum phosphoricum');
   } else if (!hasModalitaeten) {
-    // 4. Modalitäten (Verschlechterung oder Besserung)
-    rationale = 'Modalitäten (Verschlechterung / Besserung): Umfassende Bedingungen von Besserung und Verschlimmerung (Wärme, Kälte, Ruhe, Bewegung).';
-    nextQuestion = 'Was macht Ihren Zustand spürbar besser oder schlechter – reagieren Sie auf Wärme, Kälte, Ruhe oder Bewegung?';
+    const qData = getQ('modalitaeten');
+    rationale = qData.rationale;
+    nextQuestion = qData.question;
+    auswahlOptionen = qData.options;
     auswahlTyp = 'multiple';
-    auswahlOptionen = [
-      'Besserung durch absolute Ruhe, geringste Bewegung verschlimmert',
-      'Besserung durch feste Bandagierung oder festen Druck auf die Stelle',
-      'Besserung durch kühle, frische Luft und Entblößen',
-      'Besserung durch Wärme, warme Auflagen und Einhüllen (Kälte unerträglich)',
-      'Verschlimmerung durch Licht, Geräusche und Erschütterung',
-      'Verschlimmerung abends und nachts im Bett'
-    ];
     diffRemedies.push('Bryonia alba', 'Silicea', 'Belladonna', 'Aconitum napellus');
   } else if (!hasBegleitsymptome) {
-    // 5. Begleitsymptome und Gemüt (Begleitsymptome)
-    rationale = 'Begleitsymptome (Concomitants): Durstverhalten, Schweißbildung und Allgemeinsymptome sichern die Mittelwahl ab.';
-    nextQuestion = 'Welche Begleitsymptome treten auf – wie verhalten sich Durst, Schweiß und Temperatur?';
+    const qData = getQ('begleitsymptome');
+    rationale = qData.rationale;
+    nextQuestion = qData.question;
+    auswahlOptionen = qData.options;
     auswahlTyp = 'multiple';
-    auswahlOptionen = [
-      'Großer, unstillbarer Durst auf eiskaltes Wasser',
-      'Völlige Durstlosigkeit trotz Fieber oder Hitze',
-      'Trockene, brennend heiße Haut ohne jede Schweißbildung',
-      'Profuser, erleichternder Schweiß',
-      'Schüttelfrost bei jeder geringsten Entblößung',
-      'Rotes Gesicht beim Liegen, blass beim Aufrichten'
-    ];
     diffRemedies.push('Aconitum napellus', 'Belladonna', 'Apis mellifica', 'Gelsemium sempervirens');
   } else if (!hasGemuet) {
-    // 5. Begleitsymptome und das Gemüt (Gemütsverfassung)
-    rationale = 'Gemüt (Psychischer Zustand): Nach Hahnemann die Krone der Symptome und der wichtigste Wegweiser zum passenden Simile.';
-    nextQuestion = 'Wie ist Ihre seelische Verfassung / Ihr Gemütszustand während dieser Beschwerden?';
+    const qData = getQ('gemuet');
+    rationale = qData.rationale;
+    nextQuestion = qData.question;
+    auswahlOptionen = qData.options;
     auswahlTyp = 'single';
-    auswahlOptionen = [
-      'Große Reizbarkeit und Zorn, will absolut in Ruhe gelassen werden (Bryonia)',
-      'Ängstliche, getriebene Unruhe mit Todesfurcht und Herzklopfen (Aconitum)',
-      'Apathisch, schläfrig, wie betäubt, verlangt nach Stille (Gelsemium)',
-      'Weinerlich, verlangt nach Zuwendung, Trost und frischer Luft (Pulsatilla)',
-      'Verzweifelt und ängstlich ruhelos, wandert umher (Arsenicum)',
-      'Ausgeglichen und gefasst, keine spürbare Gemütsveränderung'
-    ];
     diffRemedies.push('Bryonia alba', 'Aconitum napellus', 'Belladonna', 'Pulsatilla');
-  } else {
-    // All 6 covered!
-    status = 'completed';
-    nextQuestion = '';
-    auswahlOptionen = [];
-    rationale = 'Alle Säulen der homöopathischen Anamnese nach Hahnemann (Organon §§ 81–104) wurden erfolgreich erhoben und differenziert.';
-    if (matrix.modalitaeten?.includes('Druck') || matrix.modalitaeten?.includes('Ruhe')) {
-      diffRemedies.push('Bryonia alba', 'Silicea', 'Belladonna');
-    } else {
-      diffRemedies.push('Aconitum napellus', 'Belladonna', 'Ferrum phosphoricum');
-    }
   }
 
   let summary: string | null = null;
   const clarifyingQuestions: HahnemannClarifyingQuestion[] = [];
 
   if (status === 'completed') {
-    summary = `Zusammenfassung für den Therapeuten:
-Die homöopathische Vertiefungs-Anamnese nach Hahnemann & Bönninghausen ergibt auf Basis der 6-Säulen-Matrix:
+    if (lang === 'en') {
+      summary = `Therapist Summary:\nClassical in-depth intake according to Samuel Hahnemann (Organon §§ 83–104):\n• 1. Causa (Trigger / Onset): ${matrix.causa || 'No specific trigger recorded'}\n• 2. Localization & Radiation: ${matrix.lokalisierung || 'Systemic'}\n• 3. Sensation (Quality): ${matrix.empfindung || 'Not further specified'}\n• 4. Modalities (Better / Worse): ${matrix.modalitaeten || 'No specific modalities recorded'}\n• 5. Concomitants: ${matrix.begleitsymptome?.length ? matrix.begleitsymptome.join(', ') : 'No prominent concomitants'}\n• 6. Mind (Mental state): ${matrix.gemuet || 'Equable / balanced'}\n\nLeading remedy recommendation: ${diffRemedies[0] || 'Bryonia alba'} based on totality of the 6 pillars.`;
+    } else if (lang === 'fr') {
+      summary = `Synthèse pour le thérapeute :\nAnamnèse approfondie selon Samuel Hahnemann (Organon §§ 83–104) :\n• 1. Causa (Déclencheur / Début) : ${matrix.causa || 'Aucun déclencheur précis'}\n• 2. Localisation & Rayonnement : ${matrix.lokalisierung || 'Systémique'}\n• 3. Sensation (Qualité) : ${matrix.empfindung || 'Non spécifiée'}\n• 4. Modalités (Amélioration / Aggravation) : ${matrix.modalitaeten || 'Aucune modalité notée'}\n• 5. Concomitants : ${matrix.begleitsymptome?.length ? matrix.begleitsymptome.join(', ') : 'Aucun concomitant notable'}\n• 6. Mental (État psychique) : ${matrix.gemuet || 'Équilibré'}\n\nSimilé homéopathique prédominant : ${diffRemedies[0] || 'Bryonia alba'} selon la totalité des 6 piliers.`;
+    } else if (lang === 'es') {
+      summary = `Resumen para el terapeuta:\nAnamnesis profunda según Samuel Hahnemann (Organon §§ 83–104):\n• 1. Causa (Desencadenante / Inicio): ${matrix.causa || 'Sin desencadenante específico'}\n• 2. Localización y Radiación: ${matrix.lokalisierung || 'Sistémica'}\n• 3. Sensación (Calidad): ${matrix.empfindung || 'No especificada'}\n• 4. Modalidades (Mejoría / Empeoramiento): ${matrix.modalitaeten || 'Sin modalidades específicas'}\n• 5. Síntomas concomitantes: ${matrix.begleitsymptome?.length ? matrix.begleitsymptome.join(', ') : 'Sin concomitantes destacados'}\n• 6. Mente (Estado anímico): ${matrix.gemuet || 'Equilibrado'}\n\nSimillimum principal: ${diffRemedies[0] || 'Bryonia alba'} basado en la totalidad de los 6 pilares.`;
+    } else {
+      summary = `Zusammenfassung für den Therapeuten:
+Die homöopathische Vertiefungs-Anamnese nach Hahnemann & Bönninghausen ergibt auf Basis der 6-Säulen-Matrix (Organon §§ 83–104):
 • 1. Causa (Auslöser): ${matrix.causa || 'Kein spezifischer Auslöser genannt'}
 • 2. Lokalisierung (Ort / Gewebe): ${matrix.lokalisierung || 'Systemisch / Ganzkörperlich'}
 • 3. Empfindung (Sensation / Qualität): ${matrix.empfindung || 'Nicht näher spezifiziert'}
@@ -435,9 +1028,34 @@ Die homöopathische Vertiefungs-Anamnese nach Hahnemann & Bönninghausen ergibt 
 • 6. Gemüt (Psychischer Zustand): ${matrix.gemuet || 'Ausgeglichen / unauffällig'}
 
 Homöopathische Simile-Differenzierung: Führendes Simile ist ${diffRemedies[0] || 'Bryonia alba'} basierend auf der exakten Gesamtheit der erhobenen 6 Säulen.`;
+    }
 
-    // Max 1-2 focused clarifying questions, never looping endlessly
-    if (!matrix.modalitaeten || matrix.modalitaeten === 'Noch nicht genannt') {
+    if (lang === 'en') {
+      clarifyingQuestions.push({
+        id: 'q_modalitaet',
+        frage: 'How does the pain respond to firm pressure or bandaging versus motion?',
+        grund: 'Differentiates pressure relief (Silicea, Bryonia) from touch sensitivity (Belladonna)',
+        kategorie: 'modalitaeten',
+        optionen: [
+          'Firm pressure and bandaging relieve noticeably',
+          'Slightest motion and jarring worsen',
+          'Relief from gentle motion in open fresh air',
+          'Neither pressure nor motion affects the pain'
+        ]
+      });
+      clarifyingQuestions.push({
+        id: 'q_begleit',
+        frage: 'How do thirst and temperature preferences behave during the condition?',
+        grund: 'Important general symptom according to Bönninghausen to secure the simile',
+        kategorie: 'begleitsymptome',
+        optionen: [
+          'Great thirst for large amounts of cold water',
+          'Complete thirstlessness despite heat/pain',
+          'Marked chilliness, desires warm wrapping',
+          'Aversion to fresh air and cold'
+        ]
+      });
+    } else {
       clarifyingQuestions.push({
         id: 'q_modalitaet',
         frage: 'Wie reagieren die Schmerzen auf feste Bandagierung oder Druck versus Bewegung?',
@@ -450,9 +1068,6 @@ Homöopathische Simile-Differenzierung: Führendes Simile ist ${diffRemedies[0] 
           'Weder Druck noch Bewegung verändern die Schmerzen'
         ]
       });
-    }
-
-    if (clarifyingQuestions.length < 2) {
       clarifyingQuestions.push({
         id: 'q_begleit',
         frage: 'Wie verhält sich das Durst- und Temperaturverlangen während des Zustands?',

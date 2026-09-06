@@ -213,40 +213,71 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
       [qId]: cleanAnswer,
     }));
 
-    // Update matrix dynamically
+    // Update matrix dynamically based on explicit category first
     const updatedMatrix: Hahnemann6Pillars = { 
       ...matrix,
       begleitsymptome: [...matrix.begleitsymptome]
     };
     
-    if (
-      category === 'gemuet' || 
-      qId.includes('gemuet') || 
-      cleanAnswer.toLowerCase().includes('ruhe') || 
-      cleanAnswer.toLowerCase().includes('unruhe') || 
-      cleanAnswer.toLowerCase().includes('reizbar') || 
-      cleanAnswer.toLowerCase().includes('gemüt') || 
-      cleanAnswer.toLowerCase().includes('apathisch') ||
-      cleanAnswer.toLowerCase().includes('weinen')
-    ) {
+    const cat = (category || '').toLowerCase();
+    const id = qId.toLowerCase();
+
+    if (cat === 'gemuet' || id.includes('gemuet') || id.includes('mind') || id.includes('psyc')) {
       updatedMatrix.gemuet = cleanAnswer;
-    } else if (category === 'modalitaeten' || qId.includes('modalitaet')) {
+    } else if (cat === 'modalitaeten' || id.includes('modalitaet') || id.includes('modali')) {
       updatedMatrix.modalitaeten = updatedMatrix.modalitaeten 
         ? `${updatedMatrix.modalitaeten}; ${cleanAnswer}` 
         : cleanAnswer;
-    } else if (category === 'begleitsymptome' || qId.includes('begleit')) {
+    } else if (cat === 'begleitsymptome' || id.includes('begleit') || id.includes('concomit')) {
       if (!updatedMatrix.begleitsymptome.includes(cleanAnswer)) {
         updatedMatrix.begleitsymptome.push(cleanAnswer);
+      }
+    } else if (cat === 'empfindung' || id.includes('empfind') || id.includes('sensation')) {
+      updatedMatrix.empfindung = cleanAnswer;
+    } else if (cat === 'lokalisierung' || id.includes('lokal') || id.includes('locat')) {
+      updatedMatrix.lokalisierung = cleanAnswer;
+    } else if (cat === 'causa' || id.includes('causa') || id.includes('ausloes') || id.includes('trigger')) {
+      updatedMatrix.causa = cleanAnswer;
+    } else {
+      // Fallback only if no category specified
+      if (
+        cleanAnswer.toLowerCase().includes('ruhe') || 
+        cleanAnswer.toLowerCase().includes('bewegung') || 
+        cleanAnswer.toLowerCase().includes('wärme') || 
+        cleanAnswer.toLowerCase().includes('kälte')
+      ) {
+        updatedMatrix.modalitaeten = updatedMatrix.modalitaeten 
+          ? `${updatedMatrix.modalitaeten}; ${cleanAnswer}` 
+          : cleanAnswer;
+      } else {
+        if (!updatedMatrix.gemuet || updatedMatrix.gemuet === 'Noch nicht genannt') {
+          updatedMatrix.gemuet = cleanAnswer;
+        } else if (!updatedMatrix.begleitsymptome.includes(cleanAnswer)) {
+          updatedMatrix.begleitsymptome.push(cleanAnswer);
+        }
       }
     }
 
     // Update summary text
     let updatedSummary = analysisResult.end_analyse_zusammenfassung || '';
-    if (category === 'gemuet' || qId.includes('gemuet') || updatedMatrix.gemuet === cleanAnswer) {
-      if (updatedSummary.includes('• Gemüt:')) {
-        updatedSummary = updatedSummary.replace(/• Gemüt: .*/, `• Gemüt: ${cleanAnswer}`);
-      } else {
-        updatedSummary += `\n• Gemüt: ${cleanAnswer}`;
+    if (updatedSummary) {
+      if (cat === 'gemuet' || id.includes('gemuet') || updatedMatrix.gemuet === cleanAnswer) {
+        const regex = /(•\s*(?:Gemüt|Mind|Mental|Psique|Stato d'animo|Ψυχική διάθεση|Душевное состояние)[^:\n]*:)(.*)/i;
+        if (regex.test(updatedSummary)) {
+          updatedSummary = updatedSummary.replace(regex, `$1 ${cleanAnswer}`);
+        } else {
+          updatedSummary += `\n• ${t('hahnemannPillarGemuet')}: ${cleanAnswer}`;
+        }
+      } else if (cat === 'modalitaeten' || id.includes('modalitaet')) {
+        const regex = /(•\s*(?:Modalitäten|Modalities|Modalités|Modalità|Modalidades|Τροποποιητικοί παράγοντες|Модальности)[^:\n]*:)(.*)/i;
+        if (regex.test(updatedSummary)) {
+          updatedSummary = updatedSummary.replace(regex, `$1 ${updatedMatrix.modalitaeten}`);
+        }
+      } else if (cat === 'begleitsymptome' || id.includes('begleit')) {
+        const regex = /(•\s*(?:Begleitsymptome|Concomitants|Concomitanti|Concomitantes|Συνοδά συμπτώματα|Сопутствующие симптомы)[^:\n]*:)(.*)/i;
+        if (regex.test(updatedSummary)) {
+          updatedSummary = updatedSummary.replace(regex, `$1 ${updatedMatrix.begleitsymptome.join(', ')}`);
+        }
       }
     }
 
@@ -506,7 +537,7 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
               </span>
             </div>
 
-            {/* Prüfung auf ursächlichen Zusammenhang bei mehreren Beschwerden (§§ 81–104) */}
+            {/* Prüfung auf ursächlichen Zusammenhang bei mehreren Beschwerden (§§ 83–104) */}
             {(analysisResult?.mehrere_symptome_erkannt || matrix.ursaechlicher_zusammenhang) && (
               <div className={`p-3.5 rounded-xl border flex items-start gap-3 text-xs ${
                 matrix.ursaechlicher_zusammenhang && (matrix.ursaechlicher_zusammenhang.toLowerCase().includes('ja') || matrix.ursaechlicher_zusammenhang.toLowerCase().includes('zeitgleich'))
@@ -781,8 +812,8 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
                 <div className="flex items-center justify-between pt-1">
                   <span className="text-[11px] text-slate-400">
                     {selectedOptions.length > 0 
-                      ? `${selectedOptions.length} Option(en) ausgewählt + Freitext wird übertragen`
-                      : 'Option(en) wählen und/oder Freitext eingeben'}
+                      ? t('hahnemannOptionsSelectedAndFreeText', { count: selectedOptions.length })
+                      : t('hahnemannSelectOptionsOrFreeText')}
                   </span>
 
                   <button

@@ -205,7 +205,7 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = ({
   // Quick Intake & Voice State
   const [symptomText, setSymptomText] = useState('');
   const [isRecording, setIsRecording] = useState(false);
-  const [recordSecondsLeft, setRecordSecondsLeft] = useState(15);
+  const [recordSecondsLeft, setRecordSecondsLeft] = useState(60);
   const [recommendations, setRecommendations] = useState<SymptomMatchResult[]>([]);
   const [isSpeechSupported, setIsSpeechSupported] = useState(true);
   const [copySuccess, setCopySuccess] = useState<string | null>(null);
@@ -265,14 +265,14 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = ({
     };
   }, []);
 
-  // Voice recording handler (Max 15s) with duplicate deposit prevention & automatic clarification popup
+  // Voice recording handler (Max 60s) with duplicate deposit prevention & automatic clarification popup
   const startVoiceRecording = () => {
     if (isRecording) {
       stopVoiceRecording(true);
       return;
     }
 
-    setRecordSecondsLeft(15);
+    setRecordSecondsLeft(60);
     setIsRecording(true);
     isFinalizingRef.current = false;
     lastSpokenTranscriptRef.current = '';
@@ -308,7 +308,7 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = ({
 
       recognitionRef.current = session;
 
-      // Start 15s countdown timer
+      // Start 60s countdown timer
       const interval = window.setInterval(() => {
         setRecordSecondsLeft((prev) => {
           if (prev <= 1) {
@@ -861,13 +861,13 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = ({
                 </div>
               </div>
 
-              {/* Progress Bar for 15 Seconds */}
+              {/* Progress Bar for 60 Seconds */}
               {isRecording && (
                 <div className="space-y-1.5">
                   <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
                     <div
                       className="bg-rose-500 h-full transition-all duration-1000 ease-linear rounded-full"
-                      style={{ width: `${((15 - recordSecondsLeft) / 15) * 100}%` }}
+                      style={{ width: `${((60 - recordSecondsLeft) / 60) * 100}%` }}
                     />
                   </div>
                   <div className="flex justify-between text-[10px] text-slate-400 font-semibold">

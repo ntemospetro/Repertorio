@@ -687,7 +687,315 @@ Antworte AUSSCHLIESSLICH mit einem validen JSON-Objekt im folgenden Format (ohne
     }
   });
 
-  // Hahnemann & Bönninghausen Analyse-Engine nach Organon der Heilkunst §§ 81–104
+  // Hahnemann & Bönninghausen Analyse-Engine nach Organon der Heilkunst §§ 83–104
+  const getLocalizedOrganonSummary = (m: any, lang: string): string => {
+    if (lang === 'en') {
+      return `Classical Synthesis according to Samuel Hahnemann (Organon §§ 83–104):\n• Causa (Trigger / Onset): ${m.causa || 'No specific trigger identified'}\n• Localization & Radiation: ${m.lokalisierung || 'Systemic'}\n• Sensation (Quality): ${m.empfindung || 'Not further specified'}\n• Modalities (Better / Worse): ${m.modalitaeten || 'No specific modalities'}\n• Concomitants: ${Array.isArray(m.begleitsymptome) && m.begleitsymptome.length > 0 ? m.begleitsymptome.join(', ') : 'No prominent concomitants'}\n• Mind (Mental State): ${m.gemuet || 'Equable / balanced'}\n• Symptom Complex: ${m.ursaechlicher_zusammenhang || 'Unified symptom complex'}`;
+    }
+    if (lang === 'es') {
+      return `Síntesis clásica según Samuel Hahnemann (Organon §§ 83–104):\n• Causa (Desencadenante / Inicio): ${m.causa || 'Sin causa específica identificada'}\n• Localización y Radiación: ${m.lokalisierung || 'Sistémica'}\n• Sensación (Calidad): ${m.empfindung || 'No especificada'}\n• Modalidades (Mejoría / Empeoramiento): ${m.modalitaeten || 'Sin modalidades específicas'}\n• Síntomas concomitantes: ${Array.isArray(m.begleitsymptome) && m.begleitsymptome.length > 0 ? m.begleitsymptome.join(', ') : 'Sin concomitantes destacados'}\n• Mente (Estado anímico): ${m.gemuet || 'Equilibrado'}\n• Complejo sintomático: ${m.ursaechlicher_zusammenhang || 'Complejo sintomático unificado'}`;
+    }
+    if (lang === 'fr') {
+      return `Synthèse classique selon Samuel Hahnemann (Organon §§ 83–104) :\n• Causa (Déclencheur / Début) : ${m.causa || 'Aucune cause spécifique identifiée'}\n• Localisation & Rayonnement : ${m.lokalisierung || 'Systémique'}\n• Sensation (Qualité) : ${m.empfindung || 'Non spécifiée'}\n• Modalités (Amélioration / Aggravation) : ${m.modalitaeten || 'Aucune modalité spécifique'}\n• Concomitants : ${Array.isArray(m.begleitsymptome) && m.begleitsymptome.length > 0 ? m.begleitsymptome.join(', ') : 'Aucun concomitant notable'}\n• Mental (État d\'esprit) : ${m.gemuet || 'Équilibré'}\n• Complexe de symptômes : ${m.ursaechlicher_zusammenhang || 'Complexe de symptômes unifié'}`;
+    }
+    if (lang === 'it') {
+      return `Sintesi classica secondo Samuel Hahnemann (Organon §§ 83–104):\n• Causa (Fattore scatenante / Inizio): ${m.causa || 'Nessuna causa specifica identificata'}\n• Localizzazione e Irradiazione: ${m.lokalisierung || 'Sistemica'}\n• Sensazione (Qualità): ${m.empfindung || 'Non specificata'}\n• Modalità (Miglioramento / Aggravamento): ${m.modalitaeten || 'Nessuna modalità specifica'}\n• Sintomi concomitanti: ${Array.isArray(m.begleitsymptome) && m.begleitsymptome.length > 0 ? m.begleitsymptome.join(', ') : 'Nessun concomitante di rilievo'}\n• Mente (Stato d\'animo): ${m.gemuet || 'Equilibrato'}\n• Complesso sintomatico: ${m.ursaechlicher_zusammenhang || 'Complesso sintomatico unificato'}`;
+    }
+    if (lang === 'el') {
+      return `Κλασική Σύνθεση κατά Samuel Hahnemann (Όργανον §§ 83–104):\n• Causa (Έναυσμα / Έναρξη): ${m.causa || 'Δεν προσδιορίστηκε συγκεκριμένο έναυσμα'}\n• Εντόπιση & Αντανάκλαση: ${m.lokalisierung || 'Συστηματική'}\n• Αίσθηση (Ποιότητα): ${m.empfindung || 'Μη επακριβώς προσδιορισμένη'}\n• Τροποποιητικοί παράγοντες (Βελτίωση / Επιδείνωση): ${m.modalitaeten || 'Χωρίς συγκεκριμένους τροποποιητικούς παράγοντες'}\n• Συνοδά συμπτώματα: ${Array.isArray(m.begleitsymptome) && m.begleitsymptome.length > 0 ? m.begleitsymptome.join(', ') : 'Χωρίς αξιοσημείωτα συνοδά'}\n• Ψυχική διάθεση: ${m.gemuet || 'Ισόρροπη'}\n• Σύμπλεγμα συμπτωμάτων: ${m.ursaechlicher_zusammenhang || 'Ενιαίο σύμπλεγμα συμπτωμάτων'}`;
+    }
+    if (lang === 'ru') {
+      return `Классический синтез по Самуэлю Ганеману (Органон §§ 83–104):\n• Causa (Триггер / Начало): ${m.causa || 'Специфический триггер не выявлен'}\n• Локализация и иррадиация: ${m.lokalisierung || 'Системная'}\n• Ощущение (Качество): ${m.empfindung || 'Не уточнено'}\n• Модальности (Улучшение / Ухудшение): ${m.modalitaeten || 'Без специфических модальностей'}\n• Сопутствующие симптомы: ${Array.isArray(m.begleitsymptome) && m.begleitsymptome.length > 0 ? m.begleitsymptome.join(', ') : 'Без выраженных сопутствующих'}\n• Душевное состояние: ${m.gemuet || 'Уравновешенное'}\n• Симптомокомплекс: ${m.ursaechlicher_zusammenhang || 'Единый симптомокомплекс'}`;
+    }
+    return `Klassische Synthese nach Samuel Hahnemann (Organon §§ 83–104):\n• Causa (Auslöser / Beginn): ${m.causa || 'Keine spezifische Causa ermittelt'}\n• Lokalisation & Strahlungsoptionen: ${m.lokalisierung || 'Systemisch'}\n• Sensation (Qualität): ${m.empfindung || 'Nicht näher spezifiziert'}\n• Modalitäten (Besserung / Verschlimmerung): ${m.modalitaeten || 'Keine spezifischen Modalitäten'}\n• Begleitsymptome: ${Array.isArray(m.begleitsymptome) && m.begleitsymptome.length > 0 ? m.begleitsymptome.join(', ') : 'Keine auffälligen Concomitants'}\n• Gemüt (Seelischer Zustand): ${m.gemuet || 'Ausgeglichen'}\n• Symptomkomplex: ${m.ursaechlicher_zusammenhang || 'Einheitlicher Symptomkomplex'}`;
+  };
+
+  const getLocalizedClarifyingQuestions = (m: any, lang: string): any[] => {
+    const list: any[] = [];
+    if (lang === 'en') {
+      if (!m.gemuet || m.gemuet === "Noch nicht genannt") {
+        list.push({
+          id: "q_gemuet",
+          frage: "How is the emotional / mental state during the symptoms?",
+          grund: "Central Hahnemannian core pillar for precise differentiation of the remedy",
+          kategorie: "gemuet",
+          optionen: [
+            "Irritable, angry, wants absolute quiet (Bryonia / Nux vomica)",
+            "Anxious motor restlessness with fear (Aconitum / Arsenicum)",
+            "Apathetic, drowsy, indifferent (Gelsemium / Phosphorus)",
+            "Weeping, desires consolation and company (Pulsatilla)",
+            "Balanced, no noticeable mental change"
+          ]
+        });
+      }
+      list.push({
+        id: "q_modalitaet",
+        frage: "How does the pain respond to firm bandaging or firm pressure versus motion?",
+        grund: "Differentiates firm pressure relief (Silicea, Bryonia) from touch/jar sensitive remedies (Belladonna)",
+        kategorie: "modalitaeten",
+        optionen: [
+          "Firm pressure and bandaging relieve noticeably",
+          "Slightest motion and jarring worsen",
+          "Relief from gentle continuous motion in fresh air",
+          "Neither pressure nor motion affects the pain"
+        ]
+      });
+      list.push({
+        id: "q_begleit",
+        frage: "How do thirst and temperature preferences behave during the condition?",
+        grund: "Important general symptom according to Bönninghausen to secure the simile",
+        kategorie: "begleitsymptome",
+        optionen: [
+          "Great unquenchable thirst for large amounts of cold water",
+          "Complete thirstlessness despite heat/fever",
+          "Desire for warm drinks / warm wrapping",
+          "Aversion to fresh air and cold"
+        ]
+      });
+    } else if (lang === 'es') {
+      if (!m.gemuet || m.gemuet === "Noch nicht genannt") {
+        list.push({
+          id: "q_gemuet",
+          frage: "¿Cómo es el estado de ánimo o disposición mental durante los síntomas?",
+          grund: "Pilar central de Hahnemann para la diferenciación exacta del remedio",
+          kategorie: "gemuet",
+          optionen: [
+            "Irritable, colérico, desea calma absoluta (Bryonia / Nux vomica)",
+            "Inquietud motora ansiosa con temor (Aconitum / Arsenicum)",
+            "Apático, somnoliento, indiferente (Gelsemium / Phosphorus)",
+            "Lloroso, busca consuelo y compañía (Pulsatilla)",
+            "Equilibrado, sin cambios anímicos relevantes"
+          ]
+        });
+      }
+      list.push({
+        id: "q_modalitaet",
+        frage: "¿Cómo reacciona el dolor a un vendaje firme o presión fuerte frente al movimiento?",
+        grund: "Diferencia la mejoría por presión firme (Silicea, Bryonia) de remedios sensibles a la sacudida (Belladonna)",
+        kategorie: "modalitaeten",
+        optionen: [
+          "La presión firme y el vendaje alivian notablemente",
+          "El menor movimiento o sacudida empeoran",
+          "Alivio con movimiento suave al aire libre",
+          "Ni la presión ni el movimiento modifican el dolor"
+        ]
+      });
+      list.push({
+        id: "q_begleit",
+        frage: "¿Cómo se comportan la sed y el deseo de temperatura durante el estado?",
+        grund: "Síntoma general clave según Bönninghausen para asegurar el simillimum",
+        kategorie: "begleitsymptome",
+        optionen: [
+          "Gran sed insaciable de grandes cantidades de agua fría",
+          "Ausencia total de sed a pesar de fiebre/calor",
+          "Deseo de bebidas calientes / abrigo cálido",
+          "Aversión al aire libre y al frío"
+        ]
+      });
+    } else if (lang === 'fr') {
+      if (!m.gemuet || m.gemuet === "Noch nicht genannt") {
+        list.push({
+          id: "q_gemuet",
+          frage: "Quel est l'état d'esprit / l'état psychique pendant les troubles ?",
+          grund: "Pilier fondamental hahnemannien pour différencier précisément le remède",
+          kategorie: "gemuet",
+          optionen: [
+            "Irritable, colérique, veut le calme absolu (Bryonia / Nux vomica)",
+            "Agitation motrice anxieuse avec peur (Aconitum / Arsenicum)",
+            "Apathique, somnolent, indifférent (Gelsemium / Phosphorus)",
+            "Pleurant, demande réconfort et compagnie (Pulsatilla)",
+            "Équilibré, aucun changement psychique notable"
+          ]
+        });
+      }
+      list.push({
+        id: "q_modalitaet",
+        frage: "Comment la douleur réagit-elle à un bandage serré ou une forte pression par rapport au mouvement ?",
+        grund: "Différencie le soulagement par forte pression (Silicea, Bryonia) des remèdes hypersensibles (Belladonna)",
+        kategorie: "modalitaeten",
+        optionen: [
+          "Pression ferme et bandage soulagent nettement",
+          "Le moindre mouvement et la moindre secousse aggravent",
+          "Soulagement par un mouvement doux à l'air frais",
+          "Ni la pression ni le mouvement ne modifient la douleur"
+        ]
+      });
+      list.push({
+        id: "q_begleit",
+        frage: "Comment se comportent la soif et le besoin de chaleur pendant cet état ?",
+        grund: "Symptôme général essentiel selon Bönninghausen pour étayer le remède",
+        kategorie: "begleitsymptome",
+        optionen: [
+          "Grande soif inextinguible de grandes quantités d'eau froide",
+          "Absence totale de soif malgré la chaleur/fièvre",
+          "Désir de boissons chaudes / d'enveloppement chaud",
+          "Aversion pour l'air frais et le froid"
+        ]
+      });
+    } else if (lang === 'it') {
+      if (!m.gemuet || m.gemuet === "Noch nicht genannt") {
+        list.push({
+          id: "q_gemuet",
+          frage: "Qual è lo stato d'animo / la disposizione psichica durante i disturbi?",
+          grund: "Pilastro cardine hahnemanniano per la precisa differenziazione del rimedio",
+          kategorie: "gemuet",
+          optionen: [
+            "Irritabile, collerico, vuole quiete assoluta (Bryonia / Nux vomica)",
+            "Irrequietezza motoria ansiosa con paura (Aconitum / Arsenicum)",
+            "Apatico, assonnato, indifferente (Gelsemium / Phosphorus)",
+            "Piangente, cerca conforto e compagnia (Pulsatilla)",
+            "Equilibrato, nessun cambiamento evidente"
+          ]
+        });
+      }
+      list.push({
+        id: "q_modalitaet",
+        frage: "Come risponde il dolore a una fasciatura stretta o forte pressione rispetto al movimento?",
+        grund: "Differenzia il miglioramento da forte pressione (Silicea, Bryonia) dai rimedi ipersensibili (Belladonna)",
+        kategorie: "modalitaeten",
+        optionen: [
+          "Pressione decisa e fasciatura migliorano notevolmente",
+          "Il minimo movimento o scuotimento peggiora",
+          "Miglioramento con movimento dolce all'aria aperta",
+          "Né pressione né movimento modificano il dolore"
+        ]
+      });
+      list.push({
+        id: "q_begleit",
+        frage: "Come si comportano sete e preferenze termiche durante lo stato attuale?",
+        grund: "Sintomo generale fondamentale secondo Bönninghausen per confermare il simile",
+        kategorie: "begleitsymptome",
+        optionen: [
+          "Grande sete insaziabile di abbondante acqua fredda",
+          "Assenza totale di sete nonostante calore/febbre",
+          "Desiderio di bevande calde / avvolgimento caldo",
+          "Avversione per aria fresca e freddo"
+        ]
+      });
+    } else if (lang === 'el') {
+      if (!m.gemuet || m.gemuet === "Noch nicht genannt") {
+        list.push({
+          id: "q_gemuet",
+          frage: "Ποια είναι η ψυχική διάθεση κατά τη διάρκεια των ενοχλημάτων;",
+          grund: "Κεντρικός πυλώνας του Χάνεμαν για την ακριβή διαφοροποίηση του φαρμάκου",
+          kategorie: "gemuet",
+          optionen: [
+            "Ευερέθιστος, οργίλος, ζητά απόλυτη ησυχία (Bryonia / Nux vomica)",
+            "Αγχώδης κινητική ανησυχία με φόβο (Aconitum / Arsenicum)",
+            "Απαθής, υπνηλέος, αδιάφορος (Gelsemium / Phosphorus)",
+            "Κλαψιάρης, αναζητά παρηγοριά και συντροφιά (Pulsatilla)",
+            "Ισόρροπος, χωρίς ουσιαστική αλλαγή διάθεσης"
+          ]
+        });
+      }
+      list.push({
+        id: "q_modalitaet",
+        frage: "Πώς ανταποκρίνεται ο πόνος στη σταθερή επίδεση ή πίεση έναντι της κίνησης;",
+        grund: "Διαφοροποιεί τη βελτίωση με πίεση (Silicea, Bryonia) από τα ευαίσθητα φάρμακα (Belladonna)",
+        kategorie: "modalitaeten",
+        optionen: [
+          "Η σταθερή πίεση και η επίδεση βελτιώνουν αισθητά",
+          "Η παραμικρή κίνηση επιδεινώνει",
+          "Βελτίωση με ήπια συνεχή κίνηση στον καθαρό αέρα",
+          "Ούτε η πίεση ούτε η κίνηση μεταβάλλουν τον πόνο"
+        ]
+      });
+      list.push({
+        id: "q_begleit",
+        frage: "Πώς συμπεριφέρονται η δίψα και οι θερμοκρασιακές προτιμήσεις κατά τη διάρκεια της κατάστασης;",
+        grund: "Σημαντικό γενικό σύμπτωμα κατά Bönninghausen για την επιβεβαίωση του ομοίου",
+        kategorie: "begleitsymptome",
+        optionen: [
+          "Μεγάλη άσβεστη δίψα για μεγάλες ποσότητες κρύου νερού",
+          "Πλήρης αδυναμία δίψας παρά τη ζέστη/πυρετό",
+          "Επιθυμία για ζεστά ροφήματα / ζεστό τύλιγμα",
+          "Απέχθεια προς τον καθαρό αέρα και το κρύο"
+        ]
+      });
+    } else if (lang === 'ru') {
+      if (!m.gemuet || m.gemuet === "Noch nicht genannt") {
+        list.push({
+          id: "q_gemuet",
+          frage: "Каково душевное / эмоциональное состояние во время симптомов?",
+          grund: "Центральный ганемановский столп для точной дифференциации лекарственного средства",
+          kategorie: "gemuet",
+          optionen: [
+            "Раздражительный, сердитый, требует полного покоя (Bryonia / Nux vomica)",
+            "Тревожное двигательное беспокойство со страхом (Aconitum / Arsenicum)",
+            "Апатичный, сонный, безразличный (Gelsemium / Phosphorus)",
+            "Плаксивый, ищет утешения и сочувствия (Pulsatilla)",
+            "Спокойный, без заметных изменений настроения"
+          ]
+        });
+      }
+      list.push({
+        id: "q_modalitaet",
+        frage: "Как боль реагирует на тугую повязку или сильное давление по сравнению с движением?",
+        grund: "Дифференцирует облегчение от давления (Silicea, Bryonia) от чувствительных средств (Belladonna)",
+        kategorie: "modalitaeten",
+        optionen: [
+          "Сильное давление и повязка заметно облегчают",
+          "Малейшее движение и сотрясение ухудшают",
+          "Облегчение от мягкого движения на свежем воздухе",
+          "Ни давление, ни движение не меняют боль"
+        ]
+      });
+      list.push({
+        id: "q_begleit",
+        frage: "Как проявляются жажда и температурные предпочтения во время недомогания?",
+        grund: "Важный общий симптом по Беннингхаузену для подтверждения подобия",
+        kategorie: "begleitsymptome",
+        optionen: [
+          "Сильная неутолимая жажда большого количества холодной воды",
+          "Полное отсутствие жажды несмотря на жар/лихорадку",
+          "Желание теплых напитков / укутывания в тепло",
+          "Отвращение к свежему воздуху и холоду"
+        ]
+      });
+    } else {
+      if (!m.gemuet || m.gemuet === "Noch nicht genannt") {
+        list.push({
+          id: "q_gemuet",
+          frage: "Wie ist die seelische Verfassung / das Gemüt während der Beschwerden?",
+          grund: "Zentrale Hahnemannsche Leitsäule zur exakten Differenzierung des Arzneimittels",
+          kategorie: "gemuet",
+          optionen: [
+            "Reizbar, zornig, will absolute Ruhe (Bryonia / Nux vomica)",
+            "Ängstliche motorische Unruhe mit Furcht (Aconitum / Arsenicum)",
+            "Apathisch, schläfrig, gleichgültig (Gelsemium / Phosphor)",
+            "Weinend, verlangt nach Trost und Gesellschaft (Pulsatilla)",
+            "Ausgeglichen, keine wesentliche Gemütsveränderung"
+          ]
+        });
+      }
+      list.push({
+        id: "q_modalitaet",
+        frage: "Wie reagieren die Schmerzen auf feste Bandagierung oder starken Druck versus Bewegung?",
+        grund: "Differenziert feste Druckbesserung (Silicea, Bryonia) von druck- und erschütterungsempfindlichen Mitteln (Belladonna)",
+        kategorie: "modalitaeten",
+        optionen: [
+          "Fester Druck und Bandagierung bessern deutlich",
+          "Geringste Bewegung und Erschütterung verschlimmern",
+          "Besserung durch sanfte, anhaltende Bewegung",
+          "Weder Druck noch Bewegung verändern die Schmerzen"
+        ]
+      });
+      list.push({
+        id: "q_begleit",
+        frage: "Wie verhält sich das Durst- und Temperaturverlangen während des Zustands?",
+        grund: "Wichtiges Generalsymptom nach Bönninghausen zur Absicherung des Simile",
+        kategorie: "begleitsymptome",
+        optionen: [
+          "Großer Durst auf große Mengen kaltes Wasser",
+          "Völlige Durstlosigkeit trotz Hitze/Fieber",
+          "Verlangen nach warmen Getränken / Einhüllung",
+          "Abneigung gegen frische Luft und Kälte"
+        ]
+      });
+    }
+    return list;
+  };
+
   app.post("/api/hahnemann-analysis", async (req, res) => {
     try {
       const { 
@@ -734,10 +1042,9 @@ Antworte AUSSCHLIESSLICH mit einem validen JSON-Objekt im folgenden Format (ohne
       const mustComplete = forceComplete || all6PillarsFilled || (maxStepsReached && hasGemuet && hasModalitaeten && hasEmpfindung && hasCausa);
 
       const prompt = `
-Du bist die zentrale Logik-Engine für eine professionelle homöopathische Anamnese streng nach den Prinzipien von Samuel Hahnemann und den Paragraphen 81 bis 104 des Organon der Heilkunst.
+Du bist die zentrale Logik-Engine für eine professionelle homöopathische Anamnese streng nach den Prinzipien von Samuel Hahnemann und den Paragraphen 83 bis 104 des Organon der Heilkunst.
 
-### LEITLINIEN AUS DEM ORGANON DER HEILKUNST (§§ 81–104):
-- § 81–82: Individualitätsprinzip – Jeder Patient wird unvoreingenommen und absolut individuell erfasst.
+### LEITLINIEN AUS DEM ORGANON DER HEILKUNST (§§ 83–104):
 - § 83: Vorurteilslose Beobachtung und treue Aufnahme des Krankheitsbildes ohne Spekulationen.
 - § 84: Der Patient schildert seine Beschwerden; die Begleiter berichten. Der Arzt hört aufmerksam zu, ohne zu unterbrechen.
 - §§ 85–90: Gezieltes Nachfragen zur Präzisierung. Jedes Einzelsymptom wird isoliert abgefragt. Niemals Suggestivfragen stellen, die dem Patienten die Antwort in den Mund legen.
@@ -811,7 +1118,7 @@ Antworte AUSSCHLIESSLICH mit validem JSON in genau diesem Format (ohne Markdown,
   "mehrere_symptome_erkannt": false,
   "symptomkomplex_bestaetigt": false,
   "ignorierte_daten": [],
-  "kontroll_und_nachfrage_logik": "Begründung nach Organon §§ 81-104",
+  "kontroll_und_nachfrage_logik": "Begründung nach Organon §§ 83-104",
   "naechste_frage": "${mustComplete ? "" : "Hier steht genau eine gezielte Einzelfrage zur fehlenden Säule"}",
   "auswahl_optionen": ${mustComplete ? "[]" : '["Option 1", "Option 2", "Option 3", "Option 4"]'},
   "auswahl_typ": "multiple",
@@ -855,7 +1162,7 @@ SPRACHE: Alle Fragen, Optionen und Zusammenfassungen in ${targetLanguageName} fo
         therapistName: req.body?.therapistName,
         therapistEmail: req.body?.therapistEmail,
         endpoint: "/api/hahnemann-analysis",
-        actionName: `Hahnemann Organon §§ 81-104 Anamnese (${caseType})`,
+        actionName: `Hahnemann Organon §§ 83-104 Anamnese (${caseType})`,
         model: "gemini-3.8-flash",
         promptTokens: usage.promptTokenCount || Math.ceil(prompt.length / 4),
         candidatesTokens: usage.candidatesTokenCount || Math.ceil((response.text || "").length / 4),
@@ -870,7 +1177,7 @@ SPRACHE: Alle Fragen, Optionen und Zusammenfassungen in ${targetLanguageName} fo
         rawParsed.auswahl_optionen = [];
         if (!rawParsed.end_analyse_zusammenfassung) {
           const m = rawParsed.wichtige_symptom_fragmente || currentMatrix || {};
-          rawParsed.end_analyse_zusammenfassung = `Klassische Synthese nach Samuel Hahnemann (Organon §§ 81–104):\n• Causa (Auslöser / Beginn): ${m.causa || 'Keine spezifische Causa ermittelt'}\n• Lokalisation & Strahlungsoptionen: ${m.lokalisierung || 'Systemisch'}\n• Sensation (Qualität): ${m.empfindung || 'Nicht näher spezifiziert'}\n• Modalitäten (Besserung / Verschlimmerung): ${m.modalitaeten || 'Keine spezifischen Modalitäten'}\n• Begleitsymptome: ${Array.isArray(m.begleitsymptome) && m.begleitsymptome.length > 0 ? m.begleitsymptome.join(', ') : 'Keine auffälligen Concomitants'}\n• Gemüt (Seelischer Zustand): ${m.gemuet || 'Ausgeglichen'}\n• Symptomkomplex: ${m.ursaechlicher_zusammenhang || 'Einheitlicher Symptomkomplex'}`;
+          rawParsed.end_analyse_zusammenfassung = getLocalizedOrganonSummary(m, language);
         }
       }
 
@@ -878,53 +1185,7 @@ SPRACHE: Alle Fragen, Optionen und Zusammenfassungen in ${targetLanguageName} fo
       if (rawParsed.analyse_status === "completed") {
         const m = rawParsed.wichtige_symptom_fragmente || currentMatrix || {};
         if (!Array.isArray(rawParsed.sich_ergebende_fragen) || rawParsed.sich_ergebende_fragen.length === 0) {
-          const clarifyingQs: any[] = [];
-          
-          if (!m.gemuet || m.gemuet === "Noch nicht genannt") {
-            clarifyingQs.push({
-              id: "q_gemuet",
-              frage: "Wie ist die seelische Verfassung / das Gemüt während der Beschwerden?",
-              grund: "Zentrale Hahnemannsche Leitsäule zur exakten Differenzierung des Arzneimittels",
-              kategorie: "gemuet",
-              optionen: [
-                "Reizbar, zornig, will absolute Ruhe (Bryonia / Nux vomica)",
-                "Ängstliche motorische Unruhe mit Furcht (Aconitum / Arsenicum)",
-                "Apathisch, schläfrig, gleichgültig (Gelsemium / Phosphor)",
-                "Weinend, verlangt nach Trost und Gesellschaft (Pulsatilla)",
-                "Ausgeglichen, keine wesentliche Gemütsveränderung"
-              ]
-            });
-          }
-
-          clarifyingQs.push({
-            id: "q_modalitaet",
-            frage: "Wie reagieren die Schmerzen auf feste Bandagierung oder starken Druck versus Bewegung?",
-            grund: "Differenziert feste Druckbesserung (Silicea, Bryonia) von druck- und erschütterungsempfindlichen Mitteln (Belladonna)",
-            kategorie: "modalitaeten",
-            optionen: [
-              "Fester Druck und Bandagierung bessern deutlich",
-              "Geringste Bewegung und Erschütterung verschlimmern",
-              "Besserung durch sanfte, anhaltende Bewegung",
-              "Weder Druck noch Bewegung verändern die Schmerzen"
-            ]
-          });
-
-          if (clarifyingQs.length < 3) {
-            clarifyingQs.push({
-              id: "q_begleit",
-              frage: "Wie verhält sich das Durst- und Temperaturverlangen während des Zustands?",
-              grund: "Wichtiges Generalsymptom nach Bönninghausen zur Absicherung des Simile",
-              kategorie: "begleitsymptome",
-              optionen: [
-                "Großer Durst auf große Mengen kaltes Wasser",
-                "Völlige Durstlosigkeit trotz Hitze/Fieber",
-                "Verlangen nach warmen Getränken / Einhüllung",
-                "Abneigung gegen frische Luft und Kälte"
-              ]
-            });
-          }
-
-          rawParsed.sich_ergebende_fragen = clarifyingQs.slice(0, 3);
+          rawParsed.sich_ergebende_fragen = getLocalizedClarifyingQuestions(m, language).slice(0, 3);
         } else if (rawParsed.sich_ergebende_fragen.length > 3) {
           // Strictly keep in moderation (max 3)
           rawParsed.sich_ergebende_fragen = rawParsed.sich_ergebende_fragen.slice(0, 3);
