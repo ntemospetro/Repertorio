@@ -687,6 +687,225 @@ Antworte AUSSCHLIESSLICH mit einem validen JSON-Objekt im folgenden Format (ohne
     }
   });
 
+  // Hahnemann & Bönninghausen 6-Säulen-Analyse-Engine mit strengem NLP-Filter, kompakter Logik (max. 3 Schritte) & Einzelfragen-Prinzip
+  app.post("/api/hahnemann-analysis", async (req, res) => {
+    try {
+      const { text, currentMatrix, conversationHistory = [], language = "de", forceComplete = false } = req.body;
+      if (!text || typeof text !== "string" || !text.trim()) {
+        return res.status(400).json({ error: "text is required" });
+      }
+
+      const langNames: Record<string, string> = {
+        de: "German (Deutsch)",
+        en: "English",
+        el: "Greek (Ελληνικά)",
+        es: "Spanish (Español)",
+        fr: "French (Français)",
+        it: "Italian (Italiano)",
+        ru: "Russian (Русский)"
+      };
+      const targetLanguageName = langNames[language] || "German (Deutsch)";
+
+      const apiKey = getGeminiApiKey();
+      if (!apiKey) {
+        return res.status(503).json({ error: "GEMINI_API_KEY is not configured" });
+      }
+
+      const ai = new GoogleGenAI({ apiKey });
+      const currentStepCount = conversationHistory.length + 1;
+      const hasCausa = Boolean(currentMatrix?.causa && currentMatrix.causa !== "Noch nicht genannt" && currentMatrix.causa.trim().length > 0);
+      const hasLokalisierung = Boolean(currentMatrix?.lokalisierung && currentMatrix.lokalisierung !== "Noch nicht genannt" && currentMatrix.lokalisierung.trim().length > 0);
+      const hasEmpfindung = Boolean(currentMatrix?.empfindung && currentMatrix.empfindung !== "Noch nicht genannt" && currentMatrix.empfindung.trim().length > 0);
+      const hasModalitaeten = Boolean(currentMatrix?.modalitaeten && currentMatrix.modalitaeten !== "Noch nicht genannt" && currentMatrix.modalitaeten.trim().length > 0);
+      const hasBegleitsymptome = Boolean(Array.isArray(currentMatrix?.begleitsymptome) && currentMatrix.begleitsymptome.length > 0);
+      const hasGemuet = Boolean(currentMatrix?.gemuet && currentMatrix.gemuet !== "Noch nicht genannt" && currentMatrix.gemuet.trim().length > 0);
+
+      const all6PillarsFilled = hasCausa && hasLokalisierung && hasEmpfindung && hasModalitaeten && hasBegleitsymptome && hasGemuet;
+      
+      // Loop protection: avoid endless question loops while ensuring all 6 pillars are asked
+      const maxStepsReached = conversationHistory.length >= 6;
+      const mustComplete = forceComplete || all6PillarsFilled || (maxStepsReached && hasGemuet && hasModalitaeten && hasEmpfindung);
+
+      const prompt = `
+Du bist die zentrale Logik-Engine für eine professionelle Anwendung zur klassischen homöopathischen Anamnese (nach Hahnemann und Bönninghausen). Deine Aufgabe ist es, Patienten-Freitexte präzise zu analysieren, irrelevante Daten zu filtern, eine exakte 6-Säulen-Symptomenmatrix aufzubauen und den Anwender durch eine ZIELFÜHRENDE, STRUKTURIERTE Befragung zu leiten.
+
+### OBERSTE REGEL: ALLE 6 SÄULEN MÜSSEN ZWINGEND ERHOBEN WERDEN!
+Es müssen alle 6 Punkte der klassischen homöopathischen Matrix abgefragt werden. Keine Säule darf fehlen:
+1. Causa (Auslöser - z. B. kalte Luft/Wind, Nässe, Ärger, Schreck, Überanstrengung, Durchnässung): ${hasCausa ? "Erfasst: " + currentMatrix.causa : "NOCH NICHT ERFASST (MUSS ABGEFRAGT WERDEN!)"}
+2. Lokalisierung (Ort / Gewebe - bei mehreren Symptomen wie z.B. Kopf UND Bein BEIDE erfassen): ${hasLokalisierung ? "Erfasst: " + currentMatrix.lokalisierung : "NOCH NICHT ERFASST (MUSS ABGEFRAGT WERDEN!)"}
+3. Empfindung (Sensation / Schmerzcharakter - z. B. stechend, brennend, klopfend, dumpf, wie zerschlagen): ${hasEmpfindung ? "Erfasst: " + currentMatrix.empfindung : "NOCH NICHT ERFASST (MUSS ABGEFRAGT WERDEN!)"}
+4. Modalitäten (Was bessert / verschlechtert - Wärme, Kälte, Ruhe, Bewegung, Druck, Tageszeit): ${hasModalitaeten ? "Erfasst: " + currentMatrix.modalitaeten : "NOCH NICHT ERFASST (MUSS ABGEFRAGT WERDEN!)"}
+5. Begleitsymptome (Concomitants - Durstverhalten, Schweiß, Frösteln, Zunge, Gesichtsfarbe): ${hasBegleitsymptome ? "Erfasst: " + currentMatrix.begleitsymptome.join(", ") : "NOCH NICHT ERFASST (MUSS ABGEFRAGT WERDEN!)"}
+6. Gemüt (Psychischer Zustand - Reizbarkeit, Ruhelosigkeit, Ängstlichkeit, Apathie, Verlangen nach Ruhe): ${hasGemuet ? "Erfasst: " + currentMatrix.gemuet : "NOCH NICHT ERFASST (MUSS ABGEFRAGT WERDEN!)"}
+
+WENN MEHRERE SYMPTOME ERKANNT WURDEN (z. B. Kopf UND Bein):
+Beziehe alle Fragen und den Zusammenhang auf BEIDE/ALLE erkannten Symptome und deren Ausstrahlung/Modalitäten.
+
+LOOP-VERHINDERUNG & KEINE ENDLOSSCHLEIFEN:
+- Keinen endlosen Loop entstehen lassen! Stelle keine Fragen zu erfundenen oder unzusammenhängenden neuen Beschwerden, die nichts mit den erstlokalisierten Symptomen zu tun haben.
+- Wenn eine Säule fehlt, frage gezielt und prägnant nach dieser fehlenden Säule (Genau EINE nächste Frage mit 4 bis 6 Antwortoptionen).
+
+ABSCHLUSS-REGEL:
+Soll jetzt abgeschlossen werden? ${mustComplete ? "JA (Abschluss der 6-Säulen-Matrix)" : "NEIN (weiter nach fehlenden Säulen fragen)"}.
+${mustComplete ? `
+-> ABSCHLUSS-MODUS:
+- Setze zwingend "analyse_status": "completed".
+- Setze "naechste_frage": "".
+- Setze "auswahl_optionen": [].
+- "end_analyse_zusammenfassung": Erstelle eine hochpräzise, fundierte und professionelle "Zusammenfassung für den Therapeuten:" streng nach Hahnemann & Bönninghausen basierend auf den erhobenen Fakten (Causa, Lokalisierung, Empfindung, Modalitäten, Begleitsymptome, Gemüt, führendes Simile).
+- "aktuelle_mittel_differenzierung": 3 bis 5 passendste lateinische Arzneimittel.
+- "sich_ergebende_fragen": Falls sich aus den Antworten entscheidende Differenzialfragen zwischen den Top-Mitteln ergeben, stelle GENAU 1 BIS MAXIMAL 2 fokussierte Kontrollfragen (in Maßen, niemals übertreiben, kein endloser Fragen-Loop!).
+` : `
+-> LAUFENDE ERHEBUNG (Schritt ${currentStepCount}):
+- Frage nach der nächsten noch fehlenden Säule (insbesondere Causa, Lokalisierung, Empfindung, Modalitäten, Begleitsymptome oder Gemüt).
+- Stelle genau EINE präzise Einzelfrage im Feld "naechste_frage".
+- Bereite 4 bis 6 treffende homöopathische Antwortoptionen im Feld "auswahl_optionen" vor.
+- Setze "analyse_status": "in_progress".
+`}
+
+### STRENGES INTERPRETATIONS- UND HALLUZINATIONSVERBOT:
+Du darfst NIEMALS Symptome hinzudichten. Nur explizit genannte Fakten des Patienten dürfen in die Matrix aufgenommen werden. Was nicht genannt wurde, bleibt "null" (wird als "Noch nicht genannt" geführt).
+
+### AUSGABE-FORMAT (Strikte JSON-Struktur):
+Antworte AUSSCHLIESSLICH mit validem JSON in genau diesem Format (ohne Markdown, ohne Text davor oder danach):
+{
+  "analyse_status": "${mustComplete ? "completed" : "in_progress"}",
+  "wichtige_symptom_fragmente": {
+    "causa": null,
+    "lokalisierung": null,
+    "empfindung": null,
+    "modalitaeten": null,
+    "begleitsymptome": [],
+    "gemuet": null
+  },
+  "ignorierte_daten": [],
+  "kontroll_und_nachfrage_logik": "Begründung der nächsten Frage bezogen auf die 6 Säulen",
+  "naechste_frage": "${mustComplete ? "" : "Hier steht genau eine gezielte Einzelfrage zur fehlenden Säule"}",
+  "auswahl_optionen": ${mustComplete ? "[]" : '["Option 1", "Option 2", "Option 3", "Option 4"]'},
+  "auswahl_typ": "multiple",
+  "aktuelle_mittel_differenzierung": ["Mittel 1", "Mittel 2", "Mittel 3"],
+  "end_analyse_zusammenfassung": ${mustComplete ? '"Zusammenfassung für den Therapeuten: ..."' : "null"},
+  "sich_ergebende_fragen": ${mustComplete ? `[
+    {
+      "id": "q1",
+      "frage": "Differenzierende Frage zwischen den führenden Mitteln",
+      "grund": "Klärung der Leitsymptome",
+      "kategorie": "modalitaeten",
+      "optionen": ["Option A", "Option B", "Weder noch"]
+    }
+  ]` : "[]"}
+}
+
+Bestehende Matrix (bisherige Fakten):
+${JSON.stringify(currentMatrix || {}, null, 2)}
+
+Bisheriger Verlauf:
+${JSON.stringify(conversationHistory || [], null, 2)}
+
+Aktuelle Benutzereingabe:
+"${text.replace(/"/g, '\\"')}"
+
+SPRACHE: Alle Fragen, Optionen und Zusammenfassungen in ${targetLanguageName} formulieren. Arzneimittelnamen stets in offiziellem Latein (z. B. Aconitum napellus, Belladonna, Bryonia alba).
+`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3.8-flash",
+        contents: prompt,
+        config: {
+          temperature: 0.1,
+          responseMimeType: "application/json",
+        },
+      });
+
+      const usage = (response as any).usageMetadata || {};
+      recordTokenUsage({
+        therapistId: req.body?.therapistId,
+        therapistName: req.body?.therapistName,
+        therapistEmail: req.body?.therapistEmail,
+        endpoint: "/api/hahnemann-analysis",
+        actionName: "Hahnemann 6-Säulen Akutanalyse",
+        model: "gemini-3.8-flash",
+        promptTokens: usage.promptTokenCount || Math.ceil(prompt.length / 4),
+        candidatesTokens: usage.candidatesTokenCount || Math.ceil((response.text || "").length / 4),
+      });
+
+      const rawParsed = JSON.parse(response.text || "{}");
+
+      // Robust fallback safeguard: enforce completion if steps reached or forceComplete was passed
+      if (mustComplete || conversationHistory.length >= 3) {
+        rawParsed.analyse_status = "completed";
+        rawParsed.naechste_frage = "";
+        rawParsed.auswahl_optionen = [];
+        if (!rawParsed.end_analyse_zusammenfassung) {
+          const m = rawParsed.wichtige_symptom_fragmente || currentMatrix || {};
+          rawParsed.end_analyse_zusammenfassung = `Klassische Akut-Synthese nach Hahnemann & Bönninghausen:\n• Causa: ${m.causa || 'Keine spezifische Causa ermittelt'}\n• Lokalisierung: ${m.lokalisierung || 'Systemisch'}\n• Empfindung: ${m.empfindung || 'Nicht näher spezifiziert'}\n• Modalitäten: ${m.modalitaeten || 'Keine spezifischen Modalitäten'}\n• Begleitsymptome: ${Array.isArray(m.begleitsymptome) && m.begleitsymptome.length > 0 ? m.begleitsymptome.join(', ') : 'Keine auffälligen Concomitants'}\n• Gemüt: ${m.gemuet || 'Ausgeglichen'}`;
+        }
+      }
+
+      // Ensure 2 to 3 clarifying questions exist when completed (never empty, strictly in moderation)
+      if (rawParsed.analyse_status === "completed") {
+        const m = rawParsed.wichtige_symptom_fragmente || currentMatrix || {};
+        if (!Array.isArray(rawParsed.sich_ergebende_fragen) || rawParsed.sich_ergebende_fragen.length === 0) {
+          const clarifyingQs: any[] = [];
+          
+          if (!m.gemuet || m.gemuet === "Noch nicht genannt") {
+            clarifyingQs.push({
+              id: "q_gemuet",
+              frage: "Wie ist die seelische Verfassung / das Gemüt während der Beschwerden?",
+              grund: "Zentrale Hahnemannsche Leitsäule zur exakten Differenzierung des Arzneimittels",
+              kategorie: "gemuet",
+              optionen: [
+                "Reizbar, zornig, will absolute Ruhe (Bryonia / Nux vomica)",
+                "Ängstliche motorische Unruhe mit Furcht (Aconitum / Arsenicum)",
+                "Apathisch, schläfrig, gleichgültig (Gelsemium / Phosphor)",
+                "Weinend, verlangt nach Trost und Gesellschaft (Pulsatilla)",
+                "Ausgeglichen, keine wesentliche Gemütsveränderung"
+              ]
+            });
+          }
+
+          clarifyingQs.push({
+            id: "q_modalitaet",
+            frage: "Wie reagieren die Schmerzen auf feste Bandagierung oder starken Druck versus Bewegung?",
+            grund: "Differenziert feste Druckbesserung (Silicea, Bryonia) von druck- und erschütterungsempfindlichen Mitteln (Belladonna)",
+            kategorie: "modalitaeten",
+            optionen: [
+              "Fester Druck und Bandagierung bessern deutlich",
+              "Geringste Bewegung und Erschütterung verschlimmern",
+              "Besserung durch sanfte, anhaltende Bewegung",
+              "Weder Druck noch Bewegung verändern die Schmerzen"
+            ]
+          });
+
+          if (clarifyingQs.length < 3) {
+            clarifyingQs.push({
+              id: "q_begleit",
+              frage: "Wie verhält sich das Durst- und Temperaturverlangen während des Zustands?",
+              grund: "Wichtiges Generalsymptom nach Bönninghausen zur Absicherung des Simile",
+              kategorie: "begleitsymptome",
+              optionen: [
+                "Großer Durst auf große Mengen kaltes Wasser",
+                "Völlige Durstlosigkeit trotz Hitze/Fieber",
+                "Verlangen nach warmen Getränken / Einhüllung",
+                "Abneigung gegen frische Luft und Kälte"
+              ]
+            });
+          }
+
+          rawParsed.sich_ergebende_fragen = clarifyingQs.slice(0, 3);
+        } else if (rawParsed.sich_ergebende_fragen.length > 3) {
+          // Strictly keep in moderation (max 3)
+          rawParsed.sich_ergebende_fragen = rawParsed.sich_ergebende_fragen.slice(0, 3);
+        }
+      }
+
+      res.json({ result: rawParsed });
+    } catch (error) {
+      console.error("Hahnemann Analysis Error:", error);
+      res.status(500).json({ error: "Failed to perform Hahnemann analysis." });
+    }
+  });
+
   app.post("/api/check-medical-relevance", async (req, res) => {
     try {
       const { text, language = "de" } = req.body;

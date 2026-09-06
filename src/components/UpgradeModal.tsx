@@ -15,7 +15,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
   onGoToAdmin,
 }) => {
   const { t } = useTranslation();
-  const plans = getPackagePlans();
+  const plans = getPackagePlans().filter(p => p.isActive !== false);
 
   if (!isOpen) return null;
 

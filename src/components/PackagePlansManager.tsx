@@ -136,6 +136,16 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
     showToast(`"${planName}" als Standard-Tarif für Neuanmeldungen gesetzt`);
   };
 
+  const handleToggleActive = (plan: PackagePlan) => {
+    const nextActive = plan.isActive === false ? true : false;
+    updatePackagePlan(plan.id, { isActive: nextActive });
+    showToast(
+      nextActive
+        ? t('adminTariffToggledActive')
+        : t('adminTariffToggledInactive')
+    );
+  };
+
   const handleSavePlan = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim()) {
@@ -309,12 +319,15 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
             th => th.tarif === plan.id || th.tarifId === plan.id
           );
           const isFlatrate = plan.isUnlimited || plan.maxAnalyses >= 900000;
+          const isPlanActive = plan.isActive !== false;
 
           return (
             <div
               key={plan.id}
               className={`card flex flex-col justify-between p-5 relative transition-all border ${
-                plan.isDefault
+                !isPlanActive
+                  ? 'border-slate-300 bg-slate-50/75 opacity-80 border-dashed'
+                  : plan.isDefault
                   ? 'border-teal-500 shadow-md ring-1 ring-teal-500/20 bg-teal-50/20'
                   : 'border-slate-200 hover:border-slate-300 hover:shadow-sm'
               }`}
@@ -322,6 +335,21 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
               {/* Badges row */}
               <div className="flex items-center justify-between gap-2 mb-3">
                 <div className="flex flex-wrap items-center gap-1.5">
+                  {/* Active / Inactive Status Toggle Pill */}
+                  <button
+                    type="button"
+                    onClick={() => handleToggleActive(plan)}
+                    title={isPlanActive ? t('adminTariffDeactivateTooltip') : t('adminTariffActivateTooltip')}
+                    className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1.5 cursor-pointer transition-all border ${
+                      isPlanActive
+                        ? 'bg-emerald-100 text-emerald-800 border-emerald-300 hover:bg-emerald-200 shadow-2xs'
+                        : 'bg-slate-200 text-slate-600 border-slate-300 hover:bg-slate-300'
+                    }`}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${isPlanActive ? 'bg-emerald-600' : 'bg-slate-500'}`} />
+                    <span>{isPlanActive ? t('adminTariffActive') : t('adminTariffInactive')}</span>
+                  </button>
+
                   {plan.badge && (
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 border border-teal-200 flex items-center gap-1">
                       <Sparkles className="w-2.5 h-2.5 text-teal-600" />
@@ -358,9 +386,16 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
 
               {/* Title & Price */}
               <div>
-                <h3 className="font-bold text-slate-900 text-base leading-snug">
-                  {plan.name}
-                </h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-bold text-slate-900 text-base leading-snug">
+                    {plan.name}
+                  </h3>
+                  {!isPlanActive && (
+                    <span className="text-[10px] font-medium text-slate-500 italic">
+                      ({t('adminTariffInactive')})
+                    </span>
+                  )}
+                </div>
                 
                 <div className="mt-3 flex items-baseline gap-1.5">
                   <span className="text-3xl font-extrabold text-slate-900 tracking-tight font-mono">
@@ -418,7 +453,7 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
                 )}
               </div>
 
-              {/* Card Footer: Usage count & Default toggle */}
+              {/* Card Footer: Usage count, Active toggle & Default toggle */}
               <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-2 text-xs">
                 <div className="flex items-center gap-1.5 text-slate-500 text-[11px] font-medium">
                   <Users className="w-3.5 h-3.5 text-slate-400" />
@@ -427,14 +462,28 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
                   </span>
                 </div>
 
-                {!plan.isDefault && (
+                <div className="flex items-center gap-3">
                   <button
-                    onClick={() => handleSetDefault(plan.id, plan.name)}
-                    className="text-[11px] text-teal-700 hover:text-teal-900 font-semibold hover:underline cursor-pointer"
+                    type="button"
+                    onClick={() => handleToggleActive(plan)}
+                    className={`text-[11px] font-semibold transition-colors cursor-pointer hover:underline ${
+                      isPlanActive
+                        ? 'text-amber-700 hover:text-amber-900'
+                        : 'text-emerald-700 hover:text-emerald-900 font-bold'
+                    }`}
                   >
-                    Als Standard
+                    {isPlanActive ? t('adminTariffDeactivateBtn') : t('adminTariffActivateBtn')}
                   </button>
-                )}
+
+                  {!plan.isDefault && (
+                    <button
+                      onClick={() => handleSetDefault(plan.id, plan.name)}
+                      className="text-[11px] text-teal-700 hover:text-teal-900 font-semibold hover:underline cursor-pointer"
+                    >
+                      {t('adminTariffSetDefault')}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           );
@@ -585,7 +634,19 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
                   />
                 </div>
 
-                <div className="flex items-center pt-5">
+                <div className="space-y-2 pt-2">
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={formData.isActive}
+                      onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                      className="rounded border-slate-300 text-teal-600 focus:ring-teal-500 w-4 h-4 cursor-pointer"
+                    />
+                    <span className="text-xs font-semibold text-slate-700">
+                      {t('adminTariffActiveCheckbox')}
+                    </span>
+                  </label>
+
                   <label className="flex items-center gap-2 cursor-pointer select-none">
                     <input
                       type="checkbox"

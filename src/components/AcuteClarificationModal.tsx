@@ -17,7 +17,8 @@ import { useTranslation } from '../i18n/LanguageContext';
 import { 
   AcuteClarificationQuestion, 
   AcuteAnswers, 
-  getAcuteClarificationQuestions 
+  getAcuteClarificationQuestions,
+  getDerivedClarifyingQuestion 
 } from '../services/acuteClarificationService';
 import { 
   performDifferentialDiagnosis, 
@@ -62,10 +63,25 @@ export const AcuteClarificationModal: React.FC<AcuteClarificationModalProps> = (
     return performDifferentialDiagnosis(symptomText, language, answers);
   }, [symptomText, language, answers]);
 
+  // Crucial single derived clarifying question if 2 leading remedies are competing
+  const derivedQuestion: AcuteClarificationQuestion | null = useMemo(() => {
+    if (diffResult && diffResult.topRemedies.length >= 2) {
+      return getDerivedClarifyingQuestion(symptomText, answers, diffResult.topRemedies, language);
+    }
+    return null;
+  }, [diffResult, symptomText, answers, language]);
+
+  const allQuestions = useMemo(() => {
+    if (derivedQuestion) {
+      return [...questions, derivedQuestion];
+    }
+    return questions;
+  }, [questions, derivedQuestion]);
+
   if (!isOpen) return null;
 
-  const totalSteps = questions.length > 0 ? questions.length : 4;
-  const activeQuestion = questions[currentStep] || questions[0];
+  const totalSteps = allQuestions.length > 0 ? allQuestions.length : 4;
+  const activeQuestion = allQuestions[currentStep] || allQuestions[0];
 
   const handleSelectOption = (questionId: string, optionId: string) => {
     setAnswers((prev) => {
@@ -98,7 +114,8 @@ export const AcuteClarificationModal: React.FC<AcuteClarificationModalProps> = (
     answers.onset,
     answers.modality,
     answers.sensationMind,
-    answers.intensity
+    answers.intensity,
+    answers.derivedClarification
   ].filter(Boolean).length;
 
   const scaleLabels: Record<number, string> = {
@@ -112,7 +129,8 @@ export const AcuteClarificationModal: React.FC<AcuteClarificationModalProps> = (
     t('diffDiagStep1Title'),
     t('diffDiagStep2Title'),
     t('diffDiagStep3Title'),
-    t('diffDiagStep4Title')
+    t('diffDiagStep4Title'),
+    ...(derivedQuestion ? [t('diffDiagStep5Title')] : [])
   ];
 
   return (
@@ -170,7 +188,8 @@ export const AcuteClarificationModal: React.FC<AcuteClarificationModalProps> = (
               (idx === 0 && Boolean(answers.onset)) ||
               (idx === 1 && Boolean(answers.sensationMind)) ||
               (idx === 2 && Boolean(answers.modality)) ||
-              (idx === 3 && Boolean(answers.intensity))
+              (idx === 3 && Boolean(answers.intensity)) ||
+              (idx === 4 && Boolean(answers.derivedClarification))
             );
             return (
               <button

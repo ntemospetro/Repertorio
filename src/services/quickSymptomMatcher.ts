@@ -65,7 +65,10 @@ export const DOMAIN_CORE_REMEDIES: Record<AcuteComplaintDomain, string[]> = {
     'silicea',
     'nux-vomica',
     'natrium-muriaticum',
-    'ignatia-amara'
+    'ignatia-amara',
+    'arnica-montana',
+    'natrium-sulphuricum',
+    'hypericum-perforatum'
   ],
   injury: [
     'arnica-montana',
@@ -869,21 +872,32 @@ export function matchSymptomsToRemedies(
       matchedKeywords.push(remedy.mindEmotional.slice(0, 35));
     }
 
-    // 9. Acute Clarification Answers Integration
+    // 9. Acute Clarification Answers Integration (all answered questions including derived clarification)
     if (answers) {
-      ['onset', 'modality', 'sensationMind'].forEach((qKey) => {
-        const optId = answers[qKey];
-        if (optId && OPTION_REMEDY_MAP[optId]) {
-          const targetRemedyIds = OPTION_REMEDY_MAP[optId];
-          if (targetRemedyIds[0] === remedy.id) {
-            // First choice for this modality
-            score += Math.round(50 * intensityFactor);
-            if (!matchedKeywords.includes(optId)) {
-              matchedKeywords.push(optId);
+      Object.entries(answers).forEach(([qKey, optId]) => {
+        if (typeof optId === 'string') {
+          if (optId.startsWith('derived_')) {
+            const targetRemedyId = optId.replace('derived_', '');
+            if (targetRemedyId === remedy.id) {
+              score += Math.round(55 * intensityFactor);
+              if (!matchedKeywords.includes(optId)) {
+                matchedKeywords.push(optId);
+              }
+            } else if (targetRemedyId !== 'neither' && targetRemedyId !== 'none') {
+              score -= 10;
             }
-          } else if (targetRemedyIds.includes(remedy.id)) {
-            // Secondary choice for this modality
-            score += Math.round(28 * intensityFactor);
+          } else if (OPTION_REMEDY_MAP[optId]) {
+            const targetRemedyIds = OPTION_REMEDY_MAP[optId];
+            if (targetRemedyIds[0] === remedy.id) {
+              // First choice for this modality
+              score += Math.round(50 * intensityFactor);
+              if (!matchedKeywords.includes(optId)) {
+                matchedKeywords.push(optId);
+              }
+            } else if (targetRemedyIds.includes(remedy.id)) {
+              // Secondary choice for this modality
+              score += Math.round(28 * intensityFactor);
+            }
           }
         }
       });

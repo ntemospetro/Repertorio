@@ -76,7 +76,11 @@ export function detectComplaintDomain(inputText: string): AcuteComplaintDomain {
     norm.includes('caída') || norm.includes('caida') || norm.includes('esguince') || norm.includes('bless') ||
     norm.includes('chute') || norm.includes('entorse') || norm.includes('ferita') || norm.includes('caduta') ||
     norm.includes('distorsione') || norm.includes('τραύμα') || norm.includes('τραυμα') || norm.includes('διάστρεμμα') ||
-    norm.includes('травм') || norm.includes('ушиб') || norm.includes('растяжен') || norm.includes('вывих')
+    norm.includes('травм') || norm.includes('ушиб') || norm.includes('растяжен') || norm.includes('вывих') ||
+    norm.includes('stoß') || norm.includes('stoss') || norm.includes('gestoß') || norm.includes('gestoss') ||
+    norm.includes('aufprall') || norm.includes('erschütter') || norm.includes('erschuetter') || norm.includes('schlag') ||
+    norm.includes('bump') || norm.includes('hit') || norm.includes('concussion') || norm.includes('golpe') ||
+    norm.includes('choc') || norm.includes('colpo') || norm.includes('χτύπημα') || norm.includes('удар')
   ) {
     return 'injury';
   }
@@ -324,16 +328,15 @@ function getBaseDomainQuestions(domain: AcuteComplaintDomain): AcuteClarificatio
         },
         {
           id: 'sensationMind',
-          category: 'Linderung & Modalitäten',
-          title: '3. Welche Maßnahme bringt spürbare Linderung der Schmerzen?',
-          description: 'Modalitäten entscheiden über das passende Simile im Akutfall.',
+          category: 'Gemütszustand & Schmerzreaktion',
+          title: '3. Wie ist der Gemütszustand und die seelische Reaktion auf den Schmerz?',
+          description: 'Die Gemütssymptome im Akutzustand sind nach Hahnemann der entscheidende Wegweiser zum Simile.',
           type: 'single',
           options: [
-            { id: 'mod_press_bend', label: 'Besser durch starken, festen Druck oder festes Zusammenkrümmen', remedyHint: 'Colocynthis / Bryonia', relevanceKeywords: ['besser durch Druck', 'besser durch Zusammenkrümmen', 'Colocynthis', 'Bryonia'] },
-            { id: 'mod_warmth_wrap', label: 'Besser durch lokale Wärme, heiße Umschläge und warmes Einhüllen', remedyHint: 'Arsenicum album / Rhus tox / Mag phos', relevanceKeywords: ['besser durch Wärme', 'heiße Umschläge', 'Arsenicum album', 'Magnesium phosphoricum'] },
-            { id: 'mod_cold_ice', label: 'Besser durch Kälte, Eisauflagen und frische kühle Luft', remedyHint: 'Apis / Ledum / Pulsatilla', relevanceKeywords: ['besser durch Kälte', 'Eisauflage', 'Apis', 'Ledum'] },
-            { id: 'mod_absolute_rest', label: 'Schlimmer bei geringster Bewegung (braucht absolute Ruhe)', remedyHint: 'Bryonia', relevanceKeywords: ['schlechter bei Bewegung', 'absolute Ruhe', 'Bryonia'] },
-            { id: 'mod_continued_motion', label: 'Besser durch fortgesetzte Bewegung und ständigen Positionswechsel', remedyHint: 'Rhus toxicodendron', relevanceKeywords: ['besser durch Bewegung', 'körperliche Unruhe', 'Rhus toxicodendron'] }
+            { id: 'sen_fear_restless', label: 'Große ängstliche Unruhe, Angst, Herzklopfen, Verzweiflung', remedyHint: 'Aconitum / Arsenicum album', relevanceKeywords: ['ängstliche Unruhe', 'Todesangst', 'Aconitum', 'Arsenicum'] },
+            { id: 'sen_angry_irritable', label: 'Zornig, extrem gereizt, ungeduldig, schlägt um sich vor Schmerz', remedyHint: 'Chamomilla / Nux vomica / Colocynthis', relevanceKeywords: ['zornig', 'gereizt', 'Chamomilla', 'Nux vomica'] },
+            { id: 'sen_weepy_mild', label: 'Weinerlich, trostbedürftig, sanftmütig, sucht Beistand', remedyHint: 'Pulsatilla', relevanceKeywords: ['weinerlich', 'trostbedürftig', 'Pulsatilla'] },
+            { id: 'sen_dull_heavy', label: 'Benommen, apathisch, wie betäubt, will nur absolute Ruhe', remedyHint: 'Gelsemium / Bryonia', relevanceKeywords: ['benommen', 'schläfrig', 'Gelsemium', 'Bryonia'] }
           ]
         },
         {
@@ -378,15 +381,15 @@ function getBaseDomainQuestions(domain: AcuteComplaintDomain): AcuteClarificatio
         },
         {
           id: 'sensationMind',
-          category: 'Durst & Linderung',
-          title: '3. Wie ist das Durstverhalten und was bringt Erleichterung?',
-          description: 'Durstverhalten und Temperaturmodalitäten vervollständigen das Bild.',
+          category: 'Gemütszustand & emotionale Verfassung',
+          title: '3. Wie ist der Gemütszustand bei den Magen-Darm-Beschwerden?',
+          description: 'Große Unruhe mit Angst, Reizbarkeit oder Wehleidigkeit weisen direkt auf das Mittel.',
           type: 'single',
           options: [
-            { id: 'gi_thirst_cold', label: 'Großer Durst auf eiskaltes Wasser (wird aber oft wieder erbrochen)', remedyHint: 'Phosphorus / Arsenicum album', relevanceKeywords: ['Durst auf Kaltes', 'Phosphorus', 'Arsenicum album'] },
-            { id: 'gi_thirst_sips', label: 'Ständiger Durst auf häufige kleine Schlucke mit Unruhe', remedyHint: 'Arsenicum album', relevanceKeywords: ['kleine Schlucke', 'Durst', 'Arsenicum album'] },
-            { id: 'gi_no_thirst', label: 'Völlige Durstlosigkeit trotz Übelkeit und Beschwerden', remedyHint: 'Pulsatilla / Apis', relevanceKeywords: ['durstlos', 'Pulsatilla', 'Apis'] },
-            { id: 'gi_better_warm', label: 'Deutliche Besserung durch heiße Getränke und Wärmflasche', remedyHint: 'Magnesium phosphoricum / Nux vomica', relevanceKeywords: ['Wärmflasche', 'heiße Getränke', 'Magnesium phosphoricum'] }
+            { id: 'sen_angry_irritable', label: 'Zornig, extrem gereizt, ungeduldig, ärgerlich (Nux vomica / Chamomilla)', remedyHint: 'Nux vomica / Chamomilla', relevanceKeywords: ['zornig', 'gereizt', 'Nux vomica', 'Chamomilla'] },
+            { id: 'sen_fear_restless', label: 'Ängstliche Unruhe, Angst vor Krankheit, Herzklopfen (Arsenicum album)', remedyHint: 'Arsenicum album', relevanceKeywords: ['ängstliche Unruhe', 'Todesangst', 'Arsenicum album'] },
+            { id: 'sen_weepy_mild', label: 'Weinerlich, trostsuchend, sanftmütig, mag nicht allein sein (Pulsatilla)', remedyHint: 'Pulsatilla', relevanceKeywords: ['weinerlich', 'trostbedürftig', 'Pulsatilla'] },
+            { id: 'sen_dull_heavy', label: 'Völlige Erschöpfung, apathisch, schwach, Verlangen nach Luft (Carbo veg)', remedyHint: 'Carbo vegetabilis', relevanceKeywords: ['Erschöpfung', 'Carbo vegetabilis'] }
           ]
         },
         {
@@ -431,15 +434,15 @@ function getBaseDomainQuestions(domain: AcuteComplaintDomain): AcuteClarificatio
         },
         {
           id: 'sensationMind',
-          category: 'Begleitsymptome & Schlucken',
-          title: '3. Welche spezifischen Begleitsymptome treten auf?',
-          description: 'Feinheiten beim Schlucken und Kehlkopfreizung schärfen die Auswahl.',
+          category: 'Gemütszustand & seelische Verfassung',
+          title: '3. Wie ist der Gemütszustand während des Hustens oder Infekts?',
+          description: 'Ängstlichkeit, Atemnot-Panik, Reizbarkeit oder Weinen leiten das Atemwegsmittel.',
           type: 'single',
           options: [
-            { id: 'resp_empty_swallow', label: 'Schlimmer beim Leerschlucken, Engegefühl (kann keinen engen Kragen ertragen)', remedyHint: 'Lachesis', relevanceKeywords: ['Leerschlucken', 'kein enger Kragen', 'Lachesis'] },
-            { id: 'resp_splinter_throat', label: 'Stechender Schmerz beim Schlucken wie ein Holzsplitter oder eine Gräte', remedyHint: 'Hepar sulfuris / Nitricum acidum', relevanceKeywords: ['wie Splitter', 'Gräte', 'Hepar sulfuris'] },
-            { id: 'resp_hoarseness', label: 'Ausgeprägte Heiserkeit bis hin zu völligem Stimmverlust', remedyHint: 'Phosphorus / Causticum', relevanceKeywords: ['Heiserkeit', 'Stimmverlust', 'Phosphorus', 'Causticum'] },
-            { id: 'resp_restless_anxious', label: 'Große Angst, Atembeklemmung und quälende Unruhe', remedyHint: 'Aconitum / Arsenicum album', relevanceKeywords: ['Atembeklemmung', 'Angst', 'Aconitum', 'Arsenicum album'] }
+            { id: 'resp_restless_anxious', label: 'Große ängstliche Unruhe, Erstickungsangst, Panik nachts (Aconitum / Arsenicum)', remedyHint: 'Aconitum / Arsenicum album', relevanceKeywords: ['Atembeklemmung', 'Angst', 'Aconitum', 'Arsenicum album'] },
+            { id: 'sen_angry_irritable', label: 'Gereizt, mürrisch, will absolut nicht angesprochen oder gestört werden (Bryonia / Nux vomica)', remedyHint: 'Bryonia / Nux vomica', relevanceKeywords: ['gereizt', 'mürrisch', 'Bryonia', 'Nux vomica'] },
+            { id: 'sen_weepy_mild', label: 'Weinerlich, anhänglich, sehnt sich nach Trost und frischer Luft (Pulsatilla)', remedyHint: 'Pulsatilla', relevanceKeywords: ['weinerlich', 'trostbedürftig', 'Pulsatilla'] },
+            { id: 'sen_dull_heavy', label: 'Schläfrig, erschöpft, zittrig, kraftlos (Gelsemium / Antimonium tartaricum)', remedyHint: 'Gelsemium / Antimonium tartaricum', relevanceKeywords: ['schläfrig', 'Gelsemium', 'Antimonium tartaricum'] }
           ]
         },
         {
@@ -484,15 +487,15 @@ function getBaseDomainQuestions(domain: AcuteComplaintDomain): AcuteClarificatio
         },
         {
           id: 'sensationMind',
-          category: 'Linderung & Anwendungen',
-          title: '3. Was bringt dem Kopf spürbare Entlastung?',
-          description: 'Druck- und Kältereaktionen führen direkt zur Verordnung.',
+          category: 'Gemütszustand & Verhalten',
+          title: '3. Wie ist der Gemütszustand während des Kopfschmerzes?',
+          description: 'Gereiztheit, Angst, Jammern oder Verlangen nach Ruhe entscheiden das Kopfschmerzmittel.',
           type: 'single',
           options: [
-            { id: 'hd_firm_bandage', label: 'Besser durch festes Abbinden des Kopfes mit einem Tuch', remedyHint: 'Silicea / Argentum nitricum', relevanceKeywords: ['Kopf abbinden', 'fester Druck', 'Silicea'] },
-            { id: 'hd_cold_compress', label: 'Besser durch eiskalte Kompressen auf Stirn oder Schläfen', remedyHint: 'Belladonna / Apis', relevanceKeywords: ['kalte Kompressen', 'Eis', 'Belladonna', 'Apis'] },
-            { id: 'hd_warm_wrap', label: 'Besser durch Wärme und warmes Einhüllen des Kopfes', remedyHint: 'Silicea / Arsenicum album', relevanceKeywords: ['warm einhüllen', 'Silicea', 'Arsenicum album'] },
-            { id: 'hd_fresh_air_walk', label: 'Besser durch langsames Umhergehen an kühler frischer Luft', remedyHint: 'Pulsatilla', relevanceKeywords: ['frische Luft', 'Umhergehen', 'Pulsatilla'] }
+            { id: 'sen_angry_irritable', label: 'Zornig, gereizt, ungeduldig, extrem empfindlich gegen Lärm und Störungen', remedyHint: 'Nux vomica / Chamomilla / Bryonia', relevanceKeywords: ['zornig', 'gereizt', 'Nux vomica', 'Chamomilla'] },
+            { id: 'sen_fear_restless', label: 'Große ängstliche Unruhe, Angst, Herzklopfen, Besorgnis', remedyHint: 'Aconitum / Arsenicum album', relevanceKeywords: ['ängstlich', 'ruhelos', 'Aconitum', 'Arsenicum'] },
+            { id: 'sen_weepy_mild', label: 'Weinerlich, anhänglich, sehnt sich nach Trost, Zuwendung und frischer Luft', remedyHint: 'Pulsatilla', relevanceKeywords: ['weinerlich', 'trostbedürftig', 'Pulsatilla'] },
+            { id: 'sen_dull_heavy', label: 'Benommen, schläfrig, dumpf, will nur die Augen schließen und absolute Ruhe', remedyHint: 'Gelsemium / Bryonia', relevanceKeywords: ['schläfrig', 'benommen', 'Gelsemium', 'Bryonia'] }
           ]
         },
         {
@@ -537,15 +540,15 @@ function getBaseDomainQuestions(domain: AcuteComplaintDomain): AcuteClarificatio
         },
         {
           id: 'sensationMind',
-          category: 'Berührung & Temperatur',
-          title: '3. Wie reagiert die Verletzung auf Berührung und Anwendungen?',
-          description: 'Berührungsempfindlichkeit und Kältereaktion.',
+          category: 'Gemütszustand & Traumareaktion',
+          title: '3. Wie ist der Gemütszustand nach der Verletzung?',
+          description: 'Verleugnung des Schmerzes („Mir fehlt nichts!“), Zorn oder Schockangst kennzeichnen das Wundmittel.',
           type: 'single',
           options: [
-            { id: 'inj_fear_touch', label: 'Extrem berührungsempfindlich, fürchtet jede Annäherung („Mir fehlt nichts!“)', remedyHint: 'Arnica', relevanceKeywords: ['Berührungsempfindlich', 'fürchtet Annäherung', 'Arnica'] },
-            { id: 'inj_ice_relief', label: 'Spürbare Linderung nur durch eiskaltes Wasser oder Eisauflagen', remedyHint: 'Ledum / Arnica', relevanceKeywords: ['Eisauflage', 'Ledum', 'Arnica'] },
-            { id: 'inj_warmth_relief', label: 'Linderung durch feuchte Wärme, warme Bäder oder Einhüllen', remedyHint: 'Rhus toxicodendron / Ruta', relevanceKeywords: ['Wärme lindert', 'Rhus toxicodendron', 'Ruta'] },
-            { id: 'inj_intense_pain', label: 'Unverhältnismäßig heftiger Schmerz, schlägt um sich vor Schmerz', remedyHint: 'Chamomilla / Hypericum', relevanceKeywords: ['heftiger Schmerz', 'Chamomilla', 'Hypericum'] }
+            { id: 'inj_fear_touch', label: 'Sagt „Mir fehlt nichts, lasst mich in Ruhe!“, fürchtet jede Berührung/Annäherung', remedyHint: 'Arnica', relevanceKeywords: ['Arnica', 'Mir fehlt nichts', 'fürchtet Berührung'] },
+            { id: 'inj_intense_pain', label: 'Unerträglicher Schmerz, zornig, schlägt um sich, gereizt vor Schmerz', remedyHint: 'Chamomilla / Hypericum', relevanceKeywords: ['heftiger Schmerz', 'Chamomilla', 'Hypericum', 'zornig'] },
+            { id: 'sen_fear_restless', label: 'Großer Schock, zittrig, ängstliche Unruhe, Herzklopfen', remedyHint: 'Aconitum / Hypericum', relevanceKeywords: ['Schock', 'Aconitum', 'ängstlich', 'Zittern'] },
+            { id: 'sen_weepy_mild', label: 'Weinerlich, hilflos, sehnt sich nach tröstendem Beistand', remedyHint: 'Pulsatilla', relevanceKeywords: ['weinerlich', 'trostbedürftig', 'Pulsatilla'] }
           ]
         },
         {
@@ -811,3 +814,5 @@ export function buildEnhancedSymptomQuery(
 
   return parts.filter(Boolean).join(' ');
 }
+
+export { getDerivedClarifyingQuestion } from './acuteDerivedClarificationService';

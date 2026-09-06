@@ -25,6 +25,7 @@ import { COMMON_MEDICATIONS_DB } from '../services/medicationDatabase';
 import { anamnesisSchema } from '../data/anamnesisSchema';
 import { CaseAnalysisModal } from './CaseAnalysisModal';
 import { ExtendedAnamnesisWizard } from './ExtendedAnamnesisWizard';
+import { ComplaintQuestionsWizardModal } from './ComplaintQuestionsWizardModal';
 import { FindingsWizardModal } from './FindingsWizardModal';
 import { MedicationsWizardModal } from './MedicationsWizardModal';
 import { UpgradeModal } from './UpgradeModal';
@@ -168,11 +169,22 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const { t, language } = useTranslation();
   const [panelTab, setPanelTab] = useState<'cases' | 'patients' | 'materiamedica' | 'quickintake' | 'medications' | 'documentation' | 'profile' | 'tariff'>(() => getStoredTherapistTab());
+  const [patientDirectoryAction, setPatientDirectoryAction] = useState<'new_patient' | 'select_patient' | null>(null);
   const [currentStep, setCurrentStep] = useState<number>(1);
 
   const handleSelectTab = (tab: 'cases' | 'patients' | 'materiamedica' | 'quickintake' | 'medications' | 'documentation' | 'profile' | 'tariff') => {
     setPanelTab(tab);
     navigateTo('therapist', { therapistTab: tab });
+  };
+
+  const handleForwardToNewPatient = () => {
+    setPatientDirectoryAction('new_patient');
+    handleSelectTab('patients');
+  };
+
+  const handleForwardToPatientDirectorySelection = () => {
+    setPatientDirectoryAction('select_patient');
+    handleSelectTab('patients');
   };
 
   useEffect(() => {
@@ -193,6 +205,7 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
   const [isStammdatenModalOpen, setIsStammdatenModalOpen] = useState(false);
   const [isAnalysisModalOpen, setIsAnalysisModalOpen] = useState(false);
   const [isExtendedAnamnesisWizardOpen, setIsExtendedAnamnesisWizardOpen] = useState(false);
+  const [isComplaintWizardModalOpen, setIsComplaintWizardModalOpen] = useState(false);
   const [isFindingsModalOpen, setIsFindingsModalOpen] = useState(false);
   const [isMedicationsModalOpen, setIsMedicationsModalOpen] = useState(false);
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
@@ -759,8 +772,8 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
   const renderSummarySectionBadge = (stepNum: number, isConfirmed: boolean) => {
     if (isConfirmed) {
       return (
-        <span className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-teal-50 text-teal-700 border border-teal-200 flex items-center gap-1.5 shadow-xs">
-          <Check className="w-3.5 h-3.5 text-teal-600 stroke-[2.5]" />
+        <span className="px-2.5 py-1 rounded-lg text-xs font-medium bg-teal-50 text-teal-700 border border-teal-200 flex items-center gap-1.5 shadow-2xs">
+          <Check className="w-3.5 h-3.5 text-teal-600 stroke-[2]" />
           <span>{t('summaryAdoptedBadge')}</span>
         </span>
       );
@@ -770,8 +783,8 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
 
     if (status === 'complete') {
       return (
-        <span className="relative px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-teal-50 text-teal-900 border border-teal-200 flex items-center gap-1.5 shadow-xs overflow-hidden">
-          <Check className="w-3.5 h-3.5 text-teal-700 stroke-[2.5]" />
+        <span className="relative px-2.5 py-1 rounded-lg text-xs font-medium bg-teal-50 text-teal-800 border border-teal-200 flex items-center gap-1.5 shadow-2xs overflow-hidden">
+          <Check className="w-3.5 h-3.5 text-teal-700 stroke-[2]" />
           <span>{t('summaryPendingBadge')} (100%)</span>
         </span>
       );
@@ -779,7 +792,7 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
 
     if (status === 'partial') {
       return (
-        <span className="relative px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-teal-50 text-teal-900 border border-teal-200 flex items-center gap-1.5 shadow-xs overflow-hidden">
+        <span className="relative px-2.5 py-1 rounded-lg text-xs font-medium bg-teal-50 text-teal-800 border border-teal-200 flex items-center gap-1.5 shadow-2xs overflow-hidden">
           <div
             className="absolute inset-y-0 right-0 bg-amber-300/55 border-l border-amber-400/60 pointer-events-none transition-all duration-300"
             style={{ width: `${100 - percent}%` }}
@@ -791,7 +804,7 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
     }
 
     return (
-      <span className="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-100 text-slate-500 border border-slate-200 flex items-center gap-1.5 shadow-xs">
+      <span className="px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 text-slate-500 border border-slate-200 flex items-center gap-1.5 shadow-2xs">
         <Clock className="w-3.5 h-3.5 text-slate-400" />
         <span>{t('summaryPendingBadge')} (0%)</span>
       </span>
@@ -942,13 +955,12 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
 
   useEffect(() => {
     const handleNewPatientEvent = () => {
-      setPanelTab('cases');
-      handleStartNewPatient();
+      setPatientDirectoryAction('new_patient');
+      handleSelectTab('patients');
     };
     const handleOpenDirectoryEvent = () => {
-      handleSelectTab('cases');
-      openModal('patient_select');
-      setIsPatientSelectionModalOpen(true);
+      setPatientDirectoryAction('select_patient');
+      handleSelectTab('patients');
     };
     const handleSetTabEvent = (e: Event) => {
       const customEvent = e as CustomEvent<'cases' | 'patients' | 'materiamedica' | 'quickintake' | 'medications' | 'documentation' | 'profile' | 'tariff'>;
@@ -1779,6 +1791,8 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
       {panelTab === 'patients' && (
         <PatientDirectoryView
           therapist={therapist}
+          initialOpenAction={patientDirectoryAction}
+          onActionHandled={() => setPatientDirectoryAction(null)}
           onOpenCaseInWorkspace={(selectedCase) => {
             handleSelectCase(selectedCase);
             handleSelectTab('cases');
@@ -2113,18 +2127,6 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                         </span>
                       </div>
 
-                      {/* Discreet Cases Drawer Toggle */}
-                      <button
-                        type="button"
-                        id="btn-header-open-cases"
-                        onClick={() => setIsCasesDrawerOpen(prev => !prev)}
-                        className="px-3 py-1.5 rounded-xl border border-teal-200 bg-teal-50/70 hover:bg-teal-100 text-teal-800 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
-                        title={t('viewAllCases' as TranslationKey) || 'Patientenfälle anzeigen'}
-                      >
-                        <FileText className="w-3.5 h-3.5 text-teal-600" />
-                        <span>{t('patientCasesTab' as TranslationKey) || 'Fälle'} ({patientCasesCount})</span>
-                      </button>
-
                       {/* Master data edit button */}
                       <button
                         type="button"
@@ -2254,134 +2256,96 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                 </div>
               )}
 
-              {/* 3. DEDICATED SECTION PROGRESS FRAME & ACTIVE AREA CONNECTION */}
-              {hasPatientData && (() => {
-                const currentStepInfo = getStepInfo(currentStep);
-                return (
-                  <div className="w-full my-3 sm:my-4 rounded-xl border border-emerald-200 bg-gradient-to-b from-emerald-50/50 via-white to-white p-3.5 sm:p-4 shadow-xs relative transition-all duration-300">
-                    {/* Active section header row */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2.5 border-b border-emerald-100/70">
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs">
-                          {currentStep}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider">
-                              {t('activeSectionProgressTitle')}
-                            </span>
-                            <span className="text-[11px] text-slate-400">•</span>
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100/80 text-emerald-900 border border-emerald-200/60">
-                              {t('stepProgress', { current: currentStep, total: totalWizardSteps })}
-                            </span>
-                            <span className="text-[11px] text-slate-400">•</span>
-                            <span className="text-xs sm:text-sm font-bold text-slate-900 truncate">
-                              {currentStepConfig.name}
-                            </span>
-                          </div>
-                          <p className="text-[11px] text-slate-500 line-clamp-1 mt-0.5">
-                            {getActiveSectionHint(currentStepConfig.id)}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
-                        {/* Active Section Completion Badge */}
-                        {currentStepInfo.status === 'complete' ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs">
-                            <Check className="w-3.5 h-3.5 text-emerald-700 stroke-[2.5]" />
-                            <span>100% {t('activeSectionCompletedBadge')}</span>
-                          </span>
-                        ) : currentStepInfo.percent > 0 ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 shadow-2xs">
-                            <Clock className="w-3.5 h-3.5 text-emerald-600" />
-                            <span>{currentStepInfo.percent}% {t('activeSectionIncompleteBadge')}</span>
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200 shadow-2xs">
-                            <span>0% {t('activeSectionEmptyBadge')}</span>
-                          </span>
-                        )}
-
-                        {/* Overall Progress Indicator Badge */}
-                        <span 
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200"
-                          title={`${t('anamnesisProgress')}: ${overallProgress}%`}
-                        >
-                          <span className="text-slate-500">{t('activeSectionOverallProgress')}:</span>
-                          <span className="font-bold text-slate-800">{overallProgress}%</span>
-                        </span>
-                      </div>
+              {/* Active Step Section Header & Progress Card (Screenshot 2) */}
+              <div className="bg-emerald-50/50 border border-emerald-200/80 rounded-2xl p-4 sm:p-5 mb-6 shadow-2xs space-y-3" id="active-step-progress-card">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <div className="w-6 h-6 rounded-full bg-emerald-700 text-white font-bold flex items-center justify-center text-xs shrink-0 shadow-xs">
+                      {currentStep}
                     </div>
-
-                    {/* Section Progress Bar */}
-                    <div className="pt-3 space-y-2.5">
-                      <div>
-                        <div className="flex items-center justify-between text-[11px] font-medium text-slate-700 mb-1.5">
-                          <span className="flex items-center gap-1.5">
-                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                            <span className="font-semibold text-slate-800">
-                              {t('sectionCompletionRate')}: <span className="text-emerald-900 font-bold">{currentStepConfig.shortName || currentStepConfig.name}</span>
-                            </span>
-                          </span>
-                          <span className="font-bold text-emerald-900 font-mono text-xs">
-                            {currentStepInfo.percent}%
-                          </span>
-                        </div>
-
-                        {/* Progress Track & Fill */}
-                        <div 
-                          className="w-full h-3 bg-slate-100 rounded-full border border-slate-200/90 overflow-hidden relative shadow-inner flex items-center"
-                          role="progressbar"
-                          aria-valuenow={currentStepInfo.percent}
-                          aria-valuemin={0}
-                          aria-valuemax={100}
-                        >
-                          <div 
-                            className="h-full bg-gradient-to-r from-emerald-600 to-teal-600 rounded-full transition-all duration-500 relative"
-                            style={{ width: `${Math.max(currentStepInfo.percent > 0 ? 3 : 0, Math.min(100, currentStepInfo.percent))}%` }}
-                          />
-                        </div>
-
-                        {/* Milestone labels below bar for clarity */}
-                        <div className="flex justify-between text-[10px] text-slate-400 pt-1 font-mono">
-                          <span>0%</span>
-                          <span>25%</span>
-                          <span>50%</span>
-                          <span>75%</span>
-                          <span>100%</span>
-                        </div>
-                      </div>
-
-                      {/* Overall Progress Sub-Bar */}
-                      <div className="pt-2 border-t border-emerald-100/60 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-[11px] text-slate-500">
-                        <div className="flex items-center gap-2">
-                          <span className="text-slate-600 font-medium">{t('caseOverallProgress')}:</span>
-                          <span className="font-bold text-slate-800 font-mono">{overallProgress}%</span>
-                          <span className="text-slate-300">•</span>
-                          <span className="text-slate-500">{t('stepProgress', { current: currentStep, total: totalWizardSteps })}</span>
-                        </div>
-                        <div className="w-full sm:w-48 h-1.5 bg-slate-100 rounded-full border border-slate-200 overflow-hidden">
-                          <div 
-                            className="h-full bg-teal-600 rounded-full transition-all duration-500"
-                            style={{ width: `${Math.max(overallProgress > 0 ? 3 : 0, Math.min(100, overallProgress))}%` }}
-                          />
-                        </div>
-                      </div>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-xs font-bold text-emerald-950 uppercase tracking-wider">
+                        {t('activeSectionProgressTitle')}
+                      </span>
+                      <span className="text-slate-300">•</span>
+                      <span className="text-xs font-medium text-emerald-900">
+                        {t('activeSectionStepLabel')} {currentStep} {t('activeSectionOfLabel')} {totalWizardSteps}
+                      </span>
+                      <span className="text-slate-300">•</span>
+                      <span className="text-xs font-bold text-slate-900">
+                        {currentStepConfig.name}
+                      </span>
                     </div>
                   </div>
-                );
-              })()}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-bold flex items-center gap-1 border ${
+                      getStepInfo(currentStep).status === 'complete'
+                        ? 'bg-emerald-100 text-emerald-800 border-emerald-300 shadow-2xs'
+                        : getStepInfo(currentStep).status === 'partial'
+                        ? 'bg-amber-50 text-amber-900 border-amber-300 shadow-2xs'
+                        : 'bg-white text-slate-600 border-slate-200'
+                    }`}>
+                      {getStepInfo(currentStep).status === 'complete' && (
+                        <Check className="w-3.5 h-3.5 text-emerald-700 stroke-[2.5]" />
+                      )}
+                      <span>
+                        {getStepInfo(currentStep).percent}% {
+                          getStepInfo(currentStep).status === 'complete'
+                            ? t('activeSectionCompletedBadge')
+                            : getStepInfo(currentStep).status === 'partial'
+                            ? t('activeSectionIncompleteBadge')
+                            : t('activeSectionEmptyBadge')
+                        }
+                      </span>
+                    </span>
+                    <span className="text-xs font-bold text-slate-700 bg-white border border-slate-200 px-2.5 py-1 rounded-full shadow-2xs">
+                      {t('activeSectionOverallProgress')}: {overallProgress}%
+                    </span>
+                  </div>
+                </div>
 
-              {/* Active Step Section Header (Bild 2) */}
-              <div className="flex items-center justify-between pb-3 mb-5 border-b border-slate-100">
-                <h3 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight flex items-center gap-2">
-                  <ListOrdered className="w-5 h-5 text-teal-600 shrink-0" />
-                  <span>{currentStepConfig.name}</span>
-                </h3>
-                <span className="text-[11px] font-bold px-2.5 py-1 bg-teal-100 text-teal-800 rounded-lg">
-                  {t('stepProgress', { current: currentStep, total: totalWizardSteps })}
-                </span>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  {getActiveSectionHint(currentStepConfig.id)}
+                </p>
+
+                {/* Progress bar: Bearbeitungsstand im Abschnitt */}
+                <div className="pt-1">
+                  <div className="flex justify-between items-center text-xs font-semibold mb-1 text-slate-800">
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+                      <span>
+                        {t('sectionCompletionRate')}: <strong>{currentStepConfig.shortName || currentStepConfig.name}</strong>
+                      </span>
+                    </div>
+                    <span className="font-bold text-emerald-950 font-mono">{getStepInfo(currentStep).percent}%</span>
+                  </div>
+                  <div className="w-full bg-slate-200/80 h-2.5 rounded-full overflow-hidden">
+                    <div
+                      className="bg-emerald-600 h-2.5 rounded-full transition-all duration-300"
+                      style={{ width: `${getStepInfo(currentStep).percent}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between text-[10px] font-medium text-slate-400 mt-1">
+                    <span>0%</span>
+                    <span>25%</span>
+                    <span>50%</span>
+                    <span>75%</span>
+                    <span>100%</span>
+                  </div>
+                </div>
+
+                {/* Bottom row: Gesamtfortschritt des Patientenfalls */}
+                <div className="pt-2 border-t border-emerald-100/90 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-slate-600">
+                  <div>
+                    {t('caseOverallProgress')}: <strong className="text-slate-900 font-bold">{overallProgress}%</strong> <span className="text-slate-400">•</span> {t('activeSectionStepLabel')} {currentStep} {t('activeSectionOfLabel')} {totalWizardSteps}
+                  </div>
+                  <div className="w-full sm:w-48 bg-slate-200/80 h-2 rounded-full overflow-hidden">
+                    <div
+                      className="bg-emerald-600 h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${overallProgress}%` }}
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* SEQUENTIAL STEP BODIES */}
@@ -2389,78 +2353,152 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                 {/* 1. STAMMDATEN */}
                 {currentStepConfig.id === 'stammdaten' && (
                   <div className="space-y-5 animate-in fade-in-50 duration-150">
-                    <div className="bg-teal-50/60 p-4 rounded-xl border border-teal-100 text-teal-950 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                      <div className="flex items-center gap-2.5">
-                        <UserCheck className="w-5 h-5 text-teal-700 shrink-0" />
-                        <div>
-                          <span className="font-bold text-slate-800 block text-xs">{t('patientDataTitle')}</span>
-                          <span className="text-slate-600 text-[11px]">{t('patientDataDesc')}</span>
+                    {!hasPatientData ? (
+                      /* Layout wie in Bild 1 (Patienten / Kundenkartei) */
+                      <div className="bg-white rounded-2xl border border-slate-200 p-8 sm:p-12 text-center shadow-xs">
+                        <div className="w-16 h-16 rounded-2xl bg-teal-50 border border-teal-100 flex items-center justify-center text-teal-700 mb-4 mx-auto shadow-2xs">
+                          <Users className="w-8 h-8" />
+                        </div>
+                        <h3 className="text-lg sm:text-xl font-bold text-slate-800 font-serif mb-2">
+                          {t('selectPatientPrompt')}
+                        </h3>
+                        <p className="text-xs sm:text-sm text-slate-500 max-w-md mx-auto mb-6 leading-relaxed">
+                          {t('selectPatientPromptSub')}
+                        </p>
+                        <div className="flex flex-wrap items-center justify-center gap-3">
+                          <button
+                            type="button"
+                            id="btn-stammdaten-new-patient"
+                            onClick={handleForwardToNewPatient}
+                            className="px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-white font-bold text-xs sm:text-sm flex items-center gap-2 transition-all shadow-xs cursor-pointer"
+                          >
+                            <Plus className="w-4 h-4" />
+                            <span>{t('btnNewPatientAdmission')}</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            id="btn-stammdaten-select-patient"
+                            onClick={handleForwardToPatientDirectorySelection}
+                            className="px-5 py-2.5 rounded-xl bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold text-xs sm:text-sm flex items-center gap-2 transition-all shadow-xs cursor-pointer"
+                          >
+                            <Users className="w-4 h-4 text-teal-600" />
+                            <span>{t('btnOpenPatientSelectionModal')}</span>
+                          </button>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            openModal('stammdaten');
-                            setIsStammdatenModalOpen(true);
-                          }}
-                          className="px-3.5 py-1.5 rounded-lg bg-teal-700 hover:bg-teal-800 text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer shadow-2xs transition-colors"
-                        >
-                          <Edit3 className="w-3.5 h-3.5" />
-                          <span>{hasPatientData ? t('editMasterData') : t('enterMasterData')}</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            openModal('patient_select');
-                            setIsPatientSelectionModalOpen(true);
-                          }}
-                          className="px-3.5 py-1.5 rounded-lg bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-semibold flex items-center gap-1.5 cursor-pointer shadow-2xs transition-colors"
-                        >
-                          <Users className="w-3.5 h-3.5 text-teal-600" />
-                          <span>{t('selectExistingPatientBtn')}</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Additional Patient Details if available */}
-                    {hasPatientData && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {currentCase.hasChildren && currentCase.childrenList && currentCase.childrenList.length > 0 && (
-                          <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-2">
-                            <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                              <Baby className="w-4 h-4 text-teal-600" />
-                              <span>{t('hasChildren')} ({currentCase.childrenList.length})</span>
-                            </h4>
-                            <div className="space-y-1.5">
-                              {currentCase.childrenList.map((ch, idx) => (
-                                <div key={ch.id || idx} className="text-xs bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-100 flex items-center justify-between">
-                                  <span className="font-semibold text-slate-800">{ch.name || t('childEntryLabel', { index: idx + 1 })}</span>
-                                  <span className="text-slate-500">
-                                    {ch.birthDate ? `${ch.birthDate}${ch.age ? ` (${ch.age} J.)` : ''}` : (ch.age ? `${ch.age} Jahre` : '')}
-                                  </span>
-                                </div>
-                              ))}
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="bg-teal-50/60 p-4 rounded-xl border border-teal-100 text-teal-950 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                          <div className="flex items-center gap-2.5">
+                            <UserCheck className="w-5 h-5 text-teal-700 shrink-0" />
+                            <div>
+                              <span className="font-bold text-slate-800 block text-xs">{currentCase.patientName}</span>
+                              <span className="text-slate-600 text-[11px]">{t('patientDataDesc')}</span>
                             </div>
                           </div>
-                        )}
-
-                        {currentCase.customStammdaten && currentCase.customStammdaten.length > 0 && (
-                          <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-2">
-                            <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                              <Layers className="w-4 h-4 text-teal-600" />
-                              <span>{t('extraFields')} ({currentCase.customStammdaten.length})</span>
-                            </h4>
-                            <div className="flex flex-wrap gap-2">
-                              {currentCase.customStammdaten.map((cs) => (
-                                <div key={cs.id} className="text-xs bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-100">
-                                  <strong className="text-slate-600">{cs.name}: </strong>
-                                  <span className="text-slate-800 font-semibold">{cs.value || '—'}</span>
-                                </div>
-                              ))}
-                            </div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                openModal('stammdaten');
+                                setIsStammdatenModalOpen(true);
+                              }}
+                              className="px-3.5 py-1.5 rounded-lg bg-teal-700 hover:bg-teal-800 text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer shadow-2xs transition-colors"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                              <span>{t('editMasterData')}</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleForwardToPatientDirectorySelection}
+                              className="px-3.5 py-1.5 rounded-lg bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-semibold flex items-center gap-1.5 cursor-pointer shadow-2xs transition-colors"
+                            >
+                              <Users className="w-3.5 h-3.5 text-teal-600" />
+                              <span>{t('btnOpenPatientSelectionModal')}</span>
+                            </button>
                           </div>
-                        )}
+                        </div>
+
+                        {/* Structured Stammdaten Grid */}
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 text-xs">
+                          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                            <span className="block text-[10px] text-slate-400 font-medium">{t('birthdateAndAge')}</span>
+                            <span className="font-semibold text-slate-800">
+                              {currentCase.patientBirthDate || '—'} 
+                              {currentCase.patientAge ? ` (${currentCase.patientAge} ${t('yearsOld')})` : ''}
+                            </span>
+                          </div>
+
+                          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                            <span className="block text-[10px] text-slate-400 font-medium">{t('genderAndStatus')}</span>
+                            <span className="font-semibold text-slate-800">
+                              {currentCase.patientGender || '—'}
+                              {currentCase.patientMaritalStatus ? ` • ${currentCase.patientMaritalStatus}` : ''}
+                            </span>
+                          </div>
+
+                          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                            <span className="block text-[10px] text-slate-400 font-medium">{t('heightAndWeight')}</span>
+                            <span className="font-semibold text-slate-800">
+                              {currentCase.patientHeightCm ? `${currentCase.patientHeightCm} cm` : '—'} 
+                              {currentCase.patientWeightKg ? ` / ${currentCase.patientWeightKg} kg` : ''}
+                            </span>
+                          </div>
+
+                          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                            <span className="block text-[10px] text-slate-400 font-medium">{t('hasChildren')}</span>
+                            <span className="font-semibold text-slate-800">
+                              {currentCase.hasChildren ? (currentCase.childrenList?.length || 1) : t('noChildren')}
+                            </span>
+                          </div>
+
+                          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                            <span className="block text-[10px] text-slate-400 font-medium">{t('contactData')}</span>
+                            <span className="font-semibold text-slate-800 truncate block">
+                              {currentCase.patientPhone || currentCase.patientEmail || '—'}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Children & custom fields */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {currentCase.hasChildren && currentCase.childrenList && currentCase.childrenList.length > 0 && (
+                            <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-2">
+                              <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                                <Baby className="w-4 h-4 text-teal-600" />
+                                <span>{t('hasChildren')} ({currentCase.childrenList.length})</span>
+                              </h4>
+                              <div className="space-y-1.5">
+                                {currentCase.childrenList.map((ch, idx) => (
+                                  <div key={ch.id || idx} className="text-xs bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-100 flex items-center justify-between">
+                                    <span className="font-semibold text-slate-800">{ch.name || t('childEntryLabel', { index: idx + 1 })}</span>
+                                    <span className="text-slate-500">
+                                      {ch.birthDate ? `${ch.birthDate}${ch.age ? ` (${ch.age} J.)` : ''}` : (ch.age ? `${ch.age} Jahre` : '')}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {currentCase.customStammdaten && currentCase.customStammdaten.length > 0 && (
+                            <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-2">
+                              <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                                <Layers className="w-4 h-4 text-teal-600" />
+                                <span>{t('extraFields')} ({currentCase.customStammdaten.length})</span>
+                              </h4>
+                              <div className="flex flex-wrap gap-2">
+                                {currentCase.customStammdaten.map((cs) => (
+                                  <div key={cs.id} className="text-xs bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-100">
+                                    <strong className="text-slate-600">{cs.name}: </strong>
+                                    <span className="text-slate-800 font-semibold">{cs.value || '—'}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -2470,34 +2508,70 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                 {currentStepConfig.id === 'hauptbeschwerde' && (
                   <div className="space-y-6 animate-in fade-in-50 duration-150">
                     <div className="space-y-3">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
                         <label className="block text-xs font-bold text-slate-800 uppercase" htmlFor="input-hauptbeschwerde">
-                          {t('mainComplaintTitle')} *
+                          {t('mainComplaintTitle')}
                         </label>
+                        {currentCase.hauptbeschwerde?.trim() && (
+                          <button
+                            type="button"
+                            id="btn-clear-hauptbeschwerde"
+                            onClick={() => {
+                              handleUpdateHauptbeschwerde('');
+                              if (hauptbeschwerdeRef.current) {
+                                hauptbeschwerdeRef.current.focus();
+                              }
+                            }}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors shadow-2xs cursor-pointer"
+                            title={t('clearHauptbeschwerdeBtn')}
+                          >
+                            <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                            <span>{t('clearHauptbeschwerdeBtn')}</span>
+                          </button>
+                        )}
                       </div>
 
-                      <div className="relative">
-                        <textarea
-                          id="input-hauptbeschwerde"
-                          ref={hauptbeschwerdeRef}
-                          rows={4}
-                          placeholder={t('mainComplaintPlaceholder')}
-                          value={currentCase.hauptbeschwerde || ''}
-                          onChange={(e) => handleUpdateHauptbeschwerde(e.target.value)}
-                          onInput={(e) => {
-                            const target = e.target as HTMLTextAreaElement;
-                            target.style.height = 'auto';
-                            target.style.height = `${Math.max(130, target.scrollHeight)}px`;
-                          }}
-                          className="w-full pl-4 pr-12 py-3.5 border-2 border-teal-600/60 rounded-xl bg-white text-sm text-slate-900 font-medium placeholder:text-slate-400 focus:outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100 shadow-2xs min-h-[130px] leading-relaxed transition-all resize-y"
-                        />
-                        <div className="absolute right-3 top-3">
+                      <div className="flex flex-col sm:flex-row items-stretch gap-3">
+                        <div className="relative flex-1 min-w-0">
+                          <textarea
+                            id="input-hauptbeschwerde"
+                            ref={hauptbeschwerdeRef}
+                            rows={6}
+                            placeholder={t('mainComplaintPlaceholder')}
+                            value={currentCase.hauptbeschwerde || ''}
+                            onChange={(e) => handleUpdateHauptbeschwerde(e.target.value)}
+                            onInput={(e) => {
+                              const target = e.target as HTMLTextAreaElement;
+                              target.style.height = 'auto';
+                              target.style.height = `${Math.max(150, target.scrollHeight)}px`;
+                            }}
+                            className="w-full px-4 py-3.5 pr-10 border-2 border-teal-600/60 rounded-xl bg-white text-sm text-slate-900 font-medium placeholder:text-slate-400 focus:outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100 shadow-2xs min-h-[150px] leading-relaxed transition-all resize-y"
+                          />
+                          {currentCase.hauptbeschwerde?.trim() && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleUpdateHauptbeschwerde('');
+                                if (hauptbeschwerdeRef.current) {
+                                  hauptbeschwerdeRef.current.focus();
+                                }
+                              }}
+                              className="absolute top-3 right-3 p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                              title={t('clearHauptbeschwerdeBtn')}
+                              aria-label={t('clearHauptbeschwerdeBtn')}
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                        <div className="w-full sm:w-32 md:w-36 lg:w-40 shrink-0 flex items-stretch">
                           <VoiceInputButton
                             value={currentCase.hauptbeschwerde || ''}
                             onChange={(val) => handleUpdateHauptbeschwerde(val)}
-                            size="sm"
+                            size="card"
                             mode="append"
                             id="btn-voice-hauptbeschwerde"
+                            className="w-full h-full"
                           />
                         </div>
                       </div>
@@ -2537,16 +2611,55 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                       })()}
                     </div>
 
-                    {/* Dynamic Question Generator Container */}
-                    <DynamicComplaintQuestions
-                      chiefComplaint={currentCase.hauptbeschwerde || ''}
-                      questions={currentCase.anamnesisQuestions || []}
-                      onUpdateQuestion={handleUpdateAnamnesisQuestion}
-                      onAddCustomQuestion={handleAddCustomQuestion}
-                      onRemoveQuestion={handleRemoveAnamnesisQuestion}
-                      onRegenerateQuestions={handleRegenerateQuestions}
-                      onTransferToAnamnese={handleTransferAnswersToAnamnese}
-                    />
+                    {/* Homoeopathic In-Depth Anamnesis (Popup Card matching Fragebogen layout) */}
+                    {(() => {
+                      const hasQuestionsAnswered = (currentCase.anamnesisQuestions || []).some(q => (q.answerText && q.answerText.trim().length > 0) || (q.answerChoice && q.answerChoice.trim().length > 0));
+                      const answeredCount = (currentCase.anamnesisQuestions || []).filter(q => (q.answerText && q.answerText.trim().length > 0) || (q.answerChoice && q.answerChoice.trim().length > 0)).length;
+
+                      return (
+                        <div className="p-6 bg-teal-50/50 border border-teal-200 rounded-xl space-y-4">
+                          <div className="flex items-start gap-3">
+                            <div className="p-2 bg-teal-100 rounded-lg shrink-0">
+                              <Stethoscope className="w-5 h-5 text-teal-700" />
+                            </div>
+                            <div className="space-y-1 flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-2 flex-wrap">
+                                <h4 className="font-bold text-slate-800 text-sm">
+                                  {t('complaintWizardCardTitle')}
+                                </h4>
+                                {hasQuestionsAnswered && (
+                                  <span className="px-2.5 py-0.5 rounded-full bg-teal-100 text-teal-800 text-[11px] font-semibold border border-teal-200">
+                                    {answeredCount} {t('activeSectionCompletedBadge')}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs text-slate-600 mb-4 max-w-xl leading-relaxed">
+                                {t('complaintWizardCardDesc')}
+                              </p>
+                              <div className="pt-2">
+                                <button
+                                  type="button"
+                                  id="btn-open-complaint-wizard"
+                                  onClick={() => {
+                                    openModal('complaint-wizard');
+                                    setIsComplaintWizardModalOpen(true);
+                                  }}
+                                  disabled={!currentCase.hauptbeschwerde?.trim()}
+                                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-semibold transition-colors shadow-xs cursor-pointer"
+                                >
+                                  <FolderOpen className="w-4 h-4" />
+                                  <span>
+                                    {hasQuestionsAnswered
+                                      ? t('btnResumeComplaintWizard')
+                                      : t('btnOpenComplaintWizard')}
+                                  </span>
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
 
@@ -2901,9 +3014,9 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                 {currentStepConfig.id === 'uebersicht' && (
                   <div className="space-y-6 animate-in fade-in-50 duration-150">
                     {/* Header Card */}
-                    <div className="p-4.5 rounded-xl bg-slate-50 border border-slate-200">
-                      <h4 className="font-bold text-slate-900 text-lg">{t('stepSummaryTitle')}</h4>
-                      <p className="text-xs sm:text-sm text-slate-600">{t('stepSummaryDesc')}</p>
+                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                      <h4 className="font-semibold text-slate-800 text-sm sm:text-base">{t('stepSummaryTitle')}</h4>
+                      <p className="text-xs text-slate-500 mt-0.5">{t('stepSummaryDesc')}</p>
                     </div>
 
                     <div className="space-y-4 text-sm">
@@ -2914,12 +3027,12 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                         {/* Accordion Header */}
                         <div
                           onClick={() => toggleSummaryAccordion('stammdaten')}
-                          className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-slate-50/70 hover:bg-slate-100/70 cursor-pointer select-none transition-colors"
+                          className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 bg-slate-50/70 hover:bg-slate-100/70 cursor-pointer select-none transition-colors"
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="text-slate-500">
+                            <div className="text-slate-400">
                               {summaryAccordionOpen.stammdaten ? (
-                                <ChevronDown className="w-4 h-4 text-slate-600" />
+                                <ChevronDown className="w-4 h-4 text-slate-500" />
                               ) : (
                                 <ChevronRight className="w-4 h-4 text-slate-400" />
                               )}
@@ -2927,12 +3040,12 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                             <div className="p-1.5 rounded-lg bg-teal-50 text-teal-700 border border-teal-100 shrink-0">
                               <User className="w-4 h-4" />
                             </div>
-                            <span className="font-bold text-slate-800 text-sm sm:text-base truncate">
+                            <span className="font-medium text-slate-700 text-xs sm:text-sm truncate">
                               {t('summaryAccordionStammdaten')}
                             </span>
                           </div>
 
-                          <div className="flex items-center gap-2.5 self-end sm:self-auto shrink-0">
+                          <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
                             {renderSummarySectionBadge(1, summaryConfirmedSections.stammdaten)}
 
                             <button
@@ -2942,7 +3055,7 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                                 e.stopPropagation();
                                 setCurrentStep(1);
                               }}
-                              className="text-slate-700 hover:text-teal-800 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-200 px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 text-xs transition-colors cursor-pointer shadow-xs"
+                              className="text-slate-600 hover:text-teal-800 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-200 px-2.5 py-1.5 rounded-lg font-medium flex items-center gap-1.5 text-xs transition-colors cursor-pointer shadow-2xs"
                             >
                               <Edit3 className="w-3.5 h-3.5 text-teal-600" />
                               <span>{t('stepEditSection')}</span>
@@ -2955,10 +3068,10 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                                 e.stopPropagation();
                                 toggleSectionConfirmation('stammdaten');
                               }}
-                              className={`px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 text-xs transition-all cursor-pointer shadow-xs border ${
+                              className={`px-2.5 py-1.5 rounded-lg font-medium flex items-center gap-1.5 text-xs transition-all cursor-pointer shadow-2xs border ${
                                 summaryConfirmedSections.stammdaten
                                   ? 'bg-teal-600 hover:bg-teal-700 text-white border-teal-700'
-                                  : 'bg-white hover:bg-teal-50 text-slate-700 hover:text-teal-800 border-slate-200 hover:border-teal-200'
+                                  : 'bg-white hover:bg-teal-50 text-slate-600 hover:text-teal-800 border-slate-200 hover:border-teal-200'
                               }`}
                             >
                               <Check className={`w-3.5 h-3.5 ${summaryConfirmedSections.stammdaten ? 'text-white' : 'text-slate-400'}`} />
@@ -3052,12 +3165,12 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                         {/* Accordion Header */}
                         <div
                           onClick={() => toggleSummaryAccordion('hauptbeschwerde')}
-                          className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-slate-50/70 hover:bg-slate-100/70 cursor-pointer select-none transition-colors"
+                          className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 bg-slate-50/70 hover:bg-slate-100/70 cursor-pointer select-none transition-colors"
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="text-slate-500">
+                            <div className="text-slate-400">
                               {summaryAccordionOpen.hauptbeschwerde ? (
-                                <ChevronDown className="w-4 h-4 text-slate-600" />
+                                <ChevronDown className="w-4 h-4 text-slate-500" />
                               ) : (
                                 <ChevronRight className="w-4 h-4 text-slate-400" />
                               )}
@@ -3065,12 +3178,12 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                             <div className="p-1.5 rounded-lg bg-teal-50 text-teal-700 border border-teal-100 shrink-0">
                               <MessageSquare className="w-4 h-4" />
                             </div>
-                            <span className="font-bold text-slate-800 text-sm sm:text-base truncate">
+                            <span className="font-medium text-slate-700 text-xs sm:text-sm truncate">
                               {t('summaryAccordionHauptbeschwerde')}
                             </span>
                           </div>
 
-                          <div className="flex items-center gap-2.5 self-end sm:self-auto shrink-0">
+                          <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
                             {renderSummarySectionBadge(2, summaryConfirmedSections.hauptbeschwerde)}
 
                             <button
@@ -3080,7 +3193,7 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                                 e.stopPropagation();
                                 setCurrentStep(2);
                               }}
-                              className="text-slate-700 hover:text-teal-800 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-200 px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 text-xs transition-colors cursor-pointer shadow-xs"
+                              className="text-slate-600 hover:text-teal-800 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-200 px-2.5 py-1.5 rounded-lg font-medium flex items-center gap-1.5 text-xs transition-colors cursor-pointer shadow-2xs"
                             >
                               <Edit3 className="w-3.5 h-3.5 text-teal-600" />
                               <span>{t('stepEditSection')}</span>
@@ -3093,10 +3206,10 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                                 e.stopPropagation();
                                 toggleSectionConfirmation('hauptbeschwerde');
                               }}
-                              className={`px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 text-xs transition-all cursor-pointer shadow-xs border ${
+                              className={`px-2.5 py-1.5 rounded-lg font-medium flex items-center gap-1.5 text-xs transition-all cursor-pointer shadow-2xs border ${
                                 summaryConfirmedSections.hauptbeschwerde
                                   ? 'bg-teal-600 hover:bg-teal-700 text-white border-teal-700'
-                                  : 'bg-white hover:bg-teal-50 text-slate-700 hover:text-teal-800 border-slate-200 hover:border-teal-200'
+                                  : 'bg-white hover:bg-teal-50 text-slate-600 hover:text-teal-800 border-slate-200 hover:border-teal-200'
                               }`}
                             >
                               <Check className={`w-3.5 h-3.5 ${summaryConfirmedSections.hauptbeschwerde ? 'text-white' : 'text-slate-400'}`} />
@@ -3137,12 +3250,12 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                         {/* Accordion Header */}
                         <div
                           onClick={() => toggleSummaryAccordion('fragebogen')}
-                          className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-slate-50/70 hover:bg-slate-100/70 cursor-pointer select-none transition-colors"
+                          className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 bg-slate-50/70 hover:bg-slate-100/70 cursor-pointer select-none transition-colors"
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="text-slate-500">
+                            <div className="text-slate-400">
                               {summaryAccordionOpen.fragebogen ? (
-                                <ChevronDown className="w-4 h-4 text-slate-600" />
+                                <ChevronDown className="w-4 h-4 text-slate-500" />
                               ) : (
                                 <ChevronRight className="w-4 h-4 text-slate-400" />
                               )}
@@ -3150,12 +3263,12 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                             <div className="p-1.5 rounded-lg bg-teal-50 text-teal-700 border border-teal-100 shrink-0">
                               <Stethoscope className="w-4 h-4" />
                             </div>
-                            <span className="font-bold text-slate-800 text-sm sm:text-base truncate">
+                            <span className="font-medium text-slate-700 text-xs sm:text-sm truncate">
                               {t('summaryAccordionFragebogen')}
                             </span>
                           </div>
 
-                          <div className="flex items-center gap-2.5 self-end sm:self-auto shrink-0">
+                          <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
                             {renderSummarySectionBadge(3, summaryConfirmedSections.fragebogen)}
 
                             <button
@@ -3165,7 +3278,7 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                                 e.stopPropagation();
                                 setCurrentStep(3);
                               }}
-                              className="text-slate-700 hover:text-teal-800 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-200 px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 text-xs transition-colors cursor-pointer shadow-xs"
+                              className="text-slate-600 hover:text-teal-800 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-200 px-2.5 py-1.5 rounded-lg font-medium flex items-center gap-1.5 text-xs transition-colors cursor-pointer shadow-2xs"
                             >
                               <Edit3 className="w-3.5 h-3.5 text-teal-600" />
                               <span>{t('stepEditSection')}</span>
@@ -3178,10 +3291,10 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                                 e.stopPropagation();
                                 toggleSectionConfirmation('fragebogen');
                               }}
-                              className={`px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 text-xs transition-all cursor-pointer shadow-xs border ${
+                              className={`px-2.5 py-1.5 rounded-lg font-medium flex items-center gap-1.5 text-xs transition-all cursor-pointer shadow-2xs border ${
                                 summaryConfirmedSections.fragebogen
                                   ? 'bg-teal-600 hover:bg-teal-700 text-white border-teal-700'
-                                  : 'bg-white hover:bg-teal-50 text-slate-700 hover:text-teal-800 border-slate-200 hover:border-teal-200'
+                                  : 'bg-white hover:bg-teal-50 text-slate-600 hover:text-teal-800 border-slate-200 hover:border-teal-200'
                               }`}
                             >
                               <Check className={`w-3.5 h-3.5 ${summaryConfirmedSections.fragebogen ? 'text-white' : 'text-slate-400'}`} />
@@ -3222,12 +3335,12 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                           {/* Accordion Header */}
                           <div
                             onClick={() => toggleSummaryAccordion('medikamente')}
-                            className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-slate-50/70 hover:bg-slate-100/70 cursor-pointer select-none transition-colors"
+                            className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 bg-slate-50/70 hover:bg-slate-100/70 cursor-pointer select-none transition-colors"
                           >
                             <div className="flex items-center gap-2.5 min-w-0">
-                              <div className="text-slate-500">
+                              <div className="text-slate-400">
                                 {summaryAccordionOpen.medikamente ? (
-                                  <ChevronDown className="w-4 h-4 text-slate-600" />
+                                  <ChevronDown className="w-4 h-4 text-slate-500" />
                                 ) : (
                                   <ChevronRight className="w-4 h-4 text-slate-400" />
                                 )}
@@ -3235,12 +3348,12 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                               <div className="p-1.5 rounded-lg bg-teal-50 text-teal-700 border border-teal-100 shrink-0">
                                 <Pill className="w-4 h-4" />
                               </div>
-                              <span className="font-bold text-slate-800 text-sm sm:text-base truncate">
+                              <span className="font-medium text-slate-700 text-xs sm:text-sm truncate">
                                 {t('summaryAccordionMedikamente')}
                               </span>
                             </div>
 
-                            <div className="flex items-center gap-2.5 self-end sm:self-auto shrink-0">
+                            <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
                               {renderSummarySectionBadge(4, summaryConfirmedSections.medikamente)}
 
                               <button
@@ -3250,7 +3363,7 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                                   e.stopPropagation();
                                   goToStepById('medikamente');
                                 }}
-                                className="text-slate-700 hover:text-teal-800 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-200 px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 text-xs transition-colors cursor-pointer shadow-xs"
+                                className="text-slate-600 hover:text-teal-800 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-200 px-2.5 py-1.5 rounded-lg font-medium flex items-center gap-1.5 text-xs transition-colors cursor-pointer shadow-2xs"
                               >
                                 <Edit3 className="w-3.5 h-3.5 text-teal-600" />
                                 <span>{t('stepEditSection')}</span>
@@ -3263,10 +3376,10 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                                   e.stopPropagation();
                                   toggleSectionConfirmation('medikamente');
                                 }}
-                                className={`px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 text-xs transition-all cursor-pointer shadow-xs border ${
+                                className={`px-2.5 py-1.5 rounded-lg font-medium flex items-center gap-1.5 text-xs transition-all cursor-pointer shadow-2xs border ${
                                   summaryConfirmedSections.medikamente
                                     ? 'bg-teal-600 hover:bg-teal-700 text-white border-teal-700'
-                                    : 'bg-white hover:bg-teal-50 text-slate-700 hover:text-teal-800 border-slate-200 hover:border-teal-200'
+                                    : 'bg-white hover:bg-teal-50 text-slate-600 hover:text-teal-800 border-slate-200 hover:border-teal-200'
                                 }`}
                               >
                                 <Check className={`w-3.5 h-3.5 ${summaryConfirmedSections.medikamente ? 'text-white' : 'text-slate-400'}`} />
@@ -3305,12 +3418,12 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                         {/* Accordion Header */}
                         <div
                           onClick={() => toggleSummaryAccordion('befund')}
-                          className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-slate-50/70 hover:bg-slate-100/70 cursor-pointer select-none transition-colors"
+                          className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 bg-slate-50/70 hover:bg-slate-100/70 cursor-pointer select-none transition-colors"
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="text-slate-500">
+                            <div className="text-slate-400">
                               {summaryAccordionOpen.befund ? (
-                                <ChevronDown className="w-4 h-4 text-slate-600" />
+                                <ChevronDown className="w-4 h-4 text-slate-500" />
                               ) : (
                                 <ChevronRight className="w-4 h-4 text-slate-400" />
                               )}
@@ -3318,12 +3431,12 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                             <div className="p-1.5 rounded-lg bg-teal-50 text-teal-700 border border-teal-100 shrink-0">
                               <Activity className="w-4 h-4" />
                             </div>
-                            <span className="font-bold text-slate-800 text-sm sm:text-base truncate">
+                            <span className="font-medium text-slate-700 text-xs sm:text-sm truncate">
                               {t('summaryAccordionBefund')}
                             </span>
                           </div>
 
-                          <div className="flex items-center gap-2.5 self-end sm:self-auto shrink-0">
+                          <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
                             {renderSummarySectionBadge(hasRecordedMedications ? 5 : 4, summaryConfirmedSections.befund)}
 
                             <button
@@ -3333,7 +3446,7 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                                 e.stopPropagation();
                                 goToStepById('befund');
                               }}
-                              className="text-slate-700 hover:text-teal-800 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-200 px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 text-xs transition-colors cursor-pointer shadow-xs"
+                              className="text-slate-600 hover:text-teal-800 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-200 px-2.5 py-1.5 rounded-lg font-medium flex items-center gap-1.5 text-xs transition-colors cursor-pointer shadow-2xs"
                             >
                               <Edit3 className="w-3.5 h-3.5 text-teal-600" />
                               <span>{t('stepEditSection')}</span>
@@ -3346,10 +3459,10 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                                 e.stopPropagation();
                                 toggleSectionConfirmation('befund');
                               }}
-                              className={`px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 text-xs transition-all cursor-pointer shadow-xs border ${
+                              className={`px-2.5 py-1.5 rounded-lg font-medium flex items-center gap-1.5 text-xs transition-all cursor-pointer shadow-2xs border ${
                                 summaryConfirmedSections.befund
                                   ? 'bg-teal-600 hover:bg-teal-700 text-white border-teal-700'
-                                  : 'bg-white hover:bg-teal-50 text-slate-700 hover:text-teal-800 border-slate-200 hover:border-teal-200'
+                                  : 'bg-white hover:bg-teal-50 text-slate-600 hover:text-teal-800 border-slate-200 hover:border-teal-200'
                               }`}
                             >
                               <Check className={`w-3.5 h-3.5 ${summaryConfirmedSections.befund ? 'text-white' : 'text-slate-400'}`} />
@@ -3535,21 +3648,20 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
 
               {/* SEQUENTIAL NAVIGATION BUTTONS DIRECTLY UNDER EACH SECTION */}
               <div className="mt-8 pt-5 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3 print:hidden">
-                {/* Back Button */}
-                <button
-                  id="btn-step-back"
-                  type="button"
-                  onClick={goToPreviousStep}
-                  disabled={currentStep === 1}
-                  className={`flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
-                    currentStep === 1
-                      ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
-                      : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 hover:text-slate-900 shadow-xs'
-                  }`}
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  <span>{t('btnStepBack')}</span>
-                </button>
+                {/* Back Button - only show if currentStep > 1 */}
+                {currentStep > 1 ? (
+                  <button
+                    id="btn-step-back"
+                    type="button"
+                    onClick={goToPreviousStep}
+                    className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-xs sm:text-sm font-semibold transition-all cursor-pointer bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 hover:text-slate-900 shadow-xs"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    <span>{t('btnStepBack')}</span>
+                  </button>
+                ) : (
+                  <div />
+                )}
 
                 {/* Center: Step Indicator & Auto-Save Status */}
                 <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
@@ -3566,20 +3678,7 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
 
                 {/* Next / Action Buttons */}
                 <div className="flex items-center gap-2">
-                  {!hasPatientData ? (
-                    <button
-                      id="btn-step-next-enter-data"
-                      type="button"
-                      onClick={() => {
-                        openModal('stammdaten');
-                        setIsStammdatenModalOpen(true);
-                      }}
-                      className="flex items-center gap-1.5 px-5 py-2.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs sm:text-sm font-semibold transition-all shadow-xs cursor-pointer"
-                    >
-                      <User className="w-4 h-4" />
-                      <span>{t('enterMasterData')}</span>
-                    </button>
-                  ) : currentStepConfig.id === 'uebersicht' ? (
+                  {!hasPatientData ? null : currentStepConfig.id === 'uebersicht' ? (
                     <>
                       <button
                         type="button"
@@ -3673,6 +3772,62 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
           </div>
         </>
       )}
+
+      {/* Homoeopathic In-Depth 6-Pillars Wizard Modal */}
+      <ComplaintQuestionsWizardModal
+        isOpen={isComplaintWizardModalOpen}
+        onClose={() => {
+          closeModal();
+          setIsComplaintWizardModalOpen(false);
+        }}
+        chiefComplaint={currentCase.hauptbeschwerde || ''}
+        patientName={currentCase.patientName}
+        onTransferToAnamnese={(data) => {
+          const matrix = data.matrix;
+          const updatedQuestions: AnamnesisQuestion[] = [
+            ...(matrix.causa ? [{ id: 'q_causa', question: 'Auslöser / Ursache (Causa)', type: 'text' as const, answerText: matrix.causa }] : []),
+            ...(matrix.lokalisierung ? [{ id: 'q_lok', question: 'Genaue Lokalisierung / Gewebe', type: 'text' as const, answerText: matrix.lokalisierung }] : []),
+            ...(matrix.empfindung ? [{ id: 'q_empf', question: 'Empfindung & Schmerzcharakter', type: 'text' as const, answerText: matrix.empfindung }] : []),
+            ...(matrix.modalitaeten ? [{ id: 'q_mod', question: 'Modalitäten (Besser / Schlechter)', type: 'text' as const, answerText: matrix.modalitaeten }] : []),
+            ...(matrix.begleitsymptome && matrix.begleitsymptome.length > 0 ? [{ id: 'q_begleit', question: 'Begleitsymptome (Concomitants)', type: 'text' as const, answerText: matrix.begleitsymptome.join(', ') }] : []),
+            ...(matrix.gemuet ? [{ id: 'q_gemuet', question: 'Gemüt & Psychischer Zustand', type: 'text' as const, answerText: matrix.gemuet }] : []),
+          ];
+
+          setCurrentCase(prev => {
+            const updated: Partial<PatientCase> = {
+              ...prev,
+              anamnesisQuestions: updatedQuestions,
+              spontanbericht: prev.spontanbericht ? `${prev.spontanbericht}\n\n[6-Säulen-Matrix]\n${data.summaryText}` : `[6-Säulen-Matrix]\n${data.summaryText}`,
+              modalitaetenBesser: matrix.modalitaeten?.includes('>') ? matrix.modalitaeten : prev.modalitaetenBesser,
+              modalitaetenSchlechter: matrix.modalitaeten?.includes('<') ? matrix.modalitaeten : prev.modalitaetenSchlechter,
+              gemuetPsyche: matrix.gemuet || prev.gemuetPsyche,
+              lokalsymptome: matrix.lokalisierung || prev.lokalsymptome,
+            };
+
+            if (prev.id) {
+              const fullCaseToSave = {
+                ...prev,
+                ...updated,
+                therapistId: prev.therapistId || therapist.id,
+                patientName: prev.patientName || '',
+                anamneseDatum: prev.anamneseDatum || new Date().toISOString().split('T')[0],
+                id: prev.id
+              } as PatientCase;
+              savePatientCase(fullCaseToSave);
+              setCases(prevCases => prevCases.map(c => c.id === prev.id ? { ...c, ...updated } as PatientCase : c));
+            }
+            return updated;
+          });
+
+          setSummaryConfirmedSections(prev => ({
+            ...prev,
+            hauptbeschwerde: true,
+          }));
+
+          setSaveToast(t('toastCaseSaved'));
+          setTimeout(() => setSaveToast(null), 3000);
+        }}
+      />
 
       {/* Extended Anamnesis Questionnaire Modal */}
       <ExtendedAnamnesisWizard

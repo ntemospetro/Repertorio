@@ -66,14 +66,16 @@ export function deduplicateRepeatedPhrases(text: string): string {
     cleanSentences.push(sTrimmed);
   }
 
-  let words = cleanSentences.join(' ').split(/\s+/);
+  let words = cleanSentences.join(' ').split(/\s+/).filter(Boolean);
   if (words.length <= 1) return words.join(' ');
 
-  // 2. Multi-word n-gram deduplication (eliminates repeated phrases and words)
+  // 2. Multi-word n-gram deduplication (eliminates repeated phrases of length 1 to words.length / 2)
   let modified = true;
-  while (modified) {
+  let iterations = 0;
+  while (modified && iterations < 20) {
     modified = false;
-    const maxN = Math.floor(words.length / 2);
+    iterations++;
+    const maxN = Math.min(Math.floor(words.length / 2), 12);
     for (let n = maxN; n >= 1; n--) {
       for (let i = 0; i <= words.length - 2 * n; i++) {
         const chunk1 = words.slice(i, i + n).map(w => w.toLowerCase().replace(/[.,!?;:]/g, '')).join(' ');
@@ -102,7 +104,10 @@ export function mergeWithOverlap(base: string, next: string): string {
   const nLower = n.toLowerCase().replace(/[.,!?;:]/g, '');
 
   // If one already fully contains the other
-  if (nLower.startsWith(bLower) || nLower.includes(bLower)) {
+  if (bLower === nLower) {
+    return deduplicateRepeatedPhrases(b);
+  }
+  if (nLower.startsWith(bLower)) {
     return deduplicateRepeatedPhrases(n);
   }
   if (bLower.endsWith(nLower) || bLower.includes(nLower)) {
@@ -110,9 +115,9 @@ export function mergeWithOverlap(base: string, next: string): string {
   }
 
   // Word-level boundary overlap detection (from longest to 1 word)
-  const bWords = b.split(/\s+/);
-  const nWords = n.split(/\s+/);
-  const maxCheck = Math.min(bWords.length, nWords.length);
+  const bWords = b.split(/\s+/).filter(Boolean);
+  const nWords = n.split(/\s+/).filter(Boolean);
+  const maxCheck = Math.min(bWords.length, nWords.length, 12);
 
   for (let len = maxCheck; len >= 1; len--) {
     const bSlice = bWords.slice(-len).map(w => w.toLowerCase().replace(/[.,!?;:]/g, '')).join(' ');
@@ -187,13 +192,22 @@ export function startSpeechRecognition(
       if (!trimmed) continue;
 
       if (item.isFinal) {
-        sessionFinal = mergeWithOverlap(sessionFinal, trimmed);
+        sessionFinal += (sessionFinal ? ' ' : '') + trimmed;
       } else {
-        sessionInterim = mergeWithOverlap(sessionInterim, trimmed);
+        sessionInterim += (sessionInterim ? ' ' : '') + trimmed;
       }
     }
 
-    const cleaned = cleanTranscriptDuplicates(sessionFinal, sessionInterim);
+    let combined = sessionFinal;
+    if (sessionInterim) {
+      if (!combined) {
+        combined = sessionInterim;
+      } else {
+        combined = mergeWithOverlap(combined, sessionInterim);
+      }
+    }
+
+    const cleaned = deduplicateRepeatedPhrases(combined);
     if (cleaned.trim()) {
       options.onResult(cleaned.trim(), sessionInterim.length === 0);
     }

@@ -135,31 +135,7 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Desktop Navigation Links */}
           <nav className="hidden md:flex items-center gap-2 sm:gap-3">
-            {currentView === 'therapist' ? (
-              <div className="flex items-center gap-2">
-                {/* 1. Neuer Patient */}
-                <button
-                  type="button"
-                  id="header-btn-new-patient"
-                  onClick={() => window.dispatchEvent(new CustomEvent('homoeo_action_new_patient'))}
-                  className="flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-white shadow-xs transition-all cursor-pointer whitespace-nowrap"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>{t('btnNewPatientAdmission')}</span>
-                </button>
-
-                {/* 2. Zur Kartei */}
-                <button
-                  type="button"
-                  id="header-btn-to-files"
-                  onClick={() => window.dispatchEvent(new CustomEvent('homoeo_action_open_patient_directory'))}
-                  className="flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-800 border border-slate-200 transition-all cursor-pointer whitespace-nowrap"
-                >
-                  <Users className="w-4 h-4 text-teal-700" />
-                  <span>{t('btnExistingPatientToFiles')}</span>
-                </button>
-              </div>
-            ) : (
+            {currentView === 'therapist' ? null : (
               <div className="flex bg-slate-100 rounded-full p-1 border border-slate-200 text-xs font-semibold">
                 {/* 1. Registrierung */}
                 <button
@@ -257,34 +233,6 @@ export const Header: React.FC<HeaderProps> = ({
         >
           {currentView === 'therapist' ? (
             <>
-              {/* 1. Neuer Kunde & Zur Kartei */}
-              <div className="grid grid-cols-2 gap-2 pb-2.5 mb-2 border-b border-slate-100">
-                <button
-                  type="button"
-                  id="mobile-header-btn-new-patient"
-                  onClick={() => {
-                    window.dispatchEvent(new CustomEvent('homoeo_action_new_patient'));
-                    setMobileMenuOpen(false);
-                  }}
-                  className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold bg-teal-600 hover:bg-teal-700 text-white shadow-xs transition-all cursor-pointer whitespace-nowrap"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>{t('btnNewPatientAdmission')}</span>
-                </button>
-                <button
-                  type="button"
-                  id="mobile-header-btn-to-files"
-                  onClick={() => {
-                    window.dispatchEvent(new CustomEvent('homoeo_action_open_patient_directory'));
-                    setMobileMenuOpen(false);
-                  }}
-                  className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 transition-all cursor-pointer whitespace-nowrap"
-                >
-                  <Users className="w-4 h-4 text-teal-700" />
-                  <span>{t('btnExistingPatientToFiles')}</span>
-                </button>
-              </div>
-
               {/* 2. Name des Therapeuten mit aufklappbarem Dropdown für Profil, Einstellungen etc. */}
               {activeTherapist && (
                 <div className="mb-2">

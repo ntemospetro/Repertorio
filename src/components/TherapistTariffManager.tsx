@@ -23,7 +23,7 @@ export const TherapistTariffManager: React.FC<TherapistTariffManagerProps> = ({
   onTariffChanged
 }) => {
   const { t } = useTranslation();
-  const packagePlans = getPackagePlans();
+  const packagePlans = getPackagePlans().filter(p => p.isActive !== false);
 
   const [resetUsageOnSwitch, setResetUsageOnSwitch] = useState<boolean>(true);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);

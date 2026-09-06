@@ -81,31 +81,31 @@ export const QUESTION_META_BY_DOMAIN: Record<
     },
     sensationMind: {
       category: {
-        de: 'Linderung & Modalitäten',
-        en: 'Relief & Modalities',
-        es: 'Alivio y modalidades',
-        fr: 'Soulagement et modalités',
-        it: 'Sollievo e modalità',
-        el: 'Ανακούφιση & Τροποποιητικοί Παράγοντες',
-        ru: 'Облегчение и модальности'
+        de: 'Gemütszustand & Schmerzreaktion',
+        en: 'Emotional State & Pain Reaction',
+        es: 'Estado anímico y reacción al dolor',
+        fr: 'État d’esprit et réaction à la douleur',
+        it: 'Stato d’animo e reazione al dolore',
+        el: 'Ψυχική Διάθεση & Αντίδραση στον Πόνο',
+        ru: 'Психическое состояние и реакция на боль'
       },
       title: {
-        de: '3. Welche Maßnahme bringt spürbare Linderung der Schmerzen?',
-        en: '3. What brings noticeable relief from the pain?',
-        es: '3. ¿Qué medida aporta un alivio notable del dolor?',
-        fr: '3. Quelle mesure apporte un soulagement notable de la douleur ?',
-        it: '3. Quale misura porta un sollievo evidente al dolore?',
-        el: '3. Ποιο μέτρο προσφέρει αισθητή ανακούφιση από τον πόνο;',
-        ru: '3. Какая мера приносит заметное облегчение боли?'
+        de: '3. Wie ist der Gemütszustand und die seelische Reaktion auf den Schmerz?',
+        en: '3. What is the emotional state and mental reaction to the pain?',
+        es: '3. ¿Cómo es el estado de ánimo y la reacción emocional al dolor?',
+        fr: '3. Quel est l’état d’esprit et la réaction émotionnelle à la douleur ?',
+        it: '3. Com’è lo stato d’animo e la reazione emotiva al dolore?',
+        el: '3. Ποια είναι η ψυχική διάθεση και η συναισθηματική αντίδραση στον πόνο;',
+        ru: '3. Каково эмоциональное состояние и душевная реакция на боль?'
       },
       description: {
-        de: 'Modalitäten entscheiden über das passende Simile im Akutfall.',
-        en: 'Modalities determine the appropriate acute similimum.',
-        es: 'Las modalidades deciden el simillimum adecuado en casos agudos.',
-        fr: 'Les modalités déterminent le simillimum approprié en cas aigu.',
-        it: 'Le modalità decidono il simillimum appropriato nei casi acuti.',
-        el: 'Οι τροποποιητικοί παράγοντες καθορίζουν το ακριβές όμοιο φάρμακο στην οξεία περίπτωση.',
-        ru: 'Модальности определяют точный подобный препарат в остром случае.'
+        de: 'Die Gemütssymptome im Akutzustand sind nach Hahnemann der entscheidende Wegweiser zum Simile.',
+        en: 'According to Hahnemann, acute mental and emotional symptoms are the crucial guide to the similimum.',
+        es: 'Según Hahnemann, los síntomas anímicos en el cuadro agudo son la guía decisiva hacia el simillimum.',
+        fr: 'Selon Hahnemann, les symptômes de l’esprit dans l’état aigu sont le guide décisif vers le simillimum.',
+        it: 'Secondo Hahnemann, i sintomi mentali ed emotivi nello stato acuto sono la guida decisiva verso il simillimum.',
+        el: 'Σύμφωνα με τον Hahnemann, τα ψυχικά συμπτώματα στην οξεία κατάσταση είναι ο καθοριστικός οδηγός για το όμοιο.',
+        ru: 'По Ганеману, психические и эмоциональные симптомы в остром состоянии служат решающим ориентиром к симилиуму.'
       }
     },
     intensity: {
@@ -199,31 +199,31 @@ export const QUESTION_META_BY_DOMAIN: Record<
     },
     sensationMind: {
       category: {
-        de: 'Durst & Linderung',
-        en: 'Thirst & Relief',
-        es: 'Sed y alivio',
-        fr: 'Soif et soulagement',
-        it: 'Sete e sollievo',
-        el: 'Δίψα & Ανακούφιση',
-        ru: 'Жажда и облегчение'
+        de: 'Gemütszustand & emotionale Verfassung',
+        en: 'Emotional State & Mental Disposition',
+        es: 'Estado anímico y disposición mental',
+        fr: 'État d’esprit et disposition mentale',
+        it: 'Stato d’animo e disposizione mentale',
+        el: 'Ψυχική Διάθεση & Συναισθηματική Κατάσταση',
+        ru: 'Психическое состояние и душевный настрой'
       },
       title: {
-        de: '3. Wie ist das Durstverhalten und was bringt Erleichterung?',
-        en: '3. What is the thirst pattern and what brings relief?',
-        es: '3. ¿Cómo es el comportamiento de la sed y qué alivia?',
-        fr: '3. Comment est la soif et qu’est-ce qui soulage ?',
-        it: '3. Com’è la sete e che cosa dà sollievo?',
-        el: '3. Πώς εκδηλώνεται η δίψα και τι φέρνει ανακούφιση;',
-        ru: '3. Каков характер жажды и что приносит облегчение?'
+        de: '3. Wie ist der Gemütszustand bei den Magen-Darm-Beschwerden?',
+        en: '3. What is the emotional and mental state during the GI distress?',
+        es: '3. ¿Cómo es el estado de ánimo durante el malestar digestivo?',
+        fr: '3. Quel est l’état d’esprit lors des troubles digestifs ?',
+        it: '3. Com’è lo stato d’animo durante i disturbi gastrointestinali?',
+        el: '3. Ποια είναι η ψυχική διάθεση κατά τις γαστρεντερικές ενοχλήσεις;',
+        ru: '3. Каково душевное состояние при желудочно-кишечных расстройствах?'
       },
       description: {
-        de: 'Durstverhalten und Temperaturmodalitäten vervollständigen das Bild.',
-        en: 'Thirst behaviour and temperature modalities complete the picture.',
-        es: 'La sed y las modalidades de temperatura completan el cuadro.',
-        fr: 'Le profil de soif et la température complètent le tableau.',
-        it: 'Il profilo della sete e le modalità termiche completano il quadro.',
-        el: 'Η συμπεριφορά δίψας και οι θερμοκρασιακές προτιμήσεις συμπληρώνουν την εικόνα.',
-        ru: 'Характер жажды и температурные модальности завершают общую картину.'
+        de: 'Große Unruhe mit Angst, Reizbarkeit oder Wehleidigkeit weisen direkt auf das Mittel.',
+        en: 'Great restlessness with anxiety, irritability, or tearfulness directly point to the remedy.',
+        es: 'Gran inquietud con ansiedad, irritabilidad o llanto orientan directamente al remedio.',
+        fr: 'Grande agitation avec anxiété, irritabilité ou pleurnicherie orientent vers le remède.',
+        it: 'Grande irrequietezza con ansia, irritabilità o pianto guidano direttamente al rimedio.',
+        el: 'Μεγάλη ανησυχία με άγχος, εκνευρισμός ή κλάμα δείχνουν άμεσα το φάρμακο.',
+        ru: 'Сильное беспокойство с тревогой, раздражительность или плаксивость прямо указывают на препарат.'
       }
     },
     intensity: {
@@ -317,31 +317,31 @@ export const QUESTION_META_BY_DOMAIN: Record<
     },
     sensationMind: {
       category: {
-        de: 'Begleitsymptome & Schlucken',
-        en: 'Associated Symptoms & Swallowing',
-        es: 'Síntomas acompañantes y deglución',
-        fr: 'Symptômes associés et déglutition',
-        it: 'Sintomi associati e deglutizione',
-        el: 'Συνοδά Συμπτώματα & Κατάποση',
-        ru: 'Сопутствующие симптомы и глотание'
+        de: 'Gemütszustand & seelische Verfassung',
+        en: 'Emotional State & Mental Disposition',
+        es: 'Estado anímico y disposición mental',
+        fr: 'État d’esprit et disposition mentale',
+        it: 'Stato d’animo e disposizione mentale',
+        el: 'Ψυχική Διάθεση & Συναισθηματική Κατάσταση',
+        ru: 'Психическое состояние и душевный настрой'
       },
       title: {
-        de: '3. Welche spezifischen Begleitsymptome treten auf?',
-        en: '3. Which specific accompanying symptoms occur?',
-        es: '3. ¿Qué síntomas acompañantes específicos se presentan?',
-        fr: '3. Quels symptômes concomitants spécifiques apparaissent ?',
-        it: '3. Quali sintomi concomitanti specifici si manifestano?',
-        el: '3. Ποια συγκεκριμένα συνοδά συμπτώματα εμφανίζονται;',
-        ru: '3. Какие специфические сопутствующие симптомы наблюдаются?'
+        de: '3. Wie ist der Gemütszustand während des Hustens oder Infekts?',
+        en: '3. What is the emotional state during the cough or infection?',
+        es: '3. ¿Cómo es el estado de ánimo durante la tos o la infección?',
+        fr: '3. Quel est l’état d’esprit pendant la toux ou l’infection ?',
+        it: '3. Com’è lo stato d’animo durante la tosse o l’infezione?',
+        el: '3. Ποια είναι η ψυχική διάθεση κατά τον βήχα ή τη λοίμωξη;',
+        ru: '3. Каково душевное состояние во время кашля или инфекции?'
       },
       description: {
-        de: 'Feinheiten beim Schlucken und Kehlkopfreizung schärfen die Auswahl.',
-        en: 'Subtleties of swallowing and laryngeal irritation sharpen remedy selection.',
-        es: 'Los detalles de la deglución y la irritación laríngea afinan la elección.',
-        fr: 'Les détails de la déglutition et l’irritation du larynx affinent le choix.',
-        it: 'I dettagli della deglutizione e l’irritazione laringea affinano la scelta.',
-        el: 'Λεπτομέρειες στην κατάποση και στον ερεθισμό του λάρυγγα οξύνουν την επιλογή.',
-        ru: 'Нюансы при глотании и раздражение гортани точно указывают на выбор средства.'
+        de: 'Ängstlichkeit, Atemnot-Panik, Reizbarkeit oder Weinen leiten das Atemwegsmittel.',
+        en: 'Anxiety, panic with breathlessness, irritability, or weeping guide the respiratory remedy.',
+        es: 'Ansiedad, pánico con disnea, irritabilidad o llanto guían el remedio respiratorio.',
+        fr: 'Anxiété, panique avec essoufflement, irritabilité ou pleurs guident le remède.',
+        it: 'Ansia, panico con dispnea, irritabilità o pianto guidano il rimedio respiratorio.',
+        el: 'Άγχος, πανικός δύσπνοιας, ευερεθιστότητα ή κλάμα καθοδηγούν το αναπνευστικό φάρμακο.',
+        ru: 'Тревога, паника при одышке, раздражительность или плач направляют выбор средства.'
       }
     },
     intensity: {
@@ -435,31 +435,31 @@ export const QUESTION_META_BY_DOMAIN: Record<
     },
     sensationMind: {
       category: {
-        de: 'Linderung & Anwendungen',
-        en: 'Relief & Applications',
-        es: 'Alivio y aplicaciones',
-        fr: 'Soulagement et applications',
-        it: 'Sollievo e applicazioni',
-        el: 'Ανακούφιση & Εφαρμογές',
-        ru: 'Облегчение и компрессы'
+        de: 'Gemütszustand & Verhalten',
+        en: 'Emotional State & Behavior',
+        es: 'Estado anímico y comportamiento',
+        fr: 'État d’esprit et comportement',
+        it: 'Stato d’animo e comportamento',
+        el: 'Ψυχική Διάθεση & Συμπεριφορά',
+        ru: 'Психическое состояние и поведение'
       },
       title: {
-        de: '3. Was bringt dem Kopf spürbare Entlastung?',
-        en: '3. What brings noticeable relief to the head?',
-        es: '3. ¿Qué proporciona un alivio apreciable a la cabeza?',
-        fr: '3. Qu’est-ce qui apporte un soulagement sensible à la tête ?',
-        it: '3. Che cosa porta un sollievo sensibile alla testa?',
-        el: '3. Τι προσφέρει αισθητή ανακούφιση στο κεφάλι;',
-        ru: '3. Что приносит ощутимое облегчение голове?'
+        de: '3. Wie ist der Gemütszustand während des Kopfschmerzes?',
+        en: '3. What is the emotional disposition during the headache?',
+        es: '3. ¿Cómo es el estado de ánimo durante el dolor de cabeza?',
+        fr: '3. Quel est l’état d’esprit pendant le mal de tête ?',
+        it: '3. Com’è lo stato d’animo durante la cefalea?',
+        el: '3. Ποια είναι η ψυχική διάθεση κατά τη διάρκεια του πονοκεφάλου;',
+        ru: '3. Каково душевное состояние во время головной боли?'
       },
       description: {
-        de: 'Druck- und Kältereaktionen führen direkt zur Verordnung.',
-        en: 'Pressure and cold modalities lead straight to the prescription.',
-        es: 'Las reacciones a la presión y al frío conducen directamente a la prescripción.',
-        fr: 'Les réactions à la pression et au froid conduisent directement à la prescription.',
-        it: 'Le risposte a pressione e freddo guidano direttamente alla prescrizione.',
-        el: 'Οι αντιδράσεις στην πίεση και το ψύχος οδηγούν άμεσα στη συνταγογράφηση.',
-        ru: 'Реакции на давление и холод прямо ведут к точному назначению.'
+        de: 'Gereiztheit, Angst, Jammern oder Verlangen nach Ruhe entscheiden das Kopfschmerzmittel.',
+        en: 'Irritability, anxiety, tearfulness, or need for quiet define the headache remedy.',
+        es: 'La irritabilidad, la ansiedad, el llanto o la necesidad de calma definen el remedio.',
+        fr: 'L’irritabilité, l’anxiété, les pleurs ou le besoin de calme déterminent le remède.',
+        it: 'L’irritabilità, l’ansia, il pianto o il bisogno di calma definiscono il rimedio.',
+        el: 'Ο εκνευρισμός, το άγχος, το κλάμα ή η ανάγκη για ησυχία καθορίζουν το φάρμακο.',
+        ru: 'Раздражительность, тревога, плаксивость или потребность в покое определяют выбор препарата.'
       }
     },
     intensity: {
@@ -553,31 +553,31 @@ export const QUESTION_META_BY_DOMAIN: Record<
     },
     sensationMind: {
       category: {
-        de: 'Berührung & Temperatur',
-        en: 'Touch & Temperature',
-        es: 'Tacto y temperatura',
-        fr: 'Toucher et température',
-        it: 'Contatto e temperatura',
-        el: 'Άγγιγμα & Θερμοκρασία',
-        ru: 'Прикосновение и температура'
+        de: 'Gemütszustand & Traumareaktion',
+        en: 'Mental State & Trauma Reaction',
+        es: 'Estado anímico y reacción al trauma',
+        fr: 'État d’esprit et réaction au traumatisme',
+        it: 'Stato d’animo e reazione al trauma',
+        el: 'Ψυχική Διάθεση & Αντίδραση στο Τραύμα',
+        ru: 'Психическое состояние и реакция на травму'
       },
       title: {
-        de: '3. Wie reagiert die Verletzung auf Berührung und Anwendungen?',
-        en: '3. How does the injury react to touch and applications?',
-        es: '3. ¿Cómo reacciona la lesión al tacto y a las aplicaciones?',
-        fr: '3. Comment la blessure réagit-elle au toucher et aux applications ?',
-        it: '3. Come reagisce la lesione al tatto e alle applicazioni?',
-        el: '3. Πώς αντιδρά ο τραυματισμός στο άγγιγμα και σε τοπικές εφαρμογές;',
-        ru: '3. Как травма реагирует на прикосновение и процедуры?'
+        de: '3. Wie ist der Gemütszustand nach der Verletzung?',
+        en: '3. What is the emotional and mental state following the injury?',
+        es: '3. ¿Cómo es el estado de ánimo tras la lesión?',
+        fr: '3. Quel est l’état d’esprit après la blessure ?',
+        it: '3. Com’è lo stato d’animo dopo la lesione?',
+        el: '3. Ποια είναι η ψυχική διάθεση μετά τον τραυματισμό;',
+        ru: '3. Каково душевное состояние после травмы?'
       },
       description: {
-        de: 'Berührungsempfindlichkeit und Kältereaktion.',
-        en: 'Sensitivity to touch and thermal response.',
-        es: 'Sensibilidad al tacto y respuesta térmica.',
-        fr: 'Sensibilité au toucher et réponse thermique.',
-        it: 'Sensibilità al tocco e risposta termica.',
-        el: 'Η ευαισθησία στην αφή και η αντίδραση στο ψύχος.',
-        ru: 'Чувствительность к прикосновению и температурные реакции.'
+        de: 'Verleugnung des Schmerzes („Mir fehlt nichts!“), Zorn oder Schockangst kennzeichnen das Wundmittel.',
+        en: 'Denial of pain (“I’m fine!”), anger, or shock anxiety distinguish the injury remedy.',
+        es: 'Negación del dolor (“¡No me pasa nada!”), ira o miedo por shock distinguen el remedio.',
+        fr: 'Déni de la douleur (« Tout va bien ! »), colère ou anxiété de choc caractérisent le remède.',
+        it: 'Negazione del dolore (« Non ho nulla! »), rabbia o ansia da shock caratterizzano il rimedio.',
+        el: 'Η άρνηση του πόνου («Δεν έχω τίποτα!»), ο θυμός ή το άγχος του σοκ καθορίζουν το φάρμακο.',
+        ru: 'Отрицание боли («Я в порядке!»), гнев или шоковая тревога точно определяют препарат при травме.'
       }
     },
     intensity: {

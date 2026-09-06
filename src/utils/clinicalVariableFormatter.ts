@@ -2,6 +2,43 @@ import { AcuteVariableType } from '../components/AcuteVariableModal';
 import { LanguageCode } from '../types';
 
 /**
+ * Strips comparison symbols (< and >) from clinical text
+ */
+export function stripComparisonSymbols(text: string): string {
+  if (!text) return '';
+  return text
+    .replace(/[<>]/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+/**
+ * Deduplicates adjacent repeated words and repeated parenthetical phrases
+ */
+export function deduplicateRepeatedExpressions(text: string): string {
+  if (!text) return '';
+  let cleaned = text.trim();
+  // Deduplicate exact repeated parenthetical expressions e.g. "(Cold wind) (Cold wind)"
+  cleaned = cleaned.replace(/(\([^)]+\))(?:\s*\1)+/gi, '$1');
+  // Deduplicate pipe or semicolon separated items
+  const parts = cleaned.split(/\s*\|\s*|\s*;\s*/);
+  if (parts.length > 1) {
+    const seen = new Set<string>();
+    const uniqueParts: string[] = [];
+    for (const p of parts) {
+      const trimmed = p.trim();
+      const norm = trimmed.toLowerCase();
+      if (norm && !seen.has(norm)) {
+        seen.add(norm);
+        uniqueParts.push(trimmed);
+      }
+    }
+    cleaned = uniqueParts.join(' | ');
+  }
+  return cleaned;
+}
+
+/**
  * Capitalizes the first letter of a string
  */
 export function capitalizeFirst(text: string): string {
@@ -11,48 +48,48 @@ export function capitalizeFirst(text: string): string {
 }
 
 /**
- * Returns localized modality better prefix (e.g. "> Βελτίωση με: " for el)
+ * Returns localized modality better prefix without comparison symbols
  */
 export function getModalityBetterPrefix(lang: LanguageCode): string {
   switch (lang) {
     case 'en':
-      return '> Ameliorated by: ';
+      return 'Ameliorated by: ';
     case 'es':
-      return '> Mejoría por: ';
+      return 'Mejoría por: ';
     case 'fr':
-      return '> Amélioration par : ';
+      return 'Amélioration par : ';
     case 'it':
-      return '> Migliorato da: ';
+      return 'Migliorato da: ';
     case 'el':
-      return '> Βελτίωση με: ';
+      return 'Βελτίωση με: ';
     case 'ru':
-      return '> Улучшение от: ';
+      return 'Улучшение от: ';
     case 'de':
     default:
-      return '> Gebessert durch: ';
+      return 'Gebessert durch: ';
   }
 }
 
 /**
- * Returns localized modality worse prefix (e.g. "< Επιδείνωση με: " for el)
+ * Returns localized modality worse prefix without comparison symbols
  */
 export function getModalityWorsePrefix(lang: LanguageCode): string {
   switch (lang) {
     case 'en':
-      return '< Aggravated by: ';
+      return 'Aggravated by: ';
     case 'es':
-      return '< Empeorado por: ';
+      return 'Empeorado por: ';
     case 'fr':
-      return '< Aggravation par : ';
+      return 'Aggravation par : ';
     case 'it':
-      return '< Peggiorato da: ';
+      return 'Peggiorato da: ';
     case 'el':
-      return '< Επιδείνωση με: ';
+      return 'Επιδείνωση με: ';
     case 'ru':
-      return '< Ухудшение от: ';
+      return 'Ухудшение от: ';
     case 'de':
     default:
-      return '< Verschlimmert durch: ';
+      return 'Verschlimmert durch: ';
   }
 }
 
@@ -216,6 +253,50 @@ export function stripClinicalPrefix(text: string): {
     }
   }
 
+  // If direction is still undecided, analyze colloquially embedded words
+  if (!isWorse && !isBetter) {
+    const lowerCleaned = cleaned.toLowerCase();
+    const hasWorseWord =
+      /\b(schlimmer|schlechter|verschlimm|verschlecht|unerträglich|verstärkt|worse|aggravat|peor|empeor|agrava|pire|peggior|peggio|χειρότερ|χειροτερ|επιδείνωσ|επιδεινωσ|хуже|ухудш)\b/i.test(lowerCleaned) ||
+      lowerCleaned.includes('schlimmer') ||
+      lowerCleaned.includes('schlechter') ||
+      lowerCleaned.includes('verschlimm') ||
+      lowerCleaned.includes('verschlecht') ||
+      lowerCleaned.includes('worse') ||
+      lowerCleaned.includes('aggravat') ||
+      lowerCleaned.includes('peor') ||
+      lowerCleaned.includes('empeor') ||
+      lowerCleaned.includes('pire') ||
+      lowerCleaned.includes('peggior') ||
+      lowerCleaned.includes('χειρότερ') ||
+      lowerCleaned.includes('χειροτερ') ||
+      lowerCleaned.includes('επιδείνωσ') ||
+      lowerCleaned.includes('хуже') ||
+      lowerCleaned.includes('ухудш');
+
+    const hasBetterWord =
+      /\b(besser|gebessert|besserung|erleichter|linderung|better|amelior|relie|mejora|mejor|soulag|mieux|miglior|meglio|βελτίωσ|βελτιωσ|καλύτερ|καλυτερ|улучш|лучше)\b/i.test(lowerCleaned) ||
+      lowerCleaned.includes('besser') ||
+      lowerCleaned.includes('gebessert') ||
+      lowerCleaned.includes('besserung') ||
+      lowerCleaned.includes('better') ||
+      lowerCleaned.includes('amelior') ||
+      lowerCleaned.includes('mejora') ||
+      lowerCleaned.includes('mejor') ||
+      lowerCleaned.includes('soulag') ||
+      lowerCleaned.includes('miglior') ||
+      lowerCleaned.includes('βελτίωσ') ||
+      lowerCleaned.includes('καλύτερ') ||
+      lowerCleaned.includes('улучш') ||
+      lowerCleaned.includes('лучше');
+
+    if (hasWorseWord && !hasBetterWord) {
+      isWorse = true;
+    } else if (hasBetterWord && !hasWorseWord) {
+      isBetter = true;
+    }
+  }
+
   return { coreText: cleaned, isBetter, isWorse, isConcomitant, isCausa };
 }
 
@@ -238,6 +319,50 @@ export function enrichClinicalText(
 
   switch (varKey) {
     case 'modalitaeten': {
+      // Early check for direction indicated in text or by prefix
+      const userIndicatedWorse =
+        isWorse ||
+        /\b(schlimmer|schlechter|verschlimm|verschlecht|unerträglich|verstärkt|worse|aggravat|peor|empeor|agrava|pire|peggior|peggio|χειρότερ|χειροτερ|επιδείνωσ|επιδεινωσ|хуже|ухудш)\b/i.test(lower) ||
+        lower.includes('schlimmer') ||
+        lower.includes('schlechter') ||
+        lower.includes('verschlimm') ||
+        lower.includes('verschlecht') ||
+        lower.includes('worse') ||
+        lower.includes('aggravat') ||
+        lower.includes('peor') ||
+        lower.includes('empeor') ||
+        lower.includes('pire') ||
+        lower.includes('peggior') ||
+        lower.includes('χειρότερ') ||
+        lower.includes('χειροτερ') ||
+        lower.includes('επιδείνωσ') ||
+        lower.includes('επιδεινωσ') ||
+        lower.includes('хуже') ||
+        lower.includes('ухудш');
+
+      const userIndicatedBetter =
+        isBetter ||
+        /\b(besser|gebessert|besserung|erleichter|linderung|better|amelior|relie|mejora|mejor|soulag|mieux|miglior|meglio|βελτίωσ|βελτιωσ|καλύτερ|καλυτερ|улучш|лучше)\b/i.test(lower) ||
+        lower.includes('besser') ||
+        lower.includes('gebessert') ||
+        lower.includes('besserung') ||
+        lower.includes('better') ||
+        lower.includes('amelior') ||
+        lower.includes('mejora') ||
+        lower.includes('mejor') ||
+        lower.includes('soulag') ||
+        lower.includes('miglior') ||
+        lower.includes('βελτίωσ') ||
+        lower.includes('βελτιωσ') ||
+        lower.includes('καλύτερ') ||
+        lower.includes('καλυτερ') ||
+        lower.includes('πιο πολύ με') ||
+        lower.includes('πιο πολυ με') ||
+        lower.includes('πιο καλά με') ||
+        lower.includes('πιο καλα με') ||
+        lower.includes('улучш') ||
+        lower.includes('лучше');
+
       // 1. Thirst & Drinking modalities (e.g., drinking cold water)
       if (
         lower.includes('trink') ||
@@ -317,7 +442,7 @@ export function enrichClinicalText(
         lower.includes('свеж') ||
         lower.includes('ветер');
 
-      if (hasRest && hasAir) {
+      if (hasRest && hasAir && !userIndicatedWorse) {
         switch (lang) {
           case 'de':
             return '> Besserung durch Ruhe & frische Luft | < Bewegung & stickige Wärme';
@@ -336,85 +461,155 @@ export function enrichClinicalText(
         }
       }
 
-      // 3. Warmth / Heat modalities
-      if (
+      // 3. Warmth / Heat modalities (heiß, hitze, wärme, warm, hot, heat, calor, etc.)
+      const hasHeat =
+        lower.includes('heiß') ||
+        lower.includes('heiss') ||
+        lower.includes('hitze') ||
         lower.includes('wärm') ||
         lower.includes('warm') ||
         lower.includes('hot') ||
+        lower.includes('heat') ||
         lower.includes('calor') ||
         lower.includes('chaleur') ||
+        lower.includes('chaud') ||
         lower.includes('caldo') ||
         lower.includes('θερμ') ||
         lower.includes('ζεστ') ||
-        lower.includes('тепл')
-      ) {
-        switch (lang) {
-          case 'de':
-            return '> Gebessert durch lokale Wärme & Einhüllen | < Kälte';
-          case 'en':
-            return '> Ameliorated by local warmth & wrapping up | < Cold';
-          case 'es':
-            return '> Mejora por calor local y compresas calientes | < Frío';
-          case 'fr':
-            return '> Amélioration par la chaleur locale | < Froid';
-          case 'it':
-            return '> Miglioramento con il calore locale | < Freddo';
-          case 'el':
-            return '> Βελτίωση με τοπική ζέστη & ζεστά επιθέματα | < Κρύο';
-          case 'ru':
-            return '> Улучшение от тепла и укутывания | < Холод';
+        lower.includes('жар') ||
+        lower.includes('тепл') ||
+        lower.includes('горяч');
+
+      if (hasHeat) {
+        if (userIndicatedWorse) {
+          switch (lang) {
+            case 'de':
+              return '< Verschlimmert durch Hitze / heiße Umgebung & warme Luft | > Besser durch Kühle & frische Luft';
+            case 'en':
+              return '< Aggravated by heat / hot environment & warm air | > Ameliorated by cool & fresh air';
+            case 'es':
+              return '< Empeorado por el calor / ambiente caluroso | > Mejora con fresco y aire libre';
+            case 'fr':
+              return '< Aggravation par la chaleur / atmosphère chaude | > Amélioration par la fraîcheur et l\'air pur';
+            case 'it':
+              return '< Peggioramento con il caldo / aria calda | > Miglioramento con il fresco e aria pura';
+            case 'el':
+              return '< Επιδείνωση με τη ζέστη / θερμό περιβάλλον | > Βελτίωση με δροσιά & καθαρό αέρα';
+            case 'ru':
+              return '< Ухудшение от жары / горячего воздуха | > Улучшение от прохлады и свежего воздуха';
+          }
+        } else {
+          switch (lang) {
+            case 'de':
+              return '> Gebessert durch lokale Wärme & Einhüllen | < Kälte';
+            case 'en':
+              return '> Ameliorated by local warmth & wrapping up | < Cold';
+            case 'es':
+              return '> Mejora por calor local y compresas calientes | < Frío';
+            case 'fr':
+              return '> Amélioration par la chaleur locale | < Froid';
+            case 'it':
+              return '> Miglioramento con il calore locale | < Freddo';
+            case 'el':
+              return '> Βελτίωση με τοπική ζέστη & ζεστά επιθέματα | < Κρύο';
+            case 'ru':
+              return '> Улучшение от тепла и укутывания | < Холод';
+          }
         }
       }
 
       // 4. Cold / Fresh Air modalities alone
-      if (
+      const hasCold =
         hasAir ||
         lower.includes('kälte') ||
         lower.includes('kalt') ||
+        lower.includes('zugluft') ||
         lower.includes('cold') ||
+        lower.includes('chilly') ||
         lower.includes('frio') ||
+        lower.includes('frío') ||
         lower.includes('froid') ||
         lower.includes('freddo') ||
         lower.includes('ψυχρ') ||
         lower.includes('κρύ') ||
         lower.includes('κρυ') ||
-        lower.includes('холод')
-      ) {
-        switch (lang) {
-          case 'de':
-            return '> Gebessert durch kühle, frische Luft & Kälte | < Wärme';
-          case 'en':
-            return '> Ameliorated by cool, fresh air & cold | < Warmth';
-          case 'es':
-            return '> Mejora con frío y aire fresco | < Calor';
-          case 'fr':
-            return '> Amélioration par l\'air frais et le froid | < Chaleur';
-          case 'it':
-            return '> Miglioramento con aria fresca e freddo | < Calore';
-          case 'el':
-            return '> Βελτίωση με δροσερό, καθαρό αέρα & κρύο | < Ζέστη';
-          case 'ru':
-            return '> Улучшение от прохладного свежего воздуха и холода | < Тепло';
+        lower.includes('холод') ||
+        lower.includes('прохлад');
+
+      if (hasCold) {
+        if (userIndicatedWorse) {
+          switch (lang) {
+            case 'de':
+              return '< Verschlimmert durch Kälte, kalten Wind & Entblößen | > Besser durch Wärme';
+            case 'en':
+              return '< Aggravated by cold, cold wind & uncovering | > Ameliorated by warmth';
+            case 'es':
+              return '< Empeorado por frío, viento frío y destaparse | > Mejora por calor';
+            case 'fr':
+              return '< Aggravation par le froid, vent froid et découvrement | > Amélioration par la chaleur';
+            case 'it':
+              return '< Peggioramento col freddo, vento freddo e scoprirsi | > Miglioramento col caldo';
+            case 'el':
+              return '< Επιδείνωση με το κρύο, κρύο αέρα & αποκάλυψη | > Βελτίωση με ζέστη';
+            case 'ru':
+              return '< Ухудшение от холода, холодного ветра и раскрывания | > Улучшение от тепла';
+          }
+        } else {
+          switch (lang) {
+            case 'de':
+              return '> Gebessert durch kühle, frische Luft & Kälte | < Wärme';
+            case 'en':
+              return '> Ameliorated by cool, fresh air & cold | < Warmth';
+            case 'es':
+              return '> Mejora con frío y aire fresco | < Calor';
+            case 'fr':
+              return '> Amélioration par l\'air frais et le froid | < Chaleur';
+            case 'it':
+              return '> Miglioramento con aria fresca e freddo | < Calore';
+            case 'el':
+              return '> Βελτίωση με δροσερό, καθαρό αέρα & κρύο | < Ζέστη';
+            case 'ru':
+              return '> Улучшение от прохладного свежего воздуха и холода | < Тепло';
+          }
         }
       }
 
       // 5. Rest / Lying down / Calm alone
       if (hasRest) {
-        switch (lang) {
-          case 'de':
-            return '> Gebessert durch absolute Ruhe & Liegen | < Geringste Bewegung';
-          case 'en':
-            return '> Ameliorated by complete rest & lying down | < Slightest movement';
-          case 'es':
-            return '> Mejora con reposo absoluto y cama | < El menor movimiento';
-          case 'fr':
-            return '> Amélioration par le repos complet et alité | < Moindre mouvement';
-          case 'it':
-            return '> Miglioramento con riposo assoluto a letto | < Minimo movimento';
-          case 'el':
-            return '> Βελτίωση με απόλυτη ηρεμία, ανάπαυση και κατάκλιση | < Παραμικρή κίνηση';
-          case 'ru':
-            return '> Улучшение от полного покоя и положения лежа | < Малейшее движение';
+        if (userIndicatedWorse) {
+          switch (lang) {
+            case 'de':
+              return '< Verschlimmert in der Ruhe & beim Stillliegen | > Besser durch sanfte Bewegung';
+            case 'en':
+              return '< Aggravated by rest & lying still | > Ameliorated by gentle motion';
+            case 'es':
+              return '< Empeorado en reposo y quieto | > Mejora con movimiento suave';
+            case 'fr':
+              return '< Aggravation au repos et immobile | > Amélioration par mouvement doux';
+            case 'it':
+              return '< Peggioramento a riposo e stando fermi | > Miglioramento con movimento dolce';
+            case 'el':
+              return '< Επιδείνωση στην ηρεμία & ακινησία | > Βελτίωση με ήπια κίνηση';
+            case 'ru':
+              return '< Ухудшение в покое и неподвижности | > Улучшение от мягкого движения';
+          }
+        } else {
+          switch (lang) {
+            case 'de':
+              return '> Gebessert durch absolute Ruhe & Liegen | < Geringste Bewegung';
+            case 'en':
+              return '> Ameliorated by complete rest & lying down | < Slightest movement';
+            case 'es':
+              return '> Mejora con reposo absoluto y cama | < El menor movimiento';
+            case 'fr':
+              return '> Amélioration par le repos complet et alité | < Moindre mouvement';
+            case 'it':
+              return '> Miglioramento con riposo assoluto a letto | < Minimo movimento';
+            case 'el':
+              return '> Βελτίωση με απόλυτη ηρεμία, ανάπαυση και κατάκλιση | < Παραμικρή κίνηση';
+            case 'ru':
+              return '> Улучшение от полного покоя и положения лежа | < Малейшее движение';
+          }
         }
       }
 
@@ -432,21 +627,40 @@ export function enrichClinicalText(
         lower.includes('περπατημα') ||
         lower.includes('движен')
       ) {
-        switch (lang) {
-          case 'de':
-            return '< Verschlimmert durch Bewegung | > Gebessert durch Ruhe';
-          case 'en':
-            return '< Aggravated by motion | > Ameliorated by rest';
-          case 'es':
-            return '< Empeora con el movimiento | > Mejora con reposo';
-          case 'fr':
-            return '< Aggravation au mouvement | > Amélioration au repos';
-          case 'it':
-            return '< Peggiora con il movimento | > Migliora con il riposo';
-          case 'el':
-            return '< Επιδείνωση με την κίνηση | > Βελτίωση με ανάπαυση';
-          case 'ru':
-            return '< Ухудшение от движения | > Улучшение в покое';
+        if (userIndicatedBetter) {
+          switch (lang) {
+            case 'de':
+              return '> Gebessert durch mäßige, fortgesetzte Bewegung | < Verschlimmert in Ruhe';
+            case 'en':
+              return '> Ameliorated by moderate, continued motion | < Aggravated at rest';
+            case 'es':
+              return '> Mejora con movimiento moderado y continuo | < Empeora en reposo';
+            case 'fr':
+              return '> Amélioration par le mouvement continu modéré | < Aggravation au repos';
+            case 'it':
+              return '> Miglioramento con movimento continuato moderato | < Peggioramento a riposo';
+            case 'el':
+              return '> Βελτίωση με συνεχή μέτρια κίνηση | < Επιδείνωση στην ηρεμία';
+            case 'ru':
+              return '> Улучшение от умеренного непрерывного движения | < Ухудшение в покое';
+          }
+        } else {
+          switch (lang) {
+            case 'de':
+              return '< Verschlimmert durch Bewegung | > Gebessert durch Ruhe';
+            case 'en':
+              return '< Aggravated by motion | > Ameliorated by rest';
+            case 'es':
+              return '< Empeora con el movimiento | > Mejora con reposo';
+            case 'fr':
+              return '< Aggravation au mouvement | > Amélioration au repos';
+            case 'it':
+              return '< Peggiora con il movimento | > Migliora con il riposo';
+            case 'el':
+              return '< Επιδείνωση με την κίνηση | > Βελτίωση με ανάπαυση';
+            case 'ru':
+              return '< Ухудшение от движения | > Улучшение в покое';
+          }
         }
       }
 
@@ -542,37 +756,7 @@ export function enrichClinicalText(
         }
       }
 
-      // Check if user specifically indicated better/worse colloquially
-      const userIndicatedWorse =
-        isWorse ||
-        lower.startsWith('schlechter') ||
-        lower.startsWith('worse') ||
-        lower.startsWith('peor') ||
-        lower.startsWith('pire') ||
-        lower.startsWith('peggior') ||
-        lower.includes('χειρότερ') ||
-        lower.includes('χειροτερ') ||
-        lower.includes('επιδείνωσ') ||
-        lower.includes('επιδεινωσ') ||
-        lower.includes('ухудш');
-
-      const userIndicatedBetter =
-        isBetter ||
-        lower.startsWith('besser') ||
-        lower.startsWith('better') ||
-        lower.startsWith('mejora') ||
-        lower.startsWith('amelior') ||
-        lower.startsWith('miglior') ||
-        lower.includes('βελτίωσ') ||
-        lower.includes('βελτιωσ') ||
-        lower.includes('καλύτερ') ||
-        lower.includes('καλυτερ') ||
-        lower.includes('πιο πολύ με') ||
-        lower.includes('πιο πολυ με') ||
-        lower.includes('πιο καλά με') ||
-        lower.includes('πιο καλα με') ||
-        lower.includes('улучш');
-
+      // Custom fallback formatting based on direction
       if (userIndicatedWorse) {
         return `${getModalityWorsePrefix(lang)}${capitalizeFirst(targetText)}`;
       }
@@ -581,7 +765,9 @@ export function enrichClinicalText(
         return `${getModalityBetterPrefix(lang)}${capitalizeFirst(targetText)}`;
       }
 
-      return `${getModalityBetterPrefix(lang)}${capitalizeFirst(targetText)}`;
+      // If user provided a custom modality description without indicating better or worse,
+      // return clean capitalized text without forcing a wrong prefix.
+      return capitalizeFirst(targetText);
     }
 
     case 'causa': {
@@ -783,6 +969,62 @@ export function enrichClinicalText(
     }
 
     case 'hauptbeschwerde': {
+      const hasHead =
+        lower.includes('kopf') ||
+        lower.includes('migrän') ||
+        lower.includes('migraen') ||
+        lower.includes('headache') ||
+        lower.includes('migraine') ||
+        lower.includes('cabeza') ||
+        lower.includes('tête') ||
+        lower.includes('testa') ||
+        lower.includes('πονοκέφαλ') ||
+        lower.includes('πονοκεφαλ') ||
+        lower.includes('κεφαλαλγ') ||
+        lower.includes('ημικραν') ||
+        lower.includes('головн');
+
+      const hasAnal =
+        lower.includes('popo') ||
+        lower.includes('after') ||
+        lower.includes('hämorrhoid') ||
+        lower.includes('haemorrhoid') ||
+        lower.includes('gesäß') ||
+        lower.includes('gesaess') ||
+        lower.includes('anal') ||
+        lower.includes('rektal') ||
+        lower.includes('rectal') ||
+        lower.includes('hemorroid') ||
+        lower.includes('hémorroid') ||
+        lower.includes('αιμορροΐδ') ||
+        lower.includes('геморро');
+
+      const headText =
+        lang === 'de' ? 'Akute pulsierende Kopfschmerzen / Migräne' :
+        lang === 'en' ? 'Acute throbbing headache / migraine' :
+        lang === 'es' ? 'Cefalea pulsátil aguda / migraña' :
+        lang === 'fr' ? 'Maux de tête battants aigus / migraine' :
+        lang === 'it' ? 'Cefalea pulsante acuta / emicrania' :
+        lang === 'el' ? 'Πονοκέφαλος (Κεφαλαλγία)' : 'Острая пульсирующая головная боль / мигрень';
+
+      const analText =
+        lang === 'de' ? 'Anal- & Gesäßschmerzen (Hämorrhoidalbeschwerden)' :
+        lang === 'en' ? 'Anal and rectal pain (Hemorrhoidal complaints)' :
+        lang === 'es' ? 'Dolor anal y rectal (Hemorroides)' :
+        lang === 'fr' ? 'Douleur anale et hémorroïdaire' :
+        lang === 'it' ? 'Dolore anale ed emorroidario' :
+        lang === 'el' ? 'Πόνος στον πρωκτό & αιμορροΐδες' : 'Анальные и геморроидальные боли';
+
+      if (hasHead && hasAnal) {
+        return `1. ${headText} | 2. ${analText}`;
+      }
+      if (hasAnal) {
+        return analText;
+      }
+      if (hasHead) {
+        return headText;
+      }
+
       // Sudden High Fever
       if (
         lower.includes('fieber') ||
@@ -808,40 +1050,6 @@ export function enrichClinicalText(
             return 'Αιφνίδιος υψηλός πυρετός και αίσθημα θερμότητας';
           case 'ru':
             return 'Внезапная высокая температура и ощущение жара';
-        }
-      }
-
-      // Headache / Migraine
-      if (
-        lower.includes('kopf') ||
-        lower.includes('migrän') ||
-        lower.includes('migraen') ||
-        lower.includes('headache') ||
-        lower.includes('migraine') ||
-        lower.includes('cabeza') ||
-        lower.includes('tête') ||
-        lower.includes('testa') ||
-        lower.includes('πονοκέφαλ') ||
-        lower.includes('πονοκεφαλ') ||
-        lower.includes('κεφαλαλγ') ||
-        lower.includes('ημικραν') ||
-        lower.includes('головн')
-      ) {
-        switch (lang) {
-          case 'de':
-            return 'Akute pulsierende Kopfschmerzen / Migräne';
-          case 'en':
-            return 'Acute throbbing headache / migraine';
-          case 'es':
-            return 'Cefalea pulsátil aguda / migraña';
-          case 'fr':
-            return 'Maux de tête battants aigus / migraine';
-          case 'it':
-            return 'Cefalea pulsante acuta / emicrania';
-          case 'el':
-            return 'Πονοκέφαλος (Κεφαλαλγία)';
-          case 'ru':
-            return 'Острая пульсирующая головная боль / мигрень';
         }
       }
 
@@ -1056,7 +1264,7 @@ export function formatClinicalVariableForDisplay(
   varKey: AcuteVariableType,
   lang: LanguageCode
 ): string {
-  const trimmed = val.trim();
+  const trimmed = (val || '').trim();
   if (!trimmed) return '';
 
   const { coreText, isBetter, isWorse, isConcomitant, isCausa } = stripClinicalPrefix(trimmed);
@@ -1064,26 +1272,23 @@ export function formatClinicalVariableForDisplay(
   // Check if coreText can be clinically enriched
   const enriched = enrichClinicalText(varKey, coreText, lang);
 
+  let formattedResult = trimmed;
   // If enrichClinicalText returned a richer professional phrase, use it
   if (enriched && enriched.toLowerCase() !== coreText.toLowerCase()) {
-    return enriched;
-  }
-
-  // Otherwise, ensure prefix is in the current language
-  if (varKey === 'modalitaeten') {
+    formattedResult = enriched;
+  } else if (varKey === 'modalitaeten') {
     if (isWorse) {
-      return `${getModalityWorsePrefix(lang)}${capitalizeFirst(coreText)}`;
+      formattedResult = `${getModalityWorsePrefix(lang)}${capitalizeFirst(coreText)}`;
+    } else if (isBetter) {
+      formattedResult = `${getModalityBetterPrefix(lang)}${capitalizeFirst(coreText)}`;
+    } else {
+      formattedResult = capitalizeFirst(coreText);
     }
-    return `${getModalityBetterPrefix(lang)}${capitalizeFirst(coreText)}`;
+  } else if (varKey === 'begleitsymptome' && isConcomitant) {
+    formattedResult = `${getConcomitantPrefix(lang)}${capitalizeFirst(coreText)}`;
+  } else if (varKey === 'causa' && isCausa) {
+    formattedResult = `${getCausaPrefix(lang)}${capitalizeFirst(coreText)}`;
   }
 
-  if (varKey === 'begleitsymptome' && isConcomitant) {
-    return `${getConcomitantPrefix(lang)}${capitalizeFirst(coreText)}`;
-  }
-
-  if (varKey === 'causa' && isCausa) {
-    return `${getCausaPrefix(lang)}${capitalizeFirst(coreText)}`;
-  }
-
-  return trimmed;
+  return stripComparisonSymbols(deduplicateRepeatedExpressions(formattedResult));
 }

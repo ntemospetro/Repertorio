@@ -15,7 +15,7 @@ interface VoiceInputButtonProps {
   value: string;
   onChange: (newValue: string) => void;
   className?: string;
-  size?: 'xs' | 'sm' | 'md';
+  size?: 'xs' | 'sm' | 'md' | 'card';
   mode?: 'append' | 'replace';
   title?: string;
   id?: string;
@@ -74,9 +74,9 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
 
   /**
    * Process the completed voice transcript after speech has ended.
-   * Evaluates medical relevance with Gemini before committing to onChange.
+   * Commits immediately to onChange without blocking latency or false rejections.
    */
-  const processCompletedVoiceInput = useCallback(async (transcriptText: string) => {
+  const processCompletedVoiceInput = useCallback((transcriptText: string) => {
     if (isProcessingRef.current) return;
     isProcessingRef.current = true;
 
@@ -86,52 +86,30 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
       return;
     }
 
-    setIsEvaluating(true);
-
     try {
-      // Strict medical relevance filter check
-      const result = await checkMedicalRelevance(trimmed, language);
-
-      if (result.isRelevant) {
-        // Medical relevance confirmed: Apply and commit to state
-        const base = mode === 'replace' ? '' : (sessionInitialTextRef.current || '').trim();
-        if (mode === 'replace' || !base) {
-          onChange(trimmed);
-        } else if (base.toLowerCase().endsWith(trimmed.toLowerCase())) {
-          onChange(base);
-        } else {
-          onChange(`${base} ${trimmed}`);
-        }
-
-        // Brief subtle positive confirmation feedback
-        setShowAcceptedFeedback(true);
-        if (acceptedTimerRef.current) clearTimeout(acceptedTimerRef.current);
-        acceptedTimerRef.current = window.setTimeout(() => {
-          setShowAcceptedFeedback(false);
-        }, 1500);
-      } else {
-        // NOT medically relevant: Reject completely, do NOT call onChange, show notice
-        setShowRejectionNotice(true);
-        if (rejectionTimerRef.current) clearTimeout(rejectionTimerRef.current);
-        rejectionTimerRef.current = window.setTimeout(() => {
-          setShowRejectionNotice(false);
-        }, 8000);
-      }
-    } catch (err) {
-      console.error('Error during medical relevance evaluation:', err);
-      // Fallback: If unknown error, accept text
       const base = mode === 'replace' ? '' : (sessionInitialTextRef.current || '').trim();
       if (mode === 'replace' || !base) {
         onChange(trimmed);
+      } else if (base.toLowerCase().endsWith(trimmed.toLowerCase())) {
+        onChange(base);
       } else {
         onChange(`${base} ${trimmed}`);
       }
+
+      // Fast positive confirmation feedback
+      setShowAcceptedFeedback(true);
+      if (acceptedTimerRef.current) clearTimeout(acceptedTimerRef.current);
+      acceptedTimerRef.current = window.setTimeout(() => {
+        setShowAcceptedFeedback(false);
+      }, 1500);
+    } catch (err) {
+      console.error('Error committing voice input:', err);
     } finally {
       setIsEvaluating(false);
       isProcessingRef.current = false;
       recordedTranscriptRef.current = '';
     }
-  }, [language, mode, onChange]);
+  }, [mode, onChange]);
 
   const stopListening = useCallback(() => {
     if (sessionRef.current) {
@@ -178,13 +156,13 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
     recordedTranscriptRef.current = '';
     isProcessingRef.current = false;
 
-    // Maximum 15 seconds recording timeout
+    // Maximum 60 seconds recording duration
     if (maxDurationTimerRef.current) {
       clearTimeout(maxDurationTimerRef.current);
     }
     maxDurationTimerRef.current = window.setTimeout(() => {
       stopListening();
-    }, 15000);
+    }, 60000);
 
     const session = startSpeechRecognition({
       language,
@@ -195,9 +173,12 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
         setIsListening(true);
       },
       onResult: (transcript) => {
-        // Collect spoken text into ref during speech, do NOT commit to state yet
         if (transcript && transcript.trim()) {
           recordedTranscriptRef.current = transcript.trim();
+          // Update live so user sees their words immediately
+          const base = mode === 'replace' ? '' : (sessionInitialTextRef.current || '').trim();
+          const liveText = base ? `${base} ${transcript.trim()}` : transcript.trim();
+          onChange(liveText);
         }
       },
       onError: (err) => {
@@ -241,21 +222,25 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
     ? `${t('voiceDictationListening' as TranslationKey)} (${currentLangLabel}) - ${t('voiceDictationStop' as TranslationKey)}`
     : title || `${t('voiceDictationStart' as TranslationKey)} (${currentLangLabel})`;
 
+  const isCard = size === 'card';
+
   const sizeClasses = {
     xs: 'w-6 h-6 p-1 text-xs',
     sm: 'w-7 h-7 p-1.5 text-xs',
     md: 'w-8 h-8 p-2 text-sm',
+    card: 'w-full sm:w-32 md:w-36 lg:w-40 min-h-[130px] p-3 text-xs rounded-xl flex-col gap-2',
   }[size];
 
   const iconSizes = {
     xs: 'w-3 h-3',
     sm: 'w-3.5 h-3.5',
     md: 'w-4 h-4',
+    card: 'w-8 h-8',
   }[size];
 
   return (
     <>
-      <div className="relative inline-flex items-center">
+      <div className={isCard ? "relative flex items-stretch w-full sm:w-auto h-full" : "relative inline-flex items-center"}>
         <button
           type="button"
           id={id}
@@ -263,8 +248,18 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
           disabled={disabled || isEvaluating}
           title={tooltipText}
           aria-label={tooltipText}
-          className={`relative rounded-lg flex items-center justify-center transition-all cursor-pointer select-none ${sizeClasses} ${
-            isEvaluating
+          className={`relative rounded-xl flex items-center justify-center transition-all cursor-pointer select-none ${sizeClasses} ${
+            isCard
+              ? isEvaluating
+                ? 'bg-amber-500 text-white ring-4 ring-amber-200 animate-pulse shadow-md border-2 border-amber-500'
+                : isListening
+                ? 'bg-rose-600 hover:bg-rose-700 text-white ring-4 ring-rose-200 animate-pulse shadow-md border-2 border-rose-600'
+                : showAcceptedFeedback
+                ? 'bg-teal-700 text-white ring-4 ring-teal-200 shadow-md border-2 border-teal-700'
+                : isStarting
+                ? 'bg-teal-700 text-white border-2 border-teal-700 animate-pulse shadow-xs'
+                : 'bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-white border-2 border-teal-600 shadow-xs'
+              : isEvaluating
               ? 'bg-amber-500 text-white ring-2 ring-amber-300 ring-offset-1 animate-pulse shadow-md'
               : isListening
               ? 'bg-rose-500 hover:bg-rose-600 text-white ring-2 ring-rose-300 ring-offset-1 animate-pulse shadow-md'
@@ -275,16 +270,53 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
               : 'bg-slate-100 hover:bg-teal-50 text-slate-500 hover:text-teal-700 hover:border-teal-300 border border-slate-200'
           } ${disabled ? 'opacity-40 cursor-not-allowed' : ''} ${className}`}
         >
-          {isStarting || isEvaluating ? (
-            <Loader2 className={`${iconSizes} animate-spin ${isEvaluating ? 'text-white' : 'text-amber-700'}`} />
-          ) : isListening ? (
-            <MicOff className={`${iconSizes} text-white animate-bounce`} />
-          ) : (
-            <Mic className={`${iconSizes}`} />
-          )}
+          {isCard ? (
+            <div className="flex flex-col items-center justify-center gap-2.5 h-full w-full py-1">
+              <div className={`w-13 h-13 rounded-2xl flex items-center justify-center transition-all shadow-xs ${
+                isListening 
+                  ? 'bg-white/30 scale-110 shadow-md ring-2 ring-white/50' 
+                  : isEvaluating
+                  ? 'bg-white/30'
+                  : 'bg-white/20'
+              }`}>
+                {isStarting || isEvaluating ? (
+                  <Loader2 className="w-7 h-7 text-white animate-spin" />
+                ) : isListening ? (
+                  <MicOff className="w-7 h-7 text-white animate-bounce" />
+                ) : (
+                  <Mic className="w-7 h-7 text-white" />
+                )}
+              </div>
 
-          {isListening && (
-            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-600 rounded-full ring-2 ring-white animate-ping" />
+              <div className="flex flex-col items-center gap-0.5">
+                <span className="font-medium text-xs text-white leading-tight">
+                  {isListening 
+                    ? (t('voiceRecordCardStopLabel' as TranslationKey) || 'Stopp')
+                    : isEvaluating
+                    ? (t('medicalRelevanceFilterChecking' as TranslationKey) || 'Prüfe...')
+                    : (t('voiceRecordCardLabel' as TranslationKey) || 'Aufnahme')}
+                </span>
+                {isListening && (
+                  <span className="text-[10px] font-normal text-rose-100 animate-pulse">
+                    {t('voiceDictationListening' as TranslationKey) || 'Hört zu...'}
+                  </span>
+                )}
+              </div>
+            </div>
+          ) : (
+            <>
+              {isStarting || isEvaluating ? (
+                <Loader2 className={`${iconSizes} animate-spin ${isEvaluating ? 'text-white' : 'text-amber-700'}`} />
+              ) : isListening ? (
+                <MicOff className={`${iconSizes} text-white animate-bounce`} />
+              ) : (
+                <Mic className={`${iconSizes}`} />
+              )}
+
+              {isListening && (
+                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-600 rounded-full ring-2 ring-white animate-ping" />
+              )}
+            </>
           )}
         </button>
 

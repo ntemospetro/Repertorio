@@ -17,12 +17,14 @@ import {
   deduplicateRepeatedPhrases
 } from '../services/speechService';
 import { AcuteClarificationModal } from './AcuteClarificationModal';
+import { extractRecognizedSymptoms, RecognizedSymptom } from '../services/symptomExtractionService';
 import { AcuteVariableModal, AcuteVariableType } from './AcuteVariableModal';
 import { 
   formatClinicalVariableForDisplay, 
   enrichClinicalText 
 } from '../utils/clinicalVariableFormatter';
 import { AcuteAnswers } from '../services/acuteClarificationService';
+import { OPTION_LABELS_I18N } from '../services/acuteClarificationOptionsI18n';
 import { RemedyMonographModal } from './RemedyMonographModal';
 import { useTranslation, useLanguage } from '../i18n/LanguageContext';
 import { HomeopathicExpertResult } from '../types';
@@ -79,6 +81,11 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
   const [acuteAnswers, setAcuteAnswers] = useState<AcuteAnswers>({});
   const [diffResult, setDiffResult] = useState<DifferentialDiagnosisResult | null>(null);
   const [showExcludedInView, setShowExcludedInView] = useState<boolean>(false);
+
+  // Extracted symptoms categorized in real-time
+  const recognizedSymptoms: RecognizedSymptom[] = useMemo(() => {
+    return extractRecognizedSymptoms(symptomText, language);
+  }, [symptomText, language]);
 
   // Classical Homeopathic Expert State
   const [expertResult, setExpertResult] = useState<HomeopathicExpertResult | null>(null);
@@ -193,21 +200,87 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
 
   const isAllFourComplete = completedVariablesCount === 4;
 
-  // Build a comprehensive case narrative incorporating all 4 variables
+  // Build a comprehensive case narrative incorporating all clinical inputs:
+  // 1. Raw spoken/entered symptom text
+  // 2. Extracted 4-column case analysis (Hauptbeschwerde, Causa, Modalitäten, Begleitsymptome)
+  // 3. Recognized symptoms (Erkannte Symptome)
+  // 4. Answers entered in the step-by-step differential diagnosis (acuteAnswers)
   const comprehensiveCaseText = useMemo(() => {
     const parts: string[] = [];
-    if (symptomText.trim()) parts.push(symptomText.trim());
-    if (variableOverrides.causa && !symptomText.includes(variableOverrides.causa)) {
-      parts.push(`${t('step1Causa')}: ${variableOverrides.causa}`);
+    const lowerJoined = () => parts.join(' ').toLowerCase();
+
+    // 1. Primary symptom text
+    if (symptomText.trim()) {
+      parts.push(symptomText.trim());
     }
-    if (variableOverrides.modalitaeten && !symptomText.includes(variableOverrides.modalitaeten)) {
-      parts.push(`${t('step1Modalities')}: ${variableOverrides.modalitaeten}`);
+
+    // 2. 4-Box Extracted Case Analysis (Hauptbeschwerde, Causa, Modalitäten, Begleitsymptome)
+    if (activeHauptbeschwerde && !isVarMissing(activeHauptbeschwerde)) {
+      const formatted = formatClinicalVariableForDisplay(activeHauptbeschwerde, 'hauptbeschwerde', language);
+      if (formatted && !lowerJoined().includes(formatted.toLowerCase())) {
+        parts.push(`${t('step1ChiefComplaint')}: ${formatted}`);
+      }
     }
-    if (variableOverrides.begleitsymptome && !symptomText.includes(variableOverrides.begleitsymptome)) {
-      parts.push(`${t('step1Concomitants')}: ${variableOverrides.begleitsymptome}`);
+
+    if (activeCausa && !isVarMissing(activeCausa)) {
+      const formatted = formatClinicalVariableForDisplay(activeCausa, 'causa', language);
+      if (formatted && !lowerJoined().includes(formatted.toLowerCase())) {
+        parts.push(`${t('step1Causa')}: ${formatted}`);
+      }
     }
+
+    if (activeModalitaeten && !isVarMissing(activeModalitaeten)) {
+      const formatted = formatClinicalVariableForDisplay(activeModalitaeten, 'modalitaeten', language);
+      if (formatted && !lowerJoined().includes(formatted.toLowerCase())) {
+        parts.push(`${t('step1Modalities')}: ${formatted}`);
+      }
+    }
+
+    if (activeBegleitsymptome && !isVarMissing(activeBegleitsymptome)) {
+      const formatted = formatClinicalVariableForDisplay(activeBegleitsymptome, 'begleitsymptome', language);
+      if (formatted && !lowerJoined().includes(formatted.toLowerCase())) {
+        parts.push(`${t('step1Concomitants')}: ${formatted}`);
+      }
+    }
+
+    // 3. Erkannte Symptome (Recognized symptoms)
+    if (recognizedSymptoms && recognizedSymptoms.length > 0) {
+      const newSyms = recognizedSymptoms
+        .filter((s) => s.label && !lowerJoined().includes(s.label.toLowerCase()))
+        .map((s) => s.label);
+      if (newSyms.length > 0) {
+        parts.push(`${t('recognizedSymptomsTitle')}: ${newSyms.join(', ')}`);
+      }
+    }
+
+    // 4. In der Schritt-für-Schritt Differenzialdiagnose eingegebene Antworten (acuteAnswers)
+    if (acuteAnswers && Object.keys(acuteAnswers).length > 0) {
+      const answerLabels: string[] = [];
+      Object.entries(acuteAnswers).forEach(([, optVal]) => {
+        if (typeof optVal === 'string') {
+          const optLabel = OPTION_LABELS_I18N[optVal]?.[language] || OPTION_LABELS_I18N[optVal]?.de;
+          if (optLabel) {
+            answerLabels.push(optLabel);
+          }
+        }
+      });
+      if (answerLabels.length > 0) {
+        parts.push(`${t('diffDiagStepByStep')}: ${answerLabels.join('; ')}`);
+      }
+    }
+
     return parts.join('\n');
-  }, [symptomText, variableOverrides, t]);
+  }, [
+    symptomText,
+    activeHauptbeschwerde,
+    activeCausa,
+    activeModalitaeten,
+    activeBegleitsymptome,
+    recognizedSymptoms,
+    acuteAnswers,
+    language,
+    t
+  ]);
 
   // Handle saving a variable from the AcuteVariableModal
   const handleSaveVariable = (varKey: AcuteVariableType, newValue: string) => {
@@ -321,7 +394,7 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
     recordingBaseTextRef.current = symptomText;
     lastSpokenTranscriptRef.current = '';
     isFinalizingRef.current = false;
-    setRecordSecondsLeft(15);
+    setRecordSecondsLeft(60);
     setIsRecording(true);
 
     const session = startSpeechRecognition({
@@ -379,6 +452,7 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
       recognitionRef.current = null;
     }
     setIsRecording(false);
+    setSymptomText((prev) => deduplicateRepeatedPhrases(prev));
   };
 
   const handleClearSymptomText = () => {
@@ -440,21 +514,6 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
               </div>
             </div>
           </div>
-
-          {/* Optional Direct Navigation to Materia Medica */}
-          {onGoToMateriaMedica && (
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={onGoToMateriaMedica}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 hover:border-teal-300 bg-white hover:bg-teal-50/50 text-slate-700 hover:text-teal-900 text-xs sm:text-sm font-semibold transition-all cursor-pointer shadow-2xs"
-              >
-                <BookOpen className="w-4 h-4 text-teal-600" />
-                <span>{t('btnGoToMateriaMedica')}</span>
-                <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
-              </button>
-            </div>
-          )}
         </div>
       </div>
 
@@ -491,18 +550,18 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
                 </div>
               </div>
 
-              {/* Progress Bar for 15 Seconds */}
+              {/* Progress Bar for 60 Seconds */}
               {isRecording && (
                 <div className="space-y-1.5">
                   <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
                     <div
                       className="bg-rose-500 h-full transition-all duration-1000 ease-linear rounded-full"
-                      style={{ width: `${((15 - recordSecondsLeft) / 15) * 100}%` }}
+                      style={{ width: `${((60 - recordSecondsLeft) / 60) * 100}%` }}
                     />
                   </div>
                   <div className="flex justify-between text-[10px] text-slate-400 font-semibold">
                     <span>{t('voiceRecordingStatus')}</span>
-                    <span>{t('voiceMaxSeconds')}</span>
+                    <span>{recordSecondsLeft}s / 60s</span>
                   </div>
                 </div>
               )}
@@ -569,6 +628,54 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
                   placeholder={t('recordedSymptomsPlaceholder')}
                   className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all resize-none flex-1 min-h-[140px]"
                 />
+              </div>
+
+              {/* Erkannte Symptome (Symptom Extraction Panel) */}
+              <div className="p-3.5 bg-slate-50/90 rounded-xl border border-slate-200/90 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-teal-700" />
+                    <span className="text-xs font-bold text-slate-900">
+                      {t('recognizedSymptomsTitle')}
+                    </span>
+                  </div>
+                  {recognizedSymptoms.length > 0 ? (
+                    <span className="text-[10px] font-bold text-teal-800 bg-teal-50 border border-teal-200/80 px-2 py-0.5 rounded-md">
+                      {recognizedSymptoms.length} {t('recognizedSymptomsTitle')}
+                    </span>
+                  ) : (
+                    <span className="text-[10px] text-slate-400">
+                      {t('noRecognizedSymptomsYet')}
+                    </span>
+                  )}
+                </div>
+
+                {recognizedSymptoms.length > 0 ? (
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {recognizedSymptoms.map((sym) => (
+                      <div
+                        key={sym.id}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-xs text-slate-800 shadow-2xs"
+                      >
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider ${
+                          sym.category === 'leit' ? 'bg-amber-100 text-amber-900 border border-amber-200' :
+                          sym.category === 'causa' ? 'bg-blue-100 text-blue-900 border border-blue-200' :
+                          sym.category === 'modalitaet' ? 'bg-purple-100 text-purple-900 border border-purple-200' :
+                          sym.category === 'empfindung' ? 'bg-rose-100 text-rose-900 border border-rose-200' :
+                          sym.category === 'gemuet' ? 'bg-indigo-100 text-indigo-900 border border-indigo-200' :
+                          'bg-teal-100 text-teal-900 border border-teal-200'
+                        }`}>
+                          {sym.categoryLabel}
+                        </span>
+                        <span className="font-semibold text-slate-900">{sym.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-slate-500 italic">
+                    {t('acuteVoiceAnalysisSubtitle')}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -794,17 +901,15 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
                 type="button"
                 onClick={() => setShowClarificationModal(true)}
                 disabled={!symptomText.trim() && !activeHauptbeschwerde.trim()}
-                className={`w-full py-3 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-colors cursor-pointer ${
+                className={`w-full py-3 px-4 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer ${
                   isClarificationApplied
-                    ? 'bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300'
-                    : isAllFourComplete
-                    ? 'bg-teal-700 hover:bg-teal-800 text-white shadow-sm'
+                    ? 'bg-teal-50 hover:bg-teal-100 text-teal-900 border border-teal-300 shadow-xs'
                     : (symptomText.trim().length >= 3 || activeHauptbeschwerde.trim().length >= 3)
-                    ? 'bg-teal-700 hover:bg-teal-800 text-white shadow-sm'
+                    ? 'bg-teal-700 hover:bg-teal-800 active:bg-teal-900 text-white shadow-sm'
                     : 'bg-slate-200 text-slate-400 cursor-not-allowed'
                 }`}
               >
-                <SlidersHorizontal className="w-4 h-4" />
+                <SlidersHorizontal className="w-4 h-4 text-teal-200" />
                 <span>{t('startDiffDiagnosisNow')}</span>
               </button>
             </div>
@@ -815,9 +920,9 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
       {/* Full-Width Remedies Grid (DRUNTER wie auf Bild 1) - ONLY rendered when isClarificationApplied === true and displayedRemedies.length > 0 */}
       {isClarificationApplied && displayedRemedies.length > 0 && (
         <div className="space-y-4 pt-2 animate-in fade-in duration-300">
-          <div className="flex items-center justify-between border-b border-slate-200/80 pb-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-200/80 pb-3 gap-2">
             <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-xl bg-teal-50 text-teal-700">
+              <div className="p-2 rounded-xl bg-teal-50 text-teal-700 shrink-0">
                 <Sparkles className="w-5 h-5" />
               </div>
               <div>
@@ -829,9 +934,39 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
                 </p>
               </div>
             </div>
-            <span className="text-xs font-bold text-teal-800 bg-teal-50 border border-teal-200/80 px-3 py-1 rounded-full">
+            <span className="text-xs font-bold text-teal-800 bg-teal-50 border border-teal-200/80 px-3 py-1 rounded-full shrink-0 self-start sm:self-auto">
               {displayedRemedies.length} {t('recommendationsMatchesFound')}
             </span>
+          </div>
+
+          {/* Clinical factors integrated confirmation bar */}
+          <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 flex flex-wrap items-center gap-2 text-xs text-slate-700">
+            <span className="font-bold text-teal-900 flex items-center gap-1">
+              <CheckCircle2 className="w-3.5 h-3.5 text-teal-600" />
+              {t('step1Title')}:
+            </span>
+            <span className="inline-flex items-center gap-1 bg-white border border-slate-200 px-2 py-0.5 rounded-md text-[11px] text-slate-700 font-medium">
+              {t('step1ChiefComplaint')}
+            </span>
+            <span className="inline-flex items-center gap-1 bg-white border border-slate-200 px-2 py-0.5 rounded-md text-[11px] text-slate-700 font-medium">
+              {t('step1Causa')}
+            </span>
+            <span className="inline-flex items-center gap-1 bg-white border border-slate-200 px-2 py-0.5 rounded-md text-[11px] text-slate-700 font-medium">
+              {t('step1Modalities')}
+            </span>
+            <span className="inline-flex items-center gap-1 bg-white border border-slate-200 px-2 py-0.5 rounded-md text-[11px] text-slate-700 font-medium">
+              {t('step1Concomitants')}
+            </span>
+            {recognizedSymptoms.length > 0 && (
+              <span className="inline-flex items-center gap-1 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-md text-[11px] text-teal-800 font-medium">
+                {recognizedSymptoms.length} {t('recognizedSymptomsTitle')}
+              </span>
+            )}
+            {Object.keys(acuteAnswers).length > 0 && (
+              <span className="inline-flex items-center gap-1 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-md text-[11px] text-teal-800 font-medium">
+                {Object.keys(acuteAnswers).length} {t('acuteQuestionsAnsweredCount')}
+              </span>
+            )}
           </div>
 
         {/* 3-Column Responsive Cards Grid matching Bild 1 */}

@@ -1,10 +1,12 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Therapist, PatientCase, FollowUpEntry } from '../types';
 import { 
   getPatientCases, 
   savePatientCase, 
   updatePatientStammdatenAcrossCases,
-  getRecentlyEditedPatientNames
+  getRecentlyEditedPatientNames,
+  deletePatientCase,
+  deletePatientAndAllCases
 } from '../services/storage';
 import { useTranslation } from '../i18n/LanguageContext';
 import { VoiceInputButton } from './VoiceInputButton';
@@ -25,13 +27,17 @@ import {
   Calendar,
   Sparkles,
   Pill,
-  Clock
+  Clock,
+  Trash2,
+  AlertTriangle
 } from 'lucide-react';
 
 interface PatientDirectoryViewProps {
   therapist: Therapist;
   onOpenCaseInWorkspace: (patientCase: PatientCase) => void;
   onNewCaseForPatient?: (patientName: string, stammdatenDefaults?: Partial<PatientCase>) => void;
+  initialOpenAction?: 'new_patient' | 'select_patient' | null;
+  onActionHandled?: () => void;
 }
 
 interface GroupedPatient {
@@ -87,11 +93,12 @@ export const PatientDirectoryView: React.FC<PatientDirectoryViewProps> = ({
   therapist,
   onOpenCaseInWorkspace,
   onNewCaseForPatient,
+  initialOpenAction,
+  onActionHandled,
 }) => {
   const { t, language } = useTranslation();
   const [cases, setCases] = useState<PatientCase[]>(() => getPatientCases(therapist.id));
   const [recentEditsRev, setRecentEditsRev] = useState(0);
-  const [searchQuery, setSearchQuery] = useState('');
   const [selectedPatientKey, setSelectedPatientKey] = useState<string | null>(null);
   const [activeCaseTabId, setActiveCaseTabId] = useState<string | null>(null);
   
@@ -103,9 +110,69 @@ export const PatientDirectoryView: React.FC<PatientDirectoryViewProps> = ({
   const [isEditStammdatenOpen, setIsEditStammdatenOpen] = useState(false);
   const [isNewPatientModalOpen, setIsNewPatientModalOpen] = useState(false);
 
+  // Automatically open modal if requested by forward action
+  useEffect(() => {
+    if (initialOpenAction === 'new_patient') {
+      setIsNewPatientModalOpen(true);
+      onActionHandled?.();
+    } else if (initialOpenAction === 'select_patient') {
+      setModalSearchQuery('');
+      setIsSelectPatientModalOpen(true);
+      onActionHandled?.();
+    }
+  }, [initialOpenAction, onActionHandled]);
+
+  // Deletion Confirmation Modal State
+  const [deleteTarget, setDeleteTarget] = useState<
+    | { type: 'case'; caseItem: PatientCase; caseNum: number; patientName: string }
+    | { type: 'customer'; patientKey: string; patientName: string; casesCount: number; sampleComplaint?: string }
+    | null
+  >(null);
+  const [securityCodeInput, setSecurityCodeInput] = useState('');
+
   const refreshData = () => {
     const updated = getPatientCases(therapist.id);
     setCases(updated);
+  };
+
+  const handleRequestDeleteCase = (caseItem: PatientCase, caseNum: number, patientName: string) => {
+    setDeleteTarget({
+      type: 'case',
+      caseItem,
+      caseNum,
+      patientName,
+    });
+    setSecurityCodeInput('');
+  };
+
+  const handleRequestDeleteCustomer = (patient: GroupedPatient) => {
+    setDeleteTarget({
+      type: 'customer',
+      patientKey: patient.key,
+      patientName: patient.name,
+      casesCount: patient.cases.length,
+      sampleComplaint: patient.primaryCase.hauptbeschwerde || undefined,
+    });
+    setSecurityCodeInput('');
+  };
+
+  const handleConfirmDelete = () => {
+    if (securityCodeInput.trim() !== '360' || !deleteTarget) return;
+
+    if (deleteTarget.type === 'case') {
+      deletePatientCase(deleteTarget.caseItem.id);
+      refreshData();
+      setDeleteTarget(null);
+      setSecurityCodeInput('');
+    } else if (deleteTarget.type === 'customer') {
+      deletePatientAndAllCases(deleteTarget.patientName, therapist.id);
+      if (selectedPatientKey === deleteTarget.patientKey) {
+        setSelectedPatientKey(null);
+      }
+      refreshData();
+      setDeleteTarget(null);
+      setSecurityCodeInput('');
+    }
   };
 
   React.useEffect(() => {
@@ -160,6 +227,7 @@ export const PatientDirectoryView: React.FC<PatientDirectoryViewProps> = ({
     if (data.patientName) {
       setSelectedPatientKey(data.patientName.trim().toLowerCase());
       setActiveCaseTabId(created.id || newCaseId);
+      onOpenCaseInWorkspace(created);
     }
   };
 
@@ -228,28 +296,6 @@ export const PatientDirectoryView: React.FC<PatientDirectoryViewProps> = ({
 
     return result.sort((a, b) => a.name.localeCompare(b.name, language));
   }, [cases, language, t]);
-
-  // Filter patients based on search
-  const filteredPatients = useMemo(() => {
-    if (!searchQuery.trim()) {
-      return groupedPatients;
-    }
-    const q = searchQuery.toLowerCase().trim();
-    return groupedPatients.filter(p => {
-      const { firstName, lastName } = parsePatientName(p.name);
-      if (p.name.toLowerCase().includes(q)) return true;
-      if (firstName.toLowerCase().includes(q)) return true;
-      if (lastName.toLowerCase().includes(q)) return true;
-      if (p.primaryCase.patientEmail?.toLowerCase().includes(q)) return true;
-      if (p.primaryCase.patientPhone?.toLowerCase().includes(q)) return true;
-      if (p.primaryCase.patientBirthDate?.toLowerCase().includes(q)) return true;
-      return p.cases.some(c => 
-        (c.hauptbeschwerde && c.hauptbeschwerde.toLowerCase().includes(q)) ||
-        (c.spontanbericht && c.spontanbericht.toLowerCase().includes(q)) ||
-        (c.remedySuggestions && c.remedySuggestions.some(r => r.name.toLowerCase().includes(q)))
-      );
-    });
-  }, [groupedPatients, searchQuery]);
 
   // Active patient based purely on explicit user selection
   const activePatient = useMemo(() => {
@@ -378,152 +424,17 @@ export const PatientDirectoryView: React.FC<PatientDirectoryViewProps> = ({
           </div>
         </div>
 
-        {/* Actions & Stats */}
-        <div className="flex items-center gap-3">
-          <div className="hidden sm:flex items-center gap-2">
-            <div className="bg-slate-50 border border-slate-200 px-3.5 py-1.5 rounded-xl text-center">
-              <span className="block text-xs font-bold text-slate-800">{groupedPatients.length}</span>
-              <span className="block text-[10px] text-slate-400 font-medium">{t('patientsCountLabel')}</span>
-            </div>
-            <div className="bg-teal-50 border border-teal-200/60 px-3.5 py-1.5 rounded-xl text-center">
-              <span className="block text-xs font-bold text-teal-800">{cases.length}</span>
-              <span className="block text-[10px] text-teal-600 font-medium">{t('casesTotalLabel')}</span>
-            </div>
+        {/* Stats */}
+        <div className="flex items-center gap-2">
+          <div className="bg-slate-50 border border-slate-200 px-3.5 py-1.5 rounded-xl text-center">
+            <span className="block text-xs font-bold text-slate-800">{groupedPatients.length}</span>
+            <span className="block text-[10px] text-slate-400 font-medium">{t('patientsCountLabel')}</span>
           </div>
-
-          <button
-            type="button"
-            id="btn-new-patient-directory-header"
-            onClick={() => setIsNewPatientModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-white font-bold text-xs sm:text-sm transition-all shadow-xs cursor-pointer whitespace-nowrap"
-          >
-            <Plus className="w-4 h-4" />
-            <span>{t('btnNewPatientAdmission')}</span>
-          </button>
-        </div>
-      </div>
-
-      {/* 1. TOP SEARCH & QUICK CUSTOMER SWITCHER BAR (FULL WIDTH) */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-3">
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-          {/* Search Input with Voice */}
-          <div className="relative flex-1">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={t('searchPatientPlaceholder')}
-              className="w-full pl-10 pr-20 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 bg-slate-50/60 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-teal-600 focus:bg-white transition-all"
-            />
-            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery('')}
-                  className="p-1 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-              <VoiceInputButton
-                value={searchQuery}
-                onChange={(val) => setSearchQuery(val)}
-                size="xs"
-                mode="append"
-              />
-            </div>
-          </div>
-
-          {/* Quick Actions: Patientenauswahl & Auswahl aufheben */}
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={() => {
-                setModalSearchQuery('');
-                setIsSelectPatientModalOpen(true);
-              }}
-              className="px-3.5 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold text-xs flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs whitespace-nowrap"
-            >
-              <Users className="w-3.5 h-3.5 text-teal-600" />
-              <span>{t('btnOpenPatientSelectionModal')}</span>
-            </button>
-
-            {activePatient && (
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedPatientKey(null);
-                  setSearchQuery('');
-                }}
-                className="px-3.5 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 font-semibold text-xs flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs whitespace-nowrap"
-                title={t('unselectPatientBtn')}
-              >
-                <X className="w-3.5 h-3.5 text-slate-400" />
-                <span>{t('switchPatient')}</span>
-              </button>
-            )}
+          <div className="bg-teal-50 border border-teal-200/60 px-3.5 py-1.5 rounded-xl text-center">
+            <span className="block text-xs font-bold text-teal-800">{cases.length}</span>
+            <span className="block text-[10px] text-teal-600 font-medium">{t('casesTotalLabel')}</span>
           </div>
         </div>
-
-        {/* Live Search Suggestions Dropdown (when searching) */}
-        {searchQuery.trim().length > 0 && (
-          <div className="pt-3 border-t border-slate-100 space-y-2">
-            <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center justify-between">
-              <span>{t('patientsListHeader')} ({filteredPatients.length})</span>
-              <span className="text-slate-400 font-normal text-[10px]">{t('clickOpensFileBadge')}</span>
-            </div>
-
-            {filteredPatients.length === 0 ? (
-              <div className="py-6 text-center text-xs text-slate-400">
-                <Users className="w-6 h-6 mx-auto mb-1 text-slate-300" />
-                <p className="font-medium text-slate-600">{t('noPatientsFound')}</p>
-                <p className="text-[11px] text-slate-400">{t('noPatientsFoundSub')}</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-60 overflow-y-auto pr-1 custom-scrollbar">
-                {filteredPatients.slice(0, 9).map((p) => {
-                  const initials = p.name.split(' ').filter(Boolean).map(n => n[0]).slice(0, 2).join('').toUpperCase();
-                  const isCurActive = activePatient?.key === p.key;
-
-                  return (
-                    <div
-                      key={p.key}
-                      onClick={() => {
-                        setSelectedPatientKey(p.key);
-                        setSearchQuery('');
-                      }}
-                      className={`p-2.5 rounded-xl border text-xs cursor-pointer transition-all flex items-center justify-between gap-2.5 ${
-                        isCurActive
-                          ? 'bg-teal-50 border-teal-300 ring-1 ring-teal-200'
-                          : 'bg-slate-50/70 border-slate-200 hover:border-teal-400 hover:bg-white'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-8 h-8 rounded-full bg-teal-600 text-white font-bold text-xs flex items-center justify-center shrink-0">
-                          {initials || 'P'}
-                        </div>
-                        <div className="truncate">
-                          <div className="font-bold text-slate-900 text-xs truncate flex items-center gap-1">
-                            <span>{p.name}</span>
-                            {isCurActive && <span className="w-1.5 h-1.5 rounded-full bg-teal-600 shrink-0" />}
-                          </div>
-                          <div className="text-[10px] text-slate-500 truncate">
-                            {p.primaryCase.patientAge ? `${p.primaryCase.patientAge} ${t('yearsOld')}` : ''}
-                            {p.primaryCase.patientPhone ? ` • ${p.primaryCase.patientPhone}` : ''}
-                          </div>
-                        </div>
-                      </div>
-                      <span className="text-[10px] font-bold bg-white px-2 py-0.5 rounded border border-slate-200 text-slate-700 shrink-0">
-                        {p.cases.length} {p.cases.length === 1 ? t('caseSingle') : t('casePlural')}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
       </div>
 
       {/* 2. MAIN PATIENT WORKSPACE (FULL WIDTH) */}
@@ -602,7 +513,6 @@ export const PatientDirectoryView: React.FC<PatientDirectoryViewProps> = ({
                       key={p.key}
                       onClick={() => {
                         setSelectedPatientKey(p.key);
-                        setSearchQuery('');
                       }}
                       className="p-4 rounded-2xl border border-slate-200 bg-white hover:border-teal-400 hover:shadow-md transition-all cursor-pointer space-y-3 group"
                     >
@@ -676,13 +586,12 @@ export const PatientDirectoryView: React.FC<PatientDirectoryViewProps> = ({
                 </div>
               </div>
 
-              {/* Actions: Stammdaten bearbeiten & Auswahl aufheben */}
+              {/* Actions: Stammdaten bearbeiten & Auswahl aufheben & Kunde löschen */}
               <div className="flex items-center gap-2 flex-wrap">
                 <button
                   type="button"
                   onClick={() => {
                     setSelectedPatientKey(null);
-                    setSearchQuery('');
                   }}
                   className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors"
                   title={t('unselectPatientBtn')}
@@ -698,6 +607,16 @@ export const PatientDirectoryView: React.FC<PatientDirectoryViewProps> = ({
                 >
                   <Edit3 className="w-3.5 h-3.5 text-slate-500" />
                   <span>{t('editMasterData')}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleRequestDeleteCustomer(activePatient)}
+                  className="px-3 py-1.5 rounded-xl border border-rose-200 bg-rose-50/60 hover:bg-rose-100 text-rose-700 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
+                  title={t('btnDeleteCustomer')}
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                  <span>{t('btnDeleteCustomer')}</span>
                 </button>
               </div>
             </div>
@@ -846,15 +765,27 @@ export const PatientDirectoryView: React.FC<PatientDirectoryViewProps> = ({
                           )}
                         </div>
 
-                        {/* Button: Repertorisation with Arrow Right BEFORE the word */}
-                        <button
-                          type="button"
-                          onClick={() => onOpenCaseInWorkspace(c)}
-                          className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-white text-xs sm:text-sm font-bold flex items-center gap-2 cursor-pointer transition-all shadow-xs shrink-0 self-start sm:self-auto"
-                        >
-                          <ArrowRight className="w-4 h-4" />
-                          <span>{t('repertorisationBtn')}</span>
-                        </button>
+                        {/* Action Buttons: Fall löschen & Repertorisation */}
+                        <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto flex-wrap">
+                          <button
+                            type="button"
+                            onClick={() => handleRequestDeleteCase(c, caseNum, activePatient.name)}
+                            className="px-3 py-2 rounded-xl border border-slate-200 bg-white hover:bg-rose-50 hover:border-rose-200 text-slate-600 hover:text-rose-700 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
+                            title={t('btnDeleteCase')}
+                          >
+                            <Trash2 className="w-3.5 h-3.5 text-slate-400 group-hover:text-rose-600" />
+                            <span>{t('btnDeleteCase')}</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => onOpenCaseInWorkspace(c)}
+                            className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-white text-xs sm:text-sm font-bold flex items-center gap-2 cursor-pointer transition-all shadow-xs"
+                          >
+                            <ArrowRight className="w-4 h-4" />
+                            <span>{t('repertorisationBtn')}</span>
+                          </button>
+                        </div>
                       </div>
 
                       {/* Case Details Body */}
@@ -1115,19 +1046,35 @@ export const PatientDirectoryView: React.FC<PatientDirectoryViewProps> = ({
                               </span>
                             </td>
                             <td className="py-3 px-4 text-right whitespace-nowrap">
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedPatientKey(p.key);
-                                  setActiveCaseTabId(p.cases[0].id);
-                                  setIsSelectPatientModalOpen(false);
-                                }}
-                                className="px-3 py-1.5 rounded-lg bg-teal-600 group-hover:bg-teal-700 text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
-                              >
-                                <CheckCircle2 className="w-3.5 h-3.5" />
-                                <span>{t('btnSelectAndTransfer')}</span>
-                              </button>
+                              <div className="flex items-center justify-end gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedPatientKey(p.key);
+                                    setActiveCaseTabId(p.cases[0].id);
+                                    setIsSelectPatientModalOpen(false);
+                                    if (p.cases && p.cases.length > 0) {
+                                      onOpenCaseInWorkspace(p.cases[0]);
+                                    }
+                                  }}
+                                  className="px-3 py-1.5 rounded-lg bg-teal-600 group-hover:bg-teal-700 text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+                                >
+                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                  <span>{t('btnSelectAndTransfer')}</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleRequestDeleteCustomer(p);
+                                  }}
+                                  className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-400 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-300 transition-colors cursor-pointer"
+                                  title={t('btnDeleteCustomer')}
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         );
@@ -1176,6 +1123,144 @@ export const PatientDirectoryView: React.FC<PatientDirectoryViewProps> = ({
         }}
         onSave={handleSaveNewPatient}
       />
+
+      {/* DELETION CONFIRMATION DIALOG (WITH SECURITY CODE '360') */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl border border-rose-200 shadow-2xl max-w-md w-full overflow-hidden p-6 space-y-5 animate-in zoom-in-95 duration-150">
+            {/* Header with red warning badge */}
+            <div className="flex items-start gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0 border border-rose-100">
+                <AlertTriangle className="w-6 h-6 text-rose-600" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-base font-bold text-slate-900 leading-snug font-serif">
+                  {deleteTarget.type === 'case'
+                    ? t('confirmDeleteCaseTitle')
+                    : t('confirmDeleteCustomerTitle')}
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {deleteTarget.type === 'case'
+                    ? t('confirmDeleteCaseQuestion')
+                    : t('confirmDeleteCustomerQuestion')}
+                </p>
+              </div>
+            </div>
+
+            {/* Structured Details Box */}
+            <div className="bg-slate-50/80 rounded-xl p-3.5 border border-slate-200/80 space-y-2.5 text-xs">
+              {/* Kundenname */}
+              <div className="flex items-baseline justify-between gap-2 border-b border-slate-200/60 pb-2">
+                <span className="text-slate-500 font-medium">{t('confirmDeleteCustomerLabel')}:</span>
+                <span className="font-bold text-slate-900 text-sm">{deleteTarget.patientName}</span>
+              </div>
+
+              {/* If Case: Fall-Nummer & Datum */}
+              {deleteTarget.type === 'case' && (
+                <>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-slate-500 font-medium">{t('confirmDeleteCaseLabel')}:</span>
+                    <span className="font-bold text-teal-800 bg-teal-50 px-2.5 py-0.5 rounded-lg border border-teal-200 text-xs">
+                      {t('caseAdmission').replace('{num}', deleteTarget.caseNum.toString())}
+                      {deleteTarget.caseItem.anamneseDatum ? ` (${new Date(deleteTarget.caseItem.anamneseDatum).toLocaleDateString(language)})` : ''}
+                    </span>
+                  </div>
+
+                  {/* Beschwerde kurz aufzeigen */}
+                  <div className="space-y-1 pt-1">
+                    <span className="text-slate-500 font-medium block">{t('confirmDeleteComplaintLabel')}:</span>
+                    <p className="text-slate-800 italic bg-white p-2.5 rounded-lg border border-slate-200 leading-relaxed font-medium">
+                      "{deleteTarget.caseItem.hauptbeschwerde || t('confirmDeleteNoComplaint')}"
+                    </p>
+                  </div>
+                </>
+              )}
+
+              {/* If Customer: Total cases count & sample complaint */}
+              {deleteTarget.type === 'customer' && (
+                <>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-slate-500 font-medium">{t('casesOfPatient').replace('{count}', '')}:</span>
+                    <span className="font-bold text-rose-700 bg-rose-50 px-2.5 py-0.5 rounded-lg border border-rose-200 text-xs">
+                      {t('confirmDeleteCustomerCasesCount').replace('{count}', deleteTarget.casesCount.toString())}
+                    </span>
+                  </div>
+
+                  {deleteTarget.sampleComplaint && (
+                    <div className="space-y-1 pt-1">
+                      <span className="text-slate-500 font-medium block">{t('confirmDeleteComplaintLabel')}:</span>
+                      <p className="text-slate-800 italic bg-white p-2.5 rounded-lg border border-slate-200 leading-relaxed font-medium">
+                        "{deleteTarget.sampleComplaint}"
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Irreversible warning */}
+              <div className="text-[11px] text-rose-600 font-medium flex items-center gap-1.5 pt-1">
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                <span>{t('confirmDeleteWarningIrreversible')}</span>
+              </div>
+            </div>
+
+            {/* Security code entry requirement */}
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-slate-800">
+                {t('confirmDeleteCodeInstruction')}
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  autoFocus
+                  value={securityCodeInput}
+                  onChange={(e) => setSecurityCodeInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && securityCodeInput.trim() === '360') {
+                      handleConfirmDelete();
+                    }
+                  }}
+                  placeholder={t('confirmDeleteCodePlaceholder')}
+                  maxLength={6}
+                  className={`w-full px-4 py-2.5 text-center text-lg font-mono font-bold tracking-widest rounded-xl border transition-all focus:outline-none ${
+                    securityCodeInput.trim() === '360'
+                      ? 'border-rose-500 bg-rose-50/40 text-rose-700 ring-2 ring-rose-200'
+                      : 'border-slate-300 bg-white text-slate-800 focus:border-teal-500 focus:ring-1 focus:ring-teal-200'
+                  }`}
+                />
+              </div>
+            </div>
+
+            {/* Action Buttons: Nein (Cancel) & Ja (Confirm) */}
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setDeleteTarget(null);
+                  setSecurityCodeInput('');
+                }}
+                className="px-4 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 font-semibold text-xs transition-colors cursor-pointer"
+              >
+                {t('confirmDeleteNoButton')}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                disabled={securityCodeInput.trim() !== '360'}
+                className={`px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-xs ${
+                  securityCodeInput.trim() === '360'
+                    ? 'bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white cursor-pointer shadow-rose-200'
+                    : 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-200'
+                }`}
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>{t('confirmDeleteYesButton')}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

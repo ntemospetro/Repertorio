@@ -1217,6 +1217,29 @@ export function deletePatientCase(caseId: string): void {
   window.dispatchEvent(new Event('homoeo_cases_updated'));
 }
 
+export function deletePatientAndAllCases(patientName: string, therapistId?: string): void {
+  const cleanName = patientName.trim().toLowerCase();
+  const all = getPatientCases().filter(c => {
+    const isSameTherapist = !therapistId || c.therapistId === therapistId;
+    if (!isSameTherapist) return true;
+    return (c.patientName || '').trim().toLowerCase() !== cleanName;
+  });
+  safeLocalStorageSetItem(STORAGE_KEYS.CASES, JSON.stringify(all));
+
+  // Also remove from recently edited patients
+  try {
+    const currentRecent = getRecentlyEditedPatientNames().filter(p => p.name.trim().toLowerCase() !== cleanName);
+    safeLocalStorageSetItem(STORAGE_KEYS.RECENT_EDITED_PATIENTS, JSON.stringify(currentRecent));
+  } catch {
+    // ignore
+  }
+
+  window.dispatchEvent(new Event('homoeo_cases_updated'));
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('homoeo_patient_edited', { detail: { patientName } }));
+  }
+}
+
 export function addFollowUpToCase(caseId: string, followUpData: Omit<FollowUpEntry, 'id' | 'createdAt'> & { id?: string; createdAt?: string }): FollowUpEntry | null {
   const all = getPatientCases();
   const caseIdx = all.findIndex(c => c.id === caseId);
