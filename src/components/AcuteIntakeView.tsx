@@ -26,6 +26,11 @@ import {
 import { AcuteAnswers } from '../services/acuteClarificationService';
 import { OPTION_LABELS_I18N } from '../services/acuteClarificationOptionsI18n';
 import { RemedyMonographModal } from './RemedyMonographModal';
+import { ComplaintQuestionsWizardModal } from './ComplaintQuestionsWizardModal';
+import { 
+  Hahnemann6Pillars, 
+  CaseType 
+} from '../services/hahnemannEngineService';
 import { useTranslation, useLanguage } from '../i18n/LanguageContext';
 import { HomeopathicExpertResult } from '../types';
 import { analyzeAcuteCaseWithAIOrFallback } from '../services/homeopathicExpertEngine';
@@ -103,9 +108,18 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
   // Gating State: Differential analysis completed and answers applied
   const [isClarificationApplied, setIsClarificationApplied] = useState<boolean>(false);
 
+  // Hahnemann Organon §§ 81-104 Evaluation State (transferred from wizard)
+  const [hahnemannData, setHahnemannData] = useState<{
+    matrix: Hahnemann6Pillars;
+    summaryText: string;
+    differentialRemedies: string[];
+    caseType?: CaseType;
+  } | null>(null);
+
   // Modal State
   const [selectedRemedyForModal, setSelectedRemedyForModal] = useState<LocalizedRemedy | null>(null);
   const [modalHistory, setModalHistory] = useState<LocalizedRemedy[]>([]);
+  const [isHahnemannWizardOpen, setIsHahnemannWizardOpen] = useState<boolean>(false);
 
   const recognitionRef = useRef<SpeechRecognitionSession | null>(null);
   const timerIntervalRef = useRef<number | null>(null);
@@ -122,11 +136,83 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
     return getLocalizedRemedies(language);
   }, [language]);
 
-  // Displayed remedies: ONLY when clarification has been applied via the differential analysis modal (Bild 2)
+  // Displayed remedies: Shown when clarification or Hahnemann analysis is completed
   const displayedRemedies = useMemo(() => {
-    if (!isClarificationApplied) {
+    if (!isClarificationApplied && !hahnemannData) {
       return [];
     }
+
+    // If Hahnemann 6-Pillar evaluation provided specific differential remedies
+    if (hahnemannData && hahnemannData.differentialRemedies && hahnemannData.differentialRemedies.length > 0) {
+      const matchedFromHahnemann: Array<{ remedy: LocalizedRemedy; rec: SymptomMatchResult; isRecommended: boolean; index: number }> = [];
+      const usedIds = new Set<string>();
+
+      hahnemannData.differentialRemedies.forEach((remName, idx) => {
+        const cleanTarget = remName.toLowerCase().trim();
+        const found = localizedRemedies.find(r => {
+          const latin = r.latinName.toLowerCase();
+          const common = r.commonName.toLowerCase();
+          const id = r.id.toLowerCase().replace(/-/g, ' ');
+          return (
+            latin === cleanTarget ||
+            latin.startsWith(cleanTarget) ||
+            cleanTarget.startsWith(latin) ||
+            id === cleanTarget ||
+            common === cleanTarget
+          );
+        });
+
+        if (found && !usedIds.has(found.id)) {
+          usedIds.add(found.id);
+          const existingRec = recommendations.find(rec => rec.remedy.id === found.id);
+          const baseScore = idx === 0 ? 96 : idx === 1 ? 89 : idx === 2 ? 83 : Math.max(74, 80 - idx * 4);
+          
+          const matrix = hahnemannData.matrix;
+          const rationale = existingRec?.clinicalRationale || 
+            (idx === 0 
+              ? `${found.latinName} entspricht nach Hahnemann (Organon §§ 81–104) exakt der Symptomgesamtheit: Causa (${matrix.causa || 'akut'}), Lokalisation (${matrix.lokalisierung || 'spezifisch'}), Sensation (${matrix.empfindung || 'charakteristisch'}) und Modalitäten (${matrix.modalitaeten || 'prägnant'}).`
+              : `Wichtige Simile-Alternative im Differenzialvergleich: Hohe Relevanz bezüglich Auslöser und Schmerzsymptomatik, Differenzierung über Begleitsymptome und Modalitäten.`);
+
+          const matchResult: SymptomMatchResult = {
+            remedy: found,
+            matchScore: existingRec?.matchScore ? Math.max(existingRec.matchScore, baseScore) : baseScore,
+            matchedKeywords: existingRec?.matchedKeywords || [matrix.lokalisierung || '', matrix.empfindung || ''].filter(Boolean),
+            matchedIndications: existingRec?.matchedIndications || found.mainIndications.slice(0, 2),
+            matchedKeynotes: existingRec?.matchedKeynotes || found.keynotes.slice(0, 2),
+            matchedModalities: existingRec?.matchedModalities || [found.modalitiesBetter[0], found.modalitiesWorse[0]].filter(Boolean),
+            clinicalRationale: rationale,
+            differentialNote: idx > 0 
+              ? (existingRec?.differentialNote || `Gegenüber ${hahnemannData.differentialRemedies[0]}: Besondere Beachtung von Reaktivität, Durstverhalten und Gemütslage.`)
+              : undefined,
+            isPrimarySimile: idx === 0,
+          };
+
+          matchedFromHahnemann.push({
+            remedy: found,
+            rec: matchResult,
+            isRecommended: true,
+            index: idx,
+          });
+        }
+      });
+
+      // Supplement with further matches from recommendations if available (up to 3-4 remedies)
+      if (matchedFromHahnemann.length > 0) {
+        recommendations.forEach((rec) => {
+          if (!usedIds.has(rec.remedy.id) && matchedFromHahnemann.length < 4) {
+            usedIds.add(rec.remedy.id);
+            matchedFromHahnemann.push({
+              remedy: rec.remedy,
+              rec,
+              isRecommended: false,
+              index: matchedFromHahnemann.length,
+            });
+          }
+        });
+        return matchedFromHahnemann;
+      }
+    }
+
     if (recommendations.length > 0) {
       return recommendations.map((rec, index) => ({
         remedy: rec.remedy,
@@ -136,7 +222,7 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
       }));
     }
     return [];
-  }, [isClarificationApplied, recommendations]);
+  }, [isClarificationApplied, hahnemannData, recommendations, localizedRemedies]);
 
   // Helper: check if a variable string is missing, empty, or unknown
   const isVarMissing = (val: string | undefined | null): boolean => {
@@ -463,6 +549,7 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
     setAcuteAnswers({});
     setExpertResult(null);
     setIsClarificationApplied(false);
+    setHahnemannData(null);
   };
 
   const handleCopyRecommendation = (rec: SymptomMatchResult) => {
@@ -517,12 +604,9 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
         </div>
       </div>
 
-      {/* Main Grid: Left Column Input / Voice, Right Column 4-Variable Extraction (Equal Height & Even Horizontal Distribution) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch animate-in fade-in duration-200">
-        {/* Left Column: Recording & Input Area */}
-        <div className="flex flex-col h-full">
-          {/* 15s Recording Hub */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-xs flex flex-col justify-between h-full space-y-4 relative overflow-hidden">
+      {/* Main Intake Card: Single Full-Width Voice & Text Recording Hub */}
+      <div className="w-full animate-in fade-in duration-200">
+        <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-xs flex flex-col space-y-4 relative overflow-hidden">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
@@ -677,6 +761,40 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
                   </p>
                 )}
               </div>
+
+              {/* Hahnemann Organon §§ 81-104 Anamnesis Launch or Completed Banner */}
+              {!hahnemannData ? (
+                <button
+                  type="button"
+                  onClick={() => setIsHahnemannWizardOpen(true)}
+                  className="w-full py-3 px-4 rounded-xl bg-teal-800 hover:bg-teal-900 text-white text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer border border-teal-700 hover:shadow-sm"
+                >
+                  <Stethoscope className="w-4 h-4 text-teal-300" />
+                  <span>{t('hahnemannLaunchFromAcuteVoice')}</span>
+                </button>
+              ) : (
+                <div className="bg-teal-50/90 border border-teal-200 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-teal-700 shrink-0" />
+                    <div>
+                      <span className="text-xs font-bold text-teal-950 block">
+                        {t('hahnemannAnamnesisCompletedBadge')}
+                      </span>
+                      <span className="text-[11px] text-teal-700">
+                        {hahnemannData.caseType === 'chronisch' ? t('hahnemannCaseTypeChronicShort') : t('hahnemannCaseTypeAcuteShort')} • {hahnemannData.differentialRemedies?.slice(0, 3).join(', ')}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsHahnemannWizardOpen(true)}
+                    className="px-3 py-1.5 rounded-lg bg-white border border-teal-300 hover:bg-teal-100/50 text-teal-900 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer self-start sm:self-auto shrink-0 shadow-2xs"
+                  >
+                    <Edit3 className="w-3.5 h-3.5 text-teal-700" />
+                    <span>{t('hahnemannReopenBtn')}</span>
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Disclaimer: Not a case documentation */}
@@ -689,234 +807,6 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
           </div>
         </div>
 
-        {/* Right Column: 4-Box Classical Analysis & Differential Diagnosis Trigger */}
-        <div className="flex flex-col h-full">
-          {/* 4-Box Classical Extraction Card */}
-          <div className="bg-white rounded-2xl border-2 border-slate-200 p-5 sm:p-6 shadow-xs flex flex-col justify-between h-full space-y-4">
-            <div className="space-y-4">
-              {/* Header Badge */}
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3.5">
-                <div className="flex items-center gap-2.5">
-                  <div className="p-2 rounded-xl bg-teal-700 text-white shadow-2xs">
-                    <Sparkles className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <span className="text-xs font-bold uppercase tracking-wider text-teal-900 block">
-                      {t('acuteExpertAlgoBadge')}
-                    </span>
-                    <span className="text-[10px] text-slate-500">
-                      {t('acuteExpertSub')}
-                    </span>
-                  </div>
-                </div>
-                <div>
-                  <span className={`text-xs font-bold px-3 py-1 rounded-full border flex items-center gap-1.5 ${
-                    isAllFourComplete
-                      ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
-                      : 'bg-slate-100 text-slate-700 border-slate-300'
-                  }`}>
-                    {isAllFourComplete ? (
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                    ) : (
-                      <Clock className="w-3.5 h-3.5 text-slate-500" />
-                    )}
-                    <span>
-                      {completedVariablesCount}/4 {isAllFourComplete ? t('allParamsCompleteLabel') : t('treeStatusIncompleteBadge')}
-                    </span>
-                  </span>
-                </div>
-              </div>
-
-              {/* Step 1: Extrahierte Fall-Analyse - 4 Boxes */}
-              <div className="space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                    <span className="w-4 h-4 rounded-full bg-teal-100 text-teal-800 text-[10px] flex items-center justify-center font-bold">1</span>
-                    <span>{t('step1Title')}</span>
-                  </div>
-                  <span className="text-[10px] text-slate-400">
-                    {t('variableClickToEdit')}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                  {/* Box 1: Hauptbeschwerde (Leitsymptom) */}
-                  <div
-                    onClick={() => setEditingVariable('hauptbeschwerde')}
-                    className={`p-3.5 rounded-xl border transition-all cursor-pointer shadow-2xs group flex flex-col justify-between min-h-[90px] ${
-                      isVarMissing(activeHauptbeschwerde)
-                        ? 'bg-slate-50/90 border-2 border-slate-300 hover:border-teal-500/70 hover:bg-slate-100/80 text-slate-800'
-                        : 'bg-slate-50 hover:bg-slate-100/80 border-slate-200 hover:border-slate-300 text-slate-800'
-                    }`}
-                  >
-                    <div>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className={`text-[10px] font-bold uppercase tracking-wider ${
-                          isVarMissing(activeHauptbeschwerde) ? 'text-slate-600' : 'text-slate-500'
-                        }`}>
-                          {t('step1ChiefComplaint')}
-                        </span>
-                        {isVarMissing(activeHauptbeschwerde) ? (
-                          <Mic className="w-3.5 h-3.5 text-teal-600 animate-pulse" />
-                        ) : (
-                          <Edit3 className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600" />
-                        )}
-                      </div>
-                      <div className={`text-xs ${
-                        isVarMissing(activeHauptbeschwerde) ? 'text-slate-500 italic font-medium' : 'text-slate-900 font-bold'
-                      }`}>
-                        {formatClinicalVariableForDisplay(activeHauptbeschwerde, 'hauptbeschwerde', language) || '—'}
-                      </div>
-                    </div>
-                    {isVarMissing(activeHauptbeschwerde) && (
-                      <div className="mt-2">
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-teal-900 bg-teal-50 border border-teal-200/80 px-2 py-0.5 rounded-md">
-                          <Plus className="w-3 h-3 text-teal-700" />
-                          {t('variableMissingBadge')}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Box 2: Auslöser (Causa) */}
-                  <div
-                    onClick={() => setEditingVariable('causa')}
-                    className={`p-3.5 rounded-xl border transition-all cursor-pointer shadow-2xs group flex flex-col justify-between min-h-[90px] ${
-                      isVarMissing(activeCausa)
-                        ? 'bg-slate-50/90 border-2 border-slate-300 hover:border-teal-500/70 hover:bg-slate-100/80 text-slate-800'
-                        : 'bg-slate-50 hover:bg-slate-100/80 border-slate-200 hover:border-slate-300 text-slate-800'
-                    }`}
-                  >
-                    <div>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className={`text-[10px] font-bold uppercase tracking-wider ${
-                          isVarMissing(activeCausa) ? 'text-slate-600' : 'text-slate-500'
-                        }`}>
-                          {t('step1Causa')}
-                        </span>
-                        {isVarMissing(activeCausa) ? (
-                          <Mic className="w-3.5 h-3.5 text-teal-600 animate-pulse" />
-                        ) : (
-                          <Edit3 className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600" />
-                        )}
-                      </div>
-                      <div className={`text-xs ${
-                        isVarMissing(activeCausa) ? 'text-slate-500 italic font-medium' : 'text-slate-900 font-bold'
-                      }`}>
-                        {formatClinicalVariableForDisplay(activeCausa, 'causa', language) || '—'}
-                      </div>
-                    </div>
-                    {isVarMissing(activeCausa) && (
-                      <div className="mt-2">
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-teal-900 bg-teal-50 border border-teal-200/80 px-2 py-0.5 rounded-md">
-                          <Plus className="w-3 h-3 text-teal-700" />
-                          {t('variableMissingBadge')}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Box 3: Modalitäten */}
-                  <div
-                    onClick={() => setEditingVariable('modalitaeten')}
-                    className={`p-3.5 rounded-xl border transition-all cursor-pointer shadow-2xs group flex flex-col justify-between min-h-[90px] ${
-                      isVarMissing(activeModalitaeten)
-                        ? 'bg-slate-50/90 border-2 border-slate-300 hover:border-teal-500/70 hover:bg-slate-100/80 text-slate-800'
-                        : 'bg-slate-50 hover:bg-slate-100/80 border-slate-200 hover:border-slate-300 text-slate-800'
-                    }`}
-                  >
-                    <div>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className={`text-[10px] font-bold uppercase tracking-wider ${
-                          isVarMissing(activeModalitaeten) ? 'text-slate-600' : 'text-slate-500'
-                        }`}>
-                          {t('step1Modalities')}
-                        </span>
-                        {isVarMissing(activeModalitaeten) ? (
-                          <Mic className="w-3.5 h-3.5 text-teal-600 animate-pulse" />
-                        ) : (
-                          <Edit3 className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600" />
-                        )}
-                      </div>
-                      <div className={`text-xs ${
-                        isVarMissing(activeModalitaeten) ? 'text-slate-500 italic font-medium' : 'text-slate-900 font-bold'
-                      }`}>
-                        {formatClinicalVariableForDisplay(activeModalitaeten, 'modalitaeten', language) || '—'}
-                      </div>
-                    </div>
-                    {isVarMissing(activeModalitaeten) && (
-                      <div className="mt-2">
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-teal-900 bg-teal-50 border border-teal-200/80 px-2 py-0.5 rounded-md">
-                          <Plus className="w-3 h-3 text-teal-700" />
-                          {t('variableMissingBadge')}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Box 4: Begleitsymptome & Gemüt */}
-                  <div
-                    onClick={() => setEditingVariable('begleitsymptome')}
-                    className={`p-3.5 rounded-xl border transition-all cursor-pointer shadow-2xs group flex flex-col justify-between min-h-[90px] ${
-                      isVarMissing(activeBegleitsymptome)
-                        ? 'bg-slate-50/90 border-2 border-slate-300 hover:border-teal-500/70 hover:bg-slate-100/80 text-slate-800'
-                        : 'bg-slate-50 hover:bg-slate-100/80 border-slate-200 hover:border-slate-300 text-slate-800'
-                    }`}
-                  >
-                    <div>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className={`text-[10px] font-bold uppercase tracking-wider ${
-                          isVarMissing(activeBegleitsymptome) ? 'text-slate-600' : 'text-slate-500'
-                        }`}>
-                          {t('step1Concomitants')}
-                        </span>
-                        {isVarMissing(activeBegleitsymptome) ? (
-                          <Mic className="w-3.5 h-3.5 text-teal-600 animate-pulse" />
-                        ) : (
-                          <Edit3 className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600" />
-                        )}
-                      </div>
-                      <div className={`text-xs ${
-                        isVarMissing(activeBegleitsymptome) ? 'text-slate-500 italic font-medium' : 'text-slate-900 font-bold'
-                      }`}>
-                        {formatClinicalVariableForDisplay(activeBegleitsymptome, 'begleitsymptome', language) || '—'}
-                      </div>
-                    </div>
-                    {isVarMissing(activeBegleitsymptome) && (
-                      <div className="mt-2">
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-teal-900 bg-teal-50 border border-teal-200/80 px-2 py-0.5 rounded-md">
-                          <Plus className="w-3 h-3 text-teal-700" />
-                          {t('variableMissingBadge')}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Bottom Differential Diagnosis Action Area */}
-            <div className="mt-auto pt-2">
-              <button
-                type="button"
-                onClick={() => setShowClarificationModal(true)}
-                disabled={!symptomText.trim() && !activeHauptbeschwerde.trim()}
-                className={`w-full py-3 px-4 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer ${
-                  isClarificationApplied
-                    ? 'bg-teal-50 hover:bg-teal-100 text-teal-900 border border-teal-300 shadow-xs'
-                    : (symptomText.trim().length >= 3 || activeHauptbeschwerde.trim().length >= 3)
-                    ? 'bg-teal-700 hover:bg-teal-800 active:bg-teal-900 text-white shadow-sm'
-                    : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                }`}
-              >
-                <SlidersHorizontal className="w-4 h-4 text-teal-200" />
-                <span>{t('startDiffDiagnosisNow')}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Full-Width Remedies Grid (DRUNTER wie auf Bild 1) - ONLY rendered when isClarificationApplied === true and displayedRemedies.length > 0 */}
       {isClarificationApplied && displayedRemedies.length > 0 && (
         <div className="space-y-4 pt-2 animate-in fade-in duration-300">
@@ -927,47 +817,119 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
               </div>
               <div>
                 <h2 className="text-base font-bold text-slate-900">
-                  {t('evaluatedRemediesSectionTitle')}
+                  {hahnemannData ? t('hahnemannOrganonTitle') : t('evaluatedRemediesSectionTitle')}
                 </h2>
                 <p className="text-xs text-slate-500">
-                  {t('evaluatedRemediesSectionDesc')}
+                  {hahnemannData ? t('hahnemannEvaluationSubtitle') : t('evaluatedRemediesSectionDesc')}
                 </p>
               </div>
             </div>
-            <span className="text-xs font-bold text-teal-800 bg-teal-50 border border-teal-200/80 px-3 py-1 rounded-full shrink-0 self-start sm:self-auto">
-              {displayedRemedies.length} {t('recommendationsMatchesFound')}
-            </span>
+            <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
+              <span className="text-xs font-bold text-teal-800 bg-teal-50 border border-teal-200/80 px-3 py-1 rounded-full">
+                {displayedRemedies.length} {t('recommendationsMatchesFound')}
+              </span>
+            </div>
           </div>
 
-          {/* Clinical factors integrated confirmation bar */}
-          <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 flex flex-wrap items-center gap-2 text-xs text-slate-700">
-            <span className="font-bold text-teal-900 flex items-center gap-1">
-              <CheckCircle2 className="w-3.5 h-3.5 text-teal-600" />
-              {t('step1Title')}:
-            </span>
-            <span className="inline-flex items-center gap-1 bg-white border border-slate-200 px-2 py-0.5 rounded-md text-[11px] text-slate-700 font-medium">
-              {t('step1ChiefComplaint')}
-            </span>
-            <span className="inline-flex items-center gap-1 bg-white border border-slate-200 px-2 py-0.5 rounded-md text-[11px] text-slate-700 font-medium">
-              {t('step1Causa')}
-            </span>
-            <span className="inline-flex items-center gap-1 bg-white border border-slate-200 px-2 py-0.5 rounded-md text-[11px] text-slate-700 font-medium">
-              {t('step1Modalities')}
-            </span>
-            <span className="inline-flex items-center gap-1 bg-white border border-slate-200 px-2 py-0.5 rounded-md text-[11px] text-slate-700 font-medium">
-              {t('step1Concomitants')}
-            </span>
-            {recognizedSymptoms.length > 0 && (
-              <span className="inline-flex items-center gap-1 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-md text-[11px] text-teal-800 font-medium">
-                {recognizedSymptoms.length} {t('recognizedSymptomsTitle')}
+          {/* Clinical factors integrated confirmation bar / Hahnemann Organon §§ 81-104 Auswertung */}
+          {hahnemannData ? (
+            <div className="bg-teal-50/70 border border-teal-200/80 rounded-xl p-3.5 space-y-2 text-xs">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2 font-bold text-teal-950">
+                  <Stethoscope className="w-4 h-4 text-teal-700 shrink-0" />
+                  <span>{t('hahnemannStructurePillars')}</span>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
+                    hahnemannData.caseType === 'chronisch'
+                      ? 'bg-amber-100 text-amber-900 border border-amber-200'
+                      : 'bg-teal-100 text-teal-900 border border-teal-200'
+                  }`}>
+                    {hahnemannData.caseType === 'chronisch' ? t('hahnemannCaseTypeChronicShort') : t('hahnemannCaseTypeAcuteShort')}
+                  </span>
+                </div>
+                <span className="text-[11px] font-semibold text-teal-800 bg-white border border-teal-200 px-2.5 py-0.5 rounded-full shadow-2xs">
+                  {t('hahnemannClinicalNoCustomerData')}
+                </span>
+              </div>
+
+              {/* 6 Hahnemann Pillars Chips (Strictly symptom-based, no patient personal data) */}
+              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                {hahnemannData.matrix.causa && (
+                  <span className="inline-flex items-center gap-1 bg-white border border-slate-200 px-2.5 py-1 rounded-lg text-[11px] text-slate-800 shadow-2xs font-medium">
+                    <span className="font-bold text-blue-700 text-[10px] uppercase">Causa:</span>
+                    <span className="truncate max-w-[220px]">{hahnemannData.matrix.causa}</span>
+                  </span>
+                )}
+                {hahnemannData.matrix.lokalisierung && (
+                  <span className="inline-flex items-center gap-1 bg-white border border-slate-200 px-2.5 py-1 rounded-lg text-[11px] text-slate-800 shadow-2xs font-medium">
+                    <span className="font-bold text-teal-700 text-[10px] uppercase">Lokalisation:</span>
+                    <span className="truncate max-w-[220px]">{hahnemannData.matrix.lokalisierung}</span>
+                    {hahnemannData.matrix.strahlungsoptionen && (
+                      <span className="text-slate-500 text-[10px]">({hahnemannData.matrix.strahlungsoptionen})</span>
+                    )}
+                  </span>
+                )}
+                {hahnemannData.matrix.empfindung && (
+                  <span className="inline-flex items-center gap-1 bg-white border border-slate-200 px-2.5 py-1 rounded-lg text-[11px] text-slate-800 shadow-2xs font-medium">
+                    <span className="font-bold text-rose-700 text-[10px] uppercase">Sensation:</span>
+                    <span className="truncate max-w-[220px]">{hahnemannData.matrix.empfindung}</span>
+                  </span>
+                )}
+                {hahnemannData.matrix.modalitaeten && (
+                  <span className="inline-flex items-center gap-1 bg-white border border-slate-200 px-2.5 py-1 rounded-lg text-[11px] text-slate-800 shadow-2xs font-medium">
+                    <span className="font-bold text-purple-700 text-[10px] uppercase">Modalitäten:</span>
+                    <span className="truncate max-w-[220px]">{hahnemannData.matrix.modalitaeten}</span>
+                  </span>
+                )}
+                {hahnemannData.matrix.gemuet && (
+                  <span className="inline-flex items-center gap-1 bg-white border border-slate-200 px-2.5 py-1 rounded-lg text-[11px] text-slate-800 shadow-2xs font-medium">
+                    <span className="font-bold text-indigo-700 text-[10px] uppercase">Gemüt:</span>
+                    <span className="truncate max-w-[220px]">{hahnemannData.matrix.gemuet}</span>
+                  </span>
+                )}
+                {hahnemannData.matrix.begleitsymptome && hahnemannData.matrix.begleitsymptome.length > 0 && (
+                  <span className="inline-flex items-center gap-1 bg-white border border-slate-200 px-2.5 py-1 rounded-lg text-[11px] text-slate-800 shadow-2xs font-medium">
+                    <span className="font-bold text-amber-700 text-[10px] uppercase">Begleit:</span>
+                    <span className="truncate max-w-[220px]">{hahnemannData.matrix.begleitsymptome.join(', ')}</span>
+                  </span>
+                )}
+                {hahnemannData.matrix.ursaechlicher_zusammenhang && (
+                  <span className="inline-flex items-center gap-1 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg text-[10px] text-emerald-800 font-bold">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                    {t('hahnemannCausalityConfirmed')}
+                  </span>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 flex flex-wrap items-center gap-2 text-xs text-slate-700">
+              <span className="font-bold text-teal-900 flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5 text-teal-600" />
+                {t('step1Title')}:
               </span>
-            )}
-            {Object.keys(acuteAnswers).length > 0 && (
-              <span className="inline-flex items-center gap-1 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-md text-[11px] text-teal-800 font-medium">
-                {Object.keys(acuteAnswers).length} {t('acuteQuestionsAnsweredCount')}
+              <span className="inline-flex items-center gap-1 bg-white border border-slate-200 px-2 py-0.5 rounded-md text-[11px] text-slate-700 font-medium">
+                {t('step1ChiefComplaint')}
               </span>
-            )}
-          </div>
+              <span className="inline-flex items-center gap-1 bg-white border border-slate-200 px-2 py-0.5 rounded-md text-[11px] text-slate-700 font-medium">
+                {t('step1Causa')}
+              </span>
+              <span className="inline-flex items-center gap-1 bg-white border border-slate-200 px-2 py-0.5 rounded-md text-[11px] text-slate-700 font-medium">
+                {t('step1Modalities')}
+              </span>
+              <span className="inline-flex items-center gap-1 bg-white border border-slate-200 px-2 py-0.5 rounded-md text-[11px] text-slate-700 font-medium">
+                {t('step1Concomitants')}
+              </span>
+              {recognizedSymptoms.length > 0 && (
+                <span className="inline-flex items-center gap-1 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-md text-[11px] text-teal-800 font-medium">
+                  {recognizedSymptoms.length} {t('recognizedSymptomsTitle')}
+                </span>
+              )}
+              {Object.keys(acuteAnswers).length > 0 && (
+                <span className="inline-flex items-center gap-1 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-md text-[11px] text-teal-800 font-medium">
+                  {Object.keys(acuteAnswers).length} {t('acuteQuestionsAnsweredCount')}
+                </span>
+              )}
+            </div>
+          )}
 
         {/* 3-Column Responsive Cards Grid matching Bild 1 */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -1291,6 +1253,34 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
           onSave={(varKey, val) => handleSaveVariable(varKey, val)}
         />
       )}
+
+      {/* Homoeopathic In-Depth Wizard Modal (Hahnemann Organon §§ 81–104) */}
+      <ComplaintQuestionsWizardModal
+        isOpen={isHahnemannWizardOpen}
+        onClose={() => setIsHahnemannWizardOpen(false)}
+        chiefComplaint={symptomText || activeHauptbeschwerde || ''}
+        initialCaseType="akut"
+        onTransferToAnamnese={(data) => {
+          setHahnemannData(data);
+          setIsClarificationApplied(true);
+          const matrix = data.matrix;
+          setVariableOverrides(prev => ({
+            ...prev,
+            causa: matrix.causa || prev.causa,
+            modalitaeten: matrix.modalitaeten || prev.modalitaeten,
+            begleitsymptome: (matrix.begleitsymptome && matrix.begleitsymptome.length > 0) 
+              ? matrix.begleitsymptome.join(', ') 
+              : prev.begleitsymptome,
+            hauptbeschwerde: matrix.lokalisierung 
+              ? (matrix.empfindung ? `${matrix.lokalisierung} - ${matrix.empfindung}` : matrix.lokalisierung) 
+              : prev.hauptbeschwerde,
+          }));
+
+          if (data.summaryText) {
+            setSymptomText(prev => prev ? `${prev}\n\n[Hahnemann Organon §§ 81–104]\n${data.summaryText}` : data.summaryText);
+          }
+        }}
+      />
     </div>
   );
 };

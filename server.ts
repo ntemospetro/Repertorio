@@ -687,10 +687,17 @@ Antworte AUSSCHLIESSLICH mit einem validen JSON-Objekt im folgenden Format (ohne
     }
   });
 
-  // Hahnemann & Bönninghausen 6-Säulen-Analyse-Engine mit strengem NLP-Filter, kompakter Logik (max. 3 Schritte) & Einzelfragen-Prinzip
+  // Hahnemann & Bönninghausen Analyse-Engine nach Organon der Heilkunst §§ 81–104
   app.post("/api/hahnemann-analysis", async (req, res) => {
     try {
-      const { text, currentMatrix, conversationHistory = [], language = "de", forceComplete = false } = req.body;
+      const { 
+        text, 
+        currentMatrix, 
+        conversationHistory = [], 
+        language = "de", 
+        forceComplete = false,
+        caseType = "akut" // "akut" (§ 99) oder "chronisch" (§§ 83–98)
+      } = req.body;
       if (!text || typeof text !== "string" || !text.trim()) {
         return res.status(400).json({ error: "text is required" });
       }
@@ -723,48 +730,67 @@ Antworte AUSSCHLIESSLICH mit einem validen JSON-Objekt im folgenden Format (ohne
       const all6PillarsFilled = hasCausa && hasLokalisierung && hasEmpfindung && hasModalitaeten && hasBegleitsymptome && hasGemuet;
       
       // Loop protection: avoid endless question loops while ensuring all 6 pillars are asked
-      const maxStepsReached = conversationHistory.length >= 6;
-      const mustComplete = forceComplete || all6PillarsFilled || (maxStepsReached && hasGemuet && hasModalitaeten && hasEmpfindung);
+      const maxStepsReached = conversationHistory.length >= 7;
+      const mustComplete = forceComplete || all6PillarsFilled || (maxStepsReached && hasGemuet && hasModalitaeten && hasEmpfindung && hasCausa);
 
       const prompt = `
-Du bist die zentrale Logik-Engine für eine professionelle Anwendung zur klassischen homöopathischen Anamnese (nach Hahnemann und Bönninghausen). Deine Aufgabe ist es, Patienten-Freitexte präzise zu analysieren, irrelevante Daten zu filtern, eine exakte 6-Säulen-Symptomenmatrix aufzubauen und den Anwender durch eine ZIELFÜHRENDE, STRUKTURIERTE Befragung zu leiten.
+Du bist die zentrale Logik-Engine für eine professionelle homöopathische Anamnese streng nach den Prinzipien von Samuel Hahnemann und den Paragraphen 81 bis 104 des Organon der Heilkunst.
 
-### OBERSTE REGEL: ALLE 6 SÄULEN MÜSSEN ZWINGEND ERHOBEN WERDEN!
-Es müssen alle 6 Punkte der klassischen homöopathischen Matrix abgefragt werden. Keine Säule darf fehlen:
-1. Causa (Auslöser - z. B. kalte Luft/Wind, Nässe, Ärger, Schreck, Überanstrengung, Durchnässung): ${hasCausa ? "Erfasst: " + currentMatrix.causa : "NOCH NICHT ERFASST (MUSS ABGEFRAGT WERDEN!)"}
-2. Lokalisierung (Ort / Gewebe - bei mehreren Symptomen wie z.B. Kopf UND Bein BEIDE erfassen): ${hasLokalisierung ? "Erfasst: " + currentMatrix.lokalisierung : "NOCH NICHT ERFASST (MUSS ABGEFRAGT WERDEN!)"}
-3. Empfindung (Sensation / Schmerzcharakter - z. B. stechend, brennend, klopfend, dumpf, wie zerschlagen): ${hasEmpfindung ? "Erfasst: " + currentMatrix.empfindung : "NOCH NICHT ERFASST (MUSS ABGEFRAGT WERDEN!)"}
-4. Modalitäten (Was bessert / verschlechtert - Wärme, Kälte, Ruhe, Bewegung, Druck, Tageszeit): ${hasModalitaeten ? "Erfasst: " + currentMatrix.modalitaeten : "NOCH NICHT ERFASST (MUSS ABGEFRAGT WERDEN!)"}
-5. Begleitsymptome (Concomitants - Durstverhalten, Schweiß, Frösteln, Zunge, Gesichtsfarbe): ${hasBegleitsymptome ? "Erfasst: " + currentMatrix.begleitsymptome.join(", ") : "NOCH NICHT ERFASST (MUSS ABGEFRAGT WERDEN!)"}
-6. Gemüt (Psychischer Zustand - Reizbarkeit, Ruhelosigkeit, Ängstlichkeit, Apathie, Verlangen nach Ruhe): ${hasGemuet ? "Erfasst: " + currentMatrix.gemuet : "NOCH NICHT ERFASST (MUSS ABGEFRAGT WERDEN!)"}
+### LEITLINIEN AUS DEM ORGANON DER HEILKUNST (§§ 81–104):
+- § 81–82: Individualitätsprinzip – Jeder Patient wird unvoreingenommen und absolut individuell erfasst.
+- § 83: Vorurteilslose Beobachtung und treue Aufnahme des Krankheitsbildes ohne Spekulationen.
+- § 84: Der Patient schildert seine Beschwerden; die Begleiter berichten. Der Arzt hört aufmerksam zu, ohne zu unterbrechen.
+- §§ 85–90: Gezieltes Nachfragen zur Präzisierung. Jedes Einzelsymptom wird isoliert abgefragt. Niemals Suggestivfragen stellen, die dem Patienten die Antwort in den Mund legen.
+- §§ 91–93: Unterscheidung chronische vs. akute Krankheiten. Bei chronischen Leiden: Erforschung früherer allopathischer Behandlungen, Arzneiwirkungen, Unterdrückungen und der Krankheitsgeschichte.
+- § 94: Untersuchung von Lebensweise, Diät, Gemütszustand, häuslichen Umständen und Genesungshindernissen.
+- §§ 95–98: Chronische Krankheiten: Beachtung kleiner, scheinbar unbedeutender Eigenheiten des Patienten.
+- § 99: Akute Krankheiten: Erfragung des unmittelbaren Anlasses/Auslösers (Causa), des Beginns und des bisherigen akuten Verlaufs.
+- §§ 100–102: Zusammenhängende / epidemische Erkrankungen: Erfassung des Gesamtbildes durch Verknüpfung der Symptome.
+- §§ 103–104: Vollständiges Fixieren des Krankheitsbildes (Totalität der Symptome als Fundament des Simile).
 
-WENN MEHRERE SYMPTOME ERKANNT WURDEN (z. B. Kopf UND Bein):
-Beziehe alle Fragen und den Zusammenhang auf BEIDE/ALLE erkannten Symptome und deren Ausstrahlung/Modalitäten.
-
-LOOP-VERHINDERUNG & KEINE ENDLOSSCHLEIFEN:
-- Keinen endlosen Loop entstehen lassen! Stelle keine Fragen zu erfundenen oder unzusammenhängenden neuen Beschwerden, die nichts mit den erstlokalisierten Symptomen zu tun haben.
-- Wenn eine Säule fehlt, frage gezielt und prägnant nach dieser fehlenden Säule (Genau EINE nächste Frage mit 4 bis 6 Antwortoptionen).
-
-ABSCHLUSS-REGEL:
-Soll jetzt abgeschlossen werden? ${mustComplete ? "JA (Abschluss der 6-Säulen-Matrix)" : "NEIN (weiter nach fehlenden Säulen fragen)"}.
-${mustComplete ? `
--> ABSCHLUSS-MODUS:
-- Setze zwingend "analyse_status": "completed".
-- Setze "naechste_frage": "".
-- Setze "auswahl_optionen": [].
-- "end_analyse_zusammenfassung": Erstelle eine hochpräzise, fundierte und professionelle "Zusammenfassung für den Therapeuten:" streng nach Hahnemann & Bönninghausen basierend auf den erhobenen Fakten (Causa, Lokalisierung, Empfindung, Modalitäten, Begleitsymptome, Gemüt, führendes Simile).
-- "aktuelle_mittel_differenzierung": 3 bis 5 passendste lateinische Arzneimittel.
-- "sich_ergebende_fragen": Falls sich aus den Antworten entscheidende Differenzialfragen zwischen den Top-Mitteln ergeben, stelle GENAU 1 BIS MAXIMAL 2 fokussierte Kontrollfragen (in Maßen, niemals übertreiben, kein endloser Fragen-Loop!).
+### STRIKTE UNTERSCHEIDUNG: AKUT VS. CHRONISCH:
+Aktueller Fall-Typ: "${caseType === 'chronisch' ? 'CHRONISCHER FALL (§§ 83–98 Organon)' : 'AKUTER FALL (§ 99 Organon)'}"
+${caseType === 'chronisch' ? `
+- Bei chronischen Krankheiten erforschst du umfassend die gesamte Historie inklusive früherer Behandlungen, allopathischer Medikamente, Unterdrückungen und Lebensweise.
+- Frage nach dem langfristigen Verlauf, Beginn vor Monaten/Jahren und früheren Krankheitsereignissen.
 ` : `
--> LAUFENDE ERHEBUNG (Schritt ${currentStepCount}):
-- Frage nach der nächsten noch fehlenden Säule (insbesondere Causa, Lokalisierung, Empfindung, Modalitäten, Begleitsymptome oder Gemüt).
-- Stelle genau EINE präzise Einzelfrage im Feld "naechste_frage".
-- Bereite 4 bis 6 treffende homöopathische Antwortoptionen im Feld "auswahl_optionen" vor.
-- Setze "analyse_status": "in_progress".
+- Bei akuten Beschwerden erfragst du den unmittelbaren Auslöser (Causa: Kälte, Zugluft, Durchnässung, Schreck, Zorn, Überanstrengung, Speisen etc.) und die aktuellen akuten Symptome samt raschem/stetigem Beginn.
 `}
 
-### STRENGES INTERPRETATIONS- UND HALLUZINATIONSVERBOT:
-Du darfst NIEMALS Symptome hinzudichten. Nur explizit genannte Fakten des Patienten dürfen in die Matrix aufgenommen werden. Was nicht genannt wurde, bleibt "null" (wird als "Noch nicht genannt" geführt).
+### URSÄCHLICHER ZUSAMMENHANG BEI MEHREREN BESCHWERDEN:
+Bei der Aufnahme mehrerer Beschwerden (z. B. Fieber und Kopfschmerzen, Husten und Halsschmerzen) prüfst du IMMER zuerst, ob ein ursächlicher Zusammenhang besteht. Hinterfrage, ob beide durch denselben Auslöser/Infekt hervorgerufen wurden, um sie als zusammenhängenden Komplex zu erfassen.
+
+### HOMÖOPATHISCHE STRUKTUR FÜR JEDES SYMPTOM:
+Für jedes Symptom nutzt du diese 5 Säulen / Dimensionen:
+1. Causa (Auslöser oder Beginn): ${hasCausa ? "Erfasst: " + currentMatrix.causa : "NOCH NICHT ERFASST (MUSS ABGEFRAGT WERDEN!)"}
+2. Lokalisation (Ort und Strahlungsoptionen / Ausstrahlung): ${hasLokalisierung ? "Erfasst: " + currentMatrix.lokalisierung : "NOCH NICHT ERFASST (MUSS ABGEFRAGT WERDEN!)"}
+3. Sensation (Qualität der Beschwerde / Schmerzcharakter): ${hasEmpfindung ? "Erfasst: " + currentMatrix.empfindung : "NOCH NICHT ERFASST (MUSS ABGEFRAGT WERDEN!)"}
+4. Modalitäten (Verschlechterung oder Besserung durch Wärme, Kälte, Ruhe, Bewegung, Druck, Tageszeit): ${hasModalitaeten ? "Erfasst: " + currentMatrix.modalitaeten : "NOCH NICHT ERFASST (MUSS ABGEFRAGT WERDEN!)"}
+5. Begleitsymptome und das Gemüt (Concomitants wie Durst, Schweiß, Temperaturverlangen UND psychischer Zustand / Gemütsverfassung wie Unruhe, Reizbarkeit, Furcht, Apathie): ${hasBegleitsymptome && hasGemuet ? "Erfasst: Begleit=" + currentMatrix.begleitsymptome.join(", ") + " | Gemüt=" + currentMatrix.gemuet : "NOCH NICHT VOLLSTÄNDIG ERFASST (MUSS ABGEFRAGT WERDEN!)"}
+
+### VERMEIDUNG HALLUZINIERTER SYMPTOME:
+Erfasse jeden Patienten absolut individuell und vermeide halluzinierte Symptome! Nimm nur auf, was der Patient explizit geäußert hat. Füge keine hypothetischen Symptome hinzu, die nicht genannt wurden.
+
+### VORDEFINIERTE ANKLICKBARE OPTIONEN:
+Für die Fragen generierst du im Pop-up stets 4 bis 6 vordefinierte, treffende homöopathische anklickbare Optionen. (Der Anwender erhält im Frontend dazu stets ein verbindliches Freitextfeld).
+
+### BEENDIGUNG ODER WEITERE FRAGE:
+Soll jetzt abgeschlossen werden? ${mustComplete ? "JA (Abschluss der Organon-Anamnese)" : "NEIN (nächste Frage stellen)"}.
+${mustComplete ? `
+-> ABSCHLUSS-MODUS:
+- "analyse_status": "completed"
+- "naechste_frage": ""
+- "auswahl_optionen": []
+- "end_analyse_zusammenfassung": Hochpräzise Zusammenfassung für den Therapeuten streng nach Hahnemann & Bönninghausen (Causa/Auslöser, Lokalisation & Strahlung, Sensation, Modalitäten, Begleitsymptome & Gemüt, ursächlicher Zusammenhang/Symptomkomplex, führendes Simile).
+- "aktuelle_mittel_differenzierung": 3 bis 5 passendste lateinische Arzneimittel.
+- "sich_ergebende_fragen": Falls entscheidende Nuancen zwischen den Top-Mitteln verbleiben, GENAU 1 BIS MAXIMAL 2 gezielte Kontrollfragen.
+` : `
+-> LAUFENDE ERHEBUNG (Schritt ${currentStepCount}):
+- "analyse_status": "in_progress"
+- Frage gezielt nach der nächsten fehlenden Säule bzw. dem ursächlichen Zusammenhang bei mehreren Beschwerden.
+- "naechste_frage": Genau EINE präzise Einzelfrage ohne Suggestion.
+- "auswahl_optionen": 4 bis 6 treffende homöopathische Antwortoptionen zum Anklicken.
+`}
 
 ### AUSGABE-FORMAT (Strikte JSON-Struktur):
 Antworte AUSSCHLIESSLICH mit validem JSON in genau diesem Format (ohne Markdown, ohne Text davor oder danach):
@@ -776,10 +802,16 @@ Antworte AUSSCHLIESSLICH mit validem JSON in genau diesem Format (ohne Markdown,
     "empfindung": null,
     "modalitaeten": null,
     "begleitsymptome": [],
-    "gemuet": null
+    "gemuet": null,
+    "strahlungsoptionen": null,
+    "ursaechlicher_zusammenhang": null,
+    "fruehere_behandlungen_und_historie": null
   },
+  "falltyp": "${caseType}",
+  "mehrere_symptome_erkannt": false,
+  "symptomkomplex_bestaetigt": false,
   "ignorierte_daten": [],
-  "kontroll_und_nachfrage_logik": "Begründung der nächsten Frage bezogen auf die 6 Säulen",
+  "kontroll_und_nachfrage_logik": "Begründung nach Organon §§ 81-104",
   "naechste_frage": "${mustComplete ? "" : "Hier steht genau eine gezielte Einzelfrage zur fehlenden Säule"}",
   "auswahl_optionen": ${mustComplete ? "[]" : '["Option 1", "Option 2", "Option 3", "Option 4"]'},
   "auswahl_typ": "multiple",
@@ -789,7 +821,7 @@ Antworte AUSSCHLIESSLICH mit validem JSON in genau diesem Format (ohne Markdown,
     {
       "id": "q1",
       "frage": "Differenzierende Frage zwischen den führenden Mitteln",
-      "grund": "Klärung der Leitsymptome",
+      "grund": "Klärung der Leitsymptome nach Organon",
       "kategorie": "modalitaeten",
       "optionen": ["Option A", "Option B", "Weder noch"]
     }
@@ -823,7 +855,7 @@ SPRACHE: Alle Fragen, Optionen und Zusammenfassungen in ${targetLanguageName} fo
         therapistName: req.body?.therapistName,
         therapistEmail: req.body?.therapistEmail,
         endpoint: "/api/hahnemann-analysis",
-        actionName: "Hahnemann 6-Säulen Akutanalyse",
+        actionName: `Hahnemann Organon §§ 81-104 Anamnese (${caseType})`,
         model: "gemini-3.8-flash",
         promptTokens: usage.promptTokenCount || Math.ceil(prompt.length / 4),
         candidatesTokens: usage.candidatesTokenCount || Math.ceil((response.text || "").length / 4),
@@ -832,13 +864,13 @@ SPRACHE: Alle Fragen, Optionen und Zusammenfassungen in ${targetLanguageName} fo
       const rawParsed = JSON.parse(response.text || "{}");
 
       // Robust fallback safeguard: enforce completion if steps reached or forceComplete was passed
-      if (mustComplete || conversationHistory.length >= 3) {
+      if (mustComplete) {
         rawParsed.analyse_status = "completed";
         rawParsed.naechste_frage = "";
         rawParsed.auswahl_optionen = [];
         if (!rawParsed.end_analyse_zusammenfassung) {
           const m = rawParsed.wichtige_symptom_fragmente || currentMatrix || {};
-          rawParsed.end_analyse_zusammenfassung = `Klassische Akut-Synthese nach Hahnemann & Bönninghausen:\n• Causa: ${m.causa || 'Keine spezifische Causa ermittelt'}\n• Lokalisierung: ${m.lokalisierung || 'Systemisch'}\n• Empfindung: ${m.empfindung || 'Nicht näher spezifiziert'}\n• Modalitäten: ${m.modalitaeten || 'Keine spezifischen Modalitäten'}\n• Begleitsymptome: ${Array.isArray(m.begleitsymptome) && m.begleitsymptome.length > 0 ? m.begleitsymptome.join(', ') : 'Keine auffälligen Concomitants'}\n• Gemüt: ${m.gemuet || 'Ausgeglichen'}`;
+          rawParsed.end_analyse_zusammenfassung = `Klassische Synthese nach Samuel Hahnemann (Organon §§ 81–104):\n• Causa (Auslöser / Beginn): ${m.causa || 'Keine spezifische Causa ermittelt'}\n• Lokalisation & Strahlungsoptionen: ${m.lokalisierung || 'Systemisch'}\n• Sensation (Qualität): ${m.empfindung || 'Nicht näher spezifiziert'}\n• Modalitäten (Besserung / Verschlimmerung): ${m.modalitaeten || 'Keine spezifischen Modalitäten'}\n• Begleitsymptome: ${Array.isArray(m.begleitsymptome) && m.begleitsymptome.length > 0 ? m.begleitsymptome.join(', ') : 'Keine auffälligen Concomitants'}\n• Gemüt (Seelischer Zustand): ${m.gemuet || 'Ausgeglichen'}\n• Symptomkomplex: ${m.ursaechlicher_zusammenhang || 'Einheitlicher Symptomkomplex'}`;
         }
       }
 

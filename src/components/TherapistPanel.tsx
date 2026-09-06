@@ -3785,8 +3785,10 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
         onTransferToAnamnese={(data) => {
           const matrix = data.matrix;
           const updatedQuestions: AnamnesisQuestion[] = [
+            ...(matrix.ursaechlicher_zusammenhang ? [{ id: 'q_ursaechlich', question: 'Ursächlicher Zusammenhang (Symptomkomplex)', type: 'text' as const, answerText: matrix.ursaechlicher_zusammenhang }] : []),
+            ...(matrix.fruehere_behandlungen_und_historie ? [{ id: 'q_historie', question: 'Krankheitshistorie & Frühere Behandlungen', type: 'text' as const, answerText: matrix.fruehere_behandlungen_und_historie }] : []),
             ...(matrix.causa ? [{ id: 'q_causa', question: 'Auslöser / Ursache (Causa)', type: 'text' as const, answerText: matrix.causa }] : []),
-            ...(matrix.lokalisierung ? [{ id: 'q_lok', question: 'Genaue Lokalisierung / Gewebe', type: 'text' as const, answerText: matrix.lokalisierung }] : []),
+            ...(matrix.lokalisierung ? [{ id: 'q_lok', question: 'Genaue Lokalisierung / Gewebe', type: 'text' as const, answerText: matrix.strahlungsoptionen ? `${matrix.lokalisierung} (Ausstrahlung: ${matrix.strahlungsoptionen})` : matrix.lokalisierung }] : []),
             ...(matrix.empfindung ? [{ id: 'q_empf', question: 'Empfindung & Schmerzcharakter', type: 'text' as const, answerText: matrix.empfindung }] : []),
             ...(matrix.modalitaeten ? [{ id: 'q_mod', question: 'Modalitäten (Besser / Schlechter)', type: 'text' as const, answerText: matrix.modalitaeten }] : []),
             ...(matrix.begleitsymptome && matrix.begleitsymptome.length > 0 ? [{ id: 'q_begleit', question: 'Begleitsymptome (Concomitants)', type: 'text' as const, answerText: matrix.begleitsymptome.join(', ') }] : []),
@@ -3797,11 +3799,11 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
             const updated: Partial<PatientCase> = {
               ...prev,
               anamnesisQuestions: updatedQuestions,
-              spontanbericht: prev.spontanbericht ? `${prev.spontanbericht}\n\n[6-Säulen-Matrix]\n${data.summaryText}` : `[6-Säulen-Matrix]\n${data.summaryText}`,
+              spontanbericht: prev.spontanbericht ? `${prev.spontanbericht}\n\n[Hahnemann Organon Anamnese]\n${data.summaryText}` : `[Hahnemann Organon Anamnese]\n${data.summaryText}`,
               modalitaetenBesser: matrix.modalitaeten?.includes('>') ? matrix.modalitaeten : prev.modalitaetenBesser,
               modalitaetenSchlechter: matrix.modalitaeten?.includes('<') ? matrix.modalitaeten : prev.modalitaetenSchlechter,
               gemuetPsyche: matrix.gemuet || prev.gemuetPsyche,
-              lokalsymptome: matrix.lokalisierung || prev.lokalsymptome,
+              lokalsymptome: matrix.strahlungsoptionen ? `${matrix.lokalisierung} (Ausstrahlung: ${matrix.strahlungsoptionen})` : (matrix.lokalisierung || prev.lokalsymptome),
             };
 
             if (prev.id) {

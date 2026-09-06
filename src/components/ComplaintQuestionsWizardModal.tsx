@@ -17,15 +17,19 @@ import {
   HeartPulse,
   Brain,
   FilterX,
-  CheckSquare
+  CheckSquare,
+  History,
+  GitBranch,
+  ShieldAlert,
+  Radio
 } from 'lucide-react';
 import { useTranslation } from '../i18n/LanguageContext';
-import { TranslationKey } from '../i18n/translations';
 import { VoiceInputButton } from './VoiceInputButton';
 import { 
   Hahnemann6Pillars, 
   HahnemannAnalysisResult, 
-  runHahnemannAnalysis 
+  runHahnemannAnalysis,
+  CaseType
 } from '../services/hahnemannEngineService';
 
 interface ComplaintQuestionsWizardModalProps {
@@ -33,10 +37,12 @@ interface ComplaintQuestionsWizardModalProps {
   onClose: () => void;
   chiefComplaint: string;
   patientName?: string;
+  initialCaseType?: CaseType;
   onTransferToAnamnese: (data: {
     matrix: Hahnemann6Pillars;
     summaryText: string;
     differentialRemedies: string[];
+    caseType?: CaseType;
   }) => void;
 }
 
@@ -45,10 +51,12 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
   onClose,
   chiefComplaint,
   patientName,
+  initialCaseType = 'akut',
   onTransferToAnamnese,
 }) => {
   const { t, language } = useTranslation();
 
+  const [caseType, setCaseType] = useState<CaseType>(initialCaseType);
   const [currentAnswer, setCurrentAnswer] = useState('');
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -59,13 +67,15 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
 
   const initialParsedRef = useRef(false);
 
-  // Initialize analysis on modal open with chief complaint text
+  // Initialize analysis on modal open with chief complaint text and selected caseType
   useEffect(() => {
     if (isOpen && !initialParsedRef.current) {
       initialParsedRef.current = true;
       setIsProcessing(true);
+      const activeType = initialCaseType || 'akut';
+      setCaseType(activeType);
       const textToAnalyze = chiefComplaint && chiefComplaint.trim().length > 0 ? chiefComplaint.trim() : 'Akute Beschwerden';
-      runHahnemannAnalysis(textToAnalyze, undefined, [], language)
+      runHahnemannAnalysis(textToAnalyze, undefined, [], language, false, activeType)
         .then((res) => {
           setAnalysisResult(res);
         })
@@ -80,7 +90,7 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
     if (!isOpen) {
       initialParsedRef.current = false;
     }
-  }, [isOpen, chiefComplaint, language]);
+  }, [isOpen, chiefComplaint, language, initialCaseType]);
 
   if (!isOpen) return null;
 
@@ -91,6 +101,9 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
     modalitaeten: null,
     begleitsymptome: [],
     gemuet: null,
+    strahlungsoptionen: null,
+    ursaechlicher_zusammenhang: null,
+    fruehere_behandlungen_und_historie: null,
   };
 
   const hasCausa = Boolean(matrix.causa && matrix.causa !== 'Noch nicht genannt' && matrix.causa.trim().length > 0);
@@ -111,6 +124,29 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
 
   const all6PillarsFilled = hasCausa && hasLokalisierung && hasEmpfindung && hasModalitaeten && hasBegleitsymptome && hasGemuet;
 
+  // Toggle caseType: Akut (§ 99) vs Chronisch (§§ 83–98)
+  const handleSwitchCaseType = async (newType: CaseType) => {
+    if (newType === caseType || isProcessing) return;
+    setCaseType(newType);
+    setIsProcessing(true);
+    try {
+      const queryText = currentAnswer.trim() || chiefComplaint || 'Symptombeschreibung';
+      const updatedRes = await runHahnemannAnalysis(
+        queryText,
+        matrix,
+        conversationHistory,
+        language,
+        false,
+        newType
+      );
+      setAnalysisResult(updatedRes);
+    } catch (err) {
+      console.error('Failed to switch case type:', err);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const handleSendAnswer = async (answerTextToSend?: string) => {
     const textToSubmit = (answerTextToSend !== undefined ? answerTextToSend : currentAnswer).trim();
     if (!textToSubmit || !analysisResult || isProcessing) return;
@@ -122,8 +158,8 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
     ];
     setConversationHistory(updatedHistory);
 
-    // Only set isLastStep if all 6 pillars are fulfilled or safety limit of 6 steps is reached
-    const isLastStep = all6PillarsFilled || updatedHistory.length >= 6;
+    // Only set isLastStep if all 6 pillars are fulfilled or safety limit of 8 steps is reached
+    const isLastStep = all6PillarsFilled || updatedHistory.length >= 8;
 
     try {
       const nextResult = await runHahnemannAnalysis(
@@ -131,10 +167,12 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
         matrix,
         updatedHistory,
         language,
-        isLastStep
+        isLastStep,
+        caseType
       );
       setAnalysisResult(nextResult);
       setCurrentAnswer('');
+      setSelectedOptions([]);
     } catch (err) {
       console.error('Failed to process answer:', err);
     } finally {
@@ -146,16 +184,18 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
     if (!analysisResult || isProcessing) return;
     setIsProcessing(true);
     try {
-      const textToSubmit = currentAnswer.trim() || 'Abschluss der Akut-Anamnese';
+      const textToSubmit = currentAnswer.trim() || 'Abschluss der Anamnese nach Organon';
       const nextResult = await runHahnemannAnalysis(
         textToSubmit,
         matrix,
         conversationHistory,
         language,
-        true
+        true,
+        caseType
       );
       setAnalysisResult(nextResult);
       setCurrentAnswer('');
+      setSelectedOptions([]);
     } catch (err) {
       console.error('Failed to complete analysis:', err);
     } finally {
@@ -224,7 +264,7 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
     setClarifyingAnswers({});
     setCustomClarifyingInput({});
     setIsProcessing(true);
-    runHahnemannAnalysis(chiefComplaint, undefined, [], language)
+    runHahnemannAnalysis(chiefComplaint, undefined, [], language, false, caseType)
       .then((res) => {
         setAnalysisResult(res);
       })
@@ -235,77 +275,90 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
 
   const handleSaveAndTransfer = () => {
     if (!analysisResult) return;
-    const summary = analysisResult.end_analyse_zusammenfassung || `• Causa: ${matrix.causa || '—'}\n• Lokalisierung: ${matrix.lokalisierung || '—'}\n• Empfindung: ${matrix.empfindung || '—'}\n• Modalitäten: ${matrix.modalitaeten || '—'}\n• Begleitsymptome: ${matrix.begleitsymptome.join(', ') || '—'}\n• Gemüt: ${matrix.gemuet || '—'}`;
+    const summary = analysisResult.end_analyse_zusammenfassung || 
+      `• Fall-Charakter: ${caseType === 'chronisch' ? 'Chronischer Fall (§§ 83–98 Organon)' : 'Akuter Fall (§ 99 Organon)'}\n` +
+      `• Causa: ${matrix.causa || '—'}\n` +
+      `• Lokalisation: ${matrix.lokalisierung || '—'}${matrix.strahlungsoptionen ? ` (${t('hahnemannRadiationLabel')} ${matrix.strahlungsoptionen})` : ''}\n` +
+      `• Empfindung: ${matrix.empfindung || '—'}\n` +
+      `• Modalitäten: ${matrix.modalitaeten || '—'}\n` +
+      `• Begleitsymptome: ${matrix.begleitsymptome.join(', ') || '—'}\n` +
+      `• Gemüt: ${matrix.gemuet || '—'}` +
+      (matrix.ursaechlicher_zusammenhang ? `\n• Symptomkomplex: ${matrix.ursaechlicher_zusammenhang}` : '') +
+      (matrix.fruehere_behandlungen_und_historie ? `\n• Historie / Behandlungen: ${matrix.fruehere_behandlungen_und_historie}` : '');
+
     onTransferToAnamnese({
       matrix,
       summaryText: summary,
       differentialRemedies: analysisResult.aktuelle_mittel_differenzierung || [],
+      caseType,
     });
     onClose();
   };
 
-  // Quick suggestion chips based on missing pillars for rapid completion
-  const getQuickSuggestions = () => {
+  // Predefined options based on missing dimensions
+  const getFallbackOptions = () => {
     if (!matrix.causa || matrix.causa === 'Noch nicht genannt') {
       return [
-        'Kälteeinwirkung (kalter Wind, Zugluft, Unterkühlung)',
-        'Durchnässung / Feuchtigkeit / Nässe',
+        'Kälteeinwirkung (kalter Wind, Zugluft, Durchnässung)',
         'Plötzlicher Schreck / Schock oder akute Angst',
         'Ärger, Zorn oder emotionale Kränkung',
         'Körperliche Überanstrengung oder Verheben',
-        'Kein spezifischer Auslöser bekannt'
+        'Nahrungsfehler oder Verdorbenes',
+        'Kein spezifischer äußerer Auslöser bekannt'
       ];
     }
     if (!matrix.lokalisierung || matrix.lokalisierung === 'Noch nicht genannt') {
       return [
-        'Kopf / Stirn / Schläfen / Augen',
-        'Hals / Rachen / Mandeln / Kehlkopf',
-        'Brustkorb / Lunge / Bronchien',
-        'Magen-Darm-Trakt / Bauchbereich',
-        'Bewegungsapparat / Beine / Gelenke / Rücken',
-        'Ganzkörperlich / Systemisch (Fieber, Frösteln)'
+        'Kopf / Stirn / Schläfen / Augen (Ausstrahlung in Nacken)',
+        'Hals / Rachen / Mandeln (Ausstrahlung zu den Ohren)',
+        'Brustkorb / Bronchien (Ausstrahlung in Rücken)',
+        'Magen-Darm-Trakt / Oberbauch (Ausstrahlung um den Nabel)',
+        'Gelenke / Bewegungsapparat (Ausstrahlung entlang der Nerven)',
+        'Systemisch / Ganzkörperlich (Fieber, Schüttelfrost)'
       ];
     }
     if (!matrix.empfindung || matrix.empfindung === 'Noch nicht genannt') {
       return [
-        'Trockene, glühende und brennende Hitze',
-        'Starker Schüttelfrost und Frösteln trotz Hitze',
-        'Klopfende, pulsierende Schmerzen wie Herzhämmern',
-        'Wie zerschlagen am ganzen Körper mit Gliederschmerzen',
-        'Stechende, spitze Schmerzen bei jeder Bewegung'
+        'Brennend wie glühende Kohlen',
+        'Klopfend, hämmernd und pulsierend wie Herztakte',
+        'Stechend wie Nadeln bei jeder Bewegung',
+        'Dumpf drückend wie ein schweres Gewicht',
+        'Wund, zerschlagen und empfindlich gegen Berührung'
       ];
     }
     if (!matrix.modalitaeten || matrix.modalitaeten === 'Noch nicht genannt') {
       return [
-        'Spürbar besser durch Wärme und Zudecken',
-        'Viel besser an kühler Frischluft, Zimmerwärme ist unerträglich',
-        'Besser bei absoluter Bewegungslosigkeit und Ruhe',
-        'Schlechter durch die geringste Bewegung oder Erschütterung',
-        'Besser durch festen Druck oder Bandagierung'
+        'Besser durch Wärme und Zudecken, schlechter durch Kälte',
+        'Besser an kühler Frischluft, Zimmerwärme ist unerträglich',
+        'Besser bei absoluter Ruhe und Bewegungslosigkeit',
+        'Schlechter durch die geringste Erschütterung und Bewegung',
+        'Besser durch festen Druck oder Gegenstemmen'
       ];
     }
     if (!matrix.begleitsymptome || matrix.begleitsymptome.length === 0) {
       return [
-        'Großer Durst auf große Mengen kaltes Wasser, trockene Haut ohne Schweiß',
-        'Vollständige Durstlosigkeit trotz hohem Fieber',
-        'Heißer Schweiß am Kopf und rotes Gesicht',
-        'Trockene Lippen und ständiges Verlangen nach kleinen Schlucken',
-        'Frösteln und Schüttelfrost bei der geringsten Entblößung'
+        'Großer Durst auf große Mengen kaltes Wasser, trockene Hitze',
+        'Völlige Durstlosigkeit trotz hohem Fieber',
+        'Starker Schweiß, der nicht erleichtert',
+        'Frösteln und Schüttelfrost bei der geringsten Entblößung',
+        'Kopfschmerz bei Fieberanstieg'
       ];
     }
     if (!matrix.gemuet || matrix.gemuet === 'Noch nicht genannt') {
       return [
-        'Ängstliche, motorische Unruhe mit Furcht und Herzklopfen',
-        'Apathisch, müde, will seine Ruhe haben und nicht gestört werden',
+        'Ängstliche motorische Unruhe, Furcht vor dem Alleinsein',
+        'Apathisch, schläfrig, will in Ruhe gelassen werden',
         'Sehr gereizt und ärgerlich über jede Ansprache',
-        'Weinend und verzagt, sucht Nähe und Trost',
-        'Ausgeglichen und gefasst, keine auffällige Gemütsveränderung'
+        'Weinend, sucht Trost, Zuneigung und Gesellschaft',
+        'Gefasst und unauffällig'
       ];
     }
     return [];
   };
 
-  const suggestions = getQuickSuggestions();
+  const activeOptions = (analysisResult?.auswahl_optionen && analysisResult.auswahl_optionen.length > 0)
+    ? analysisResult.auswahl_optionen
+    : getFallbackOptions();
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-900/60 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-200">
@@ -314,17 +367,17 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-6 py-4 bg-linear-to-r from-teal-800 to-slate-900 text-white flex items-center justify-between shrink-0 shadow-xs">
+        <div className="px-6 py-4 bg-linear-to-r from-teal-800 to-slate-900 text-white flex flex-wrap items-center justify-between gap-3 shrink-0 shadow-xs">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="p-2 rounded-xl bg-teal-600/30 border border-teal-500/40 text-teal-200 shrink-0">
+            <div className="p-2.5 rounded-xl bg-teal-600/30 border border-teal-500/40 text-teal-200 shrink-0">
               <Stethoscope className="w-5 h-5" />
             </div>
             <div className="min-w-0">
-              <h3 className="text-base sm:text-lg font-bold truncate leading-tight">
-                {t('hahnemannWizardTitle')}
+              <h3 className="text-base sm:text-lg font-bold truncate leading-tight flex items-center gap-2">
+                <span>{t('hahnemannOrganonTitle')}</span>
               </h3>
               <p className="text-xs text-teal-200/90 truncate">
-                {t('hahnemannWizardSubtitle')}
+                {t('hahnemannOrganonSubtitle')}
                 {patientName ? ` • ${patientName}` : ''}
               </p>
             </div>
@@ -344,12 +397,54 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
           </div>
         </div>
 
+        {/* Top Control Bar: Case Type Selector (§ 99 Akut vs §§ 83–98 Chronisch) */}
+        <div className="px-6 py-3 bg-teal-50/70 border-b border-teal-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-teal-950 flex items-center gap-1.5 shrink-0">
+              <Radio className="w-3.5 h-3.5 text-teal-700" />
+              {t('hahnemannCaseTypeLabel')}
+            </span>
+            <div className="inline-flex rounded-lg border border-teal-200 bg-white p-0.5 shadow-2xs">
+              <button
+                type="button"
+                onClick={() => handleSwitchCaseType('akut')}
+                disabled={isProcessing}
+                className={`px-3 py-1 rounded-md font-bold transition-all cursor-pointer ${
+                  caseType === 'akut'
+                    ? 'bg-teal-700 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-teal-900 hover:bg-teal-50'
+                }`}
+              >
+                {t('hahnemannCaseTypeAcuteShort')}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSwitchCaseType('chronisch')}
+                disabled={isProcessing}
+                className={`px-3 py-1 rounded-md font-bold transition-all cursor-pointer ${
+                  caseType === 'chronisch'
+                    ? 'bg-indigo-700 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-indigo-900 hover:bg-indigo-50'
+                }`}
+              >
+                {t('hahnemannCaseTypeChronicShort')}
+              </button>
+            </div>
+          </div>
+
+          <div className="text-[11px] text-teal-900/80 italic">
+            {caseType === 'akut' 
+              ? t('hahnemannCaseTypeAcuteDesc')
+              : t('hahnemannCaseTypeChronicDesc')}
+          </div>
+        </div>
+
         {/* 6-Pillar Stepper Progress Line */}
-        <div className="px-6 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-1 overflow-x-auto text-[11px]">
+        <div className="px-6 py-2 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-1 overflow-x-auto text-[11px]">
           {[
             { key: 'causa', label: t('hahnemannPillarCausa'), isFilled: Boolean(matrix.causa && matrix.causa !== 'Noch nicht genannt'), icon: Activity },
-            { key: 'lok', label: t('hahnemannPillarLokalisierung'), isFilled: Boolean(matrix.lokalisierung && matrix.lokalisierung !== 'Noch nicht genannt'), icon: MapPin },
-            { key: 'empf', label: t('hahnemannPillarEmpfindung'), isFilled: Boolean(matrix.empfindung && matrix.empfindung !== 'Noch nicht genannt'), icon: Flame },
+            { key: 'lok', label: t('hahnemannPillarLokalisation'), isFilled: Boolean(matrix.lokalisierung && matrix.lokalisierung !== 'Noch nicht genannt'), icon: MapPin },
+            { key: 'empf', label: t('hahnemannPillarSensation'), isFilled: Boolean(matrix.empfindung && matrix.empfindung !== 'Noch nicht genannt'), icon: Flame },
             { key: 'mod', label: t('hahnemannPillarModalitaeten'), isFilled: Boolean(matrix.modalitaeten && matrix.modalitaeten !== 'Noch nicht genannt'), icon: Sliders },
             { key: 'begleit', label: t('hahnemannPillarBegleit'), isFilled: Boolean(matrix.begleitsymptome && matrix.begleitsymptome.length > 0), icon: HeartPulse },
             { key: 'gemuet', label: t('hahnemannPillarGemuet'), isFilled: Boolean(matrix.gemuet && matrix.gemuet !== 'Noch nicht genannt'), icon: Brain },
@@ -365,7 +460,7 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
                 }`}
               >
                 <Icon className={`w-3.5 h-3.5 ${pillar.isFilled ? 'text-teal-600' : 'text-slate-400'}`} />
-                <span>{idx + 1}. {pillar.label.split(' ')[1]}</span>
+                <span>{idx + 1}. {pillar.label.split(' ')[0]}</span>
                 {pillar.isFilled ? (
                   <CheckCircle2 className="w-3 h-3 text-teal-600 shrink-0" />
                 ) : (
@@ -377,9 +472,22 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
         </div>
 
         {/* Modal Scrollable Body */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-6 space-y-5">
           
-          {/* SECTION 1: WAS BISHER VERSTANDEN WURDE (Die 6-Säulen-Matrix) */}
+          {/* Interpretationsverbot & Keine halluzinierten Symptome Notice (Organon § 83–84) */}
+          <div className="p-3 bg-amber-50/90 border border-amber-200/90 rounded-xl flex items-start gap-2.5 text-xs text-amber-900 shadow-2xs">
+            <ShieldAlert className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+            <div>
+              <span className="font-bold block">
+                {t('hahnemannStrictBanBadge')} (Organon §§ 83–84)
+              </span>
+              <span>
+                {t('hahnemannNoHallucinationsNotice')}
+              </span>
+            </div>
+          </div>
+
+          {/* SECTION 1: WAS BISHER VERSTANDEN WURDE (Hahnemann-Symptomstruktur) */}
           <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
               <div>
@@ -392,16 +500,56 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
                 </p>
               </div>
 
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-amber-50 text-amber-900 border border-amber-200 text-[11px] font-medium self-start sm:self-auto">
-                <AlertCircle className="w-3.5 h-3.5 text-amber-700" />
-                {t('hahnemannStrictBanBadge')}
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-teal-50 text-teal-900 border border-teal-200 text-[11px] font-medium self-start sm:self-auto">
+                <Check className="w-3.5 h-3.5 text-teal-700" />
+                {caseType === 'chronisch' ? t('hahnemannCaseTypeChronicShort') : t('hahnemannCaseTypeAcuteShort')}
               </span>
             </div>
+
+            {/* Prüfung auf ursächlichen Zusammenhang bei mehreren Beschwerden (§§ 81–104) */}
+            {(analysisResult?.mehrere_symptome_erkannt || matrix.ursaechlicher_zusammenhang) && (
+              <div className={`p-3.5 rounded-xl border flex items-start gap-3 text-xs ${
+                matrix.ursaechlicher_zusammenhang && (matrix.ursaechlicher_zusammenhang.toLowerCase().includes('ja') || matrix.ursaechlicher_zusammenhang.toLowerCase().includes('zeitgleich'))
+                  ? 'bg-emerald-50/80 border-emerald-300 text-emerald-950'
+                  : 'bg-sky-50/80 border-sky-300 text-sky-950'
+              }`}>
+                <GitBranch className="w-4 h-4 text-sky-700 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <span className="font-bold block">
+                    {t('hahnemannCausalityCheckTitle')}
+                  </span>
+                  <p className="text-slate-700">
+                    {matrix.ursaechlicher_zusammenhang ? (
+                      <span className="font-semibold text-emerald-800">
+                        {t('hahnemannCausalityConfirmed')}: {matrix.ursaechlicher_zusammenhang}
+                      </span>
+                    ) : (
+                      t('hahnemannCausalityCheckDesc')
+                    )}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Chronischer Fall: Historie & frühere Behandlungen Box */}
+            {caseType === 'chronisch' && (
+              <div className="p-3.5 rounded-xl bg-indigo-50/70 border border-indigo-200 text-xs text-indigo-950 flex items-start gap-3">
+                <History className="w-4 h-4 text-indigo-700 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <span className="font-bold block">
+                    {t('hahnemannChronicHistoryTitle')}
+                  </span>
+                  <p className={matrix.fruehere_behandlungen_und_historie ? 'font-medium text-slate-800' : 'italic text-slate-400'}>
+                    {matrix.fruehere_behandlungen_und_historie || t('hahnemannNotSpecifiedYet')}
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Matrix 6-Pillar Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               
-              {/* 1. Causa */}
+              {/* 1. Causa (Auslöser oder Beginn) */}
               <div className="p-3 rounded-lg bg-slate-50/80 border border-slate-200/80 space-y-1">
                 <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">
                   {t('hahnemannPillarCausa')}
@@ -411,27 +559,33 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
                 </p>
               </div>
 
-              {/* 2. Lokalisierung */}
+              {/* 2. Lokalisation (Ort & Strahlungsoptionen) */}
               <div className="p-3 rounded-lg bg-slate-50/80 border border-slate-200/80 space-y-1">
                 <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">
-                  {t('hahnemannPillarLokalisierung')}
+                  {t('hahnemannPillarLokalisation')}
                 </span>
                 <p className={`text-xs ${matrix.lokalisierung ? 'text-slate-900 font-semibold' : 'text-slate-400 italic'}`}>
                   {matrix.lokalisierung || t('hahnemannNotSpecifiedYet')}
                 </p>
+                {matrix.strahlungsoptionen && (
+                  <p className="text-[11px] text-teal-800 font-medium">
+                    <span className="font-semibold">{t('hahnemannRadiationLabel')} </span>
+                    {matrix.strahlungsoptionen}
+                  </p>
+                )}
               </div>
 
-              {/* 3. Empfindung */}
+              {/* 3. Sensation (Qualität der Beschwerde) */}
               <div className="p-3 rounded-lg bg-slate-50/80 border border-slate-200/80 space-y-1">
                 <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">
-                  {t('hahnemannPillarEmpfindung')}
+                  {t('hahnemannPillarSensation')}
                 </span>
                 <p className={`text-xs ${matrix.empfindung ? 'text-slate-900 font-semibold' : 'text-slate-400 italic'}`}>
                   {matrix.empfindung || t('hahnemannNotSpecifiedYet')}
                 </p>
               </div>
 
-              {/* 4. Modalitäten */}
+              {/* 4. Modalitäten (Verschlechterung / Besserung) */}
               <div className="p-3 rounded-lg bg-slate-50/80 border border-slate-200/80 space-y-1">
                 <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">
                   {t('hahnemannPillarModalitaeten')}
@@ -441,12 +595,12 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
                 </p>
               </div>
 
-              {/* 5. Begleitsymptome */}
+              {/* 5. Begleitsymptome (Concomitants) */}
               <div className="p-3 rounded-lg bg-slate-50/80 border border-slate-200/80 space-y-1">
                 <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">
                   {t('hahnemannPillarBegleit')}
                 </span>
-                {matrix.begleitsymptome.length > 0 ? (
+                {matrix.begleitsymptome && matrix.begleitsymptome.length > 0 ? (
                   <ul className="text-xs text-slate-900 font-semibold list-disc list-inside space-y-0.5">
                     {matrix.begleitsymptome.map((b, i) => (
                       <li key={i}>{b}</li>
@@ -459,7 +613,7 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
                 )}
               </div>
 
-              {/* 6. Gemüt */}
+              {/* 6. Gemüt (Psychischer Zustand / Seelische Verfassung) */}
               <div className="p-3 rounded-lg bg-slate-50/80 border border-slate-200/80 space-y-1">
                 <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">
                   {t('hahnemannPillarGemuet')}
@@ -470,7 +624,7 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
               </div>
             </div>
 
-            {/* Ignorierte Daten / NLP-Filterung falls vorhanden */}
+            {/* Filterung / Ignorierte Daten falls vorhanden */}
             {analysisResult?.ignorierte_daten && analysisResult.ignorierte_daten.length > 0 && (
               <div className="p-3 rounded-lg bg-slate-100/70 border border-slate-200 text-xs flex items-start gap-2.5">
                 <FilterX className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
@@ -499,10 +653,7 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
                     {t('hahnemannNextQuestionTitle')}
                   </span>
                   <span className="px-2 py-0.5 rounded bg-teal-100 text-teal-800 text-[11px] font-semibold">
-                    {t('hahnemannStepIndicator', { current: Math.min(conversationHistory.length + 1, 3), max: 3 })}
-                  </span>
-                  <span className="hidden sm:inline-block px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[10px] font-medium border border-slate-200">
-                    {t('hahnemannCompactModeNotice')}
+                    {t('hahnemannStepIndicator', { current: conversationHistory.length + 1, max: 6 })}
                   </span>
                 </div>
 
@@ -531,90 +682,71 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
                 )}
               </div>
 
-              {/* Auswahlkästen (Interactive Choice Boxes / Checkboxes) */}
-              {(() => {
-                const availableOptions = (analysisResult.auswahl_optionen && analysisResult.auswahl_optionen.length > 0)
-                  ? analysisResult.auswahl_optionen
-                  : suggestions;
-
-                return availableOptions.length > 0 ? (
-                  <div className="space-y-3 pt-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                        <CheckSquare className="w-3.5 h-3.5 text-teal-700" />
-                        {t('hahnemannSelectionBoxesTitle')}
-                      </span>
-                      {selectedOptions.length > 0 && (
-                        <span className="text-[11px] font-semibold text-teal-800 bg-teal-100 px-2 py-0.5 rounded-full border border-teal-200">
-                          {t('hahnemannOptionsSelectedCount', { count: selectedOptions.length })}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                      {availableOptions.map((opt, oIdx) => {
-                        const isSelected = selectedOptions.includes(opt);
-                        return (
-                          <div
-                            key={oIdx}
-                            onClick={() => {
-                              if (analysisResult?.auswahl_typ === 'single') {
-                                setSelectedOptions([opt]);
-                              } else {
-                                setSelectedOptions(prev =>
-                                  prev.includes(opt) ? prev.filter(x => x !== opt) : [...prev, opt]
-                                );
-                              }
-                            }}
-                            className={`p-3 rounded-xl border-2 transition-all cursor-pointer flex items-start gap-3 select-none ${
-                              isSelected
-                                ? 'border-teal-600 bg-teal-50/90 text-teal-950 shadow-xs ring-1 ring-teal-600/30'
-                                : 'border-slate-200 bg-white hover:border-teal-300 hover:bg-slate-50/90 text-slate-800'
-                            }`}
-                          >
-                            <div className={`mt-0.5 w-4 h-4 rounded-md border flex items-center justify-center shrink-0 transition-colors ${
-                              isSelected
-                                ? 'bg-teal-700 border-teal-700 text-white'
-                                : 'border-slate-300 bg-white'
-                            }`}>
-                              {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
-                            </div>
-                            <span className={`text-xs leading-snug ${isSelected ? 'font-bold' : 'font-medium'}`}>
-                              {opt}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-
+              {/* VORDEFINIERTE ANKLICKBARE OPTIONEN (Auswahlkästen) */}
+              {activeOptions && activeOptions.length > 0 && (
+                <div className="space-y-3 pt-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                      <CheckSquare className="w-3.5 h-3.5 text-teal-700" />
+                      {t('hahnemannSelectionBoxesTitle')}
+                    </span>
                     {selectedOptions.length > 0 && (
-                      <div className="flex justify-end pt-1">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const combined = currentAnswer.trim()
-                              ? `${selectedOptions.join(', ')}. ${currentAnswer.trim()}`
-                              : selectedOptions.join(', ');
-                            handleSendAnswer(combined);
-                            setSelectedOptions([]);
-                          }}
-                          disabled={isProcessing}
-                          className="px-4 py-2 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-xs sm:text-sm font-bold flex items-center gap-2 transition-all shadow-xs cursor-pointer disabled:opacity-50"
-                        >
-                          <CheckCircle2 className="w-4 h-4" />
-                          <span>{t('hahnemannConfirmSelectionBtn')} ({selectedOptions.length})</span>
-                        </button>
-                      </div>
+                      <span className="text-[11px] font-semibold text-teal-800 bg-teal-100 px-2 py-0.5 rounded-full border border-teal-200">
+                        {t('hahnemannOptionsSelectedCount', { count: selectedOptions.length })}
+                      </span>
                     )}
                   </div>
-                ) : null;
-              })()}
 
-              {/* Answer Input Area with Textarea + Voice Button */}
-              <div className="space-y-2 pt-2 border-t border-teal-100">
-                <span className="text-[11px] font-medium text-slate-600 block">
-                  {t('hahnemannOrCustomText')}
-                </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {activeOptions.map((opt, oIdx) => {
+                      const isSelected = selectedOptions.includes(opt);
+                      return (
+                        <div
+                          key={oIdx}
+                          onClick={() => {
+                            if (analysisResult?.auswahl_typ === 'single') {
+                              setSelectedOptions([opt]);
+                            } else {
+                              setSelectedOptions(prev =>
+                                prev.includes(opt) ? prev.filter(x => x !== opt) : [...prev, opt]
+                              );
+                            }
+                          }}
+                          className={`p-3 rounded-xl border-2 transition-all cursor-pointer flex items-start gap-3 select-none ${
+                            isSelected
+                              ? 'border-teal-600 bg-teal-50/90 text-teal-950 shadow-xs ring-1 ring-teal-600/30'
+                              : 'border-slate-200 bg-white hover:border-teal-300 hover:bg-slate-50/90 text-slate-800'
+                          }`}
+                        >
+                          <div className={`mt-0.5 w-4 h-4 rounded-md border flex items-center justify-center shrink-0 transition-colors ${
+                            isSelected
+                              ? 'bg-teal-700 border-teal-700 text-white'
+                              : 'border-slate-300 bg-white'
+                          }`}>
+                            {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                          </div>
+                          <span className={`text-xs leading-snug ${isSelected ? 'font-bold' : 'font-medium'}`}>
+                            {opt}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* VERBINDLICHES FREITEXTFELD (MANDATORY FREE-TEXT FIELD) MIT VOICE-BUTTON */}
+              <div className="space-y-2 pt-3 border-t border-teal-100">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-teal-700" />
+                    {t('hahnemannMandatoryFreeText')}
+                  </span>
+                  <span className="text-[11px] text-slate-500 font-medium">
+                    {t('hahnemannFreeTextRequired')}
+                  </span>
+                </div>
+
                 <div className="relative flex items-end gap-2">
                   <textarea
                     value={currentAnswer}
@@ -623,14 +755,13 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
                       if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
                         const combined = selectedOptions.length > 0
-                          ? `${selectedOptions.join(', ')}. ${currentAnswer.trim()}`
+                          ? (currentAnswer.trim() ? `${selectedOptions.join(', ')}. ${currentAnswer.trim()}` : selectedOptions.join(', '))
                           : currentAnswer.trim();
                         handleSendAnswer(combined);
-                        setSelectedOptions([]);
                       }
                     }}
                     disabled={isProcessing}
-                    placeholder={t('hahnemannYourAnswerPlaceholder')}
+                    placeholder={t('hahnemannMandatoryFreeTextPlaceholder')}
                     rows={2}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-teal-600 focus:border-transparent text-xs sm:text-sm text-slate-800 placeholder-slate-400 resize-none shadow-2xs"
                   />
@@ -647,15 +778,20 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
                   </div>
                 </div>
 
-                <div className="flex justify-end">
+                <div className="flex items-center justify-between pt-1">
+                  <span className="text-[11px] text-slate-400">
+                    {selectedOptions.length > 0 
+                      ? `${selectedOptions.length} Option(en) ausgewählt + Freitext wird übertragen`
+                      : 'Option(en) wählen und/oder Freitext eingeben'}
+                  </span>
+
                   <button
                     type="button"
                     onClick={() => {
                       const combined = selectedOptions.length > 0
-                        ? `${selectedOptions.join(', ')}. ${currentAnswer.trim()}`
+                        ? (currentAnswer.trim() ? `${selectedOptions.join(', ')}. ${currentAnswer.trim()}` : selectedOptions.join(', '))
                         : currentAnswer.trim();
                       handleSendAnswer(combined);
-                      setSelectedOptions([]);
                     }}
                     disabled={(!currentAnswer.trim() && selectedOptions.length === 0) || isProcessing}
                     className="px-4 py-2 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-xs sm:text-sm font-semibold flex items-center gap-2 transition-all shadow-xs disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
@@ -720,77 +856,11 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
                 </div>
               )}
 
-              {/* SICH ERGEBENDE FRAGEN AUS ANTWORTEN (IM MASSE) */}
+              {/* SICH ERGEBENDE KLÄRENDE KONTROLLFRAGEN AUS DEN ANTWORTEN (STRENG BEGRENZT AUF MAX 3) */}
               {(() => {
                 const clarifyingQuestions = (analysisResult?.sich_ergebende_fragen && analysisResult.sich_ergebende_fragen.length > 0)
                   ? analysisResult.sich_ergebende_fragen.slice(0, 3)
-                  : [
-                      ...(!matrix.gemuet || matrix.gemuet === t('hahnemannNotSpecifiedYet') ? [{
-                        id: 'q_gemuet',
-                        frage: language === 'de' 
-                          ? 'Wie ist die seelische Verfassung / das Gemüt während der Beschwerden?' 
-                          : 'How is the emotional state / mind during the complaints?',
-                        grund: language === 'de'
-                          ? 'Zentrale Hahnemannsche Leitsäule zur exakten Differenzierung des Simile.'
-                          : 'Crucial Hahnemannian pillar for precise simile differentiation.',
-                        kategorie: 'gemuet' as const,
-                        optionen: language === 'de' ? [
-                          'Reizbar, zornig, will absolute Ruhe (Bryonia / Nux vomica)',
-                          'Ängstliche motorische Unruhe mit Furcht (Aconitum / Arsenicum)',
-                          'Apathisch, schläfrig, will nicht gestört werden (Gelsemium)',
-                          'Weinend, verlangt nach Trost und Nähe (Pulsatilla)',
-                          'Ausgeglichen / unauffällig'
-                        ] : [
-                          'Irritable, angry, wants absolute quiet',
-                          'Anxious restlessness with fear',
-                          'Apathetic, drowsy, wants no disturbance',
-                          'Weeping, desires comfort and company',
-                          'Calm and balanced'
-                        ]
-                      }] : []),
-                      {
-                        id: 'q_modalitaet',
-                        frage: language === 'de'
-                          ? 'Wie reagieren die Schmerzen auf feste Bandagierung oder starken Druck versus Bewegung?'
-                          : 'How do the pains respond to firm pressure / bandage versus motion?',
-                        grund: language === 'de'
-                          ? 'Differenziert Druckbesserung (Silicea, Bryonia) von Berührungsüberempfindlichkeit (Belladonna).'
-                          : 'Differentiates pressure relief (Silicea, Bryonia) from touch sensitivity (Belladonna).',
-                        kategorie: 'modalitaeten' as const,
-                        optionen: language === 'de' ? [
-                          'Fester Druck / feste Bandagierung bessert deutlich',
-                          'Geringste Berührung und Bewegung verschlimmern',
-                          'Besserung durch sanfte Bewegung an frischer Luft',
-                          'Weder Druck noch Bewegung verändern die Schmerzen'
-                        ] : [
-                          'Firm pressure / tight wrap improves distinctly',
-                          'Slightest touch and motion aggravate',
-                          'Relief from gentle motion in open air',
-                          'Neither pressure nor motion changes the pain'
-                        ]
-                      },
-                      {
-                        id: 'q_begleit',
-                        frage: language === 'de'
-                          ? 'Wie verhält sich das Durst- und Temperaturverlangen während des Zustands?'
-                          : 'How does thirst and temperature sensation behave during the condition?',
-                        grund: language === 'de'
-                          ? 'Wichtiges Generalsymptom nach Bönninghausen zur Absicherung des Mittels.'
-                          : 'Important general symptom according to Boenninghausen.',
-                        kategorie: 'begleitsymptome' as const,
-                        optionen: language === 'de' ? [
-                          'Großer Durst auf große Mengen kaltes Wasser',
-                          'Völlige Durstlosigkeit trotz Hitze/Schmerz',
-                          'Ausgeprägtes Frösteln, Verlangen nach warmer Einhüllung',
-                          'Abneigung gegen frische Luft und Kälte'
-                        ] : [
-                          'Great thirst for large amounts of cold water',
-                          'Complete thirstlessness despite heat/pain',
-                          'Marked chilliness, desires warm wrapping',
-                          'Aversion to open air and cold'
-                        ]
-                      }
-                    ].slice(0, 3);
+                  : [];
 
                 if (clarifyingQuestions.length === 0) return null;
 
@@ -871,7 +941,7 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
                                 <span>{currentAnswerText}</span>
                               </div>
                             ) : (
-                              /* If Not Answered */
+                              /* If Not Answered: Predefined Options + Free-Text with Voice */
                               <div className="mt-2.5 space-y-2">
                                 <div className="flex flex-wrap gap-1.5">
                                   {q.optionen.map((opt, oIdx) => (
@@ -886,7 +956,7 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
                                   ))}
                                 </div>
 
-                                {/* Custom Answer + Voice Button */}
+                                {/* Mandatory Free-Text Field for Clarifying Question + Voice Button */}
                                 <div className="flex items-center gap-1.5 pt-0.5">
                                   <input
                                     type="text"
@@ -897,7 +967,7 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
                                         handleAnswerClarifyingQuestion(q.id, customText, q.kategorie);
                                       }
                                     }}
-                                    placeholder={t('hahnemannCustomAnswerPlaceholder')}
+                                    placeholder={t('hahnemannMandatoryFreeTextPlaceholder')}
                                     className="flex-1 px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs text-slate-800 placeholder-slate-400 focus:outline-hidden focus:ring-1 focus:ring-teal-600 shadow-2xs"
                                   />
                                   <VoiceInputButton

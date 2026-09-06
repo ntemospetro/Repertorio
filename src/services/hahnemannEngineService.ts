@@ -8,6 +8,8 @@
 
 import { getActiveTherapist } from './storage';
 
+export type CaseType = 'akut' | 'chronisch';
+
 export interface Hahnemann6Pillars {
   causa: string | null;
   lokalisierung: string | null;
@@ -15,13 +17,16 @@ export interface Hahnemann6Pillars {
   modalitaeten: string | null;
   begleitsymptome: string[];
   gemuet: string | null;
+  strahlungsoptionen?: string | null;
+  ursaechlicher_zusammenhang?: string | null;
+  fruehere_behandlungen_und_historie?: string | null;
 }
 
 export interface HahnemannClarifyingQuestion {
   id: string;
   frage: string;
   grund: string;
-  kategorie?: 'gemuet' | 'modalitaeten' | 'begleitsymptome' | 'empfindung' | 'causa';
+  kategorie?: 'gemuet' | 'modalitaeten' | 'begleitsymptome' | 'empfindung' | 'causa' | 'zusammenhang' | 'historie';
   optionen: string[];
   beantwortet?: string;
 }
@@ -29,6 +34,9 @@ export interface HahnemannClarifyingQuestion {
 export interface HahnemannAnalysisResult {
   analyse_status: 'in_progress' | 'completed';
   wichtige_symptom_fragmente: Hahnemann6Pillars;
+  falltyp?: CaseType;
+  mehrere_symptome_erkannt?: boolean;
+  symptomkomplex_bestaetigt?: boolean;
   ignorierte_daten: string[];
   kontroll_und_nachfrage_logik: string;
   naechste_frage: string;
@@ -47,7 +55,8 @@ export async function runHahnemannAnalysis(
   currentMatrix?: Partial<Hahnemann6Pillars>,
   conversationHistory: Array<{ question: string; answer: string }> = [],
   language: string = 'de',
-  forceComplete: boolean = false
+  forceComplete: boolean = false,
+  caseType: CaseType = 'akut'
 ): Promise<HahnemannAnalysisResult> {
   const trimmed = (text || '').trim();
   const activeTherapist = getActiveTherapist();
@@ -64,6 +73,7 @@ export async function runHahnemannAnalysis(
         conversationHistory,
         language,
         forceComplete,
+        caseType,
         therapistId: activeTherapist?.id || 'th-101',
         therapistName: activeTherapist ? `${activeTherapist.vorname} ${activeTherapist.nachname}` : undefined,
         therapistEmail: activeTherapist?.email,
@@ -80,19 +90,20 @@ export async function runHahnemannAnalysis(
     console.warn('Network error reaching /api/hahnemann-analysis, using local logic engine:', err);
   }
 
-  // Fallback to local rule engine adhering strictly to commands 1-5
-  return evaluateHahnemannLocally(trimmed, currentMatrix, conversationHistory, language, forceComplete);
+  // Fallback to local rule engine adhering strictly to Organon §§ 81-104
+  return evaluateHahnemannLocally(trimmed, currentMatrix, conversationHistory, language, forceComplete, caseType);
 }
 
 /**
- * Deterministic local classical homoeopathic logic engine (Hahnemann & Bönninghausen)
+ * Deterministic local classical homoeopathic logic engine (Hahnemann Organon §§ 81–104)
  */
 export function evaluateHahnemannLocally(
   newText: string,
   existingMatrix?: Partial<Hahnemann6Pillars>,
   _history: Array<{ question: string; answer: string }> = [],
   _language: string = 'de',
-  forceComplete: boolean = false
+  forceComplete: boolean = false,
+  caseType: CaseType = 'akut'
 ): HahnemannAnalysisResult {
   const matrix: Hahnemann6Pillars = {
     causa: existingMatrix?.causa || null,
@@ -101,6 +112,9 @@ export function evaluateHahnemannLocally(
     modalitaeten: existingMatrix?.modalitaeten || null,
     begleitsymptome: Array.isArray(existingMatrix?.begleitsymptome) ? [...existingMatrix.begleitsymptome] : [],
     gemuet: existingMatrix?.gemuet || null,
+    strahlungsoptionen: existingMatrix?.strahlungsoptionen || null,
+    ursaechlicher_zusammenhang: existingMatrix?.ursaechlicher_zusammenhang || null,
+    fruehere_behandlungen_und_historie: existingMatrix?.fruehere_behandlungen_und_historie || null,
   };
 
   const ignored: string[] = [];
@@ -211,13 +225,52 @@ export function evaluateHahnemannLocally(
     }
   }
 
-  // 3. BEFEHL: DIE KONTROLL- UND NACHFRAGESCHLEIFE (Strikte 6-Säulen-Führung nach Hahnemann & Bönninghausen)
+  // Detect if multiple distinct complaints are present (e.g. fever + headache, cough + sore throat)
+  const hasFever = textLower.includes('fieber') || textLower.includes('temperatur') || textLower.includes('schüttelfrost');
+  const hasHeadache = textLower.includes('kopfschmerz') || textLower.includes('kopfweh') || textLower.includes('migräne') || textLower.includes('stirn');
+  const hasThroatOrCough = textLower.includes('hals') || textLower.includes('husten') || textLower.includes('schlucken') || textLower.includes('heiser');
+  const hasAbdomen = textLower.includes('bauch') || textLower.includes('magen') || textLower.includes('darm') || textLower.includes('übel');
+  
+  const symptomKeywordsCount = [hasFever, hasHeadache, hasThroatOrCough, hasAbdomen].filter(Boolean).length;
+  const multipleComplaints = symptomKeywordsCount >= 2;
+
+  // Extract radiation if mentioned
+  if (!matrix.strahlungsoptionen) {
+    if (textLower.includes('strahlt') || textLower.includes('zieht nach') || textLower.includes('ausstrahlung')) {
+      if (textLower.includes('nacken') || textLower.includes('hinterkopf')) {
+        matrix.strahlungsoptionen = 'Ausstrahlung in den Nacken und Hinterkopf';
+      } else if (textLower.includes('schulter') || textLower.includes('arm')) {
+        matrix.strahlungsoptionen = 'Ausstrahlung in Schulter / Arm';
+      } else if (textLower.includes('stirn') || textLower.includes('auge')) {
+        matrix.strahlungsoptionen = 'Ausstrahlung in Stirn und Augen';
+      } else {
+        matrix.strahlungsoptionen = 'Ausstrahlung in angrenzende Regionen';
+      }
+    }
+  }
+
+  // Extract causal connection if answered
+  if (!matrix.ursaechlicher_zusammenhang) {
+    if (textLower.includes('zeitgleich') || textLower.includes('derselbe infekt') || textLower.includes('gemeinsamer auslöser') || (textLower.includes('ja') && textLower.includes('zusammenhang'))) {
+      matrix.ursaechlicher_zusammenhang = 'Ja, beide Beschwerden entstanden zeitgleich durch denselben Infekt/Auslöser (Symptomkomplex)';
+    } else if (textLower.includes('unabhängig') || textLower.includes('zwei verschiedene') || (textLower.includes('nein') && textLower.includes('zusammenhang'))) {
+      matrix.ursaechlicher_zusammenhang = 'Nein, es handelt sich um zwei unabhängige Beschwerden';
+    }
+  }
+
+  // Extract chronic history if chronic case
+  if (caseType === 'chronisch' && !matrix.fruehere_behandlungen_und_historie) {
+    if (textLower.includes('monate') || textLower.includes('jahre') || textLower.includes('vorbehandlung') || textLower.includes('medikament') || textLower.includes('unterdrückt')) {
+      matrix.fruehere_behandlungen_und_historie = 'Chronischer Verlauf mit Vorbehandlungen und Vorgeschichte dokumentiert';
+    }
+  }
+
+  // 3. BEFEHL: DIE KONTROLL- UND NACHFRAGESCHLEIFE (Strikte 6-Säulen-Führung nach Hahnemann Organon §§ 81–104)
   let nextQuestion = '';
   let rationale = '';
   let status: 'in_progress' | 'completed' = 'in_progress';
   const diffRemedies: string[] = [];
 
-  // Determine which pillar needs to be asked next (ONE single question)
   let auswahlOptionen: string[] = [];
   let auswahlTyp: 'single' | 'multiple' = 'multiple';
 
@@ -227,15 +280,17 @@ export function evaluateHahnemannLocally(
   const hasModalitaeten = Boolean(matrix.modalitaeten && matrix.modalitaeten !== 'Noch nicht genannt' && matrix.modalitaeten.trim().length > 0);
   const hasBegleitsymptome = Boolean(Array.isArray(matrix.begleitsymptome) && matrix.begleitsymptome.length > 0);
   const hasGemuet = Boolean(matrix.gemuet && matrix.gemuet !== 'Noch nicht genannt' && matrix.gemuet.trim().length > 0);
+  const hasCausalityCheck = !multipleComplaints || Boolean(matrix.ursaechlicher_zusammenhang);
+  const hasChronicHistoryCheck = caseType !== 'chronisch' || Boolean(matrix.fruehere_behandlungen_und_historie);
 
-  const all6Pillars = hasCausa && hasLokalisierung && hasEmpfindung && hasModalitaeten && hasBegleitsymptome && hasGemuet;
+  const allPillarsCompleted = hasCausa && hasLokalisierung && hasEmpfindung && hasModalitaeten && hasBegleitsymptome && hasGemuet && hasCausalityCheck && hasChronicHistoryCheck;
 
-  // Loop protection: do not exceed 6 question rounds, but ensure all missing pillars are systematically checked
-  if (forceComplete || all6Pillars || (_history.length >= 6 && hasEmpfindung && hasModalitaeten && hasGemuet)) {
+  // Loop protection & completion check
+  if (forceComplete || allPillarsCompleted || (_history.length >= 6 && hasEmpfindung && hasModalitaeten && hasGemuet)) {
     status = 'completed';
     nextQuestion = '';
     auswahlOptionen = [];
-    rationale = 'Alle 6 Säulen der klassischen homöopathischen Anamnese wurden vollständig erfasst.';
+    rationale = 'Alle Säulen der homöopathischen Anamnese nach Hahnemann (Organon §§ 81–104) wurden vollständig erfasst.';
     if (matrix.modalitaeten?.includes('Ruhe') || matrix.modalitaeten?.includes('Druck')) {
       diffRemedies.push('Bryonia alba', 'Silicea', 'Belladonna');
     } else if (matrix.gemuet?.includes('Unruhe') || matrix.causa?.includes('Kälte')) {
@@ -243,80 +298,114 @@ export function evaluateHahnemannLocally(
     } else {
       diffRemedies.push('Aconitum napellus', 'Belladonna', 'Ferrum phosphoricum', 'Apis mellifica');
     }
+  } else if (multipleComplaints && !matrix.ursaechlicher_zusammenhang) {
+    // 0. Multiple symptoms causality check (Hahnemann Organon)
+    rationale = 'Mehrere Beschwerden angegeben. Nach Hahnemann muss zuerst geprüft werden, ob ein ursächlicher Zusammenhang (z. B. derselbe Infekt) besteht, um sie als zusammenhängenden Komplex zu erfassen.';
+    nextQuestion = 'Besteht zwischen Ihren angegebenen Beschwerden ein ursächlicher Zusammenhang (z. B. durch denselben Infekt, Auslöser oder Beginn)?';
+    auswahlTyp = 'single';
+    auswahlOptionen = [
+      'Ja, beide Beschwerden entstanden zeitgleich durch denselben Infekt / Auslöser (Symptomkomplex)',
+      'Nein, es handelt sich um zwei voneinander unabhängige Beschwerden',
+      'Die zweite Beschwerde trat nacheinander als Folge der Erstbeschwerde auf',
+      'Zusammenhang noch unklar / wird separat beobachtet'
+    ];
+    diffRemedies.push('Aconitum napellus', 'Belladonna', 'Bryonia alba');
+  } else if (caseType === 'chronisch' && !matrix.fruehere_behandlungen_und_historie) {
+    // Chronic case history & previous treatments (§§ 83–98 Organon)
+    rationale = 'Chronischer Fall (§§ 83–98 Organon): Die umfassende Historie inklusive früherer Behandlungen, Unterdrückungen und Dauer muss erforscht werden.';
+    nextQuestion = 'Wie lange bestehen diese chronischen Beschwerden bereits und welche früheren Behandlungen, Therapien oder Medikationen gab es?';
+    auswahlTyp = 'single';
+    auswahlOptionen = [
+      'Besteht seit vielen Monaten/Jahren mit wiederholten allopathischen Behandlungen',
+      'Tritt seit längerer Zeit chronisch-schubweise auf, bisher keine Dauermedikation',
+      'Folge einer früheren unterdrückten Erkrankung oder eines Hautausschlags',
+      'Erstmaliges Auftreten in dieser Form, keine Vorbehandlungen'
+    ];
+    diffRemedies.push('Sulphur', 'Calcarea carbonica', 'Lycopodium clavatum', 'Silicea');
   } else if (!hasCausa) {
-    // 1. Causa
-    rationale = 'Säule 1 (Causa / Auslöser) fehlt. Nach Hahnemann ist die Ätiologie (z. B. Kälte, Nässe, Schreck, Zorn) entscheidend für das Simile.';
-    nextQuestion = 'Gab es einen konkreten Auslöser für Ihre Beschwerden (z. B. kalte Luft/Wind, Durchnässung, Ärger, Schreck oder Überanstrengung)?';
+    // 1. Causa (Auslöser oder Beginn)
+    rationale = caseType === 'akut' 
+      ? 'Akuter Fall (§ 99 Organon): Unmittelbarer Auslöser (Causa) und akuter Beginn müssen exakt erfasst werden.'
+      : 'Causa (Auslöser oder Beginn): Was war der ursprüngliche Anlass für den Beginn der Beschwerden?';
+    nextQuestion = 'Gab es einen konkreten Auslöser oder Beginn für Ihre Beschwerden (z. B. kalte Luft/Wind, Durchnässung, Ärger, Schreck oder Überanstrengung)?';
+    auswahlTyp = 'single';
     auswahlOptionen = [
       'Kälteeinwirkung (kalter trockener Wind, Zugluft, Unterkühlung)',
       'Durchnässung, Nässe oder Baden in kaltem Wasser',
       'Plötzlicher Schreck, Schock oder akute Angst',
       'Ärger, Zorn, Kränkung oder emotionaler Stress',
       'Körperliche Überanstrengung oder Verheben',
-      'Kein spezifischer Auslöser erinnerlich'
+      'Kein spezifischer Auslöser erinnerlich / schleichender Beginn'
     ];
     diffRemedies.push('Aconitum napellus', 'Belladonna', 'Bryonia alba', 'Rhus toxicodendron');
   } else if (!hasLokalisierung) {
-    // 2. Lokalisierung
-    rationale = 'Säule 2 (Lokalisierung) ist noch unbesetzt. Der exakte Sitz der Beschwerden (Organ, Seite, Gewebe) muss präzise bestimmt werden.';
-    nextQuestion = 'Wo genau manifestieren sich die Beschwerden – welche Körperstellen oder Organe sind primär oder zusätzlich betroffen?';
+    // 2. Lokalisation (Ort und Strahlungsoptionen)
+    rationale = 'Lokalisation (Ort und Strahlungsoptionen): Der genaue anatomische Sitz und etwaige Ausstrahlungen müssen erfasst werden.';
+    nextQuestion = 'Wo genau manifestieren sich die Beschwerden – und strahlen sie in andere Körperregionen aus?';
+    auswahlTyp = 'single';
     auswahlOptionen = [
-      'Kopf / Stirn / Schläfen / Augen',
-      'Hals / Rachen / Mandeln / Kehlkopf',
+      'Kopf / Stirn / Schläfen mit Ausstrahlung in den Nacken',
+      'Hals / Rachen / Mandeln mit Ausstrahlung in die Ohren',
       'Brustkorb / Lunge / Bronchien',
-      'Magen-Darm-Trakt / Bauchbereich',
-      'Bewegungsapparat / Beine / Gelenke / Rücken',
+      'Magen-Darm-Trakt / Oberbauch mit Ausstrahlung in den Rücken',
+      'Bewegungsapparat / Gelenke / Glieder',
       'Ganzkörperlich / Systemisch (Fieber, Frösteln)'
     ];
     diffRemedies.push('Belladonna', 'Bryonia alba', 'Gelsemium sempervirens');
   } else if (!hasEmpfindung) {
-    // 3. Empfindung
-    rationale = 'Säule 3 (Empfindung) ist noch unbesetzt. Nach Hahnemann und Bönninghausen ist die Schmerz- bzw. Hitzequalität zwingend für die Mittelwahl.';
-    nextQuestion = 'Wie fühlt sich die Beschwerde für Sie an – empfinden Sie drückende, stechende, klopfende oder brennende Schmerzen?';
+    // 3. Sensation (Qualität der Beschwerde)
+    rationale = 'Sensation (Qualität der Beschwerde): Nach Hahnemann und Bönninghausen ist die Schmerz- bzw. Missempfindungsqualität entscheidend.';
+    nextQuestion = 'Wie fühlt sich die Beschwerde für Sie an – welche Schmerz- oder Empfindungsqualität beschreibt es am besten?';
+    auswahlTyp = 'single';
     auswahlOptionen = [
-      'Dumpf, drückend oder wie ein schweres Band/Helm um den Kopf',
-      'Stechend oder wie Nadelstiche bei jeder Bewegung',
-      'Klopfend, hämmernd und pulsierend in den Schläfen',
-      'Wie zerschlagen, wund und empfindlich',
-      'Brennende Hitze mit Ruhelosigkeit',
-      'Ziehend und krampfartig'
+      'Klopfend, hämmernd und pulsierend (Belladonna)',
+      'Stechend bei jeder geringsten Bewegung oder Einatmung (Bryonia)',
+      'Dumpf, drückend oder wie eine schwere Last/Band um den Kopf (Gelsemium)',
+      'Wie zerschlagen, wund in allen Gliedern (Eupatorium / Arnica)',
+      'Brennende Hitze mit Ruhelosigkeit (Aconitum / Arsenicum)',
+      'Ziehend und krampfartig (Colocynthis / Magnesia phosphorica)'
     ];
-    diffRemedies.push('Aconitum napellus', 'Belladonna', 'Ferrum phosphoricum', 'Bryonia alba');
+    diffRemedies.push('Aconitum napellus', 'Belladonna', 'Bryonia alba', 'Ferrum phosphoricum');
   } else if (!hasModalitaeten) {
-    // 4. Modalitäten
-    rationale = 'Säule 4 (Modalitäten) fehlt. Was macht die Beschwerden spürbar besser oder schlechter (Wärme, Kälte, Druck, Bewegung, Ruhe)?';
-    nextQuestion = 'Was macht Ihren Zustand spürbar besser oder schlechter – bessert fester Druck, Ruhe oder Kälte, oder verschlimmert Bewegung?';
+    // 4. Modalitäten (Verschlechterung oder Besserung)
+    rationale = 'Modalitäten (Verschlechterung / Besserung): Umfassende Bedingungen von Besserung und Verschlimmerung (Wärme, Kälte, Ruhe, Bewegung).';
+    nextQuestion = 'Was macht Ihren Zustand spürbar besser oder schlechter – reagieren Sie auf Wärme, Kälte, Ruhe oder Bewegung?';
+    auswahlTyp = 'multiple';
     auswahlOptionen = [
-      'Besser durch feste Bandagierung oder starken Druck auf die Stelle',
-      'Verschlechterung bei der geringsten Bewegung (absolute Ruhe bessert)',
-      'Besserung durch frische, kühle Luft und Entblößen',
-      'Besserung durch Wärme und Einhüllung (Kälte/Zugluft unerträglich)',
-      'Verschlimmerung morgens beim Aufwachen und abends',
-      'Verschlimmerung durch Geräusche, Licht und Erschütterung'
+      'Besserung durch absolute Ruhe, geringste Bewegung verschlimmert',
+      'Besserung durch feste Bandagierung oder festen Druck auf die Stelle',
+      'Besserung durch kühle, frische Luft und Entblößen',
+      'Besserung durch Wärme, warme Auflagen und Einhüllen (Kälte unerträglich)',
+      'Verschlimmerung durch Licht, Geräusche und Erschütterung',
+      'Verschlimmerung abends und nachts im Bett'
     ];
     diffRemedies.push('Bryonia alba', 'Silicea', 'Belladonna', 'Aconitum napellus');
   } else if (!hasBegleitsymptome) {
-    // 5. Begleitsymptome
-    rationale = 'Säule 5 (Begleitsymptome / Concomitants) ist noch leer. Durstverhalten und Allgemeinsymptome sichern die Mittelwahl.';
-    nextQuestion = 'Welche Begleitsymptome treten auf – haben Sie großen Durst auf kaltes Wasser oder sind Sie durstlos, und wie verhalten sich Schweiß und Frösteln?';
+    // 5. Begleitsymptome und Gemüt (Begleitsymptome)
+    rationale = 'Begleitsymptome (Concomitants): Durstverhalten, Schweißbildung und Allgemeinsymptome sichern die Mittelwahl ab.';
+    nextQuestion = 'Welche Begleitsymptome treten auf – wie verhalten sich Durst, Schweiß und Temperatur?';
+    auswahlTyp = 'multiple';
     auswahlOptionen = [
       'Großer, unstillbarer Durst auf eiskaltes Wasser',
-      'Völliger Durstmangel trotz Hitzegefühl',
-      'Frösteln und Schüttelfrost bei der geringsten Entblößung',
-      'Heiße Schweißausbrüche mit rotem Gesicht',
-      'Kühle Hände und Füße bei heißem Kopf'
+      'Völlige Durstlosigkeit trotz Fieber oder Hitze',
+      'Trockene, brennend heiße Haut ohne jede Schweißbildung',
+      'Profuser, erleichternder Schweiß',
+      'Schüttelfrost bei jeder geringsten Entblößung',
+      'Rotes Gesicht beim Liegen, blass beim Aufrichten'
     ];
     diffRemedies.push('Aconitum napellus', 'Belladonna', 'Apis mellifica', 'Gelsemium sempervirens');
   } else if (!hasGemuet) {
-    // 6. Gemüt
-    rationale = 'Säule 6 (Gemüt / Psychischer Zustand) ist noch unbestimmt. Der Gemütszustand ist die zentrale Hahnemannsche Leitsäule zur Simile-Bestimmung.';
-    nextQuestion = 'Wie ist Ihre seelische Verfassung / Ihr Gemütszustand während der Beschwerden (z. B. gereizt, unruhig, ängstlich, apathisch oder sanftmütig)?';
+    // 5. Begleitsymptome und das Gemüt (Gemütsverfassung)
+    rationale = 'Gemüt (Psychischer Zustand): Nach Hahnemann die Krone der Symptome und der wichtigste Wegweiser zum passenden Simile.';
+    nextQuestion = 'Wie ist Ihre seelische Verfassung / Ihr Gemütszustand während dieser Beschwerden?';
+    auswahlTyp = 'single';
     auswahlOptionen = [
-      'Große Reizbarkeit, zornig, will absolut ungestört sein (Bryonia / Nux vomica)',
-      'Ängstliche, getriebene Unruhe mit Furcht und Herzklopfen (Aconitum / Arsenicum)',
-      'Apathisch, schläfrig, dumpf, will nur liegen (Gelsemium / Phosphor)',
-      'Weinerlich, verlangt nach Trost, Zuwendung und frischer Luft (Pulsatilla)',
-      'Ausgeglichen und gefasst, keine auffällige Gemütsveränderung'
+      'Große Reizbarkeit und Zorn, will absolut in Ruhe gelassen werden (Bryonia)',
+      'Ängstliche, getriebene Unruhe mit Todesfurcht und Herzklopfen (Aconitum)',
+      'Apathisch, schläfrig, wie betäubt, verlangt nach Stille (Gelsemium)',
+      'Weinerlich, verlangt nach Zuwendung, Trost und frischer Luft (Pulsatilla)',
+      'Verzweifelt und ängstlich ruhelos, wandert umher (Arsenicum)',
+      'Ausgeglichen und gefasst, keine spürbare Gemütsveränderung'
     ];
     diffRemedies.push('Bryonia alba', 'Aconitum napellus', 'Belladonna', 'Pulsatilla');
   } else {
@@ -324,7 +413,7 @@ export function evaluateHahnemannLocally(
     status = 'completed';
     nextQuestion = '';
     auswahlOptionen = [];
-    rationale = 'Alle 6 Säulen der klassischen Homöopathie wurden erfolgreich erhoben und differenziert.';
+    rationale = 'Alle Säulen der homöopathischen Anamnese nach Hahnemann (Organon §§ 81–104) wurden erfolgreich erhoben und differenziert.';
     if (matrix.modalitaeten?.includes('Druck') || matrix.modalitaeten?.includes('Ruhe')) {
       diffRemedies.push('Bryonia alba', 'Silicea', 'Belladonna');
     } else {
@@ -382,6 +471,9 @@ Homöopathische Simile-Differenzierung: Führendes Simile ist ${diffRemedies[0] 
   return {
     analyse_status: status,
     wichtige_symptom_fragmente: matrix,
+    falltyp: caseType,
+    mehrere_symptome_erkannt: multipleComplaints,
+    symptomkomplex_bestaetigt: Boolean(matrix.ursaechlicher_zusammenhang && (matrix.ursaechlicher_zusammenhang.toLowerCase().includes('ja') || matrix.ursaechlicher_zusammenhang.toLowerCase().includes('zeitgleich'))),
     ignorierte_daten: ignored,
     kontroll_und_nachfrage_logik: rationale,
     naechste_frage: nextQuestion,
