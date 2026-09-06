@@ -13,6 +13,7 @@ import {
   Menu,
   X,
   ChevronRight,
+  ChevronDown,
   Plus,
   Users,
   LayoutDashboard,
@@ -40,6 +41,7 @@ export const Header: React.FC<HeaderProps> = ({
   const { t } = useTranslation();
   const [logoUrl, setLogoUrl] = useState(() => getSiteConfig().logoUrl || '');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isMobileUserMenuOpen, setIsMobileUserMenuOpen] = useState(false);
   const [activeTherapistTab, setActiveTherapistTab] = useState<string>('cases');
   const mobileMenuRef = useRef<HTMLDivElement>(null);
 
@@ -68,6 +70,7 @@ export const Header: React.FC<HeaderProps> = ({
   // Close mobile menu whenever view changes
   useEffect(() => {
     setMobileMenuOpen(false);
+    setIsMobileUserMenuOpen(false);
   }, [currentView]);
 
   // Click outside and ESC listener to close mobile menu
@@ -75,11 +78,13 @@ export const Header: React.FC<HeaderProps> = ({
     const handleClickOutside = (event: MouseEvent) => {
       if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node)) {
         setMobileMenuOpen(false);
+        setIsMobileUserMenuOpen(false);
       }
     };
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setMobileMenuOpen(false);
+        setIsMobileUserMenuOpen(false);
       }
     };
 
@@ -280,69 +285,141 @@ export const Header: React.FC<HeaderProps> = ({
                 </button>
               </div>
 
-              {/* 2. Name des Therapeuten wie es derzeit steht */}
+              {/* 2. Name des Therapeuten mit aufklappbarem Dropdown für Profil, Einstellungen etc. */}
               {activeTherapist && (
-                <div className="flex items-center gap-3 px-3 py-2.5 mb-2 bg-slate-50 rounded-xl border border-slate-200/80 shadow-2xs">
-                  <div className="w-9 h-9 rounded-full bg-teal-700 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs">
-                    {activeTherapist.vorname[0]}{activeTherapist.nachname[0]}
-                  </div>
-                  <div className="overflow-hidden min-w-0 flex-1">
-                    <div className="text-xs font-bold text-slate-900 truncate">
-                      {activeTherapist.vorname} {activeTherapist.nachname}
+                <div className="mb-2">
+                  <button
+                    type="button"
+                    id="mobile-user-menu-trigger"
+                    onClick={() => setIsMobileUserMenuOpen(prev => !prev)}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all text-left cursor-pointer select-none ${
+                      isMobileUserMenuOpen
+                        ? 'bg-white border-teal-400 shadow-xs ring-2 ring-teal-500/10'
+                        : 'bg-slate-50 hover:bg-slate-100 border-slate-200/80 shadow-2xs'
+                    }`}
+                    aria-expanded={isMobileUserMenuOpen}
+                  >
+                    <div className="w-9 h-9 rounded-full bg-teal-700 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs">
+                      {activeTherapist.vorname[0]}{activeTherapist.nachname[0]}
                     </div>
-                    <div className="text-[11px] text-slate-500 truncate">
-                      {activeTherapist.email}
+                    <div className="overflow-hidden min-w-0 flex-1">
+                      <div className="text-xs font-bold text-slate-900 truncate">
+                        {activeTherapist.vorname} {activeTherapist.nachname}
+                      </div>
+                      <div className="text-[11px] text-slate-500 truncate">
+                        {activeTherapist.email}
+                      </div>
                     </div>
+                    <span className="text-[10px] font-semibold text-teal-800 bg-teal-100/80 px-2 py-0.5 rounded-md shrink-0 border border-teal-200/60 mr-1">
+                      {activeTherapist.tarif === 'free_trial' ? 'Testphase' : 'Aktiv'}
+                    </span>
+                    <ChevronDown
+                      className={`w-4 h-4 text-slate-400 transition-transform duration-200 shrink-0 ${
+                        isMobileUserMenuOpen ? 'rotate-180 text-teal-600' : ''
+                      }`}
+                    />
+                  </button>
+
+                  {/* Dropdown Inhalt: Profil, Einstellungen, Doku, Abmelden */}
+                  <div
+                    className={`overflow-hidden transition-all duration-200 ease-in-out ${
+                      isMobileUserMenuOpen
+                        ? 'max-h-72 opacity-100 mt-1.5 space-y-1 bg-slate-50/80 p-1.5 rounded-xl border border-slate-200/60'
+                        : 'max-h-0 opacity-0 pointer-events-none'
+                    }`}
+                  >
+                    {/* Profil */}
+                    <button
+                      type="button"
+                      id="mobile-nav-tab-profile"
+                      onClick={() => {
+                        setActiveTherapistTab('profile');
+                        navigateTo('therapist', { therapistTab: 'profile' });
+                        window.dispatchEvent(new CustomEvent('homoeo_action_set_therapist_tab', { detail: 'profile' }));
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`w-full px-3 py-2 rounded-lg text-xs font-medium flex items-center justify-between transition-colors cursor-pointer ${
+                        activeTherapistTab === 'profile'
+                          ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/70'
+                          : 'text-slate-700 hover:bg-white'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <User className="w-3.5 h-3.5 text-slate-500" />
+                        <span>{t('navProfile')}</span>
+                      </div>
+                      <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                    </button>
+
+                    {/* Einstellungen */}
+                    <button
+                      type="button"
+                      id="mobile-nav-tab-tariff"
+                      onClick={() => {
+                        setActiveTherapistTab('tariff');
+                        navigateTo('therapist', { therapistTab: 'tariff' });
+                        window.dispatchEvent(new CustomEvent('homoeo_action_set_therapist_tab', { detail: 'tariff' }));
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`w-full px-3 py-2 rounded-lg text-xs font-medium flex items-center justify-between transition-colors cursor-pointer ${
+                        activeTherapistTab === 'tariff'
+                          ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/70'
+                          : 'text-slate-700 hover:bg-white'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <Settings className="w-3.5 h-3.5 text-slate-500" />
+                        <span>{t('navSettings')}</span>
+                      </div>
+                      <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                    </button>
+
+                    {/* Bedienungsanleitung & Doku */}
+                    <button
+                      type="button"
+                      id="mobile-nav-tab-documentation"
+                      onClick={() => {
+                        setActiveTherapistTab('documentation');
+                        navigateTo('therapist', { therapistTab: 'documentation' });
+                        window.dispatchEvent(new CustomEvent('homoeo_action_set_therapist_tab', { detail: 'documentation' }));
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`w-full px-3 py-2 rounded-lg text-xs font-medium flex items-center justify-between transition-colors cursor-pointer ${
+                        activeTherapistTab === 'documentation'
+                          ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/70'
+                          : 'text-slate-700 hover:bg-white'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <FileText className="w-3.5 h-3.5 text-teal-600" />
+                        <span>{t('tabDocumentation')}</span>
+                      </div>
+                      <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                    </button>
+
+                    {/* Abmelden */}
+                    <button
+                      type="button"
+                      id="mobile-nav-therapist-logout"
+                      onClick={() => {
+                        window.dispatchEvent(new CustomEvent('homoeo_action_therapist_logout'));
+                        setMobileMenuOpen(false);
+                      }}
+                      className="w-full px-3 py-2 rounded-lg text-xs font-medium flex items-center justify-between text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition-colors cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <LogOut className="w-3.5 h-3.5 text-rose-600" />
+                        <span>{t('navLogout')}</span>
+                      </div>
+                      <ChevronRight className="w-3.5 h-3.5 text-rose-300" />
+                    </button>
                   </div>
-                  <span className="text-[10px] font-semibold text-teal-800 bg-teal-100/80 px-2 py-0.5 rounded-md shrink-0 border border-teal-200/60">
-                    {activeTherapist.tarif === 'free_trial' ? 'Testphase' : 'Aktiv'}
-                  </span>
                 </div>
               )}
 
-              {/* 3. Startseite */}
-              <button
-                type="button"
-                id="mobile-nav-home"
-                onClick={() => {
-                  onViewChange('landing');
-                  setMobileMenuOpen(false);
-                }}
-                className="w-full px-3.5 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-between text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
-              >
-                <div className="flex items-center gap-3">
-                  <Home className="w-4 h-4 text-slate-500" />
-                  <span>{t('navHome')}</span>
-                </div>
-                <ChevronRight className="w-4 h-4 text-slate-400" />
-              </button>
-
-              {/* 4. Und danach alles was normalerweise links steht wie im Bild */}
+              {/* Navigation nach neuer Reihenfolge (wie im Bild) */}
               <div className="space-y-1 pt-1 border-t border-slate-100 mt-1">
-                {/* Falldokumentation & Repertorisation */}
-                <button
-                  type="button"
-                  id="mobile-nav-tab-cases"
-                  onClick={() => {
-                    setActiveTherapistTab('cases');
-                    navigateTo('therapist', { therapistTab: 'cases' });
-                    window.dispatchEvent(new CustomEvent('homoeo_action_set_therapist_tab', { detail: 'cases' }));
-                    setMobileMenuOpen(false);
-                  }}
-                  className={`w-full px-3.5 py-2.5 rounded-xl text-sm font-medium flex items-center justify-between transition-colors cursor-pointer ${
-                    activeTherapistTab === 'cases'
-                      ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/70'
-                      : 'text-slate-700 hover:bg-slate-100'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <LayoutDashboard className="w-4 h-4 text-teal-600" />
-                    <span>{t('tabCaseManagement')}</span>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-slate-400" />
-                </button>
-
-                {/* Patienten- & Kundenkartei */}
+                {/* 1. Patienten- & Kundenkartei */}
                 <button
                   type="button"
                   id="mobile-nav-tab-patients"
@@ -365,30 +442,7 @@ export const Header: React.FC<HeaderProps> = ({
                   <ChevronRight className="w-4 h-4 text-slate-400" />
                 </button>
 
-                {/* Materia Medica */}
-                <button
-                  type="button"
-                  id="mobile-nav-tab-materiamedica"
-                  onClick={() => {
-                    setActiveTherapistTab('materiamedica');
-                    navigateTo('therapist', { therapistTab: 'materiamedica' });
-                    window.dispatchEvent(new CustomEvent('homoeo_action_set_therapist_tab', { detail: 'materiamedica' }));
-                    setMobileMenuOpen(false);
-                  }}
-                  className={`w-full px-3.5 py-2.5 rounded-xl text-sm font-medium flex items-center justify-between transition-colors cursor-pointer ${
-                    activeTherapistTab === 'materiamedica'
-                      ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/70'
-                      : 'text-slate-700 hover:bg-slate-100'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <BookOpen className="w-4 h-4 text-teal-600" />
-                    <span>{t('tabMateriaMedica')}</span>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-slate-400" />
-                </button>
-
-                {/* Akutaufnahme */}
+                {/* 2. Akutaufnahme & Voice-Analyse */}
                 <button
                   type="button"
                   id="mobile-nav-tab-quickintake"
@@ -411,7 +465,30 @@ export const Header: React.FC<HeaderProps> = ({
                   <ChevronRight className="w-4 h-4 text-slate-400" />
                 </button>
 
-                {/* Medikamente & Analyse */}
+                {/* 3. Falldokumentation & Repertorisation */}
+                <button
+                  type="button"
+                  id="mobile-nav-tab-cases"
+                  onClick={() => {
+                    setActiveTherapistTab('cases');
+                    navigateTo('therapist', { therapistTab: 'cases' });
+                    window.dispatchEvent(new CustomEvent('homoeo_action_set_therapist_tab', { detail: 'cases' }));
+                    setMobileMenuOpen(false);
+                  }}
+                  className={`w-full px-3.5 py-2.5 rounded-xl text-sm font-medium flex items-center justify-between transition-colors cursor-pointer ${
+                    activeTherapistTab === 'cases'
+                      ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/70'
+                      : 'text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <LayoutDashboard className="w-4 h-4 text-teal-600" />
+                    <span>{t('tabCaseManagement')}</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-400" />
+                </button>
+
+                {/* 4. Medikamente & Analyse */}
                 <button
                   type="button"
                   id="mobile-nav-tab-medications"
@@ -434,93 +511,27 @@ export const Header: React.FC<HeaderProps> = ({
                   <ChevronRight className="w-4 h-4 text-slate-400" />
                 </button>
 
-                {/* Subtle Divider */}
-                <div className="my-1.5 border-t border-slate-100" />
-
-                {/* Profil */}
+                {/* 5. Materia Medica */}
                 <button
                   type="button"
-                  id="mobile-nav-tab-profile"
+                  id="mobile-nav-tab-materiamedica"
                   onClick={() => {
-                    setActiveTherapistTab('profile');
-                    navigateTo('therapist', { therapistTab: 'profile' });
-                    window.dispatchEvent(new CustomEvent('homoeo_action_set_therapist_tab', { detail: 'profile' }));
+                    setActiveTherapistTab('materiamedica');
+                    navigateTo('therapist', { therapistTab: 'materiamedica' });
+                    window.dispatchEvent(new CustomEvent('homoeo_action_set_therapist_tab', { detail: 'materiamedica' }));
                     setMobileMenuOpen(false);
                   }}
                   className={`w-full px-3.5 py-2.5 rounded-xl text-sm font-medium flex items-center justify-between transition-colors cursor-pointer ${
-                    activeTherapistTab === 'profile'
+                    activeTherapistTab === 'materiamedica'
                       ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/70'
                       : 'text-slate-700 hover:bg-slate-100'
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <User className="w-4 h-4 text-slate-500" />
-                    <span>{t('navProfile')}</span>
+                    <BookOpen className="w-4 h-4 text-teal-600" />
+                    <span>{t('tabMateriaMedica')}</span>
                   </div>
                   <ChevronRight className="w-4 h-4 text-slate-400" />
-                </button>
-
-                {/* Einstellungen */}
-                <button
-                  type="button"
-                  id="mobile-nav-tab-tariff"
-                  onClick={() => {
-                    setActiveTherapistTab('tariff');
-                    navigateTo('therapist', { therapistTab: 'tariff' });
-                    window.dispatchEvent(new CustomEvent('homoeo_action_set_therapist_tab', { detail: 'tariff' }));
-                    setMobileMenuOpen(false);
-                  }}
-                  className={`w-full px-3.5 py-2.5 rounded-xl text-sm font-medium flex items-center justify-between transition-colors cursor-pointer ${
-                    activeTherapistTab === 'tariff'
-                      ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/70'
-                      : 'text-slate-700 hover:bg-slate-100'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <Settings className="w-4 h-4 text-slate-500" />
-                    <span>{t('navSettings')}</span>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-slate-400" />
-                </button>
-
-                {/* Bedienungsanleitung & Doku */}
-                <button
-                  type="button"
-                  id="mobile-nav-tab-documentation"
-                  onClick={() => {
-                    setActiveTherapistTab('documentation');
-                    navigateTo('therapist', { therapistTab: 'documentation' });
-                    window.dispatchEvent(new CustomEvent('homoeo_action_set_therapist_tab', { detail: 'documentation' }));
-                    setMobileMenuOpen(false);
-                  }}
-                  className={`w-full px-3.5 py-2.5 rounded-xl text-sm font-medium flex items-center justify-between transition-colors cursor-pointer ${
-                    activeTherapistTab === 'documentation'
-                      ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/70'
-                      : 'text-slate-700 hover:bg-slate-100'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <FileText className="w-4 h-4 text-teal-600" />
-                    <span>{t('tabDocumentation')}</span>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-slate-400" />
-                </button>
-
-                {/* Abmelden */}
-                <button
-                  type="button"
-                  id="mobile-nav-therapist-logout"
-                  onClick={() => {
-                    window.dispatchEvent(new CustomEvent('homoeo_action_therapist_logout'));
-                    setMobileMenuOpen(false);
-                  }}
-                  className="w-full px-3.5 py-2.5 rounded-xl text-sm font-medium flex items-center justify-between text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition-colors cursor-pointer"
-                >
-                  <div className="flex items-center gap-3">
-                    <LogOut className="w-4 h-4 text-rose-600" />
-                    <span>{t('navLogout')}</span>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-rose-300" />
                 </button>
               </div>
             </>

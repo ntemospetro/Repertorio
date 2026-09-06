@@ -1,5 +1,5 @@
 import Markdown from 'react-markdown';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Therapist, PatientCase, PatientChild, AnamnesisQuestion, FullClinicalAnalysis } from '../types';
 import { 
   getPatientCases, 
@@ -291,18 +291,88 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
     }));
   };
 
+  const hasAnalysis = Boolean(
+    clinicalAnalysis ||
+    currentCase.clinicalAnalysis ||
+    (currentCase.remedySuggestions && currentCase.remedySuggestions.length > 0) ||
+    (analysisResults && analysisResults.length > 0) ||
+    currentCase.analyzedAt
+  );
+
+  const hasRecordedMedications = useMemo(() => {
+    const fromCaseList = currentCase.medikamenteList && currentCase.medikamenteList.some(m => m.name && m.name.trim() !== '');
+    const fromExtList = currentCase.extendedAnamnesis?.medikamente_liste && 
+      Array.isArray(currentCase.extendedAnamnesis.medikamente_liste) && 
+      currentCase.extendedAnamnesis.medikamente_liste.some((m: any) => m.name && m.name.trim() !== '');
+    const isExplicitlyYes = (currentCase.nimmtMedikamente || currentCase.extendedAnamnesis?.nimmt_medikamente === 'Ja') && 
+      ((currentCase.medikamenteList && currentCase.medikamenteList.length > 0) || 
+       (currentCase.extendedAnamnesis?.medikamente_liste && Array.isArray(currentCase.extendedAnamnesis.medikamente_liste) && currentCase.extendedAnamnesis.medikamente_liste.length > 0));
+    return Boolean(fromCaseList || fromExtList || isExplicitlyYes);
+  }, [currentCase.medikamenteList, currentCase.extendedAnamnesis, currentCase.nimmtMedikamente]);
+
+  type WizardStepId = 'stammdaten' | 'hauptbeschwerde' | 'fragebogen' | 'medikamente' | 'befund' | 'uebersicht' | 'analyse' | 'empfehlungen';
+
+  interface WizardStepConfig {
+    id: WizardStepId;
+    name: string;
+    shortName: string;
+  }
+
+  const wizardSteps: WizardStepConfig[] = useMemo(() => {
+    const steps: WizardStepConfig[] = [
+      { id: 'stammdaten', name: t('step1Name'), shortName: t('step1ShortName') || 'Stammdaten' },
+      { id: 'hauptbeschwerde', name: t('step2Name'), shortName: t('step2ShortName') || 'Hauptbeschwerde' },
+      { id: 'fragebogen', name: t('tpStep3Name') || '3. Fragebogen', shortName: t('step3ShortName') || 'Fragebogen' },
+    ];
+
+    if (hasRecordedMedications) {
+      steps.push({ id: 'medikamente', name: `4. ${t('tpStepMedications') || 'Medikamente'}`, shortName: t('tpStepMedications') || 'Medikamente' });
+      steps.push({ id: 'befund', name: `5. ${t('tpStepFindings') || 'Befund'}`, shortName: t('tpStepFindings') || 'Befund' });
+      steps.push({ id: 'uebersicht', name: `6. ${t('tpStepOverview') || 'Übersicht'}`, shortName: t('tpStepSummary') || 'Übersicht' });
+      steps.push({ id: 'analyse', name: `7. ${t('tpStepAnalysis') || 'Analyse & Auswertung'}`, shortName: t('step7ShortName') || 'Analyse' });
+      steps.push({ id: 'empfehlungen', name: `8. ${t('tpStepRecommendations') || 'Empfehlungen & Verordnung'}`, shortName: t('step8ShortName') || 'Empfehlungen' });
+    } else {
+      steps.push({ id: 'befund', name: `4. ${t('tpStepFindings') || 'Befund'}`, shortName: t('tpStepFindings') || 'Befund' });
+      steps.push({ id: 'uebersicht', name: `5. ${t('tpStepOverview') || 'Übersicht'}`, shortName: t('tpStepSummary') || 'Übersicht' });
+      steps.push({ id: 'analyse', name: `6. ${t('tpStepAnalysis') || 'Analyse & Auswertung'}`, shortName: t('step7ShortName') || 'Analyse' });
+      steps.push({ id: 'empfehlungen', name: `7. ${t('tpStepRecommendations') || 'Empfehlungen & Verordnung'}`, shortName: t('step8ShortName') || 'Empfehlungen' });
+    }
+
+    return steps;
+  }, [hasRecordedMedications, language, t]);
+
+  const totalWizardSteps = wizardSteps.length;
+  const stepNames = useMemo(() => wizardSteps.map(s => s.name), [wizardSteps]);
+  const currentStepConfig = wizardSteps[currentStep - 1] || wizardSteps[0] || { id: 'stammdaten' as WizardStepId, name: '1. Stammdaten', shortName: 'Stammdaten' };
+
+  const goToStepById = (stepId: WizardStepId) => {
+    const idx = wizardSteps.findIndex(s => s.id === stepId);
+    if (idx !== -1) {
+      setCurrentStep(idx + 1);
+    }
+  };
+
   const areAllSummarySectionsConfirmed = 
     summaryConfirmedSections.stammdaten &&
     summaryConfirmedSections.hauptbeschwerde &&
     summaryConfirmedSections.fragebogen &&
     summaryConfirmedSections.befund &&
-    summaryConfirmedSections.medikamente;
+    (!hasRecordedMedications || summaryConfirmedSections.medikamente);
 
-  const confirmedSummaryCount = Object.values(summaryConfirmedSections).filter(Boolean).length;
+  const confirmedSummaryCount = [
+    summaryConfirmedSections.stammdaten,
+    summaryConfirmedSections.hauptbeschwerde,
+    summaryConfirmedSections.fragebogen,
+    summaryConfirmedSections.befund,
+    ...(hasRecordedMedications ? [summaryConfirmedSections.medikamente] : [])
+  ].filter(Boolean).length;
 
   const getStepInfo = (stepNum: number): { status: 'empty' | 'partial' | 'complete'; percent: number } => {
-    switch (stepNum) {
-      case 1: { // 1. Stammdaten
+    const stepConfig = wizardSteps[stepNum - 1];
+    if (!stepConfig) return { status: 'empty', percent: 0 };
+
+    switch (stepConfig.id) {
+      case 'stammdaten': { // Stammdaten
         const hasName = Boolean(currentCase.patientName && currentCase.patientName.trim());
         const hasAgeOrBirth = currentCase.patientAge !== undefined || Boolean(currentCase.patientBirthDate && currentCase.patientBirthDate.trim());
         const hasHeight = currentCase.patientHeightCm !== undefined && currentCase.patientHeightCm > 0;
@@ -325,7 +395,7 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
         return { status: 'partial', percent: Math.min(90, Math.max(25, p)) };
       }
 
-      case 2: { // 2. Hauptbeschwerde & Dynamische Fragen
+      case 'hauptbeschwerde': { // Hauptbeschwerde & Dynamische Fragen
         const hasComplaint = Boolean(currentCase.hauptbeschwerde && currentCase.hauptbeschwerde.trim().length >= 3);
         const questions = currentCase.anamnesisQuestions || [];
         const answeredQuestions = questions.filter(q => 
@@ -351,7 +421,7 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
         return { status: 'partial', percent: 35 };
       }
 
-      case 3: { // 3. Fragebogen (Erweiterte Anamnese)
+      case 'fragebogen': { // Fragebogen (Erweiterte Anamnese)
         const ext = currentCase.extendedAnamnesis || {};
         const answeredKeys = Object.entries(ext).filter(([_, v]) => 
           v !== undefined && v !== null && v !== '' && (!Array.isArray(v) || v.length > 0)
@@ -363,7 +433,16 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
         return { status: 'partial', percent: Math.max(20, Math.min(85, calculated)) };
       }
 
-      case 4: { // 4. Befund
+      case 'medikamente': { // Medikamente
+        const list = currentCase.medikamenteList || [];
+        const validMeds = list.filter(m => m.name && m.name.trim().length > 0);
+        if (validMeds.length === 0) {
+          return { status: 'empty', percent: 0 };
+        }
+        return { status: 'complete', percent: 100 };
+      }
+
+      case 'befund': { // Befund
         const bd = currentCase.befundDetails || {};
         const customCount = bd.customFelder?.filter((cf: any) => cf.name?.trim() || cf.value?.trim()).length || 0;
         const filledDetailsCount = [
@@ -388,33 +467,26 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
         return { status: 'partial', percent: Math.max(25, Math.min(85, calculated)) };
       }
 
-      case 5: { // 5. Medikamente
-        const list = currentCase.medikamenteList || [];
-        const validMeds = list.filter(m => m.name && m.name.trim().length > 0);
-        if (validMeds.length === 0) {
-          return { status: 'empty', percent: 0 };
-        }
-        return { status: 'complete', percent: 100 };
-      }
-
-      case 6: { // 6. Übersicht
+      case 'uebersicht': { // Übersicht
         const s1 = getStepInfo(1).status;
         const s2 = getStepInfo(2).status;
-        const s4 = getStepInfo(4).status;
-        const s5 = getStepInfo(5).status;
+        const befundStepIdx = wizardSteps.findIndex(s => s.id === 'befund');
+        const sBefund = befundStepIdx >= 0 ? getStepInfo(befundStepIdx + 1).status : 'complete';
+        const medStepIdx = wizardSteps.findIndex(s => s.id === 'medikamente');
+        const sMeds = medStepIdx >= 0 ? getStepInfo(medStepIdx + 1).status : 'complete';
 
-        if (s1 === 'complete' && s2 === 'complete' && s4 === 'complete' && s5 === 'complete') {
+        if (s1 === 'complete' && s2 === 'complete' && sBefund === 'complete' && sMeds === 'complete') {
           return { status: 'complete', percent: 100 };
         }
         return { status: 'empty', percent: 0 };
       }
 
-      case 7: { // 7. Analyse & Auswertung
+      case 'analyse': { // Analyse & Auswertung
         if (clinicalAnalysis) return { status: 'complete', percent: 100 };
         return { status: 'empty', percent: 0 };
       }
 
-      case 8: { // 8. Empfehlungen & Verordnung
+      case 'empfehlungen': { // Empfehlungen & Verordnung
         const rec = currentCase.therapyRecommendations;
         if (rec && rec.remedies && rec.remedies.some(r => r.isSelected)) return { status: 'complete', percent: 100 };
         if (rec) return { status: 'partial', percent: 50 };
@@ -595,26 +667,6 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
   const isLocked = !isUnlimited && therapist.usedAnalyses >= therapist.maxAnalyses;
   const remainingCount = isUnlimited ? 999999 : Math.max(0, therapist.maxAnalyses - therapist.usedAnalyses);
 
-  const hasAnalysis = Boolean(
-    clinicalAnalysis ||
-    currentCase.clinicalAnalysis ||
-    (currentCase.remedySuggestions && currentCase.remedySuggestions.length > 0) ||
-    (analysisResults && analysisResults.length > 0) ||
-    currentCase.analyzedAt
-  );
-  const totalWizardSteps = hasAnalysis ? 8 : 7;
-
-  const allStepNames = [
-    t('step1Name'),
-    t('step2Name'),
-    t('tpStep3Name'),
-    t('tpStep4Name'),
-    t('tpStep5Name'),
-    t('tpStep6Name'),
-    t('step7Name' as any) || '7. Analyse & Auswertung',
-    t('step8Name' as any) || '8. Empfehlungen & Verordnung',
-  ];
-  const stepNames = hasAnalysis ? allStepNames : allStepNames.slice(0, 7);
   const hasPatientData = Boolean(currentCase.patientName && currentCase.patientName.trim());
 
   const handleSelectCase = (patientCase: PatientCase) => {
@@ -1083,7 +1135,7 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
     }
 
     setIsAnalyzing(true);
-    setCurrentStep(7);
+    goToStepById('analyse');
 
     // Run modular homeopathy repertorisation engine
     const results = runHomeopathyAnalysis(currentCase);
@@ -1171,19 +1223,7 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
           </div>
           
           <div className="space-y-1">
-            <button
-              type="button"
-              onClick={() => handleSelectTab('cases')}
-              className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-3 transition-colors cursor-pointer ${
-                panelTab === 'cases'
-                  ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/50'
-                  : 'text-slate-600 hover:bg-slate-200/50 hover:text-slate-900'
-              }`}
-            >
-              <LayoutDashboard className="w-4 h-4 text-teal-600" />
-              <span>{t('tabCaseManagement')}</span>
-            </button>
-
+            {/* 1. Patienten- & Kundenkartei */}
             <button
               type="button"
               onClick={() => handleSelectTab('patients')}
@@ -1197,20 +1237,7 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
               <span>{t('tabPatientDirectory')}</span>
             </button>
 
-            <button
-              type="button"
-              id="sidebar-nav-tab-materiamedica"
-              onClick={() => handleSelectTab('materiamedica')}
-              className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-3 transition-colors cursor-pointer ${
-                panelTab === 'materiamedica'
-                  ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/50'
-                  : 'text-slate-600 hover:bg-slate-200/50 hover:text-slate-900'
-              }`}
-            >
-              <BookOpen className="w-4 h-4 text-teal-600" />
-              <span>{t('tabMateriaMedica')}</span>
-            </button>
-
+            {/* 2. Akutaufnahme & Voice-Analyse */}
             <button
               type="button"
               id="sidebar-nav-tab-quickintake"
@@ -1225,6 +1252,21 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
               <span>{t('tabQuickIntake')}</span>
             </button>
 
+            {/* 3. Falldokumentation & Repertorisation */}
+            <button
+              type="button"
+              onClick={() => handleSelectTab('cases')}
+              className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-3 transition-colors cursor-pointer ${
+                panelTab === 'cases'
+                  ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/50'
+                  : 'text-slate-600 hover:bg-slate-200/50 hover:text-slate-900'
+              }`}
+            >
+              <LayoutDashboard className="w-4 h-4 text-teal-600" />
+              <span>{t('tabCaseManagement')}</span>
+            </button>
+
+            {/* 4. Medikamente & Analyse */}
             <button
               type="button"
               id="sidebar-nav-tab-medications"
@@ -1237,6 +1279,21 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
             >
               <Pill className="w-4 h-4 text-teal-600" />
               <span>{t('tabMedications')}</span>
+            </button>
+
+            {/* 5. Materia Medica */}
+            <button
+              type="button"
+              id="sidebar-nav-tab-materiamedica"
+              onClick={() => handleSelectTab('materiamedica')}
+              className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-3 transition-colors cursor-pointer ${
+                panelTab === 'materiamedica'
+                  ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/50'
+                  : 'text-slate-600 hover:bg-slate-200/50 hover:text-slate-900'
+              }`}
+            >
+              <BookOpen className="w-4 h-4 text-teal-600" />
+              <span>{t('tabMateriaMedica')}</span>
             </button>
           </div>
         </div>
@@ -1726,15 +1783,15 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                     </div>
                     <h2 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight mt-1 flex items-center gap-2">
                       <ListOrdered className="w-5 h-5 text-teal-600 flex-shrink-0" />
-                      <span>{stepNames[currentStep - 1] || allStepNames[currentStep - 1]}</span>
+                      <span>{currentStepConfig.name}</span>
                     </h2>
                   </div>
                 </div>
 
                 {/* Interactive Wizard Step Bar - ONLY appears when customer data is present */}
                 {hasPatientData && (
-                  <div className={`grid grid-cols-4 ${hasAnalysis ? 'sm:grid-cols-8' : 'sm:grid-cols-7'} gap-1.5 pt-3`}>
-                    {stepNames.map((name, index) => {
+                  <div className={`grid grid-cols-4 ${totalWizardSteps >= 8 ? 'sm:grid-cols-8' : totalWizardSteps === 7 ? 'sm:grid-cols-7' : totalWizardSteps === 6 ? 'sm:grid-cols-6' : 'sm:grid-cols-5'} gap-1.5 pt-3`}>
+                    {wizardSteps.map((step, index) => {
                       const stepNum = index + 1;
                       const isActive = currentStep === stepNum;
                       const { status, percent } = getStepInfo(stepNum);
@@ -1760,15 +1817,15 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
 
                       return (
                         <button
-                          key={stepNum}
+                          key={step.id}
                           onClick={() => setCurrentStep(stepNum)}
                           className={`group relative flex flex-col items-center p-2 rounded-lg text-center transition-all cursor-pointer overflow-hidden ${btnClasses}`}
                           title={
                             isComplete
-                              ? t('stepTooltipComplete', { name })
+                              ? t('stepTooltipComplete', { name: step.name })
                               : isPartial
-                              ? t('stepTooltipPartial', { name })
-                              : t('stepTooltipEmpty', { name })
+                              ? t('stepTooltipPartial', { name: step.name })
+                              : t('stepTooltipEmpty', { name: step.name })
                           }
                         >
                           {/* Partial progress bar overlay filled with orange on right for missing part */}
@@ -1787,7 +1844,7 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                             )}
                           </div>
                           <span className="relative z-10 text-[10px] leading-tight truncate w-full block">
-                            {name.split('. ')[1] || name}
+                            {step.shortName || step.name.split('. ')[1] || step.name}
                           </span>
                         </button>
                       );
@@ -1799,7 +1856,7 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
               {/* SEQUENTIAL STEP BODIES */}
               <div className="min-h-[300px]">
                 {/* 1. STAMMDATEN */}
-                {currentStep === 1 && (
+                {currentStepConfig.id === 'stammdaten' && (
                   <div className="space-y-5 animate-in fade-in-50 duration-150">
                     <div className="bg-teal-50/60 p-3 rounded-lg border border-teal-100 text-teal-950 text-xs flex items-center gap-2">
                       <User className="w-4 h-4 text-teal-600 shrink-0" />
@@ -1925,7 +1982,7 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                 )}
 
                 {/* 2. HAUPTBESCHWERDE & DYNAMISCHE FRAGEN */}
-                {currentStep === 2 && (
+                {currentStepConfig.id === 'hauptbeschwerde' && (
                   <div className="space-y-6 animate-in fade-in-50 duration-150">
                     <div className="space-y-3">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
@@ -2009,7 +2066,7 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                 )}
 
                 {/* 3. FRAGEBOGEN */}
-                {currentStep === 3 && (() => {
+                {currentStepConfig.id === 'fragebogen' && (() => {
                   const ext = currentCase.extendedAnamnesis || {};
                   const hasExtAnamnesis = Object.entries(ext).some(([_, v]) => 
                     v !== undefined && v !== null && v !== '' && (!Array.isArray(v) || v.length > 0)
@@ -2054,8 +2111,8 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                   );
                 })()}
 
-                {/* 4. BEFUND */}
-                {currentStep === 4 && (() => {
+                {/* BEFUND */}
+                {currentStepConfig.id === 'befund' && (() => {
                   const bd = currentCase.befundDetails || {};
                   const hasBefund = Boolean(
                     (bd.gesamtbeurteilung && bd.gesamtbeurteilung.trim() !== '') ||
@@ -2113,8 +2170,8 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                   );
                 })()}
 
-                {/* 5. MEDIKAMENTENEINNAHME */}
-                {currentStep === 5 && (() => {
+                {/* MEDIKAMENTENEINNAHME */}
+                {currentStepConfig.id === 'medikamente' && (() => {
                   const list = currentCase.medikamenteList || [];
                   const validMeds = list.filter(m => m.name && m.name.trim() !== '');
                   const hasMeds = validMeds.length > 0;
@@ -2355,8 +2412,8 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                   );
                 })()}
 
-                {/* 6. ÜBERSICHT & ANALYSE */}
-                {currentStep === 6 && (
+                {/* ÜBERSICHT & ANALYSE */}
+                {currentStepConfig.id === 'uebersicht' && (
                   <div className="space-y-6 animate-in fade-in-50 duration-150">
                     {/* Header Card */}
                     <div className="p-4.5 rounded-xl bg-slate-50 border border-slate-200">
@@ -2672,7 +2729,91 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                         )}
                       </div>
 
-                      {/* 4. Befund Accordion */}
+                      {/* Medikamenteneinnahme Accordion (nur wenn Medikamente erfasst wurden) */}
+                      {hasRecordedMedications && (
+                        <div className={`rounded-xl border bg-white shadow-xs overflow-hidden transition-all duration-200 ${
+                          summaryConfirmedSections.medikamente ? 'border-teal-300 ring-1 ring-teal-200/50' : 'border-slate-200'
+                        }`}>
+                          {/* Accordion Header */}
+                          <div
+                            onClick={() => toggleSummaryAccordion('medikamente')}
+                            className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-slate-50/70 hover:bg-slate-100/70 cursor-pointer select-none transition-colors"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className="text-slate-500">
+                                {summaryAccordionOpen.medikamente ? (
+                                  <ChevronDown className="w-4 h-4 text-slate-600" />
+                                ) : (
+                                  <ChevronRight className="w-4 h-4 text-slate-400" />
+                                )}
+                              </div>
+                              <div className="p-1.5 rounded-lg bg-teal-50 text-teal-700 border border-teal-100 shrink-0">
+                                <Pill className="w-4 h-4" />
+                              </div>
+                              <span className="font-bold text-slate-800 text-sm sm:text-base truncate">
+                                {t('summaryAccordionMedikamente')}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-2.5 self-end sm:self-auto shrink-0">
+                              {renderSummarySectionBadge(4, summaryConfirmedSections.medikamente)}
+
+                              <button
+                                type="button"
+                                id="btn-edit-section-medikamente"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  goToStepById('medikamente');
+                                }}
+                                className="text-slate-700 hover:text-teal-800 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-200 px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 text-xs transition-colors cursor-pointer shadow-xs"
+                              >
+                                <Edit3 className="w-3.5 h-3.5 text-teal-600" />
+                                <span>{t('stepEditSection')}</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                id="btn-adopt-section-medikamente"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleSectionConfirmation('medikamente');
+                                }}
+                                className={`px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 text-xs transition-all cursor-pointer shadow-xs border ${
+                                  summaryConfirmedSections.medikamente
+                                    ? 'bg-teal-600 hover:bg-teal-700 text-white border-teal-700'
+                                    : 'bg-white hover:bg-teal-50 text-slate-700 hover:text-teal-800 border-slate-200 hover:border-teal-200'
+                                }`}
+                              >
+                                <Check className={`w-3.5 h-3.5 ${summaryConfirmedSections.medikamente ? 'text-white' : 'text-slate-400'}`} />
+                                <span>{t('summaryAdoptCheckbox')}</span>
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Accordion Content */}
+                          {summaryAccordionOpen.medikamente && (
+                            <div className="p-5 border-t border-slate-100 bg-white animate-in fade-in-50 duration-150">
+                              {currentCase.medikamenteList && currentCase.medikamenteList.some(m => m.name && m.name.trim() !== '') ? (
+                                <div className="space-y-3">
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                                    {currentCase.medikamenteList.filter(m => m.name && m.name.trim() !== '').map((m, idx) => (
+                                      <div key={(m as any).id || idx} className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                                        <span className="block font-bold text-slate-800 mb-1">{m.name}</span>
+                                        {m.dosierung && <span className="block text-xs text-slate-600 mb-0.5">{t('dosage' as TranslationKey)}: {m.dosierung}</span>}
+                                        {m.einnahmeart && <span className="block text-xs text-slate-600">{t('intake' as TranslationKey)}: {m.einnahmeart}</span>}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              ) : (
+                                <p className="text-slate-600">{t('noData')}</p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Befund Accordion */}
                       <div className={`rounded-xl border bg-white shadow-xs overflow-hidden transition-all duration-200 ${
                         summaryConfirmedSections.befund ? 'border-teal-300 ring-1 ring-teal-200/50' : 'border-slate-200'
                       }`}>
@@ -2698,14 +2839,14 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                           </div>
 
                           <div className="flex items-center gap-2.5 self-end sm:self-auto shrink-0">
-                            {renderSummarySectionBadge(4, summaryConfirmedSections.befund)}
+                            {renderSummarySectionBadge(hasRecordedMedications ? 5 : 4, summaryConfirmedSections.befund)}
 
                             <button
                               type="button"
                               id="btn-edit-section-befund"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setCurrentStep(4);
+                                goToStepById('befund');
                               }}
                               className="text-slate-700 hover:text-teal-800 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-200 px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 text-xs transition-colors cursor-pointer shadow-xs"
                             >
@@ -2774,88 +2915,6 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                           </div>
                         )}
                       </div>
-
-                      {/* 5. Medikamenteneinnahme Accordion */}
-                      <div className={`rounded-xl border bg-white shadow-xs overflow-hidden transition-all duration-200 ${
-                        summaryConfirmedSections.medikamente ? 'border-teal-300 ring-1 ring-teal-200/50' : 'border-slate-200'
-                      }`}>
-                        {/* Accordion Header */}
-                        <div
-                          onClick={() => toggleSummaryAccordion('medikamente')}
-                          className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-slate-50/70 hover:bg-slate-100/70 cursor-pointer select-none transition-colors"
-                        >
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="text-slate-500">
-                              {summaryAccordionOpen.medikamente ? (
-                                <ChevronDown className="w-4 h-4 text-slate-600" />
-                              ) : (
-                                <ChevronRight className="w-4 h-4 text-slate-400" />
-                              )}
-                            </div>
-                            <div className="p-1.5 rounded-lg bg-teal-50 text-teal-700 border border-teal-100 shrink-0">
-                              <Pill className="w-4 h-4" />
-                            </div>
-                            <span className="font-bold text-slate-800 text-sm sm:text-base truncate">
-                              {t('summaryAccordionMedikamente')}
-                            </span>
-                          </div>
-
-                          <div className="flex items-center gap-2.5 self-end sm:self-auto shrink-0">
-                            {renderSummarySectionBadge(5, summaryConfirmedSections.medikamente)}
-
-                            <button
-                              type="button"
-                              id="btn-edit-section-medikamente"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setCurrentStep(5);
-                              }}
-                              className="text-slate-700 hover:text-teal-800 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-200 px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 text-xs transition-colors cursor-pointer shadow-xs"
-                            >
-                              <Edit3 className="w-3.5 h-3.5 text-teal-600" />
-                              <span>{t('stepEditSection')}</span>
-                            </button>
-
-                            <button
-                              type="button"
-                              id="btn-adopt-section-medikamente"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleSectionConfirmation('medikamente');
-                              }}
-                              className={`px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 text-xs transition-all cursor-pointer shadow-xs border ${
-                                summaryConfirmedSections.medikamente
-                                  ? 'bg-teal-600 hover:bg-teal-700 text-white border-teal-700'
-                                  : 'bg-white hover:bg-teal-50 text-slate-700 hover:text-teal-800 border-slate-200 hover:border-teal-200'
-                              }`}
-                            >
-                              <Check className={`w-3.5 h-3.5 ${summaryConfirmedSections.medikamente ? 'text-white' : 'text-slate-400'}`} />
-                              <span>{t('summaryAdoptCheckbox')}</span>
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Accordion Content */}
-                        {summaryAccordionOpen.medikamente && (
-                          <div className="p-5 border-t border-slate-100 bg-white animate-in fade-in-50 duration-150">
-                            {currentCase.medikamenteList && currentCase.medikamenteList.some(m => m.name && m.name.trim() !== '') ? (
-                              <div className="space-y-3">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-sm">
-                                  {currentCase.medikamenteList.filter(m => m.name && m.name.trim() !== '').map((m, idx) => (
-                                    <div key={(m as any).id || idx} className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
-                                      <span className="block font-bold text-slate-800 mb-1">{m.name}</span>
-                                      {m.dosierung && <span className="block text-xs text-slate-600 mb-0.5">{t('dosage' as TranslationKey)}: {m.dosierung}</span>}
-                                      {m.einnahmeart && <span className="block text-xs text-slate-600">{t('intake' as TranslationKey)}: {m.einnahmeart}</span>}
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            ) : (
-                              <p className="text-slate-600">{t('noData')}</p>
-                            )}
-                          </div>
-                        )}
-                      </div>
                     </div>
 
                     {/* Prominent Action Banner for Step 7 */}
@@ -2902,8 +2961,8 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                   </div>
                 )}
 
-                {/* 7. ANALYSE & AUSWERTUNG */}
-                {currentStep === 7 && (
+                {/* ANALYSE & AUSWERTUNG */}
+                {currentStepConfig.id === 'analyse' && (
                   <div className="animate-in fade-in-50 duration-150">
                     {isAnalyzing ? (
                       <div className="bg-white p-12 rounded-xl shadow-xs border border-slate-200 flex flex-col items-center justify-center text-center space-y-4">
@@ -2947,8 +3006,8 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                   </div>
                 )}
 
-                {/* 8. EMPFEHLUNGEN & VERORDNUNG */}
-                {currentStep === 8 && (
+                {/* EMPFEHLUNGEN & VERORDNUNG */}
+                {currentStepConfig.id === 'empfehlungen' && (
                   <div className="animate-in fade-in-50 duration-150">
                     <TherapyRecommendationsView
                       patientCase={currentCase as PatientCase}
@@ -2983,7 +3042,7 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                       }}
                       onUpdateCase={(updates) => setCurrentCase(prev => ({ ...prev, ...updates }))}
                       onSaveCase={handleSaveCase}
-                      onPreviousStep={() => setCurrentStep(7)}
+                      onPreviousStep={() => goToStepById('analyse')}
                     />
                   </div>
                 )}
@@ -3010,12 +3069,12 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                 {/* Center: Step Indicator & Auto-Save Status */}
                 <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
                   <span className="font-semibold text-slate-800">
-                    {stepNames[currentStep - 1] || allStepNames[currentStep - 1]} ({currentStep} / {totalWizardSteps})
+                    {stepNames[currentStep - 1] || ''} ({currentStep} / {totalWizardSteps})
                   </span>
                   {hasPatientData && (
                     <span className="hidden md:inline-flex items-center gap-1 text-[11px] text-teal-700 bg-teal-50 px-2 py-0.5 rounded-md border border-teal-100 font-sans">
                       <Check className="w-3 h-3 text-teal-600" />
-                      <span>{t('btnAutoSaved' as any) || 'Automatisch gesichert'}</span>
+                      <span>{t('btnAutoSaved')}</span>
                     </span>
                   )}
                 </div>
@@ -3035,7 +3094,7 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                       <User className="w-4 h-4" />
                       <span>{t('enterMasterData')}</span>
                     </button>
-                  ) : currentStep === 6 ? (
+                  ) : currentStepConfig.id === 'uebersicht' ? (
                     <>
                       <button
                         type="button"
@@ -3052,11 +3111,11 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                         onClick={goToNextStep}
                         className="flex items-center gap-1.5 px-5 py-2.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs sm:text-sm font-semibold transition-all shadow-xs cursor-pointer"
                       >
-                        <span>{t('goToAnalysisBtn' as any) || 'Weiter zur Analyse (Schritt 7) →'}</span>
+                        <span>{t('goToAnalysisBtn')}</span>
                         <ArrowRight className="w-4 h-4" />
                       </button>
                     </>
-                  ) : currentStep === 7 ? (
+                  ) : currentStepConfig.id === 'analyse' ? (
                     <>
                       <button
                         type="button"
@@ -3073,11 +3132,11 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                         onClick={goToNextStep}
                         className="flex items-center gap-1.5 px-5 py-2.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs sm:text-sm font-semibold transition-all shadow-xs cursor-pointer"
                       >
-                        <span>{t('goToRecommendationsBtn' as any) || 'Weiter zu Empfehlungen (Schritt 8) →'}</span>
+                        <span>{t('goToRecommendationsBtn')}</span>
                         <ArrowRight className="w-4 h-4" />
                       </button>
                     </>
-                  ) : currentStep === 8 ? (
+                  ) : currentStepConfig.id === 'empfehlungen' ? (
                     <>
                       <div className="flex items-center gap-1.5 mr-1">
                         <button
@@ -3138,8 +3197,33 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
           setIsExtendedAnamnesisWizardOpen(false);
         }}
         initialData={currentCase.extendedAnamnesis || {}}
-        onSave={(data) => {
-          setCurrentCase(prev => ({ ...prev, extendedAnamnesis: data }));
+        nimmtMedikamente={currentCase.nimmtMedikamente}
+        medikamenteList={currentCase.medikamenteList || []}
+        onSave={(data, updatedMeds) => {
+          setCurrentCase(prev => {
+            const hasMeds = updatedMeds && updatedMeds.length > 0;
+            const updatedCase: Partial<PatientCase> = {
+              ...prev,
+              extendedAnamnesis: data,
+              ...(updatedMeds !== undefined ? {
+                medikamenteList: updatedMeds,
+                nimmtMedikamente: hasMeds
+              } : {})
+            };
+            if (prev.id) {
+              const fullCaseToSave = {
+                ...prev,
+                ...updatedCase,
+                therapistId: prev.therapistId || therapist.id,
+                patientName: prev.patientName || '',
+                anamneseDatum: prev.anamneseDatum || new Date().toISOString().split('T')[0],
+                id: prev.id
+              } as PatientCase;
+              savePatientCase(fullCaseToSave);
+              setCases(prevCases => prevCases.map(c => c.id === prev.id ? { ...c, ...updatedCase } as PatientCase : c));
+            }
+            return updatedCase;
+          });
           setSaveToast(t('toastExtendedAnamnesisSaved'));
           setTimeout(() => setSaveToast(null), 3000);
         }}

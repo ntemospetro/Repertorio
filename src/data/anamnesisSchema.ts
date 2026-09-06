@@ -21,7 +21,7 @@ export const anamnesisSchema: AnamnesisStepConfig[] = [
         id: 'hat_beschwerden',
         label: 'Haben Sie derzeit Beschwerden oder Symptome?',
         type: 'radio',
-        options: ['Ja', 'Nein']
+        options: ['Nein', 'Ja']
       },
       {
         id: 'beschwerden_liste',
@@ -43,7 +43,7 @@ export const anamnesisSchema: AnamnesisStepConfig[] = [
         id: 'hat_gesundheitsprobleme',
         label: 'Haben oder hatten Sie bekannte gesundheitliche Probleme, körperlich oder psychisch?',
         type: 'radio',
-        options: ['Ja', 'Nein']
+        options: ['Nein', 'Ja']
       },
       {
         id: 'gesundheitsprobleme_liste',
@@ -59,7 +59,7 @@ export const anamnesisSchema: AnamnesisStepConfig[] = [
         id: 'wurde_operiert',
         label: 'Wurden Sie schon einmal operiert?',
         type: 'radio',
-        options: ['Ja', 'Nein']
+        options: ['Nein', 'Ja']
       },
       {
         id: 'operationen_liste',
@@ -78,7 +78,7 @@ export const anamnesisSchema: AnamnesisStepConfig[] = [
         id: 'hat_chronische_krankheiten',
         label: 'Leiden Sie unter chronischen Krankheiten?',
         type: 'radio',
-        options: ['Ja', 'Nein']
+        options: ['Nein', 'Ja']
       },
       {
         id: 'chronische_krankheiten_liste',
@@ -100,7 +100,7 @@ export const anamnesisSchema: AnamnesisStepConfig[] = [
         id: 'nimmt_medikamente',
         label: 'Nehmen Sie derzeit Medikamente ein?',
         type: 'radio',
-        options: ['Ja', 'Nein']
+        options: ['Nein', 'Ja']
       },
       {
         id: 'medikamente_liste',
@@ -127,7 +127,7 @@ export const anamnesisSchema: AnamnesisStepConfig[] = [
         id: 'hat_allergien',
         label: 'Haben Sie Allergien oder Unverträglichkeiten gegen Medikamente, Lebensmittel oder Umweltfaktoren?',
         type: 'radio',
-        options: ['Ja', 'Nein']
+        options: ['Nein', 'Ja']
       },
       {
         id: 'allergien_liste',
@@ -150,7 +150,7 @@ export const anamnesisSchema: AnamnesisStepConfig[] = [
         id: 'nimmt_nahrungsergaenzung',
         label: 'Nehmen Sie Nahrungsergänzungsmittel oder pflanzliche Präparate ein?',
         type: 'radio',
-        options: ['Ja', 'Nein']
+        options: ['Nein', 'Ja']
       },
       {
         id: 'nahrungsergaenzung_liste',
@@ -190,7 +190,7 @@ export const anamnesisSchema: AnamnesisStepConfig[] = [
         id: 'hat_vorlieben_unvertraeglichkeiten',
         label: 'Haben Sie Vorlieben oder Unverträglichkeiten bei bestimmten Lebensmitteln?',
         type: 'radio',
-        options: ['Ja', 'Nein']
+        options: ['Nein', 'Ja']
       },
       {
         id: 'lebensmittel_liste',
@@ -210,10 +210,11 @@ export const anamnesisSchema: AnamnesisStepConfig[] = [
     id: 'getraenke',
     title: '7. Wasser, Kaffee und Tee',
     fields: [
-      { id: 'wasser_liter', label: 'Wie viele Liter Wasser trinken Sie ungefähr pro Tag?', type: 'number' },
-      { id: 'kaffee_tassen', label: 'Wie viele Kaffeetassen trinken Sie ungefähr pro Tag?', type: 'number' },
-      { id: 'kaffee_art', label: 'Kaffeeart', type: 'radio', options: ['Koffeinhaltig', 'Koffeinfrei', 'Beides']}, // Simple logic, might just always show or we don't have 'not_eq'. Let's skip condition for kaffee_art.
-      { id: 'trinkt_tee', label: 'Trinken Sie Tee?', type: 'radio', options: ['Ja', 'Nein'] },
+      { id: 'wasser_liter', label: 'Wie viele Liter Wasser trinken Sie ungefähr pro Tag?', type: 'number', unit: 'Liter / Tag' },
+      { id: 'trinkt_kaffee', label: 'Trinken Sie Kaffee?', type: 'radio', options: ['Nein', 'Ja'] },
+      { id: 'kaffee_tassen', label: 'Wie viele Tassen pro Tag?', type: 'number', condition: { fieldId: 'trinkt_kaffee', value: 'Ja' }, unit: 'Tassen' },
+      { id: 'kaffee_art', label: 'Kaffeeart', type: 'radio', options: ['Koffeinhaltig', 'Koffeinfrei', 'Beides'], condition: { fieldId: 'trinkt_kaffee', value: 'Ja' } },
+      { id: 'trinkt_tee', label: 'Trinken Sie Tee?', type: 'radio', options: ['Nein', 'Ja'] },
       {
         id: 'tee_liste',
         label: 'Teesorten',
@@ -222,7 +223,7 @@ export const anamnesisSchema: AnamnesisStepConfig[] = [
         addLabel: '+ weiteren Tee hinzufügen',
         subFields: [
           { id: 'sorte', label: 'Welche Teesorte?', type: 'text' },
-          { id: 'tassen', label: 'Wie viele Tassen pro Tag?', type: 'number' },
+          { id: 'tassen', label: 'Wie viele Tassen pro Tag?', type: 'number', unit: 'Tassen' },
           { id: 'art', label: 'Art', type: 'radio', options: ['Koffeinhaltig', 'Koffeinfrei'] },
           { id: 'bemerkung', label: 'Weitere Bemerkungen (optional)', type: 'text' }
         ]
@@ -230,10 +231,11 @@ export const anamnesisSchema: AnamnesisStepConfig[] = [
     ]
   },
   {
-    id: 'alkohol',
-    title: '8. Alkohol',
+    id: 'alkohol_rauchen',
+    title: '8. Alkohol und Rauchen',
     fields: [
-      { id: 'alkohol_konsum', label: 'Wie viel Alkohol trinken Sie?', type: 'radio', options: ['Nie', 'Gelegentlich', 'Regelmäßig'] },
+      { id: 'trinkt_alkohol', label: 'Trinken Sie Alkohol?', type: 'radio', options: ['Nein', 'Ja'] },
+      { id: 'alkohol_konsum', label: 'Wie häufig trinken Sie Alkohol?', type: 'radio', options: ['Gelegentlich', 'Regelmäßig'], condition: { fieldId: 'trinkt_alkohol', value: 'Ja' } },
       {
         id: 'alkohol_gelegentlich_haeufigkeit',
         label: 'Häufigkeit',
@@ -259,6 +261,28 @@ export const anamnesisSchema: AnamnesisStepConfig[] = [
         label: 'Welche Menge ungefähr?',
         type: 'text',
         condition: { fieldId: 'alkohol_konsum', value: 'Regelmäßig' }
+      },
+      { id: 'raucht', label: 'Rauchen Sie?', type: 'radio', options: ['Nein', 'Ja'] },
+      {
+        id: 'rauchen_art',
+        label: 'Was rauchen Sie? (Mehrfachauswahl)',
+        type: 'checkbox',
+        options: ['Zigaretten', 'E-Zigaretten / Vapes', 'Zigarren / Pfeife', 'Tabakerhitzer', 'Andere'],
+        multiple: true,
+        condition: { fieldId: 'raucht', value: 'Ja' }
+      },
+      {
+        id: 'rauchen_menge',
+        label: 'Wie viele Einheiten pro Tag?',
+        type: 'number',
+        unit: 'pro Tag',
+        condition: { fieldId: 'raucht', value: 'Ja' }
+      },
+      {
+        id: 'rauchen_dauer',
+        label: 'Seit wie vielen Jahren rauchen Sie?',
+        type: 'text',
+        condition: { fieldId: 'raucht', value: 'Ja' }
       }
     ]
   },
@@ -266,9 +290,10 @@ export const anamnesisSchema: AnamnesisStepConfig[] = [
     id: 'verdauung',
     title: '9. Verdauung und Ausscheidung',
     fields: [
-      { id: 'verdauung_art', label: 'Wie würden Sie Ihre Verdauung und Ausscheidung beschreiben?', type: 'radio', options: ['Normal', 'Verstopfung', 'Weicher Stuhl', 'Durchfall', 'Wechselnd', 'Andere'] },
+      { id: 'hat_verdauungsbeschwerden', label: 'Haben Sie Beschwerden im Bereich Verdauung und Ausscheidung?', type: 'radio', options: ['Nein', 'Ja'] },
+      { id: 'verdauung_art', label: 'Wie würden Sie Ihre Verdauung und Ausscheidung beschreiben?', type: 'radio', options: ['Normal', 'Verstopfung', 'Weicher Stuhl', 'Durchfall', 'Wechselnd', 'Andere'], condition: { fieldId: 'hat_verdauungsbeschwerden', value: 'Ja' } },
       { id: 'verdauung_andere', label: 'Andere Verdauung:', type: 'text', condition: { fieldId: 'verdauung_art', value: 'Andere' } },
-      { id: 'hat_nahrungsmittel_probleme', label: 'Gibt es bestimmte Nahrungsmittel, nach denen Sie Verdauungsprobleme bekommen?', type: 'radio', options: ['Ja', 'Nein'] },
+      { id: 'hat_nahrungsmittel_probleme', label: 'Gibt es bestimmte Nahrungsmittel, nach denen Sie Verdauungsprobleme bekommen?', type: 'radio', options: ['Nein', 'Ja'], condition: { fieldId: 'hat_verdauungsbeschwerden', value: 'Ja' } },
       {
         id: 'nahrungsmittel_probleme_liste',
         label: 'Welche?',
@@ -277,7 +302,7 @@ export const anamnesisSchema: AnamnesisStepConfig[] = [
         addLabel: '+ weiteres Lebensmittel hinzufügen',
         subFields: [{ id: 'lebensmittel', label: 'Lebensmittel', type: 'text' }]
       },
-      { id: 'hat_magen_darm_probleme', label: 'Haben Sie Blähungen, ein Schweregefühl im Magen oder andere Magen-Darm-Probleme?', type: 'radio', options: ['Ja', 'Nein'] },
+      { id: 'hat_magen_darm_probleme', label: 'Haben Sie Blähungen, ein Schweregefühl im Magen oder andere Magen-Darm-Probleme?', type: 'radio', options: ['Nein', 'Ja'], condition: { fieldId: 'hat_verdauungsbeschwerden', value: 'Ja' } },
       { id: 'magen_darm_probleme_art', label: 'Welche Beschwerden haben Sie genau?', type: 'text', condition: { fieldId: 'hat_magen_darm_probleme', value: 'Ja' } },
       { id: 'magen_darm_probleme_wann', label: 'Wann treten die Beschwerden auf? (optional)', type: 'text', condition: { fieldId: 'hat_magen_darm_probleme', value: 'Ja' } }
     ]
@@ -288,19 +313,21 @@ export const anamnesisSchema: AnamnesisStepConfig[] = [
     fields: [
       { id: 'schlafqualitaet', label: 'Wie würden Sie die Qualität Ihres Schlafs beschreiben?', type: 'radio', options: ['Sehr gut', 'Gut', 'Mittel', 'Schlecht', 'Sehr schlecht'] },
       { id: 'schlafdauer', label: 'Wie viele Stunden schlafen Sie ungefähr pro Nacht?', type: 'number' },
-      { id: 'macht_mittagsschlaf', label: 'Machen Sie tagsüber einen Mittagsschlaf oder schlafen Sie nachmittags?', type: 'radio', options: ['Ja', 'Nein'] },
+      { id: 'macht_mittagsschlaf', label: 'Machen Sie tagsüber einen Mittagsschlaf oder schlafen Sie nachmittags?', type: 'radio', options: ['Nein', 'Ja'] },
       { id: 'mittagsschlaf_wann', label: 'Wann? (optional)', type: 'text', condition: { fieldId: 'macht_mittagsschlaf', value: 'Ja' } },
       { id: 'mittagsschlaf_dauer', label: 'Wie viele Stunden / Minuten? (optional)', type: 'text', condition: { fieldId: 'macht_mittagsschlaf', value: 'Ja' } },
       { id: 'schlafengehzeit_typ', label: 'Gehen Sie eher früh oder spät schlafen?', type: 'radio', options: ['Früh', 'Spät', 'Unterschiedlich'] },
       { id: 'schlafengehzeit_frueh', label: 'In der Regel gegen welche Uhrzeit?', type: 'text', condition: { fieldId: 'schlafengehzeit_typ', value: 'Früh' } },
       { id: 'schlafengehzeit_spaet', label: 'In der Regel gegen welche Uhrzeit?', type: 'text', condition: { fieldId: 'schlafengehzeit_typ', value: 'Spät' } },
-      { id: 'hat_schlafprobleme', label: 'Haben Sie Schlafprobleme?', type: 'radio', options: ['Ja', 'Nein'] },
+      { id: 'hat_schlafprobleme', label: 'Haben Sie Schlafprobleme?', type: 'radio', options: ['Nein', 'Ja'] },
       { id: 'schlafprobleme_art', label: 'Welche Schlafprobleme?', type: 'checkbox', options: ['Einschlafprobleme', 'Durchschlafprobleme', 'Frühes Erwachen', 'Häufiges Erwachen', 'Gedanken / Grübeln', 'Unruhe', 'Andere'], multiple: true, condition: { fieldId: 'hat_schlafprobleme', value: 'Ja' } },
       { id: 'schlafprobleme_andere', label: 'Andere Schlafprobleme:', type: 'text', condition: { fieldId: 'schlafprobleme_art', value: 'Andere', operator: 'includes' } },
-      { id: 'schlafposition', label: 'Welche Schlafposition bevorzugen Sie? (optional)', type: 'radio', options: ['Rückenlage', 'Seitenlage', 'Bauchlage', 'Wechselnd'] },
-      { id: 'fuesse_temperatur', label: 'Sind Ihre Füße während des Schlafs eher warm oder kalt? (optional)', type: 'radio', options: ['Warm', 'Kalt', 'Wechselnd'] },
-      { id: 'deckt_sich_zu', label: 'Decken Sie sich im Schlaf zu? (optional)', type: 'radio', options: ['Ja, immer', 'Teilweise', 'Nein'] },
-      { id: 'traeume', label: 'Wie erleben Sie Ihre Träume bzw. Ihr Schlafverhalten? (Mehrfachauswahl)', type: 'checkbox', options: ['Keine Erinnerung an Träume', 'Normale Träume', 'Albträume', 'Wiederkehrende Träume', 'Schlafwandeln', 'Sprechen im Schlaf', 'Andere'], multiple: true },
+      { id: 'hat_besondere_schlafgewohnheiten', label: 'Haben Sie besondere Schlafgewohnheiten (z.B. bevorzugte Schlafposition, Temperatur der Füße)?', type: 'radio', options: ['Nein', 'Ja'] },
+      { id: 'schlafposition', label: 'Welche Schlafposition bevorzugen Sie? (optional)', type: 'radio', options: ['Rückenlage', 'Seitenlage', 'Bauchlage', 'Wechselnd'], condition: { fieldId: 'hat_besondere_schlafgewohnheiten', value: 'Ja' } },
+      { id: 'fuesse_temperatur', label: 'Sind Ihre Füße während des Schlafs eher warm oder kalt? (optional)', type: 'radio', options: ['Warm', 'Kalt', 'Wechselnd'], condition: { fieldId: 'hat_besondere_schlafgewohnheiten', value: 'Ja' } },
+      { id: 'deckt_sich_zu', label: 'Decken Sie sich im Schlaf zu? (optional)', type: 'radio', options: ['Ja, immer', 'Teilweise', 'Nein'], condition: { fieldId: 'hat_besondere_schlafgewohnheiten', value: 'Ja' } },
+      { id: 'hat_auffaellige_traeume', label: 'Haben Sie auffällige Träume oder Besonderheiten im Schlaf (z.B. Albträume, Sprechen, Schlafwandeln)?', type: 'radio', options: ['Nein', 'Ja'] },
+      { id: 'traeume', label: 'Wie erleben Sie Ihre Träume bzw. Ihr Schlafverhalten? (Mehrfachauswahl)', type: 'checkbox', options: ['Keine Erinnerung an Träume', 'Normale Träume', 'Albträume', 'Wiederkehrende Träume', 'Schlafwandeln', 'Sprechen im Schlaf', 'Andere'], multiple: true, condition: { fieldId: 'hat_auffaellige_traeume', value: 'Ja' } },
       { id: 'traeume_andere', label: 'Andere:', type: 'text', condition: { fieldId: 'traeume', value: 'Andere', operator: 'includes' } }
     ]
   },
@@ -309,7 +336,7 @@ export const anamnesisSchema: AnamnesisStepConfig[] = [
     title: '11. Lebensstil und Stress',
     fields: [
       { id: 'aktivitaet', label: 'Wie aktiv sind Sie im Alltag?', type: 'radio', options: ['Sitzend', 'Moderat aktiv', 'Aktiv', 'Sehr aktiv'] },
-      { id: 'macht_sport', label: 'Betreiben Sie Sport?', type: 'radio', options: ['Ja', 'Nein'] },
+      { id: 'macht_sport', label: 'Betreiben Sie Sport?', type: 'radio', options: ['Nein', 'Ja'] },
       {
         id: 'sport_liste',
         label: 'Sportarten',
@@ -324,9 +351,10 @@ export const anamnesisSchema: AnamnesisStepConfig[] = [
         ]
       },
       { id: 'stressniveau', label: 'Wie würden Sie Ihr Stressniveau einschätzen?', type: 'radio', options: ['Niedrig', 'Mittel', 'Hoch', 'Sehr hoch'] },
-      { id: 'stress_umgang', label: 'Wie gehen Sie mit Stress um? (Mehrfachauswahl)', type: 'checkbox', options: ['Sport', 'Gespräche', 'Rückzug', 'Entspannung', 'Schlaf', 'Essen', 'Alkohol', 'Andere', 'Kein bestimmter Umgang'], multiple: true },
-      { id: 'stress_umgang_beschreibung', label: 'Weitere Beschreibung (optional)', type: 'text' },
-      { id: 'hat_belastungen', label: 'Gibt es derzeit Situationen, die Sie belasten? (Ja/Nein)', type: 'radio', options: ['Ja', 'Nein'] },
+      { id: 'hat_stress_umgang', label: 'Haben Sie bestimmte Strategien im Umgang mit Stress?', type: 'radio', options: ['Nein', 'Ja'] },
+      { id: 'stress_umgang', label: 'Wie gehen Sie mit Stress um? (Mehrfachauswahl)', type: 'checkbox', options: ['Sport', 'Gespräche', 'Rückzug', 'Entspannung', 'Schlaf', 'Essen', 'Alkohol', 'Andere', 'Kein bestimmter Umgang'], multiple: true, condition: { fieldId: 'hat_stress_umgang', value: 'Ja' } },
+      { id: 'stress_umgang_beschreibung', label: 'Weitere Beschreibung (optional)', type: 'text', condition: { fieldId: 'hat_stress_umgang', value: 'Ja' } },
+      { id: 'hat_belastungen', label: 'Gibt es derzeit Situationen, die Sie belasten? (Ja/Nein)', type: 'radio', options: ['Nein', 'Ja'] },
       {
         id: 'belastungen_liste',
         label: 'Belastende Situationen',
@@ -343,7 +371,7 @@ export const anamnesisSchema: AnamnesisStepConfig[] = [
     id: 'wetter',
     title: '12. Wetterempfindlichkeit',
     fields: [
-      { id: 'wetter_empfindlich', label: 'Werden Sie durch Wetter- oder Temperaturänderungen beeinflusst?', type: 'radio', options: ['Ja', 'Nein'] },
+      { id: 'wetter_empfindlich', label: 'Werden Sie durch Wetter- oder Temperaturänderungen beeinflusst?', type: 'radio', options: ['Nein', 'Ja'] },
       { id: 'wetter_faktoren', label: 'Wetterfaktoren (Mehrfachauswahl)', type: 'checkbox', options: ['Feuchtigkeit', 'Kälte', 'Hitze', 'Luftdruck', 'Zugluft', 'Regen', 'Gewitter', 'Wetterwechsel', 'Andere'], multiple: true, condition: { fieldId: 'wetter_empfindlich', value: 'Ja' } },
       { id: 'wetter_faktoren_andere', label: 'Andere Wetterfaktoren:', type: 'text', condition: { fieldId: 'wetter_faktoren', value: 'Andere', operator: 'includes' } },
       {
@@ -360,7 +388,7 @@ export const anamnesisSchema: AnamnesisStepConfig[] = [
     id: 'familie',
     title: '13. Familiäre Krankengeschichte',
     fields: [
-      { id: 'familie_chronisch', label: 'Gibt es chronische oder erbliche Krankheiten in Ihrer Familie?', type: 'radio', options: ['Ja', 'Nein'] },
+      { id: 'familie_chronisch', label: 'Gibt es chronische oder erbliche Krankheiten in Ihrer Familie?', type: 'radio', options: ['Nein', 'Ja'] },
       { id: 'familie_chronisch_art', label: 'Welche? (Mehrfachauswahl)', type: 'checkbox', options: ['Herzerkrankungen', 'Diabetes', 'Krebs', 'Autoimmunerkrankungen', 'Andere'], multiple: true, condition: { fieldId: 'familie_chronisch', value: 'Ja' } },
       { id: 'familie_chronisch_andere', label: 'Andere:', type: 'text', condition: { fieldId: 'familie_chronisch_art', value: 'Andere', operator: 'includes' } },
       {
@@ -371,7 +399,7 @@ export const anamnesisSchema: AnamnesisStepConfig[] = [
         addLabel: '+ weitere familiäre Erkrankung hinzufügen',
         subFields: [{ id: 'erkrankung', label: 'Erkrankung', type: 'text' }]
       },
-      { id: 'familie_psychisch', label: 'Gibt es psychische Erkrankungen in Ihrer Familie?', type: 'radio', options: ['Ja', 'Nein'] },
+      { id: 'familie_psychisch', label: 'Gibt es psychische Erkrankungen in Ihrer Familie?', type: 'radio', options: ['Nein', 'Ja'] },
       { id: 'familie_psychisch_art', label: 'Welche? (Mehrfachauswahl)', type: 'checkbox', options: ['Depression', 'Angststörung', 'Suchterkrankung', 'Andere'], multiple: true, condition: { fieldId: 'familie_psychisch', value: 'Ja' } },
       {
         id: 'weitere_psychische_liste',
@@ -381,7 +409,7 @@ export const anamnesisSchema: AnamnesisStepConfig[] = [
         addLabel: '+ weitere Erkrankung hinzufügen',
         subFields: [{ id: 'erkrankung', label: 'Erkrankung', type: 'text' }]
       },
-      { id: 'familie_besonderheiten', label: 'Gibt es bekannte genetische oder andere medizinische Besonderheiten in Ihrer Familie?', type: 'radio', options: ['Ja', 'Nein'] },
+      { id: 'familie_besonderheiten', label: 'Gibt es bekannte genetische oder andere medizinische Besonderheiten in Ihrer Familie?', type: 'radio', options: ['Nein', 'Ja'] },
       {
         id: 'besonderheiten_liste',
         label: 'Besonderheiten',
@@ -397,10 +425,11 @@ export const anamnesisSchema: AnamnesisStepConfig[] = [
     title: '14. Psychologisches Profil',
     fields: [
       { id: 'psych_zustand', label: 'Wie würden Sie Ihren aktuellen psychischen bzw. emotionalen Zustand beschreiben? (Mehrfachauswahl)', type: 'checkbox', options: ['Stabil', 'Belastet', 'Ängstlich', 'Depressive Stimmung', 'Phobisch', 'Erschöpft', 'Andere'], multiple: true },
-      { id: 'psych_zustand_beschreibung', label: 'Möchten Sie Ihren aktuellen Zustand näher beschreiben?', type: 'textarea' },
-      { id: 'psych_symptome', label: 'Haben Sie kürzlich vermehrt Angst, Freudlosigkeit oder depressive Verstimmungen erlebt?', type: 'radio', options: ['Ja', 'Nein'] },
+      { id: 'hat_psych_beschreibung', label: 'Möchten Sie Ihren aktuellen emotionalen Zustand näher beschreiben?', type: 'radio', options: ['Nein', 'Ja'] },
+      { id: 'psych_zustand_beschreibung', label: 'Möchten Sie Ihren aktuellen Zustand näher beschreiben?', type: 'textarea', condition: { fieldId: 'hat_psych_beschreibung', value: 'Ja' } },
+      { id: 'psych_symptome', label: 'Haben Sie kürzlich vermehrt Angst, Freudlosigkeit oder depressive Verstimmungen erlebt?', type: 'radio', options: ['Nein', 'Ja'] },
       { id: 'psych_symptome_details', label: 'Was genau haben Sie erlebt?', type: 'textarea', condition: { fieldId: 'psych_symptome', value: 'Ja' } },
-      { id: 'psych_therapie_historie', label: 'Hatten Sie in der Vergangenheit psychische Störungen oder befinden Sie sich derzeit in Psychotherapie?', type: 'radio', options: ['Ja', 'Nein'] },
+      { id: 'psych_therapie_historie', label: 'Hatten Sie in der Vergangenheit psychische Störungen oder befinden Sie sich derzeit in Psychotherapie?', type: 'radio', options: ['Nein', 'Ja'] },
       { id: 'psych_therapie_art', label: 'Art', type: 'checkbox', options: ['Ärztlich / psychologisch diagnostizierte psychische Störung', 'Psychotherapie', 'Beides'], multiple: true, condition: { fieldId: 'psych_therapie_historie', value: 'Ja' } },
       { id: 'psych_diagnose', label: 'Welche Diagnose / Störung wurde festgestellt?', type: 'text', condition: { fieldId: 'psych_therapie_art', value: 'Ärztlich / psychologisch diagnostizierte psychische Störung', operator: 'includes' } },
       {
@@ -422,7 +451,8 @@ export const anamnesisSchema: AnamnesisStepConfig[] = [
     title: '15. Soziales Umfeld',
     fields: [
       { id: 'soziales_umfeld', label: 'Wie würden Sie Ihr soziales Umfeld beschreiben?', type: 'radio', options: ['Sehr unterstützend', 'Mäßig unterstützend', 'Wenig unterstützend', 'Keine / minimale Unterstützung'] },
-      { id: 'unterstuetzung_von', label: 'Von wem erhalten Sie Unterstützung? (Mehrfachauswahl)', type: 'checkbox', options: ['Familienangehörige', 'Partner/in', 'Freunde', 'Bekannte', 'Andere'], multiple: true },
+      { id: 'erhaelt_unterstuetzung', label: 'Erhalten Sie Unterstützung aus Ihrem Umfeld?', type: 'radio', options: ['Nein', 'Ja'] },
+      { id: 'unterstuetzung_von', label: 'Von wem erhalten Sie Unterstützung? (Mehrfachauswahl)', type: 'checkbox', options: ['Familienangehörige', 'Partner/in', 'Freunde', 'Bekannte', 'Andere'], multiple: true, condition: { fieldId: 'erhaelt_unterstuetzung', value: 'Ja' } },
       { id: 'unterstuetzung_andere', label: 'Andere:', type: 'text', condition: { fieldId: 'unterstuetzung_von', value: 'Andere', operator: 'includes' } }
     ]
   },
@@ -430,7 +460,7 @@ export const anamnesisSchema: AnamnesisStepConfig[] = [
     id: 'konflikte',
     title: '16. Familiäre und persönliche Konflikte',
     fields: [
-      { id: 'hat_konflikte', label: 'Gibt es familiäre oder persönliche Konflikte, die Sie aktuell beeinflussen?', type: 'radio', options: ['Ja', 'Nein'] },
+      { id: 'hat_konflikte', label: 'Gibt es familiäre oder persönliche Konflikte, die Sie aktuell beeinflussen?', type: 'radio', options: ['Nein', 'Ja'] },
       {
         id: 'konflikte_liste',
         label: 'Konflikte',
@@ -451,13 +481,17 @@ export const anamnesisSchema: AnamnesisStepConfig[] = [
       { id: 'hauptanliegen', label: 'Was ist aktuell Ihr wichtigstes gesundheitliches Anliegen?', type: 'textarea' },
       { id: 'seit_wann', label: 'Seit wann besteht es?', type: 'text' },
       { id: 'beginn', label: 'Wie hat es begonnen?', type: 'textarea' },
-      { id: 'ausloeser', label: 'Gab es einen erkennbaren Auslöser?', type: 'text' },
-      { id: 'verlauf', label: 'Ist es dauerhaft oder kommt es in Schüben?', type: 'text' },
+      { id: 'hat_ausloeser', label: 'Gab es einen erkennbaren Auslöser?', type: 'radio', options: ['Nein', 'Ja'] },
+      { id: 'ausloeser', label: 'Welcher Auslöser?', type: 'text', condition: { fieldId: 'hat_ausloeser', value: 'Ja' } },
+      { id: 'verlauf', label: 'Verlauf der Beschwerden', type: 'radio', options: ['Dauerhaft', 'In Schüben / Anfällen', 'Wechselnd / Unregelmäßig'] },
       { id: 'intensitaet', label: 'Wie stark ist es auf einer Skala von 0–10?', type: 'number' },
       { id: 'art_der_beschwerden', label: 'Art der Beschwerden (Mehrfachauswahl)', type: 'checkbox', options: ['Stechend', 'Drückend', 'Brennend', 'Ziehend', 'Pulsierend', 'Krampfartig', 'Dumpf', 'Andere'], multiple: true },
-      { id: 'verschlechterung', label: 'Was verschlechtert die Beschwerden? (Mehrfachauswahl)', type: 'checkbox', options: ['Kälte', 'Wärme', 'Bewegung', 'Ruhe', 'Berührung', 'Druck', 'bestimmte Körperposition', 'Essen', 'Trinken', 'Tageszeit', 'Wetter', 'Stress', 'Andere'], multiple: true },
-      { id: 'verbesserung', label: 'Was verbessert die Beschwerden? (Mehrfachauswahl)', type: 'checkbox', options: ['Kälte', 'Wärme', 'Bewegung', 'Ruhe', 'Berührung', 'Druck', 'bestimmte Körperposition', 'Essen', 'Trinken', 'Tageszeit', 'Wetter', 'Stress', 'Andere'], multiple: true },
-      { id: 'modalitaeten_andere', label: 'Andere Modalitäten (Verschlechterung/Verbesserung):', type: 'textarea' }
+      { id: 'hat_verschlechterung', label: 'Gibt es Faktoren, die die Beschwerden verschlechtern?', type: 'radio', options: ['Nein', 'Ja'] },
+      { id: 'verschlechterung', label: 'Was verschlechtert die Beschwerden? (Mehrfachauswahl)', type: 'checkbox', options: ['Kälte', 'Wärme', 'Bewegung', 'Ruhe', 'Berührung', 'Druck', 'bestimmte Körperposition', 'Essen', 'Trinken', 'Tageszeit', 'Wetter', 'Stress', 'Andere'], multiple: true, condition: { fieldId: 'hat_verschlechterung', value: 'Ja' } },
+      { id: 'hat_verbesserung', label: 'Gibt es Faktoren, die die Beschwerden verbessern?', type: 'radio', options: ['Nein', 'Ja'] },
+      { id: 'verbesserung', label: 'Was verbessert die Beschwerden? (Mehrfachauswahl)', type: 'checkbox', options: ['Kälte', 'Wärme', 'Bewegung', 'Ruhe', 'Berührung', 'Druck', 'bestimmte Körperposition', 'Essen', 'Trinken', 'Tageszeit', 'Wetter', 'Stress', 'Andere'], multiple: true, condition: { fieldId: 'hat_verbesserung', value: 'Ja' } },
+      { id: 'hat_weitere_modalitaeten', label: 'Gibt es weitere besondere Modalitäten oder Begleitsymptome?', type: 'radio', options: ['Nein', 'Ja'] },
+      { id: 'modalitaeten_andere', label: 'Andere Modalitäten (Verschlechterung/Verbesserung):', type: 'textarea', condition: { fieldId: 'hat_weitere_modalitaeten', value: 'Ja' } }
     ]
   },
   {
@@ -474,18 +508,22 @@ export const anamnesisSchema: AnamnesisStepConfig[] = [
     title: '19. Wärme- und Kälteempfinden',
     fields: [
       { id: 'allgemeines_empfinden', label: 'Empfinden Sie sich allgemein eher als:', type: 'radio', options: ['Schnell frierend', 'Eher warm', 'Wechselnd', 'Ausgeglichen'] },
-      { id: 'kaelteempfindlich', label: 'Welche Körperbereiche sind besonders kälteempfindlich?', type: 'text' },
-      { id: 'waermeempfindlich', label: 'Welche Körperbereiche sind besonders wärmeempfindlich?', type: 'text' }
+      { id: 'hat_kaelteempfindlichkeit', label: 'Reagieren bestimmte Körperbereiche besonders empfindlich auf Kälte?', type: 'radio', options: ['Nein', 'Ja'] },
+      { id: 'kaelteempfindlich', label: 'Welche Körperbereiche?', type: 'text', condition: { fieldId: 'hat_kaelteempfindlichkeit', value: 'Ja' } },
+      { id: 'hat_waermeempfindlichkeit', label: 'Reagieren bestimmte Körperbereiche besonders empfindlich auf Wärme?', type: 'radio', options: ['Nein', 'Ja'] },
+      { id: 'waermeempfindlich', label: 'Welche Körperbereiche?', type: 'text', condition: { fieldId: 'hat_waermeempfindlichkeit', value: 'Ja' } }
     ]
   },
   {
     id: 'schweiss',
     title: '20. Schweiß',
     fields: [
-      { id: 'schweiss_menge', label: 'Wie stark schwitzen Sie normalerweise?', type: 'radio', options: ['Wenig', 'Normal', 'Stark', 'Sehr stark'] },
-      { id: 'schweiss_orte', label: 'Wo schwitzen Sie besonders? (Mehrfachauswahl)', type: 'checkbox', options: ['Kopf', 'Gesicht', 'Achseln', 'Hände', 'Füße', 'Brust', 'Rücken', 'Gesamter Körper', 'Andere'], multiple: true },
-      { id: 'schweiss_wann', label: 'Wann schwitzen Sie besonders?', type: 'radio', options: ['Tagsüber', 'Nachts', 'Beim Sport', 'Bei Stress', 'Beim Schlafen', 'Andere'] },
-      { id: 'schweiss_geruch', label: 'Gibt es einen auffälligen Schweißgeruch? (optional)', type: 'radio', options: ['Ja', 'Nein'] }
+      { id: 'hat_auffaelligen_schweiss', label: 'Haben Sie Auffälligkeiten beim Schwitzen (z.B. starkes Schwitzen, Nachtschweiß)?', type: 'radio', options: ['Nein', 'Ja'] },
+      { id: 'schweiss_menge', label: 'Wie stark schwitzen Sie normalerweise?', type: 'radio', options: ['Wenig', 'Normal', 'Stark', 'Sehr stark'], condition: { fieldId: 'hat_auffaelligen_schweiss', value: 'Ja' } },
+      { id: 'schweiss_orte', label: 'Wo schwitzen Sie besonders? (Mehrfachauswahl)', type: 'checkbox', options: ['Kopf', 'Gesicht', 'Achseln', 'Hände', 'Füße', 'Brust', 'Rücken', 'Gesamter Körper', 'Andere'], multiple: true, condition: { fieldId: 'hat_auffaelligen_schweiss', value: 'Ja' } },
+      { id: 'schweiss_wann', label: 'Wann schwitzen Sie besonders?', type: 'radio', options: ['Tagsüber', 'Nachts', 'Beim Sport', 'Bei Stress', 'Beim Schlafen', 'Andere'], condition: { fieldId: 'hat_auffaelligen_schweiss', value: 'Ja' } },
+      { id: 'schweiss_geruch', label: 'Gibt es einen auffälligen Schweißgeruch? (optional)', type: 'radio', options: ['Nein', 'Ja'], condition: { fieldId: 'hat_auffaelligen_schweiss', value: 'Ja' } },
+      { id: 'schweiss_geruch_art', label: 'Wie würden Sie den Geruch beschreiben?', type: 'radio', options: ['Säuerlich', 'Stechend / Scharf', 'Süßlich', 'Aasig / Faulig', 'Anderer Geruch'], condition: { fieldId: 'schweiss_geruch', value: 'Ja' } }
     ]
   },
   {
@@ -513,9 +551,10 @@ export const anamnesisSchema: AnamnesisStepConfig[] = [
     title: '22. Appetit, Verlangen und Abneigungen',
     fields: [
       { id: 'appetit', label: 'Wie würden Sie Ihren Appetit beschreiben?', type: 'radio', options: ['Sehr gut', 'Gut', 'Normal', 'Vermindert', 'Stark vermindert', 'Wechselnd'] },
-      { id: 'verlangen', label: 'Haben Sie ein ausgeprägtes Verlangen nach bestimmten Lebensmitteln? (Mehrfachauswahl)', type: 'checkbox', options: ['Süß', 'Salzig', 'Sauer', 'Scharf', 'Fleisch', 'Milchprodukte', 'Eier', 'Brot / Teigwaren', 'Andere'], multiple: true },
+      { id: 'hat_verlangen', label: 'Haben Sie ein ausgeprägtes Verlangen nach bestimmten Lebensmitteln oder Geschmacksrichtungen?', type: 'radio', options: ['Nein', 'Ja'] },
+      { id: 'verlangen', label: 'Haben Sie ein ausgeprägtes Verlangen nach bestimmten Lebensmitteln? (Mehrfachauswahl)', type: 'checkbox', options: ['Süß', 'Salzig', 'Sauer', 'Scharf', 'Fleisch', 'Milchprodukte', 'Eier', 'Brot / Teigwaren', 'Andere'], multiple: true, condition: { fieldId: 'hat_verlangen', value: 'Ja' } },
       { id: 'verlangen_andere', label: 'Andere (Verlangen):', type: 'text', condition: { fieldId: 'verlangen', value: 'Andere', operator: 'includes' } },
-      { id: 'hat_abneigungen', label: 'Haben Sie Abneigungen gegen bestimmte Lebensmittel?', type: 'radio', options: ['Ja', 'Nein'] },
+      { id: 'hat_abneigungen', label: 'Haben Sie Abneigungen gegen bestimmte Lebensmittel?', type: 'radio', options: ['Nein', 'Ja'] },
       {
         id: 'abneigungen_liste',
         label: 'Welche?',
@@ -530,7 +569,7 @@ export const anamnesisSchema: AnamnesisStepConfig[] = [
     id: 'ereignisse',
     title: '23. Besondere Lebensereignisse',
     fields: [
-      { id: 'hat_ereignisse', label: 'Gab es wichtige körperliche oder emotionale Ereignisse, nach denen gesundheitliche Beschwerden begonnen oder sich verändert haben?', type: 'radio', options: ['Ja', 'Nein'] },
+      { id: 'hat_ereignisse', label: 'Gab es wichtige körperliche oder emotionale Ereignisse, nach denen gesundheitliche Beschwerden begonnen oder sich verändert haben?', type: 'radio', options: ['Nein', 'Ja'] },
       {
         id: 'ereignisse_liste',
         label: 'Welche Ereignisse?',
@@ -550,10 +589,12 @@ export const anamnesisSchema: AnamnesisStepConfig[] = [
     id: 'frühere_behandlungen',
     title: '24. Frühere Behandlungen',
     fields: [
+      { id: 'hat_fruehere_behandlungen', label: 'Haben Sie bereits Behandlungen oder Therapien gegen Ihre Beschwerden ausprobiert?', type: 'radio', options: ['Nein', 'Ja'] },
       {
         id: 'behandlungen_liste',
         label: 'Welche Behandlungen haben Sie bisher gegen Ihre aktuellen oder früheren Beschwerden ausprobiert?',
         type: 'dynamic_list',
+        condition: { fieldId: 'hat_fruehere_behandlungen', value: 'Ja' },
         addLabel: '+ weitere Behandlung hinzufügen',
         subFields: [
           { id: 'behandlung', label: 'Behandlung / Medikament', type: 'text' },
@@ -571,7 +612,7 @@ export const anamnesisSchema: AnamnesisStepConfig[] = [
     id: 'homöopathische_behandlungen',
     title: '25. Frühere homöopathische Behandlungen',
     fields: [
-      { id: 'hat_homoeopathie', label: 'Haben Sie bereits homöopathische Mittel eingenommen?', type: 'radio', options: ['Ja', 'Nein'] },
+      { id: 'hat_homoeopathie', label: 'Haben Sie bereits homöopathische Mittel eingenommen?', type: 'radio', options: ['Nein', 'Ja'] },
       {
         id: 'homoeopathie_liste',
         label: 'Welche Mittel?',
@@ -595,7 +636,8 @@ export const anamnesisSchema: AnamnesisStepConfig[] = [
     id: 'sonstiges',
     title: '26. Weitere gesundheitliche oder emotionale Themen',
     fields: [
-      { id: 'abschlussfrage', label: 'Gibt es andere gesundheitliche, psychische oder emotionale Beschwerden, Erfahrungen oder Besonderheiten, die Sie erwähnen möchten und die bisher nicht erfasst wurden?', type: 'textarea' }
+      { id: 'hat_sonstiges', label: 'Möchten Sie noch weitere gesundheitliche, psychische oder emotionale Themen erwähnen?', type: 'radio', options: ['Nein', 'Ja'] },
+      { id: 'abschlussfrage', label: 'Welche weiteren Besonderheiten oder Beschwerden möchten Sie erwähnen?', type: 'textarea', condition: { fieldId: 'hat_sonstiges', value: 'Ja' } }
     ]
   }
 ];

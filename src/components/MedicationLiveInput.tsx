@@ -79,7 +79,9 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
 
   // Sync internal query with prop if updated externally
   useEffect(() => {
-    setQuery(med.name || '');
+    if (med.name !== query) {
+      setQuery(med.name || '');
+    }
     if (!med.name || med.name.trim() === '') {
       setSelectedSuggestion(null);
       setIsDetailsExpanded(false);
@@ -334,29 +336,23 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
   );
 
   return (
-    <div className="p-3.5 bg-white rounded-xl border border-slate-200 shadow-2xs space-y-3 relative group transition-all duration-200 hover:border-teal-300">
+    <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-2xs space-y-3.5 relative group transition-all duration-200 hover:border-teal-300">
       <div className="flex justify-between items-center">
-        <div className="flex items-center gap-2">
-          <span className="w-5 h-5 rounded-full bg-teal-100 text-teal-800 flex items-center justify-center text-[11px] font-bold">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold font-mono">
             {index + 1}
           </span>
-          <span className="text-xs font-bold text-teal-950 flex items-center gap-1.5">
-            <span>{t('medication' as TranslationKey) || 'Medikament'}</span>
+          <span className="text-xs font-bold text-slate-800">
+            {t('medication' as TranslationKey) || 'Medikament'}
           </span>
-          {isFromDatabase ? (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-[10px] font-semibold text-emerald-700 border border-emerald-200/80 shadow-2xs">
-              <Database className="w-2.5 h-2.5 text-emerald-600" />
-              <span>{t('medStepDbMatch' as TranslationKey) || 'Praxis-Datenbank (BfArM / EMA)'}</span>
-            </span>
-          ) : isAuthorityResearched ? (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-teal-50 text-[10px] font-semibold text-teal-700 border border-teal-200/80 shadow-2xs">
-              <CheckCircle2 className="w-2.5 h-2.5 text-teal-600" />
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-teal-50 text-[11px] font-semibold text-teal-700 border border-teal-200/80 shadow-2xs">
+            <Database className="w-3 h-3 text-teal-600" />
+            <span>{t('medStepDbMatch' as TranslationKey) || 'Geprüfte Praxisdatenbank (BfArM / EMA)'}</span>
+          </span>
+          {isAuthorityResearched && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-[10px] font-semibold text-blue-700 border border-blue-200/80 shadow-2xs">
+              <CheckCircle2 className="w-2.5 h-2.5 text-blue-600" />
               <span>{t('medStepAuthoritySearch' as TranslationKey) || 'Behörden-Recherche'}</span>
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-slate-50 text-[10px] font-semibold text-slate-600 border border-slate-200/60">
-              <Globe className="w-2.5 h-2.5" />
-              <span>{t('medLiveSearchInternetBadge' as TranslationKey) || 'Live-Recherche'}</span>
             </span>
           )}
         </div>
@@ -365,7 +361,7 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
           id={`btn-delete-medication-${index}`}
           onClick={onRemove}
           title={t('deleteMedication' as TranslationKey) || 'Medikament löschen'}
-          className="flex items-center gap-1 text-slate-400 hover:text-rose-600 text-xs font-semibold px-2 py-1 rounded hover:bg-rose-50 transition-colors cursor-pointer"
+          className="flex items-center gap-1 text-slate-400 hover:text-rose-600 text-xs font-medium px-2 py-1 rounded hover:bg-rose-50 transition-colors cursor-pointer"
         >
           <Trash2 className="w-3.5 h-3.5" />
           <span>{t('deleteMedication' as TranslationKey) || 'Medikament löschen'}</span>
@@ -585,8 +581,8 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
         {/* Intake Method */}
         <div className="sm:col-span-4">
           {(() => {
-            const timesDailyLabel = t('medFreqTimesDaily' as TranslationKey) || 'x täglich';
-            const cleanUnit = timesDailyLabel.replace(/^[xX×]\s*/i, '').trim();
+            const timesDailyLabel = t('medFreqTimesDaily' as TranslationKey) || 'täglich';
+            const cleanUnit = timesDailyLabel.replace(/^[xX×\s]+/i, '').trim();
             const numMatch = (med.einnahmeart || '').match(/^(\d+)/);
             const curCount = numMatch ? parseInt(numMatch[1], 10) : 1;
 
@@ -595,7 +591,10 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
                 const word = count === 1 ? 'раз в день' : (count >= 2 && count <= 4 ? 'раза в день' : 'раз в день');
                 return `${count} ${word}`;
               }
-              return `${count}x ${cleanUnit}`;
+              if (language === 'de') {
+                return `${count} x ${cleanUnit || 'täglich'}`;
+              }
+              return `${count}x ${cleanUnit || 'daily'}`;
             };
 
             const isDailySelected = Boolean(

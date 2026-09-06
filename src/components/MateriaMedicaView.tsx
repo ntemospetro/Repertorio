@@ -477,68 +477,17 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = ({
     <div className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full space-y-6">
       {/* Top Header Card */}
       <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs relative overflow-hidden">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2.5">
-              <div className="p-2.5 bg-teal-50 text-teal-700 rounded-xl border border-teal-100/80 shadow-2xs">
-                <BookOpen className="w-6 h-6" />
-              </div>
-              <div>
-                <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-                  {t('materiaMedicaTitle')}
-                </h1>
-                <p className="text-xs sm:text-sm text-slate-500">
-                  {t('materiaMedicaSubtitle')}
-                </p>
-              </div>
-            </div>
+        <div className="flex items-center gap-2.5">
+          <div className="p-2.5 bg-teal-50 text-teal-700 rounded-xl border border-teal-100/80 shadow-2xs">
+            <BookOpen className="w-6 h-6" />
           </div>
-
-          {/* Quick Tab Switcher */}
-          <div className="flex flex-col lg:flex-row items-stretch sm:items-start lg:items-center gap-2 w-full lg:w-auto shrink-0">
-            {/* Akutaufnahme (auf Responsive oben / über Arzneimittel-Lexikon) */}
-            <button
-              id="btn-materia-tab-quickintake"
-              type="button"
-              onClick={() => {
-                if (onGoToAcuteIntake) {
-                  onGoToAcuteIntake();
-                } else {
-                  setActiveTab('quickIntake');
-                }
-              }}
-              className={`order-1 lg:order-2 w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer shadow-xs ${
-                activeTab === 'quickIntake'
-                  ? 'bg-teal-800 hover:bg-teal-900 text-white ring-2 ring-teal-500/30'
-                  : 'bg-teal-700 hover:bg-teal-800 active:bg-teal-900 text-white'
-              }`}
-            >
-              <Mic className="w-4 h-4 text-white shrink-0" />
-              <span className="whitespace-nowrap">{t('tabQuickIntake')}</span>
-              {recommendations.length > 0 && (
-                <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-teal-950/40 text-teal-100 font-bold border border-teal-400/30 shrink-0">
-                  {recommendations.length} {t('recommendationsCountBadge')}
-                </span>
-              )}
-            </button>
-
-            {/* Arzneimittel-Lexikon (auf Responsive darunter / auf Desktop links) */}
-            <button
-              id="btn-materia-tab-lexicon"
-              type="button"
-              onClick={() => setActiveTab('lexicon')}
-              className={`order-2 lg:order-1 w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
-                activeTab === 'lexicon'
-                  ? 'bg-slate-100 text-slate-900 border border-slate-300 shadow-2xs font-bold'
-                  : 'bg-white text-slate-600 hover:text-slate-900 hover:bg-slate-50 border border-slate-200'
-              }`}
-            >
-              <BookOpen className="w-4 h-4 text-teal-700 shrink-0" />
-              <span className="whitespace-nowrap">{t('tabLexicon')}</span>
-              <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-slate-200/80 text-slate-700 font-medium shrink-0">
-                {localizedRemedies.length}
-              </span>
-            </button>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+              {t('materiaMedicaTitle')}
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-500">
+              {t('materiaMedicaSubtitle')}
+            </p>
           </div>
         </div>
       </div>

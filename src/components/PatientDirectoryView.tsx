@@ -142,6 +142,7 @@ export const PatientDirectoryView: React.FC<PatientDirectoryViewProps> = ({
   const [editingFollowUpId, setEditingFollowUpId] = useState<string | null>(null);
   const [isEditInitialPrescriptionOpen, setIsEditInitialPrescriptionOpen] = useState(false);
   const [isEditStammdatenOpen, setIsEditStammdatenOpen] = useState(false);
+  const [isNewPatientModalOpen, setIsNewPatientModalOpen] = useState(false);
 
   // Follow-Up Form State
   const [fuDateDisplay, setFuDateDisplay] = useState('');
@@ -164,6 +165,56 @@ export const PatientDirectoryView: React.FC<PatientDirectoryViewProps> = ({
   const refreshData = () => {
     const updated = getPatientCases(therapist.id);
     setCases(updated);
+  };
+
+  React.useEffect(() => {
+    const handleCasesUpdated = () => {
+      refreshData();
+    };
+    window.addEventListener('homoeo_cases_updated', handleCasesUpdated);
+    return () => {
+      window.removeEventListener('homoeo_cases_updated', handleCasesUpdated);
+    };
+  }, [therapist.id]);
+
+  const handleSaveNewPatient = (data: Partial<PatientCase>) => {
+    const newCaseId = 'case-' + Date.now();
+    const isFemale = (data.patientGender || 'weiblich') === 'weiblich';
+    const created = savePatientCase({
+      therapistId: therapist.id,
+      patientName: data.patientName?.trim() || '',
+      patientBirthDate: data.patientBirthDate || '',
+      patientAge: data.patientAge,
+      patientGender: data.patientGender || 'weiblich',
+      patientHeightCm: data.patientHeightCm,
+      patientWeightKg: data.patientWeightKg,
+      patientMaritalStatus: data.patientMaritalStatus || '',
+      anamneseDatum: data.anamneseDatum || new Date().toISOString().split('T')[0],
+      patientEmail: data.patientEmail || '',
+      patientPhone: data.patientPhone || '',
+      isPregnant: isFemale ? !!data.isPregnant : false,
+      pregnancyMonth: isFemale && data.isPregnant ? data.pregnancyMonth : undefined,
+      hasChildren: !!data.hasChildren,
+      childrenCount: data.hasChildren ? (data.childrenList?.length || 0) : 0,
+      childrenList: data.hasChildren ? (data.childrenList ? [...data.childrenList] : []) : [],
+      customStammdaten: data.customStammdaten ? [...data.customStammdaten] : [],
+      hauptbeschwerde: '',
+      anamnesisQuestions: [],
+      spontanbericht: '',
+      modalitaetenBesser: '',
+      modalitaetenSchlechter: '',
+      gemuetPsyche: '',
+      koerperAllgemein: '',
+      lokalsymptome: '',
+      bisherigeMittel: '',
+      id: newCaseId,
+    });
+    setIsNewPatientModalOpen(false);
+    refreshData();
+    if (data.patientName) {
+      setSelectedPatientKey(data.patientName.trim().toLowerCase());
+      setActiveCaseTabId(created.id || newCaseId);
+    }
   };
 
   // Helper to translate trend
@@ -510,11 +561,8 @@ export const PatientDirectoryView: React.FC<PatientDirectoryViewProps> = ({
 
           <button
             type="button"
-            onClick={() => {
-              if (onNewCaseForPatient) {
-                onNewCaseForPatient('', {});
-              }
-            }}
+            id="btn-new-patient-directory-header"
+            onClick={() => setIsNewPatientModalOpen(true)}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-white font-bold text-xs sm:text-sm transition-all shadow-xs cursor-pointer whitespace-nowrap"
           >
             <Plus className="w-4 h-4" />
@@ -740,11 +788,8 @@ export const PatientDirectoryView: React.FC<PatientDirectoryViewProps> = ({
               <div className="flex flex-wrap items-center justify-center gap-3">
                 <button
                   type="button"
-                  onClick={() => {
-                    if (onNewCaseForPatient) {
-                      onNewCaseForPatient('', {});
-                    }
-                  }}
+                  id="btn-new-patient-directory-empty"
+                  onClick={() => setIsNewPatientModalOpen(true)}
                   className="px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-white font-bold text-xs sm:text-sm flex items-center gap-2 transition-all shadow-xs cursor-pointer"
                 >
                   <Plus className="w-4 h-4" />
@@ -1710,6 +1755,28 @@ export const PatientDirectoryView: React.FC<PatientDirectoryViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* NEW PATIENT MODAL */}
+      <StammdatenModal
+        isOpen={isNewPatientModalOpen}
+        onClose={() => setIsNewPatientModalOpen(false)}
+        initialData={{
+          id: '',
+          therapistId: therapist.id,
+          patientName: '',
+          patientGender: 'weiblich',
+          anamneseDatum: new Date().toISOString().split('T')[0],
+          hauptbeschwerde: '',
+          spontanbericht: '',
+          modalitaetenBesser: '',
+          modalitaetenSchlechter: '',
+          gemuetPsyche: '',
+          koerperAllgemein: '',
+          lokalsymptome: '',
+          bisherigeMittel: '',
+        }}
+        onSave={handleSaveNewPatient}
+      />
     </div>
   );
 };

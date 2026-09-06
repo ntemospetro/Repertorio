@@ -14,7 +14,8 @@ import {
   Info,
   ChevronRight,
   ChevronLeft,
-  Layers
+  Layers,
+  CornerDownRight
 } from 'lucide-react';
 import { useTranslation } from '../i18n/LanguageContext';
 import { VoiceInputButton } from './VoiceInputButton';
@@ -481,7 +482,7 @@ export const DynamicComplaintQuestions: React.FC<DynamicComplaintQuestionsProps>
                         )}
                       </div>
 
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      <div className="grid grid-cols-4 gap-2">
                         {[1, 2, 3, 4].map((num) => {
                           const isSelected = q.answerScaleCurrent === num;
                           return (
@@ -533,7 +534,7 @@ export const DynamicComplaintQuestions: React.FC<DynamicComplaintQuestionsProps>
                         )}
                       </div>
 
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      <div className="grid grid-cols-4 gap-2">
                         {[1, 2, 3, 4].map((num) => {
                           const isSelected = q.answerScaleWorst === num;
                           return (
@@ -571,41 +572,57 @@ export const DynamicComplaintQuestions: React.FC<DynamicComplaintQuestionsProps>
                 )}
 
                 {/* 2. SINGLE CHOICE */}
-                {q.type === 'choice' && q.options && (
-                  <div className="space-y-1.5">
-                    {q.options.map((opt, oIdx) => {
-                      const isSelected = q.answerChoice === opt;
-                      return (
-                        <button
-                          key={oIdx}
-                          type="button"
-                          id={`btn-choice-${q.id}-${oIdx}`}
-                          onClick={() =>
-                            onUpdateQuestion(q.id, {
-                              answerChoice: isSelected ? '' : opt,
-                            })
-                          }
-                          className={`w-full text-left p-3 rounded-xl border text-xs transition-all cursor-pointer flex items-start gap-2.5 ${
-                            isSelected
-                              ? 'bg-teal-50 border-teal-600 text-teal-950 font-semibold shadow-2xs'
-                              : 'bg-white border-slate-200 hover:border-teal-300 text-slate-700 hover:bg-slate-50'
-                          }`}
-                        >
-                          <div
-                            className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 mt-0.5 ${
+                {q.type === 'choice' && q.options && (() => {
+                  const isYesNo = q.options.length === 2 && 
+                    ((q.options.includes('Ja') && q.options.includes('Nein')) ||
+                     (q.options.includes('Nein') && q.options.includes('Ja')));
+                  const displayOpts = isYesNo ? ['Nein', 'Ja'] : q.options;
+                  const isShortNumbered = displayOpts.length === 4;
+
+                  const gridClass = isYesNo
+                    ? "grid grid-cols-2 gap-3"
+                    : isShortNumbered
+                      ? "grid grid-cols-4 gap-2"
+                      : "space-y-1.5";
+
+                  return (
+                    <div className={gridClass}>
+                      {displayOpts.map((opt, oIdx) => {
+                        const isSelected = q.answerChoice === opt;
+                        return (
+                          <button
+                            key={oIdx}
+                            type="button"
+                            id={`btn-choice-${q.id}-${oIdx}`}
+                            onClick={() =>
+                              onUpdateQuestion(q.id, {
+                                answerChoice: isSelected ? '' : opt,
+                              })
+                            }
+                            className={`w-full text-left p-3 rounded-xl border text-xs transition-all cursor-pointer flex items-center justify-between sm:justify-start gap-2.5 ${
                               isSelected
-                                ? 'border-teal-600 bg-teal-600 text-white'
-                                : 'border-slate-300 bg-white'
+                                ? 'bg-teal-50 border-teal-600 text-teal-950 font-semibold shadow-2xs ring-1 ring-teal-500/20'
+                                : 'bg-white border-slate-200 hover:border-teal-300 text-slate-700 hover:bg-slate-50'
                             }`}
                           >
-                            {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
-                          </div>
-                          <span className="leading-snug">{opt}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div
+                                className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
+                                  isSelected
+                                    ? 'border-teal-600 bg-teal-600 text-white'
+                                    : 'border-slate-300 bg-white'
+                                }`}
+                              >
+                                {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                              </div>
+                              <span className="leading-snug font-medium truncate">{opt}</span>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
 
                 {/* 3. MULTI CHOICE */}
                 {q.type === 'multi_choice' && q.options && (
@@ -646,27 +663,66 @@ export const DynamicComplaintQuestions: React.FC<DynamicComplaintQuestionsProps>
                 )}
 
                 {/* 4. OPTIONAL / COMPLEMENTARY FREE TEXT + VOICE INPUT FOR EVERY QUESTION */}
-                <div className="pt-2">
-                  <div className="relative flex items-center">
-                    <input
-                      type="text"
-                      id={`input-freetext-${q.id}`}
-                      placeholder={t('complaintQuestionsFreeTextPlaceholder')}
-                      value={q.answerText || ''}
-                      onChange={(e) => onUpdateQuestion(q.id, { answerText: e.target.value })}
-                      className="w-full px-3 py-2 pr-10 text-xs border border-slate-300 rounded-xl bg-slate-50/60 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-teal-600 focus:bg-white transition-colors"
-                    />
-                    <div className="absolute right-1.5 top-1/2 -translate-y-1/2">
-                      <VoiceInputButton
-                        value={q.answerText || ''}
-                        onChange={(val) => onUpdateQuestion(q.id, { answerText: val })}
-                        size="xs"
-                        mode="append"
-                        id={`btn-voice-q-${q.id}`}
-                      />
+                {(() => {
+                  const isYesNo = q.type === 'choice' && q.options && q.options.length === 2 && 
+                    ((q.options.includes('Ja') && q.options.includes('Nein')) || (q.options.includes('Nein') && q.options.includes('Ja')));
+                  const isYesSelected = isYesNo && q.answerChoice === 'Ja';
+
+                  if (isYesNo) {
+                    if (!isYesSelected) return null;
+                    return (
+                      <div className="rounded-xl border border-teal-200/90 bg-teal-50/40 p-3.5 sm:p-4 mt-2.5 space-y-2 relative shadow-2xs animate-in fade-in-50 slide-in-from-top-1 duration-200">
+                        <div className="flex items-center gap-2 text-xs font-bold text-teal-900 border-b border-teal-100/80 pb-2">
+                          <CornerDownRight className="w-4 h-4 text-teal-600 shrink-0" />
+                          <span>{t('additionalDetails') || 'Zusatzangaben / Details'}</span>
+                        </div>
+                        <div className="relative flex items-center">
+                          <input
+                            type="text"
+                            id={`input-freetext-${q.id}`}
+                            placeholder={t('complaintQuestionsFreeTextPlaceholder')}
+                            value={q.answerText || ''}
+                            onChange={(e) => onUpdateQuestion(q.id, { answerText: e.target.value })}
+                            className="w-full px-3 py-2 pr-10 text-xs border border-slate-300 rounded-xl bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-teal-600 focus:ring-1 focus:ring-teal-500/20 transition-colors"
+                          />
+                          <div className="absolute right-1.5 top-1/2 -translate-y-1/2">
+                            <VoiceInputButton
+                              value={q.answerText || ''}
+                              onChange={(val) => onUpdateQuestion(q.id, { answerText: val })}
+                              size="xs"
+                              mode="append"
+                              id={`btn-voice-q-${q.id}`}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="pt-2">
+                      <div className="relative flex items-center">
+                        <input
+                          type="text"
+                          id={`input-freetext-${q.id}`}
+                          placeholder={t('complaintQuestionsFreeTextPlaceholder')}
+                          value={q.answerText || ''}
+                          onChange={(e) => onUpdateQuestion(q.id, { answerText: e.target.value })}
+                          className="w-full px-3 py-2 pr-10 text-xs border border-slate-300 rounded-xl bg-slate-50/60 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-teal-600 focus:bg-white transition-colors"
+                        />
+                        <div className="absolute right-1.5 top-1/2 -translate-y-1/2">
+                          <VoiceInputButton
+                            value={q.answerText || ''}
+                            onChange={(val) => onUpdateQuestion(q.id, { answerText: val })}
+                            size="xs"
+                            mode="append"
+                            id={`btn-voice-q-${q.id}`}
+                          />
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
+                  );
+                })()}
               </div>
             </div>
           );
