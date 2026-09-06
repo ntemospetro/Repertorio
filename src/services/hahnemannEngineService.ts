@@ -812,96 +812,97 @@ export function evaluateHahnemannLocally(
   const multipleComplaints = symptomKeywordsCount >= 2;
 
   // 2. Flexible, fehlertolerante Zuordnung von Patienteneingaben:
-  // Wenn der Patient auf eine konkrete Nachfrage geantwortet hat (_history > 0 oder bestehende Matrix hatte offene Felder):
-  const hadExisting = existingMatrix && Object.values(existingMatrix).some(v => v !== null && (!Array.isArray(v) || v.length > 0));
-
-  if (newText.trim().length > 0 && hadExisting) {
-    // Determine which field was pending in existingMatrix
-    if (multipleComplaints && !existingMatrix?.ursaechlicher_zusammenhang) {
-      matrix.ursaechlicher_zusammenhang = newText.trim();
-    } else if (caseType === 'chronisch' && !existingMatrix?.fruehere_behandlungen_und_historie) {
-      matrix.fruehere_behandlungen_und_historie = newText.trim();
-    } else if (!existingMatrix?.causa) {
-      matrix.causa = newText.trim();
-    } else if (!existingMatrix?.lokalisierung) {
-      matrix.lokalisierung = newText.trim();
-    } else if (!existingMatrix?.empfindung) {
-      matrix.empfindung = newText.trim();
-    } else if (!existingMatrix?.modalitaeten) {
-      matrix.modalitaeten = newText.trim();
-    } else if (!existingMatrix?.begleitsymptome || existingMatrix.begleitsymptome.length === 0) {
-      matrix.begleitsymptome = [newText.trim()];
-    } else if (!existingMatrix?.gemuet) {
-      matrix.gemuet = newText.trim();
-    }
-  } else if (newText.trim().length > 0) {
-    // Initial Intake extraction
+  // Führe immer eine semantische Extraktion auf dem Eingabetext durch, um bereits genannte Symptome / Auslöser zu erfassen
+  if (newText.trim().length > 0) {
     // Causa
     if (!matrix.causa) {
       if (textLower.includes('kalt') || textLower.includes('cold') || textLower.includes('wind') || textLower.includes('froid') || textLower.includes('frío') || textLower.includes('freddo') || textLower.includes('холод') || textLower.includes('κρύο')) {
-        matrix.causa = lang === 'en' ? 'Exposure to cold / wind' : (lang === 'fr' ? 'Exposition au froid / vent' : (lang === 'es' ? 'Exposición al frío / viento' : 'Kälteeinwirkung (kalter Wind / Unterkühlung)'));
-      } else if (textLower.includes('schreck') || textLower.includes('angst') || textLower.includes('fright') || textLower.includes('shock') || textLower.includes('peur') || textLower.includes('miedo') || textLower.includes('strah')) {
-        matrix.causa = lang === 'en' ? 'Fright / sudden shock' : (lang === 'fr' ? 'Frayeur / choc soudain' : (lang === 'es' ? 'Susto / conmoción aguda' : 'Schreck / plötzlicher Schock'));
-      } else if (textLower.includes('nass') || textLower.includes('durchnässt') || textLower.includes('wet') || textLower.includes('drenched') || textLower.includes('mouillé') || textLower.includes('mojado')) {
-        matrix.causa = lang === 'en' ? 'Getting wet / drenched' : (lang === 'fr' ? 'Humidité / pluie' : (lang === 'es' ? 'Mojarse / humedad' : 'Durchnässung / Feuchtigkeit'));
+        matrix.causa = lang === 'en' ? 'Exposure to cold / wind' : (lang === 'fr' ? 'Exposition au froid / vent' : (lang === 'es' ? 'Exposición al frío / viento' : (lang === 'it' ? 'Esposizione al freddo / vento' : (lang === 'el' ? 'Έκθεση σε κρύο / άνεμο' : (lang === 'ru' ? 'Воздействие холода / ветра' : 'Kälteeinwirkung (kalter Wind / Unterkühlung)')))));
+      } else if (textLower.includes('schreck') || textLower.includes('angst') || textLower.includes('fright') || textLower.includes('shock') || textLower.includes('peur') || textLower.includes('miedo') || textLower.includes('paura') || textLower.includes('φόβος') || textLower.includes('испуг')) {
+        matrix.causa = lang === 'en' ? 'Fright / sudden shock' : (lang === 'fr' ? 'Frayeur / choc soudain' : (lang === 'es' ? 'Susto / conmoción aguda' : (lang === 'it' ? 'Spavento / shock acuto' : (lang === 'el' ? 'Ξαφνικός φόβος / σοκ' : (lang === 'ru' ? 'Внезапный испуг / шок' : 'Schreck / plötzlicher Schock')))));
+      } else if (textLower.includes('nass') || textLower.includes('durchnässt') || textLower.includes('wet') || textLower.includes('drenched') || textLower.includes('mouillé') || textLower.includes('mojado') || textLower.includes('bagnato') || textLower.includes('βρεγμένο') || textLower.includes('промокание')) {
+        matrix.causa = lang === 'en' ? 'Getting wet / drenched' : (lang === 'fr' ? 'Humidité / pluie' : (lang === 'es' ? 'Mojarse / humedad' : (lang === 'it' ? 'Bagnarsi / umidità' : (lang === 'el' ? 'Βρέξιμο / υγρασία' : (lang === 'ru' ? 'Промокание / сырость' : 'Durchnässung / Feuchtigkeit')))));
       }
     }
 
     // Lokalisierung
     if (!matrix.lokalisierung) {
       if (hasFever) {
-        matrix.lokalisierung = lang === 'en' ? 'Systemic / Whole body (Fever)' : (lang === 'fr' ? 'Systémique / Corps entier (Fièvre)' : (lang === 'es' ? 'Sistémico / Todo el cuerpo (Fiebre)' : 'Ganzkörper / Systemisch (Fieber)'));
+        matrix.lokalisierung = lang === 'en' ? 'Systemic / Whole body (Fever)' : (lang === 'fr' ? 'Systémique / Corps entier (Fièvre)' : (lang === 'es' ? 'Sistémico / Todo el cuerpo (Fiebre)' : (lang === 'it' ? 'Sistemico / Tutto il corpo (Febbre)' : (lang === 'el' ? 'Συστηματικά / Ολόκληρο το σώμα (Πυρετός)' : (lang === 'ru' ? 'Системно / Все тело (Жар)' : 'Ganzkörper / Systemisch (Fieber)')))));
       } else if (hasHeadache) {
-        matrix.lokalisierung = lang === 'en' ? 'Head / Forehead' : (lang === 'fr' ? 'Tête / Front' : (lang === 'es' ? 'Cabeza / Frente' : 'Kopf / Stirn'));
+        matrix.lokalisierung = lang === 'en' ? 'Head / Forehead' : (lang === 'fr' ? 'Tête / Front' : (lang === 'es' ? 'Cabeza / Frente' : (lang === 'it' ? 'Testa / Fronte' : (lang === 'el' ? 'Κεφάλι / Μέτωπο' : (lang === 'ru' ? 'Голова / Лоб' : 'Kopf / Stirn')))));
       } else if (hasThroatOrCough) {
-        matrix.lokalisierung = lang === 'en' ? 'Throat / Respiratory tract' : (lang === 'fr' ? 'Gorge / Voies respiratoires' : (lang === 'es' ? 'Garganta / Vías respiratorias' : 'Hals / Atemwege'));
+        matrix.lokalisierung = lang === 'en' ? 'Throat / Respiratory tract' : (lang === 'fr' ? 'Gorge / Voies respiratoires' : (lang === 'es' ? 'Garganta / Vías respiratorias' : (lang === 'it' ? 'Gola / Vie respiratorie' : (lang === 'el' ? 'Λαιμός / Αναπνευστικό' : (lang === 'ru' ? 'Горло / Дыхательные пути' : 'Hals / Atemwege')))));
       } else if (hasAbdomen) {
-        matrix.lokalisierung = lang === 'en' ? 'Gastrointestinal tract' : (lang === 'fr' ? 'Tractus gastro-intestinal' : (lang === 'es' ? 'Tracto gastrointestinal' : 'Magen-Darm-Trakt'));
+        matrix.lokalisierung = lang === 'en' ? 'Gastrointestinal tract' : (lang === 'fr' ? 'Tractus gastro-intestinal' : (lang === 'es' ? 'Tracto gastrointestinal' : (lang === 'it' ? 'Tratto gastrointestinale' : (lang === 'el' ? 'Γαστρεντερικό σύστημα' : (lang === 'ru' ? 'Желудочно-кишечный тракт' : 'Magen-Darm-Trakt')))));
+      } else if (_history.length === 0 && newText.trim().length > 2) {
+        matrix.lokalisierung = newText.trim();
       }
     }
 
     // Empfindung
     if (!matrix.empfindung) {
-      if (textLower.includes('klopf') || textLower.includes('throb') || textLower.includes('puls') || textLower.includes('battement')) {
-        matrix.empfindung = lang === 'en' ? 'Pulsating, throbbing' : (lang === 'fr' ? 'Battante, pulsatile' : (lang === 'es' ? 'Pulsátil, palpitante' : 'Klopfend und pulsierend'));
-      } else if (textLower.includes('stech') || textLower.includes('stitch') || textLower.includes('piquant') || textLower.includes('punzante')) {
-        matrix.empfindung = lang === 'en' ? 'Stitching pain' : (lang === 'fr' ? 'Douleur piquante' : (lang === 'es' ? 'Dolor punzante' : 'Stechend'));
-      } else if (textLower.includes('brenn') || textLower.includes('burn') || textLower.includes('brûl') || textLower.includes('ardien')) {
-        matrix.empfindung = lang === 'en' ? 'Burning heat' : (lang === 'fr' ? 'Chaleur brûlante' : (lang === 'es' ? 'Calor ardiente' : 'Brennende Hitze'));
-      } else if (textLower.includes('zerschlag') || textLower.includes('bruis') || textLower.includes('courbatur') || textLower.includes('magullad')) {
-        matrix.empfindung = lang === 'en' ? 'Bruised, aching in limbs' : (lang === 'fr' ? 'Courbaturé, brisé' : (lang === 'es' ? 'Como magullado' : 'Wie zerschlagen in allen Gliedern'));
+      if (textLower.includes('klopf') || textLower.includes('throb') || textLower.includes('puls') || textLower.includes('battement') || textLower.includes('pulsat') || textLower.includes('пульс')) {
+        matrix.empfindung = lang === 'en' ? 'Pulsating, throbbing' : (lang === 'fr' ? 'Battante, pulsatile' : (lang === 'es' ? 'Pulsátil, palpitante' : (lang === 'it' ? 'Pulsante, martellante' : (lang === 'el' ? 'Σφυγμώδης, παλλόμενος' : (lang === 'ru' ? 'Пульсирующий, стучащий' : 'Klopfend und pulsierend')))));
+      } else if (textLower.includes('stech') || textLower.includes('stitch') || textLower.includes('piquant') || textLower.includes('punzante') || textLower.includes('pungente') || textLower.includes('σουβλιά') || textLower.includes('колющ')) {
+        matrix.empfindung = lang === 'en' ? 'Stitching pain' : (lang === 'fr' ? 'Douleur piquante' : (lang === 'es' ? 'Dolor punzante' : (lang === 'it' ? 'Dolore pungente' : (lang === 'el' ? 'Σουβλιά / οξύς διαπεραστικός πόνος' : (lang === 'ru' ? 'Колющая боль' : 'Stechend')))));
+      } else if (textLower.includes('brenn') || textLower.includes('burn') || textLower.includes('brûl') || textLower.includes('ardien') || textLower.includes('bruciore') || textLower.includes('καύσος') || textLower.includes('жгуч')) {
+        matrix.empfindung = lang === 'en' ? 'Burning heat' : (lang === 'fr' ? 'Chaleur brûlante' : (lang === 'es' ? 'Calor ardiente' : (lang === 'it' ? 'Calore bruciante' : (lang === 'el' ? 'Καυστική θερμότητα' : (lang === 'ru' ? 'Жгучий жар' : 'Brennende Hitze')))));
+      } else if (textLower.includes('zerschlag') || textLower.includes('bruis') || textLower.includes('courbatur') || textLower.includes('magullad') || textLower.includes('spezzat') || textLower.includes('πονεμέν') || textLower.includes('ломот')) {
+        matrix.empfindung = lang === 'en' ? 'Bruised, aching in limbs' : (lang === 'fr' ? 'Courbaturé, brisé' : (lang === 'es' ? 'Como magullado' : (lang === 'it' ? 'Dolori ossei, come pestato' : (lang === 'el' ? 'Αίσθημα καταπόνησης / πόνου στα μέλη' : (lang === 'ru' ? 'Ломота, разбитость во всем теле' : 'Wie zerschlagen in allen Gliedern')))));
       }
     }
 
     // Modalitäten
     if (!matrix.modalitaeten) {
-      if (textLower.includes('ruhe') || textLower.includes('rest') || textLower.includes('repos') || textLower.includes('riposo')) {
-        matrix.modalitaeten = lang === 'en' ? 'Better from absolute rest' : (lang === 'fr' ? 'Amélioration par le repos' : (lang === 'es' ? 'Mejor con reposo absoluto' : 'Besserung durch absolute Ruhe'));
-      } else if (textLower.includes('wärme') || textLower.includes('warm') || textLower.includes('chaleur') || textLower.includes('calor')) {
-        matrix.modalitaeten = lang === 'en' ? 'Better from warmth' : (lang === 'fr' ? 'Amélioration par la chaleur' : (lang === 'es' ? 'Mejor con calor' : 'Besserung durch Wärme'));
-      } else if (textLower.includes('kälte') || textLower.includes('cold') || textLower.includes('froid') || textLower.includes('frío')) {
-        matrix.modalitaeten = lang === 'en' ? 'Better from cool fresh air' : (lang === 'fr' ? 'Amélioration à l\'air frais' : (lang === 'es' ? 'Mejor al aire fresco' : 'Besserung durch frische Luft'));
+      if (textLower.includes('ruhe') || textLower.includes('rest') || textLower.includes('repos') || textLower.includes('riposo') || textLower.includes('ανάπαυση') || textLower.includes('покое')) {
+        matrix.modalitaeten = lang === 'en' ? 'Better from absolute rest' : (lang === 'fr' ? 'Amélioration par le repos' : (lang === 'es' ? 'Mejor con reposo absoluto' : (lang === 'it' ? 'Miglioramento con riposo assoluto' : (lang === 'el' ? 'Βελτίωση με απόλυτη ανάπαυση' : (lang === 'ru' ? 'Улучшение в абсолютном покое' : 'Besserung durch absolute Ruhe')))));
+      } else if (textLower.includes('wärme') || textLower.includes('warm') || textLower.includes('chaleur') || textLower.includes('calor') || textLower.includes('caldo') || textLower.includes('θερμότητα') || textLower.includes('тепло')) {
+        matrix.modalitaeten = lang === 'en' ? 'Better from warmth' : (lang === 'fr' ? 'Amélioration par la chaleur' : (lang === 'es' ? 'Mejor con calor' : (lang === 'it' ? 'Miglioramento con il calore' : (lang === 'el' ? 'Βελτίωση με τη θερμότητα' : (lang === 'ru' ? 'Улучшение от тепла' : 'Besserung durch Wärme')))));
+      } else if (textLower.includes('kälte') || textLower.includes('cold') || textLower.includes('froid') || textLower.includes('frío') || textLower.includes('freddo') || textLower.includes('κρύο') || textLower.includes('холод')) {
+        matrix.modalitaeten = lang === 'en' ? 'Better from cool fresh air' : (lang === 'fr' ? 'Amélioration à l\'air frais' : (lang === 'es' ? 'Mejor al aire fresco' : (lang === 'it' ? 'Miglioramento all\'aria fresca' : (lang === 'el' ? 'Βελτίωση στον καθαρό αέρα' : (lang === 'ru' ? 'Улучшение на свежем воздухе' : 'Besserung durch frische Luft')))));
       }
     }
 
     // Begleitsymptome
     if (matrix.begleitsymptome.length === 0) {
-      if (textLower.includes('durst') || textLower.includes('thirst') || textLower.includes('soif') || textLower.includes('sed')) {
-        matrix.begleitsymptome.push(lang === 'en' ? 'Thirst for cold drinks' : (lang === 'fr' ? 'Soif de boissons fraîches' : (lang === 'es' ? 'Sed de bebidas frías' : 'Großer Durst auf kaltes Wasser')));
+      if (textLower.includes('durst') || textLower.includes('thirst') || textLower.includes('soif') || textLower.includes('sed') || textLower.includes('sete') || textLower.includes('δίψα') || textLower.includes('жажд')) {
+        matrix.begleitsymptome.push(lang === 'en' ? 'Thirst for cold drinks' : (lang === 'fr' ? 'Soif de boissons fraîches' : (lang === 'es' ? 'Sed de bebidas frías' : (lang === 'it' ? 'Sete di bevande fredde' : (lang === 'el' ? 'Έντονη δίψα για κρύο νερό' : (lang === 'ru' ? 'Сильная жажда холодной воды' : 'Großer Durst auf kaltes Wasser'))))));
       }
-      if (textLower.includes('schweiß') || textLower.includes('sweat') || textLower.includes('sueur') || textLower.includes('sudor')) {
-        matrix.begleitsymptome.push(lang === 'en' ? 'Relieving sweat' : (lang === 'fr' ? 'Sueur soulageante' : (lang === 'es' ? 'Sudor que alivia' : 'Erleichternder Schweiß')));
+      if (textLower.includes('schweiß') || textLower.includes('sweat') || textLower.includes('sueur') || textLower.includes('sudor') || textLower.includes('sudore') || textLower.includes('ιδρώτας') || textLower.includes('пот')) {
+        matrix.begleitsymptome.push(lang === 'en' ? 'Relieving sweat' : (lang === 'fr' ? 'Sueur soulageante' : (lang === 'es' ? 'Sudor que alivia' : (lang === 'it' ? 'Sudorazione che dà sollievo' : (lang === 'el' ? 'Ιδρώτας που ανακουφίζει' : (lang === 'ru' ? 'Облегчающий пот' : 'Erleichternder Schweiß'))))));
       }
     }
 
     // Gemüt
     if (!matrix.gemuet) {
-      if (textLower.includes('unruhe') || textLower.includes('restless') || textLower.includes('agitation') || textLower.includes('inquiet')) {
-        matrix.gemuet = lang === 'en' ? 'Anxious restlessness' : (lang === 'fr' ? 'Agitation anxieuse' : (lang === 'es' ? 'Inquietud ansiosa' : 'Ängstliche Unruhe'));
-      } else if (textLower.includes('reizbar') || textLower.includes('irritable') || textLower.includes('zorn') || textLower.includes('anger') || textLower.includes('colère')) {
-        matrix.gemuet = lang === 'en' ? 'Irritable, wants to be left alone' : (lang === 'fr' ? 'Irritable, veut être laissé seul' : (lang === 'es' ? 'Irritable, quiere estar solo' : 'Reizbar, will in Ruhe gelassen werden'));
-      } else if (textLower.includes('apath') || textLower.includes('müde') || textLower.includes('drowsy') || textLower.includes('somnol')) {
-        matrix.gemuet = lang === 'en' ? 'Apathetic, drowsy' : (lang === 'fr' ? 'Apathique, somnolent' : (lang === 'es' ? 'Apático, somnoliento' : 'Apathisch, schläfrig'));
+      if (textLower.includes('unruhe') || textLower.includes('restless') || textLower.includes('agitation') || textLower.includes('inquiet') || textLower.includes('irrequiet') || textLower.includes('ανησυχ') || textLower.includes('беспокой')) {
+        matrix.gemuet = lang === 'en' ? 'Anxious restlessness' : (lang === 'fr' ? 'Agitation anxieuse' : (lang === 'es' ? 'Inquietud ansiosa' : (lang === 'it' ? 'Inquietudine ansiosa' : (lang === 'el' ? 'Αγχώδης ανησυχία' : (lang === 'ru' ? 'Тревожное беспокойство' : 'Ängstliche Unruhe')))));
+      } else if (textLower.includes('reizbar') || textLower.includes('irritable') || textLower.includes('zorn') || textLower.includes('anger') || textLower.includes('colère') || textLower.includes('ira') || textLower.includes('θυμός') || textLower.includes('раздраж')) {
+        matrix.gemuet = lang === 'en' ? 'Irritable, wants to be left alone' : (lang === 'fr' ? 'Irritable, veut être laissé seul' : (lang === 'es' ? 'Irritable, quiere estar solo' : (lang === 'it' ? 'Irritabile, vuole essere lasciato solo' : (lang === 'el' ? 'Ευερέθιστος, θέλει να μείνει μόνος' : (lang === 'ru' ? 'Раздражительный, хочет покоя' : 'Reizbar, will in Ruhe gelassen werden')))));
+      } else if (textLower.includes('apath') || textLower.includes('müde') || textLower.includes('drowsy') || textLower.includes('somnol') || textLower.includes('sonnol') || textLower.includes('υπνηλία') || textLower.includes('апати')) {
+        matrix.gemuet = lang === 'en' ? 'Apathetic, drowsy' : (lang === 'fr' ? 'Apathique, somnolent' : (lang === 'es' ? 'Apático, somnoliento' : (lang === 'it' ? 'Apatico, sonnolento' : (lang === 'el' ? 'Απαθής, υπνηλικός' : (lang === 'ru' ? 'Апатичный, сонливый' : 'Apathisch, schläfrig')))));
+      }
+    }
+
+    // Wenn der Benutzer auf eine explizite Frage geantwortet hat (_history > 0):
+    if (_history.length > 0) {
+      if (multipleComplaints && !existingMatrix?.ursaechlicher_zusammenhang) {
+        matrix.ursaechlicher_zusammenhang = newText.trim();
+      } else if (caseType === 'chronisch' && !existingMatrix?.fruehere_behandlungen_und_historie) {
+        matrix.fruehere_behandlungen_und_historie = newText.trim();
+      } else if (!existingMatrix?.causa) {
+        matrix.causa = newText.trim();
+      } else if (!existingMatrix?.lokalisierung) {
+        matrix.lokalisierung = newText.trim();
+      } else if (!existingMatrix?.empfindung) {
+        matrix.empfindung = newText.trim();
+      } else if (!existingMatrix?.modalitaeten) {
+        matrix.modalitaeten = newText.trim();
+      } else if (!existingMatrix?.begleitsymptome || existingMatrix.begleitsymptome.length === 0) {
+        matrix.begleitsymptome = [newText.trim()];
+      } else if (!existingMatrix?.gemuet) {
+        matrix.gemuet = newText.trim();
       }
     }
   }
@@ -930,6 +931,51 @@ export function evaluateHahnemannLocally(
     return group?.[lang] || group?.['de'];
   };
 
+  // Extract human-readable symptom hint to formulate customized, non-generic questions
+  const symptomHint = (matrix.lokalisierung || newText || '').trim();
+  const displaySymptom = symptomHint.length > 40 ? symptomHint.substring(0, 40) + '...' : symptomHint;
+
+  const personalize = (baseQ: string, key: string): string => {
+    if (!displaySymptom || displaySymptom.length < 3) return baseQ;
+    if (key === 'causa') {
+      if (lang === 'en') return `Regarding your complaint (${displaySymptom}): ${baseQ}`;
+      if (lang === 'fr') return `Concernant vos troubles (${displaySymptom}) : ${baseQ}`;
+      if (lang === 'es') return `Con respecto a sus molestias (${displaySymptom}): ${baseQ}`;
+      if (lang === 'it') return `Riguardo ai suoi disturbi (${displaySymptom}): ${baseQ}`;
+      if (lang === 'el') return `Σχετικά με τα συμπτώματά σας (${displaySymptom}): ${baseQ}`;
+      if (lang === 'ru') return `Относительно ваших жалоб (${displaySymptom}): ${baseQ}`;
+      return `Zu Ihren Beschwerden (${displaySymptom}): ${baseQ}`;
+    }
+    if (key === 'lokalisierung') {
+      if (lang === 'en') return `Regarding (${displaySymptom}): ${baseQ}`;
+      if (lang === 'fr') return `Concernant (${displaySymptom}) : ${baseQ}`;
+      if (lang === 'es') return `En relación con (${displaySymptom}): ${baseQ}`;
+      if (lang === 'it') return `In merito a (${displaySymptom}): ${baseQ}`;
+      if (lang === 'el') return `Σχετικά με (${displaySymptom}): ${baseQ}`;
+      if (lang === 'ru') return `В отношении (${displaySymptom}): ${baseQ}`;
+      return `Bezüglich (${displaySymptom}): ${baseQ}`;
+    }
+    if (key === 'empfindung') {
+      if (lang === 'en') return `Regarding the pain sensation in (${displaySymptom}): ${baseQ}`;
+      if (lang === 'fr') return `Concernant la sensation liée à (${displaySymptom}) : ${baseQ}`;
+      if (lang === 'es') return `Respecto a la sensación de dolor en (${displaySymptom}): ${baseQ}`;
+      if (lang === 'it') return `Riguardo alla sensazione dolorosa in (${displaySymptom}): ${baseQ}`;
+      if (lang === 'el') return `Σχετικά με την αίσθηση του πόνου στο σύμπτωμα (${displaySymptom}): ${baseQ}`;
+      if (lang === 'ru') return `Относительно ощущений при (${displaySymptom}): ${baseQ}`;
+      return `Bezüglich der Schmerzempfindung bei (${displaySymptom}): ${baseQ}`;
+    }
+    if (key === 'modalitaeten') {
+      if (lang === 'en') return `For your condition (${displaySymptom}): ${baseQ}`;
+      if (lang === 'fr') return `Pour vos troubles (${displaySymptom}) : ${baseQ}`;
+      if (lang === 'es') return `Para su afección (${displaySymptom}): ${baseQ}`;
+      if (lang === 'it') return `Per il suo disturbo (${displaySymptom}): ${baseQ}`;
+      if (lang === 'el') return `Για τα ενοχλήματά σας (${displaySymptom}): ${baseQ}`;
+      if (lang === 'ru') return `Для вашей жалобы (${displaySymptom}): ${baseQ}`;
+      return `Bezüglich der Besserung oder Verschlechterung bei (${displaySymptom}): ${baseQ}`;
+    }
+    return baseQ;
+  };
+
   if (forceComplete || allPillarsCompleted || (_history.length >= 6 && hasEmpfindung && hasModalitaeten && hasGemuet)) {
     status = 'completed';
     nextQuestion = '';
@@ -940,7 +986,13 @@ export function evaluateHahnemannLocally(
         ? 'Tous les piliers de l\'anamnèse homéopathique selon Hahnemann (Organon §§ 83–104) ont été intégralement recueillis.'
         : (lang === 'es'
           ? 'Todos los pilares de la anamnesis según Hahnemann (Organon §§ 83–104) se han registrado por completo.'
-          : 'Alle Säulen der homöopathischen Anamnese nach Hahnemann (Organon §§ 83–104) wurden vollständig erfasst.'));
+          : (lang === 'it'
+            ? 'Tutti i pilastri dell\'anamnesi omeopatica secondo Hahnemann (Organon §§ 83–104) sono stati completamente registrati.'
+            : (lang === 'el'
+              ? 'Όλοι οι πυλώνες της ομοιοπαθητικής λήψης ιστορικού κατά Χάνεμαν (Όργανον §§ 83–104) έχουν καταγραφεί πλήρως.'
+              : (lang === 'ru'
+                ? 'Все столпы гомеопатического анамнеза по Ганеману (Органон §§ 83–104) полностью зафиксированы.'
+                : 'Alle Säulen der homöopathischen Anamnese nach Hahnemann (Organon §§ 83–104) wurden vollständig erfasst.')))));
 
     if (matrix.modalitaeten?.toLowerCase().includes('ruhe') || matrix.modalitaeten?.toLowerCase().includes('rest') || matrix.modalitaeten?.toLowerCase().includes('druck')) {
       diffRemedies.push('Bryonia alba', 'Silicea', 'Belladonna');
@@ -952,56 +1004,56 @@ export function evaluateHahnemannLocally(
   } else if (multipleComplaints && !matrix.ursaechlicher_zusammenhang) {
     const qData = getQ('causality');
     rationale = qData.rationale;
-    nextQuestion = qData.question;
+    nextQuestion = personalize(qData.question, 'causality');
     auswahlOptionen = qData.options;
     auswahlTyp = 'single';
     diffRemedies.push('Aconitum napellus', 'Belladonna', 'Bryonia alba');
   } else if (caseType === 'chronisch' && !matrix.fruehere_behandlungen_und_historie) {
     const qData = getQ('chronicHistory');
     rationale = qData.rationale;
-    nextQuestion = qData.question;
+    nextQuestion = personalize(qData.question, 'chronicHistory');
     auswahlOptionen = qData.options;
     auswahlTyp = 'single';
     diffRemedies.push('Sulphur', 'Calcarea carbonica', 'Lycopodium clavatum', 'Silicea');
   } else if (!hasCausa) {
     const qData = getQ('causa');
     rationale = qData.rationale;
-    nextQuestion = qData.question;
+    nextQuestion = personalize(qData.question, 'causa');
     auswahlOptionen = qData.options;
     auswahlTyp = 'single';
     diffRemedies.push('Aconitum napellus', 'Belladonna', 'Bryonia alba', 'Rhus toxicodendron');
   } else if (!hasLokalisierung) {
     const qData = getQ('lokalisierung');
     rationale = qData.rationale;
-    nextQuestion = qData.question;
+    nextQuestion = personalize(qData.question, 'lokalisierung');
     auswahlOptionen = qData.options;
     auswahlTyp = 'single';
     diffRemedies.push('Belladonna', 'Bryonia alba', 'Gelsemium sempervirens');
   } else if (!hasEmpfindung) {
     const qData = getQ('empfindung');
     rationale = qData.rationale;
-    nextQuestion = qData.question;
+    nextQuestion = personalize(qData.question, 'empfindung');
     auswahlOptionen = qData.options;
     auswahlTyp = 'single';
     diffRemedies.push('Aconitum napellus', 'Belladonna', 'Bryonia alba', 'Ferrum phosphoricum');
   } else if (!hasModalitaeten) {
     const qData = getQ('modalitaeten');
     rationale = qData.rationale;
-    nextQuestion = qData.question;
+    nextQuestion = personalize(qData.question, 'modalitaeten');
     auswahlOptionen = qData.options;
     auswahlTyp = 'multiple';
     diffRemedies.push('Bryonia alba', 'Silicea', 'Belladonna', 'Aconitum napellus');
   } else if (!hasBegleitsymptome) {
     const qData = getQ('begleitsymptome');
     rationale = qData.rationale;
-    nextQuestion = qData.question;
+    nextQuestion = personalize(qData.question, 'begleitsymptome');
     auswahlOptionen = qData.options;
     auswahlTyp = 'multiple';
     diffRemedies.push('Aconitum napellus', 'Belladonna', 'Apis mellifica', 'Gelsemium sempervirens');
   } else if (!hasGemuet) {
     const qData = getQ('gemuet');
     rationale = qData.rationale;
-    nextQuestion = qData.question;
+    nextQuestion = personalize(qData.question, 'gemuet');
     auswahlOptionen = qData.options;
     auswahlTyp = 'single';
     diffRemedies.push('Bryonia alba', 'Aconitum napellus', 'Belladonna', 'Pulsatilla');
@@ -1017,6 +1069,12 @@ export function evaluateHahnemannLocally(
       summary = `Synthèse pour le thérapeute :\nAnamnèse approfondie selon Samuel Hahnemann (Organon §§ 83–104) :\n• 1. Causa (Déclencheur / Début) : ${matrix.causa || 'Aucun déclencheur précis'}\n• 2. Localisation & Rayonnement : ${matrix.lokalisierung || 'Systémique'}\n• 3. Sensation (Qualité) : ${matrix.empfindung || 'Non spécifiée'}\n• 4. Modalités (Amélioration / Aggravation) : ${matrix.modalitaeten || 'Aucune modalité notée'}\n• 5. Concomitants : ${matrix.begleitsymptome?.length ? matrix.begleitsymptome.join(', ') : 'Aucun concomitant notable'}\n• 6. Mental (État psychique) : ${matrix.gemuet || 'Équilibré'}\n\nSimilé homéopathique prédominant : ${diffRemedies[0] || 'Bryonia alba'} selon la totalité des 6 piliers.`;
     } else if (lang === 'es') {
       summary = `Resumen para el terapeuta:\nAnamnesis profunda según Samuel Hahnemann (Organon §§ 83–104):\n• 1. Causa (Desencadenante / Inicio): ${matrix.causa || 'Sin desencadenante específico'}\n• 2. Localización y Radiación: ${matrix.lokalisierung || 'Sistémica'}\n• 3. Sensación (Calidad): ${matrix.empfindung || 'No especificada'}\n• 4. Modalidades (Mejoría / Empeoramiento): ${matrix.modalitaeten || 'Sin modalidades específicas'}\n• 5. Síntomas concomitantes: ${matrix.begleitsymptome?.length ? matrix.begleitsymptome.join(', ') : 'Sin concomitantes destacados'}\n• 6. Mente (Estado anímico): ${matrix.gemuet || 'Equilibrado'}\n\nSimillimum principal: ${diffRemedies[0] || 'Bryonia alba'} basado en la totalidad de los 6 pilares.`;
+    } else if (lang === 'it') {
+      summary = `Sintesi per il terapeuta:\nAnamnesi approfondita secondo Samuel Hahnemann (Organon §§ 83–104):\n• 1. Causa (Fattore scatenante / Inizio): ${matrix.causa || 'Nessun fattore specifico'}\n• 2. Localizzazione e Irradiazione: ${matrix.lokalisierung || 'Sistemica'}\n• 3. Sensazione (Qualità): ${matrix.empfindung || 'Non specificata'}\n• 4. Modalità (Miglioramento / Peggioramento): ${matrix.modalitaeten || 'Nessuna modalità rilevata'}\n• 5. Sintomi concomitanti: ${matrix.begleitsymptome?.length ? matrix.begleitsymptome.join(', ') : 'Nessun sintomo concomitante'}\n• 6. Mente (Stato d\'animo): ${matrix.gemuet || 'Equilibrato'}\n\nSimillimum principale: ${diffRemedies[0] || 'Bryonia alba'} basato sulla totalità dei 6 pilastri.`;
+    } else if (lang === 'el') {
+      summary = `Σύνοψη για τον θεραπευτή:\nΕμπεριστατωμένη λήψη κατά Samuel Hahnemann (Organon §§ 83–104):\n• 1. Causa (Έναυσμα / Έναρξη): ${matrix.causa || 'Χωρίς συγκεκριμένο έναυσμα'}\n• 2. Εντόπιση & Αντανάκλαση: ${matrix.lokalisierung || 'Συστηματική'}\n• 3. Αίσθηση (Ποιότητα πόνου): ${matrix.empfindung || 'Μη καθορισμένη'}\n• 4. Τροποποιητικοί παράγοντες (Βελτίωση / Επιδείνωση): ${matrix.modalitaeten || 'Χωρίς καταγεγραμμένους παράγοντες'}\n• 5. Συνοδά συμπτώματα: ${matrix.begleitsymptome?.length ? matrix.begleitsymptome.join(', ') : 'Χωρίς αξιοσημείωτα συνοδά'}\n• 6. Ψυχισμός (Διάθεση): ${matrix.gemuet || 'Ισορροπημένος'}\n\nΚύριο όμοιο φάρμακο: ${diffRemedies[0] || 'Bryonia alba'} βάσει της ολότητας των 6 πυλώνων.`;
+    } else if (lang === 'ru') {
+      summary = `Сводка для терапевта:\nКлассический углубленный опрос по Самуэлю Ганеману (Органон §§ 83–104):\n• 1. Causa (Триггер / Начало): ${matrix.causa || 'Специфический триггер не указан'}\n• 2. Локализация и иррадиация: ${matrix.lokalisierung || 'Системно'}\n• 3. Ощущение (Качество боли): ${matrix.empfindung || 'Не уточнено'}\n• 4. Модальности (Улучшение / Ухудшение): ${matrix.modalitaeten || 'Без явных модальностей'}\n• 5. Сопутствующие симптомы: ${matrix.begleitsymptome?.length ? matrix.begleitsymptome.join(', ') : 'Без выраженных сопутствующих'}\n• 6. Психика (Настроение): ${matrix.gemuet || 'Спокойное'}\n\nВедущее подобие (Симилиум): ${diffRemedies[0] || 'Bryonia alba'} на основе совокупности 6 столпов.`;
     } else {
       summary = `Zusammenfassung für den Therapeuten:
 Die homöopathische Vertiefungs-Anamnese nach Hahnemann & Bönninghausen ergibt auf Basis der 6-Säulen-Matrix (Organon §§ 83–104):
@@ -1053,6 +1111,131 @@ Homöopathische Simile-Differenzierung: Führendes Simile ist ${diffRemedies[0] 
           'Complete thirstlessness despite heat/pain',
           'Marked chilliness, desires warm wrapping',
           'Aversion to fresh air and cold'
+        ]
+      });
+    } else if (lang === 'fr') {
+      clarifyingQuestions.push({
+        id: 'q_modalitaet',
+        frage: 'Comment la douleur réagit-elle à une pression ferme ou un bandage par rapport au mouvement ?',
+        grund: 'Différencie le soulagement par la pression (Silicea, Bryonia) de l\'hypersensibilité au toucher (Belladonna)',
+        kategorie: 'modalitaeten',
+        optionen: [
+          'Une pression ferme et un bandage soulagent nettement',
+          'Le moindre mouvement ou secousse aggrave',
+          'Soulagement par le mouvement doux au grand air',
+          'Ni la pression ni le mouvement ne modifient la douleur'
+        ]
+      });
+      clarifyingQuestions.push({
+        id: 'q_begleit',
+        frage: 'Comment se manifestent la soif et la sensibilité thermique pendant l\'épisode ?',
+        grund: 'Symptôme général essentiel selon Bönninghausen pour confirmer le similé',
+        kategorie: 'begleitsymptome',
+        optionen: [
+          'Grande soif de grandes quantités d\'eau froide',
+          'Absence totale de soif malgré la chaleur',
+          'Frilosité marquée, besoin de se couvrir chaudement',
+          'Aversion pour l\'air frais et le froid'
+        ]
+      });
+    } else if (lang === 'es') {
+      clarifyingQuestions.push({
+        id: 'q_modalitaet',
+        frage: '¿Cómo responde el dolor a la presión firme o vendaje frente al movimiento?',
+        grund: 'Diferencia el alivio por presión (Silicea, Bryonia) de la sensibilidad al tacto (Belladonna)',
+        kategorie: 'modalitaeten',
+        optionen: [
+          'La presión firme y el vendaje alivian notablemente',
+          'El menor movimiento y sacudida empeoran',
+          'Alivio con el movimiento suave al aire libre',
+          'Ni la presión ni el movimiento modifican el dolor'
+        ]
+      });
+      clarifyingQuestions.push({
+        id: 'q_begleit',
+        frage: '¿Cómo se comportan la sed y la temperatura durante el cuadro agudo?',
+        grund: 'Síntoma general clave según Bönninghausen para asegurar el simillimum',
+        kategorie: 'begleitsymptome',
+        optionen: [
+          'Gran sed de abundantes cantidades de agua fría',
+          'Ausencia total de sed a pesar del calor o dolor',
+          'Frialdad marcada, deseo de abrigarse bien',
+          'Aversión al aire fresco y al frío'
+        ]
+      });
+    } else if (lang === 'it') {
+      clarifyingQuestions.push({
+        id: 'q_modalitaet',
+        frage: 'Come risponde il dolore alla pressione decisa o al bendaggio rispetto al movimento?',
+        grund: 'Differenzia il sollievo da pressione (Silicea, Bryonia) dall\'ipersensibilità al contatto (Belladonna)',
+        kategorie: 'modalitaeten',
+        optionen: [
+          'Pressione forte e fasciatura migliorano sensibilmente',
+          'Il minimo movimento e le scosse peggiorano',
+          'Sollievo con il movimento dolce all\'aria aperta',
+          'Né la pressione né il movimento modificano il dolore'
+        ]
+      });
+      clarifyingQuestions.push({
+        id: 'q_begleit',
+        frage: 'Come si manifestano la sete e le preferenze di temperatura durante il disturbo?',
+        grund: 'Importante sintomo generale secondo Bönninghausen per verificare il rimedio',
+        kategorie: 'begleitsymptome',
+        optionen: [
+          'Grande sete di molta acqua fredda',
+          'Completa assenza di sete nonostante il calore',
+          'Marcata freddolosità, desiderio di coprirsi caldamente',
+          'Avversione all\'aria fresca e al freddo'
+        ]
+      });
+    } else if (lang === 'el') {
+      clarifyingQuestions.push({
+        id: 'q_modalitaet',
+        frage: 'Πώς ανταποκρίνεται ο πόνος στη σταθερή πίεση ή επίδεση σε σχέση με την κίνηση;',
+        grund: 'Διαφοροποίηση της βελτίωσης από πίεση (Silicea, Bryonia) από την ευαισθησία στο άγγιγμα (Belladonna)',
+        kategorie: 'modalitaeten',
+        optionen: [
+          'Η σταθερή πίεση και η σφιχτή επίδεση ανακουφίζουν αισθητά',
+          'Η παραμικρή κίνηση και οι κραδασμοί επιδεινώνουν',
+          'Ανακούφιση με ήπια κίνηση στον καθαρό αέρα',
+          'Ούτε η πίεση ούτε η κίνηση επηρεάζουν τον πόνο'
+        ]
+      });
+      clarifyingQuestions.push({
+        id: 'q_begleit',
+        frage: 'Πώς συμπεριφέρεται η δίψα και η επιθυμία θερμοκρασίας κατά τη διάρκεια της κατάστασης;',
+        grund: 'Σημαντικό γενικό σύμπτωμα κατά Bönninghausen για επιβεβαίωση του ομοίου',
+        kategorie: 'begleitsymptome',
+        optionen: [
+          'Έντονη δίψα για μεγάλες ποσότητες κρύου νερού',
+          'Πλήρης απουσία δίψας παρά τη θερμότητα / πόνο',
+          'Έντονο ρίγος, ανάγκη για ζεστό τύλιγμα',
+          'Αποστροφή στον καθαρό αέρα και το κρύο'
+        ]
+      });
+    } else if (lang === 'ru') {
+      clarifyingQuestions.push({
+        id: 'q_modalitaet',
+        frage: 'Как боль реагирует на сильное давление или тугую повязку в сравнении с движением?',
+        grund: 'Дифференцирует облегчение от давления (Silicea, Bryonia) от гиперчувствительности к прикосновению (Belladonna)',
+        kategorie: 'modalitaeten',
+        optionen: [
+          'Сильное давление и тугая повязка заметно облегчают',
+          'Малейшее движение и сотрясение ухудшают',
+          'Облегчение от плавного движения на свежем воздухе',
+          'Ни давление, ни движение не меняют характер боли'
+        ]
+      });
+      clarifyingQuestions.push({
+        id: 'q_begleit',
+        frage: 'Как ведет себя жажда и отношение к температуре во время приступа?',
+        grund: 'Важный общий симптом по Беннингхаузену для подтверждения симилиума',
+        kategorie: 'begleitsymptome',
+        optionen: [
+          'Сильная жажда больших количеств холодной воды',
+          'Полное отсутствие жажды несмотря на жар/боль',
+          'Выраженная зябкость, желание тепло укутаться',
+          'Отвращение к свежему воздуху и холоду'
         ]
       });
     } else {

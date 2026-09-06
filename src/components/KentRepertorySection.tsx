@@ -304,7 +304,7 @@ export const KentRepertorySection: React.FC<KentRepertorySectionProps> = ({
               <div className="flex items-center gap-2 text-[11px] text-amber-800 font-medium">
                 <Sparkles className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                 <span>
-                  Mathematisch und qualitativ durch Kent-Rubriken verifiziert. Keine Halluzinationen oder freie Hinzufügungen.
+                  {t('kentVerificationNotice')}
                 </span>
               </div>
             </div>

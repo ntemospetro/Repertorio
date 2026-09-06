@@ -277,7 +277,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         <div className="p-4 flex-1 overflow-y-auto">
           <div className="flex items-center gap-2 mb-8 px-2">
             <ShieldCheck className="w-6 h-6 text-slate-800" />
-            <span className="font-bold text-lg text-slate-800">Admin-Panel</span>
+            <span className="font-bold text-lg text-slate-800">{t('adminPanelBadge')}</span>
           </div>
           
           <div className="space-y-1">
@@ -291,7 +291,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             >
               <div className="flex items-center gap-3">
                 <Users className="w-4 h-4" />
-                <span>Therapeuten</span>
+                <span>{t('adminNavTherapists')}</span>
               </div>
               <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono ${
                 activeTab === 'therapists' ? 'bg-teal-500 text-slate-950' : 'bg-slate-200 text-slate-600'
@@ -310,7 +310,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             >
               <div className="flex items-center gap-3">
                 <Layers className="w-4 h-4" />
-                <span>Pakete</span>
+                <span>{t('adminNavPackages')}</span>
               </div>
               <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono ${
                 activeTab === 'packages' ? 'bg-teal-500 text-slate-950' : 'bg-slate-200 text-slate-600'
@@ -348,7 +348,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             >
               <div className="flex items-center gap-3">
                 <UserPlus className="w-4 h-4" />
-                <span>Namensänderung</span>
+                <span>{t('adminNavNameChange')}</span>
               </div>
               {pendingNameChanges > 0 && (
                 <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono ${
@@ -369,7 +369,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             >
               <div className="flex items-center gap-3">
                 <Scale className="w-4 h-4" />
-                <span>AGB & Nutzungsrecht</span>
+                <span>{t('adminNavTerms')}</span>
               </div>
             </button>
 
@@ -383,7 +383,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             >
               <div className="flex items-center gap-3">
                 <KeyRound className="w-4 h-4" />
-                <span>Konfiguration</span>
+                <span>{t('adminNavConfig')}</span>
               </div>
             </button>
           </div>

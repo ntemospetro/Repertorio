@@ -1274,6 +1274,12 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
         onClose={() => setIsHahnemannWizardOpen(false)}
         chiefComplaint={symptomText || activeHauptbeschwerde || ''}
         initialCaseType="akut"
+        initialMatrix={{
+          lokalisierung: activeHauptbeschwerde && !isVarMissing(activeHauptbeschwerde) ? activeHauptbeschwerde : (symptomText.trim() || null),
+          causa: activeCausa && !isVarMissing(activeCausa) ? activeCausa : null,
+          modalitaeten: activeModalitaeten && !isVarMissing(activeModalitaeten) ? activeModalitaeten : null,
+          begleitsymptome: activeBegleitsymptome && !isVarMissing(activeBegleitsymptome) ? [activeBegleitsymptome] : [],
+        }}
         onTransferToAnamnese={(data) => {
           setHahnemannData(data);
           setIsClarificationApplied(true);

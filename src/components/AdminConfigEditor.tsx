@@ -414,7 +414,7 @@ export const AdminConfigEditor: React.FC<AdminConfigEditorProps> = ({ onShowToas
               <div className="mb-5 p-3.5 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-800 flex items-start gap-2.5 animate-in fade-in">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                 <div>
-                  <span className="font-semibold block">Erfolg</span>
+                  <span className="font-semibold block">{t('adminConfigSuccess')}</span>
                   <span>{successMessage}</span>
                 </div>
               </div>
@@ -424,7 +424,7 @@ export const AdminConfigEditor: React.FC<AdminConfigEditorProps> = ({ onShowToas
               <div className="mb-5 p-3.5 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-800 flex items-start gap-2.5 animate-in fade-in">
                 <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
                 <div>
-                  <span className="font-semibold block">Eingabefehler</span>
+                  <span className="font-semibold block">{t('adminConfigInputError')}</span>
                   <span>{errorMessage}</span>
                 </div>
               </div>
@@ -566,10 +566,10 @@ export const AdminConfigEditor: React.FC<AdminConfigEditorProps> = ({ onShowToas
                   type="button"
                   onClick={handleResetToDefault}
                   className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium transition-colors cursor-pointer"
-                  title="Auf Standard zurücksetzen"
+                  title={t('adminConfigResetToDefault')}
                 >
                   <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
-                  <span>Auf Standard zurücksetzen</span>
+                  <span>{t('adminConfigResetToDefault')}</span>
                 </button>
 
                 <button
@@ -631,7 +631,7 @@ export const AdminConfigEditor: React.FC<AdminConfigEditorProps> = ({ onShowToas
           <div className="bg-teal-50/80 border border-teal-200 rounded-xl p-5 space-y-3 text-xs text-teal-950">
             <div className="flex items-center gap-2 font-bold text-teal-900">
               <Info className="w-4 h-4 text-teal-700 shrink-0" />
-              <span>Sicherheitshinweis</span>
+              <span>{t('adminConfigSecurityHint')}</span>
             </div>
             <p className="text-[11px] leading-relaxed text-teal-900/90">
               Ihre Administrator-Zugangsdaten werden lokal im sicheren Browser-Speicher synchronisiert. Sie können das Passwort jederzeit ändern oder bei Bedarf mit dem Button &quot;Auf Standard zurücksetzen&quot; wiederherstellen.

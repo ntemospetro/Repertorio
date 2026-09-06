@@ -315,11 +315,11 @@ export const AdminTermsEditor: React.FC = () => {
             <div className="text-sm font-bold font-mono text-slate-800 mt-0.5">{sectionCount} Abschnitte</div>
           </div>
           <div className="p-2.5 rounded-md bg-slate-50 border border-slate-100">
-            <div className="text-[10px] text-slate-400 uppercase font-bold">Wortanzahl</div>
+            <div className="text-[10px] text-slate-400 uppercase font-bold">{t('adminTermsWordCount')}</div>
             <div className="text-sm font-bold font-mono text-slate-800 mt-0.5">{wordCount} Wörter</div>
           </div>
           <div className="p-2.5 rounded-md bg-slate-50 border border-slate-100">
-            <div className="text-[10px] text-slate-400 uppercase font-bold">Version</div>
+            <div className="text-[10px] text-slate-400 uppercase font-bold">{t('adminTermsVersion')}</div>
             <div className="text-sm font-bold font-mono text-teal-700 mt-0.5">{terms.version}</div>
           </div>
           <div className="p-2.5 rounded-md bg-slate-50 border border-slate-100">

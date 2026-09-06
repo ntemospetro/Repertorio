@@ -199,14 +199,14 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
   };
 
   const getBillingPeriodLabel = (period: TariffBillingPeriod, price: number) => {
-    if (price === 0 || period === 'free') return 'Kostenlos';
+    if (price === 0 || period === 'free') return t('pricingStartFree');
     switch (period) {
       case 'one_time':
-        return 'Einmalig';
+        return t('pricingOneTime');
       case 'monthly':
-        return '/ Monat';
+        return t('pricingMonthly');
       case 'yearly':
-        return '/ Jahr';
+        return t('pricingYearly');
       default:
         return '';
     }
@@ -359,7 +359,7 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
                   {plan.isDefault && (
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1">
                       <Star className="w-2.5 h-2.5 text-amber-600 fill-amber-500" />
-                      <span>Standard-Tarif</span>
+                      <span>{t('adminDefaultTariffBadge')}</span>
                     </span>
                   )}
                 </div>
@@ -367,7 +367,7 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => handleOpenEditModal(plan)}
-                    title="Paket bearbeiten"
+                    title={t('editSection')}
                     className="p-1 text-slate-400 hover:text-teal-700 hover:bg-slate-100 rounded transition-colors cursor-pointer"
                   >
                     <Edit3 className="w-3.5 h-3.5" />
@@ -375,7 +375,7 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
                   {plans.length > 1 && (
                     <button
                       onClick={() => handleDeletePlan(plan)}
-                      title="Paket löschen"
+                      title={t('btnDelete')}
                       className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors cursor-pointer"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -458,7 +458,7 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
                 <div className="flex items-center gap-1.5 text-slate-500 text-[11px] font-medium">
                   <Users className="w-3.5 h-3.5 text-slate-400" />
                   <span>
-                    <strong className="text-slate-800">{assignedTherapists.length}</strong> Nutzer
+                    <strong className="text-slate-800">{assignedTherapists.length}</strong> {t('adminNavTherapists')}
                   </span>
                 </div>
 

@@ -38,6 +38,7 @@ interface ComplaintQuestionsWizardModalProps {
   chiefComplaint: string;
   patientName?: string;
   initialCaseType?: CaseType;
+  initialMatrix?: Partial<Hahnemann6Pillars>;
   onTransferToAnamnese: (data: {
     matrix: Hahnemann6Pillars;
     summaryText: string;
@@ -52,6 +53,7 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
   chiefComplaint,
   patientName,
   initialCaseType = 'akut',
+  initialMatrix,
   onTransferToAnamnese,
 }) => {
   const { t, language } = useTranslation();
@@ -67,7 +69,7 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
 
   const initialParsedRef = useRef(false);
 
-  // Initialize analysis on modal open with chief complaint text and selected caseType
+  // Initialize analysis on modal open with chief complaint text, existing matrix and selected caseType
   useEffect(() => {
     if (isOpen && !initialParsedRef.current) {
       initialParsedRef.current = true;
@@ -75,7 +77,20 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
       const activeType = initialCaseType || 'akut';
       setCaseType(activeType);
       const textToAnalyze = chiefComplaint && chiefComplaint.trim().length > 0 ? chiefComplaint.trim() : 'Akute Beschwerden';
-      runHahnemannAnalysis(textToAnalyze, undefined, [], language, false, activeType)
+      
+      const seedMatrix: Hahnemann6Pillars | undefined = initialMatrix ? {
+        causa: initialMatrix.causa || null,
+        lokalisierung: initialMatrix.lokalisierung || null,
+        empfindung: initialMatrix.empfindung || null,
+        modalitaeten: initialMatrix.modalitaeten || null,
+        begleitsymptome: initialMatrix.begleitsymptome ? [...initialMatrix.begleitsymptome] : [],
+        gemuet: initialMatrix.gemuet || null,
+        strahlungsoptionen: initialMatrix.strahlungsoptionen || null,
+        ursaechlicher_zusammenhang: initialMatrix.ursaechlicher_zusammenhang || null,
+        fruehere_behandlungen_und_historie: initialMatrix.fruehere_behandlungen_und_historie || null,
+      } : undefined;
+
+      runHahnemannAnalysis(textToAnalyze, seedMatrix, [], language, false, activeType)
         .then((res) => {
           setAnalysisResult(res);
         })
@@ -90,7 +105,7 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
     if (!isOpen) {
       initialParsedRef.current = false;
     }
-  }, [isOpen, chiefComplaint, language, initialCaseType]);
+  }, [isOpen, chiefComplaint, language, initialCaseType, initialMatrix]);
 
   if (!isOpen) return null;
 
