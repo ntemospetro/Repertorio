@@ -31,6 +31,7 @@ import {
   Hahnemann6Pillars, 
   CaseType 
 } from '../services/hahnemannEngineService';
+import { KentRepertorySection } from './KentRepertorySection';
 import { useTranslation, useLanguage } from '../i18n/LanguageContext';
 import { HomeopathicExpertResult } from '../types';
 import { analyzeAcuteCaseWithAIOrFallback } from '../services/homeopathicExpertEngine';
@@ -936,6 +937,13 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
               )}
             </div>
           )}
+
+          {/* Mathematical Repertorisation (§ 153 nach Kent) */}
+          <KentRepertorySection 
+            matrix={hahnemannData?.matrix || null} 
+            rawText={symptomText} 
+            defaultExpanded={true} 
+          />
 
         {/* 3-Column Responsive Cards Grid matching Bild 1 */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
