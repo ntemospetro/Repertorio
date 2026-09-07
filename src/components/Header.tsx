@@ -390,30 +390,7 @@ export const Header: React.FC<HeaderProps> = ({
                   <ChevronRight className="w-4 h-4 text-slate-400" />
                 </button>
 
-                {/* 2. Akutaufnahme & Voice-Analyse */}
-                <button
-                  type="button"
-                  id="mobile-nav-tab-quickintake"
-                  onClick={() => {
-                    setActiveTherapistTab('quickintake');
-                    navigateTo('therapist', { therapistTab: 'quickintake' });
-                    window.dispatchEvent(new CustomEvent('homoeo_action_set_therapist_tab', { detail: 'quickintake' }));
-                    setMobileMenuOpen(false);
-                  }}
-                  className={`w-full px-3.5 py-2.5 rounded-xl text-sm font-medium flex items-center justify-between transition-colors cursor-pointer ${
-                    activeTherapistTab === 'quickintake'
-                      ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/70'
-                      : 'text-slate-700 hover:bg-slate-100'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <Mic className="w-4 h-4 text-teal-600" />
-                    <span>{t('tabQuickIntake')}</span>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-slate-400" />
-                </button>
-
-                {/* 3. Falldokumentation & Repertorisation */}
+                {/* 2. Falldokumentation & Repertorisation */}
                 <button
                   type="button"
                   id="mobile-nav-tab-cases"
@@ -432,6 +409,29 @@ export const Header: React.FC<HeaderProps> = ({
                   <div className="flex items-center gap-3">
                     <LayoutDashboard className="w-4 h-4 text-teal-600" />
                     <span>{t('tabCaseManagement')}</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-400" />
+                </button>
+
+                {/* 3. Akutanalyse */}
+                <button
+                  type="button"
+                  id="mobile-nav-tab-quickintake"
+                  onClick={() => {
+                    setActiveTherapistTab('quickintake');
+                    navigateTo('therapist', { therapistTab: 'quickintake' });
+                    window.dispatchEvent(new CustomEvent('homoeo_action_set_therapist_tab', { detail: 'quickintake' }));
+                    setMobileMenuOpen(false);
+                  }}
+                  className={`w-full px-3.5 py-2.5 rounded-xl text-sm font-medium flex items-center justify-between transition-colors cursor-pointer ${
+                    activeTherapistTab === 'quickintake'
+                      ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/70'
+                      : 'text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Mic className="w-4 h-4 text-teal-600" />
+                    <span>{t('tabQuickIntake')}</span>
                   </div>
                   <ChevronRight className="w-4 h-4 text-slate-400" />
                 </button>

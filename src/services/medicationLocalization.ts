@@ -1049,6 +1049,48 @@ export async function fetchTranslatedMonograph(
   return localizeMonograph(rawMonograph, targetLang);
 }
 
+/**
+ * Asynchronously translates a clinical polypharmacy cross-comparison report into the user's active UI language.
+ */
+export async function fetchTranslatedComparison(
+  text: string,
+  targetLang: LanguageCode
+): Promise<string> {
+  if (!text || !text.trim()) return '';
+  if (targetLang === 'de') return text;
+
+  const cacheKey = `comparison_${targetLang}_${text.slice(0, 40).replace(/\s+/g, '_')}`;
+  if (translationCache.has(cacheKey)) {
+    return translationCache.get(cacheKey)!;
+  }
+
+  try {
+    const res = await fetch('/api/medications/translate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text,
+        targetLang,
+        type: 'comparison',
+        medName: 'comparison_' + targetLang
+      })
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data.translatedText && typeof data.translatedText === 'string') {
+        const fullTranslation = data.translatedText.trim();
+        translationCache.set(cacheKey, fullTranslation);
+        return fullTranslation;
+      }
+    }
+  } catch (err) {
+    console.warn('[MedicationLocalization] Comparison translation error:', err);
+  }
+
+  return text;
+}
+
 export interface StructuredMedicationInput {
   name?: string;
   activeSubstance?: string;

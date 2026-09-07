@@ -11,6 +11,7 @@ interface Props {
   medikamenteList?: Array<MedicationData>;
   onSave: (data: { nimmtMedikamente: boolean; medikamenteList: Array<MedicationData> }) => void;
   patientName?: string;
+  autoAddNew?: boolean;
 }
 
 interface MedicationItem extends MedicationData {
@@ -37,7 +38,8 @@ export const MedicationsWizardModal: React.FC<Props> = ({
   nimmtMedikamente = false,
   medikamenteList = [],
   onSave,
-  patientName
+  patientName,
+  autoAddNew = false
 }) => {
   const { t } = useLanguage();
   const [list, setList] = useState<Array<MedicationItem>>([]);
@@ -47,11 +49,17 @@ export const MedicationsWizardModal: React.FC<Props> = ({
   useEffect(() => {
     if (isOpen) {
       if (medikamenteList && medikamenteList.length > 0) {
-        setList(medikamenteList.map(m => ({
+        const mapped = medikamenteList.map(m => ({
           ...m,
           isSaved: m.isSaved !== undefined ? m.isSaved : Boolean(m.name?.trim()),
           _id: (m as any)._id || ('med_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9))
-        })));
+        }));
+        if (autoAddNew) {
+          // Gleichzeitig neue Felder für die Eingabe eines neuen Medikaments öffnen
+          setList([createEmptyMedication(), ...mapped]);
+        } else {
+          setList(mapped);
+        }
       } else {
         // Beim Öffnen erscheinen bereits die Felder für das erste Medikament
         setList([createEmptyMedication()]);
@@ -59,7 +67,7 @@ export const MedicationsWizardModal: React.FC<Props> = ({
       setShowCloseConfirm(false);
       setShowDiscardConfirm(false);
     }
-  }, [isOpen, medikamenteList]);
+  }, [isOpen, medikamenteList, autoAddNew]);
 
   if (!isOpen) return null;
 

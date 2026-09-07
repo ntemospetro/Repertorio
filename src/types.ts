@@ -147,6 +147,7 @@ export interface PatientCase {
     temperatur?: string;
     spo2?: string;
     gewicht?: string;
+    groesse?: string;
     allgemeinzustand?: string;
     herzLunge?: string;
     abdomen?: string;
@@ -202,6 +203,48 @@ export interface PatientCase {
   initialPrescription?: InitialPrescription;
   followUps?: FollowUpEntry[];
   updatedAt?: string;
+
+  // Lebensstil & Kumulative Medikations-Risikoanalyse
+  lifestyleData?: PatientLifestyleData;
+  medicationRiskAnalysis?: MedicationRiskAnalysisResult;
+}
+
+export interface PatientLifestyleData {
+  smokingStatus: 'non-smoker' | 'smoker' | 'former-smoker';
+  cigarettesPerDay?: number;
+  isSmoker?: boolean;
+  alcoholFrequency: 'never' | 'rarely' | 'daily' | 'weekly' | 'monthly';
+  alcoholBeverageType: 'beer' | 'wine' | 'spirits' | 'custom';
+  alcoholAmount: number; // e.g. 1, 2, 4
+  alcoholUnit: 'glasses' | 'bottles' | 'liters' | 'shots';
+  alcoholVolumePercent: number; // e.g. 5 for beer, 12 for wine, 40 for spirits
+  alcoholPureMgPerDay: number; // calculated pure alcohol in mg per day
+  alcoholDaily?: boolean;
+  alcoholSummaryText?: string;
+  isPregnant?: boolean;
+  pregnancyMonth?: number; // 1 - 9
+  bodyWeightKg?: number; // e.g. 70
+  bodyHeightCm?: number; // e.g. 175
+  bmi?: number; // e.g. 22.9
+}
+
+export interface MedicationRiskAnalysisResult {
+  analyzedAt: string;
+  triageLevel: 'critical' | 'high' | 'low';
+  triageLabel: string;
+  markdownContent: string;
+  medicationsSummary: string[];
+  patientProfileSummary: {
+    age?: number;
+    gender?: string;
+    weightKg?: number;
+    heightCm?: number;
+    bmi?: number;
+    isPregnant?: boolean;
+    pregnancyMonth?: number;
+    smokingSummary?: string;
+    alcoholPureMgPerDay?: number;
+  };
 }
 
 export interface TherapyRemedyItem {

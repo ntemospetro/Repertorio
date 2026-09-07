@@ -1523,7 +1523,21 @@ ${JSON.stringify(toTranslate, null, 2)}`;
       const targetLanguageName = langNames[targetLang] || "English";
 
       const ai = new GoogleGenAI({ apiKey });
-      const prompt = `You are a licensed medical and pharmaceutical translator for clinical staff.
+      const isComparison = req.body.type === 'comparison' || medName?.startsWith('comparison_');
+
+      const prompt = isComparison
+        ? `You are a certified senior clinical pharmacologist and medical translator.
+Translate the following evidence-based clinical pharmacology and drug-interaction comparison report into ${targetLanguageName}.
+
+CRITICAL REQUIREMENTS:
+1. Preserve the exact markdown structure, section headers (### ⚠️ ..., ### 1. ..., ### 2. ..., ### 3. ...), and markdown tables.
+2. Maintain strict GitHub Flavored Markdown (GFM) table syntax: each row must begin and end with '|'. DO NOT output broken delimiter rows like "| :--- | :--- |" in body text.
+3. Accurately translate clinical terminology, drug risk classifications, triage categories, organ systems, and diagnostic checklist questions into ${targetLanguageName}.
+4. Output ONLY the clean translated markdown in ${targetLanguageName} without markdown code fences, greetings, or conversational remarks.
+
+Clinical report to translate:
+${text}`
+        : `You are a licensed medical and pharmaceutical translator for clinical staff.
 Translate the following official medication monograph into ${targetLanguageName}.
 
 CRITICAL REQUIREMENTS:
@@ -1579,6 +1593,167 @@ ${text}`;
       });
     } catch (err) {
       res.status(500).json({ error: "Failed to read database stats" });
+    }
+  });
+
+  // Clinical Pharmacology Comparison & Multi-Medication Risk Analysis API
+  app.post("/api/medications/clinical-comparison", async (req, res) => {
+    try {
+      const { patientCase, lifestyle, language } = req.body;
+      const apiKey = getGeminiApiKey();
+
+      if (!apiKey) {
+        return res.status(503).json({ error: "No API key configured" });
+      }
+
+      const meds = patientCase?.medikamenteList || [];
+      const ai = new GoogleGenAI({ apiKey });
+
+      const targetLang = (language as string) || 'de';
+      const langNames: Record<string, string> = {
+        de: "German (Deutsch)",
+        en: "English",
+        el: "Greek (Ελληνικά)",
+        es: "Spanish (Español)",
+        fr: "French (Français)",
+        it: "Italian (Italiano)",
+        ru: "Russian (Русский)"
+      };
+      const targetLanguageName = langNames[targetLang] || "German (Deutsch)";
+
+      const isSmoker = Boolean(lifestyle?.isSmoker || lifestyle?.smokingStatus === 'smoker');
+      const hasAlcohol = Boolean(lifestyle?.alcoholDaily || lifestyle?.alcoholFrequency === 'daily' || (lifestyle?.alcoholFrequency && lifestyle?.alcoholFrequency !== 'never'));
+
+      const prompt = `
+Du bist ein führender klinischer Pharmakologe und international anerkannter Experte für Arzneimittelsicherheit. Deine Aufgabe ist es, komplexe Patientenprofile, bestehend aus Mehrfachmedikation (inkl. Dosis), Patientendaten (Alter, Geschlecht, Gewicht, Größe, BMI), Schwangerschaftsstatus (inkl. genauer Woche/Monat) und Lebensstilfaktoren (Alkohol ja/nein, Rauchen ja/nein), auf kombinierte Risiken zu analysieren.
+
+SPRACHANFORDERUNG (STRIKT & VERPFLICHTEND):
+Verfasse die gesamte klinische Analyse und alle Textabschnitte, Überschriften, Tabellenköpfe und Empfehlungen VOLLSTÄNDIG in der Sprache: ${targetLanguageName}.
+Verwende die authentische, exakte medizinisch-pharmakologische Fachterminologie in dieser Sprache (${targetLanguageName}).
+
+Befolge für eine fehlerfreie, professionelle und evidenzbasierte Auswertung strikt folgende medizinisch-fachliche Vorgaben:
+
+1. KEINE ISOLIERTE BETRACHTUNG: Analysiere die kumulative Gesamtwirkung aller verordneten Medikamente und patientenspezifischen Faktoren als Gesamtsynergie im Körper.
+2. ALKOHOL & RAUCHEN (BINÄRE PARAMETER & INTERAKTIONSFOKUS):
+   - Alkohol und Rauchen werden AUSSCHLIESSLICH binär erfasst (Ja oder Nein). Gib NIEMALS Milligramm-Angaben (mg/Tag) oder Zigarettenmengen aus.
+   - Weise generell NUR DANN auf Gefahren durch Alkohol oder Rauchen hin, wenn diese in direktem Zusammenhang mit den eingenommenen Medikamenten stehen (Wechselwirkungen, Wirkungsverstärkung oder -minderung) ODER bei Schwangeren.
+   - Bei Schwangeren weise mit erhöhter Priorität auf die gravierenden Gefahren hin (teratogene Risiken, FASD, fetale Schädigungen, intrauterine Wachstumsretardierung).
+   - Falls keine direkte Wechselwirkung mit den Medikamenten vorliegt und keine Schwangerschaft besteht, stelle klar, dass keine direkte pharmakologische Interaktion mit der aktuellen Medikation vorliegt.
+3. ÜBERGEWICHT & KÖRPERBAU (PHARMAKOKINETIK & DOSIERUNGSRELEVANZ):
+   - Berücksichtige den Faktor Übergewicht/Körperbau NUR DANN, wenn er einen direkten Einfluss auf die Pharmakokinetik oder die Dosierung der ausgewählten Medikamente hat.
+   - Erkenne extreme Unterschiede im Körperbau (z. B. 50 kg / 160 cm im Vergleich zu 120 kg / 190 cm): Lipophile Wirkstoffe (vergrößertes Verteilungsvolumen, verlängerte Halbwertszeit bei Adipositas), hydrophile Wirkstoffe (Gefahr toxischer Überdosierung bei Dosierung nach Gesamtkörpergewicht statt Idealgewicht) oder DOACs (Dosisreduktion bei ≤ 60 kg), und weise professionell darauf hin.
+4. TRIMESTRALE SPEZIFITÄT: Bei Schwangerschaft schlüssle das exakte Risiko für den spezifischen Schwangerschaftsmonat (bzw. das Trimenon) sowohl für die Mutter als auch embryotoxikologisch für den Fötus auf.
+5. ABSOLUTES HALLUZINATIONSVERBOT: Du darfst nur medizinisch und wissenschaftlich gesicherte Interaktionen nennen.
+6. SAUBERE TABELLENFORMATIERUNG (GFM): Verwende saubere, geschlossene Markdown-Tabellen.
+
+PATIENTENDATEN & PROFIL:
+- Patient/in: ${patientCase?.patientName || 'Anonym'}
+- Alter: ${patientCase?.geburtsdatum ? patientCase.geburtsdatum : 'nicht angegeben'}
+- Geschlecht: ${patientCase?.geschlecht || 'weiblich'}
+- Körpergewicht: ${lifestyle?.bodyWeightKg || patientCase?.befundDetails?.gewicht || 70} kg
+- Körpergröße: ${lifestyle?.bodyHeightCm || patientCase?.patientHeightCm || patientCase?.befundDetails?.groesse || 170} cm
+- Body-Mass-Index (BMI): ${lifestyle?.bmi ? `${lifestyle.bmi} kg/m²` : 'Standard'}
+- Schwangerschaft: ${lifestyle?.isPregnant ? `Ja, ${lifestyle.pregnancyMonth || patientCase?.pregnancyMonth || 1}. Schwangerschaftsmonat` : 'Nein / nicht schwanger'}
+- Rauchen: ${isSmoker ? 'Ja (Raucher)' : 'Nein (Nichtraucher)'}
+- Alkoholkonsum: ${hasAlcohol ? 'Ja (Alkoholkonsum angegeben)' : 'Nein (Kein Alkoholkonsum)'}
+
+VERORDNETE MEDIKAMENTE:
+${JSON.stringify(meds, null, 2)}
+
+Generiere den Output EXAKT in folgender Struktur in der Zielsprache (${targetLanguageName}):
+
+### ⚠️ [WICHTIGER MEDIZINISCHER WARNHINWEIS / IMPORTANT MEDICAL NOTICE]
+(Verfasse den Hinweis in ${targetLanguageName}, dass diese Analyse der Risiko-Früherkennung dient und keine ärztliche Konsultation ersetzt.)
+
+### 1. [KLINISCHE DRINGLICHKEIT (Triage) / CLINICAL TRIAGE]
+Gib eine klare, ganzheitliche Einstufung des Gesamtrisikos an.
+WICHTIG: Die Beurteilung MUSS zwingend ALLE vorhandenen Daten (alle verordneten Medikamente mit Dosierung, Konstitution/BMI, Schwangerschaftsmonat/-trimenon und Lebensstilfaktoren wie Alkohol und Rauchen) gleichzeitig berücksichtigen und würdigen. Beziehe dich NIEMALS isoliert nur auf einen Einzelfaktor, sondern stelle die kumulative Gesamtsituation dar.
+Verwende am Anfang der Beurteilung genau eines der folgenden Schlüsselwörter:
+- [KRITISCH / AKUTE LEBENSGEFAHR] (oder in ${targetLanguageName}: [CRITICAL] / [ΚΡΙΣΙΜΟ] etc.): (Multidimensionale Gesamtwürdigung)
+ODER
+- [HOCH] (oder in ${targetLanguageName}: [HIGH] / [ΥΨΗΛΟ] etc.): (Multidimensionale Gesamtwürdigung)
+ODER
+- [GERING / ÜBERWACHUNG] (oder in ${targetLanguageName}: [LOW] / [ΧΑΜΗΛΟ] etc.): (Multidimensionale Gesamtwürdigung)
+
+### 2. [INTEGRATIVE RISIKO-MATRIX / RISK MATRIX]
+Erstelle eine saubere, vollständige Markdown-Tabelle im GFM-Format. Jede Zeile MUSS mit | beginnen und mit | enden.
+Spalten (in ${targetLanguageName} übersetzt):
+| Analysierte Konstellation | Biologischer Wirkmechanismus | Spezifisches Risiko für den Patienten | Spezifisches Risiko für den Fötus (Schwangerschaft) | Priorisierte Überwachungs-Parameter |
+| :--- | :--- | :--- | :--- | :--- |
+
+Zeilen:
+| **[Medikament A] + [Medikament B]** | Direkte Kreuzreaktion | Mütterliche/Patienten-Gefahr | Fötale Auswirkung | Notwendige Kontrollen |
+| **Synergie mit Schwangerschaft** | Pathophysiologie im spezifischen Monat/Trimester | Risiken Komplikationen | Embryotoxizität | Kontrolluntersuchungen |
+| **Kombination + Lebensstil** | Toxische Verstärkung | Beschleunigung von Organschäden | Akute Schädigung | Verhaltensanweisung |
+
+### 3. [DIAGNOSTISCHER LEITFADEN FÜR DEN ARZTBESUCH / CLINICAL GUIDELINE]
+Checkliste für den Patienten:
+- Konkrete Fragen an den behandelnden Arzt
+- Dringende Labor-/Untersuchungs-Anforderungen
+- Alarmsymptome, bei denen unverzüglich der Notruf gewählt werden muss
+`;
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+      });
+
+      const markdownContent = response.text || '';
+      if (!markdownContent) {
+        return res.status(500).json({ error: "Empty response from clinical pharmacology model" });
+      }
+
+      const upper = markdownContent.toUpperCase();
+      let triageLevel: 'critical' | 'high' | 'low' = 'low';
+      let triageLabel = '[GERING / ÜBERWACHUNG]';
+
+      if (
+        upper.includes('KRITISCH') ||
+        upper.includes('CRITICAL') ||
+        upper.includes('ΚΡΙΣΙΜ') ||
+        upper.includes('CRÍTICO') ||
+        upper.includes('CRITIQUE') ||
+        upper.includes('КРИТИЧЕСК')
+      ) {
+        triageLevel = 'critical';
+        triageLabel = '[KRITISCH / AKUTE LEBENSGEFAHR]';
+      } else if (
+        upper.includes('HOCH') ||
+        upper.includes('HIGH') ||
+        upper.includes('ΥΨΗΛ') ||
+        upper.includes('ALTO') ||
+        upper.includes('ÉLEVÉ') ||
+        upper.includes('ELEVE') ||
+        upper.includes('ВЫСОК')
+      ) {
+        triageLevel = 'high';
+        triageLabel = '[HOCH]';
+      }
+
+      recordTokenUsage({
+        endpoint: '/api/medications/clinical-comparison',
+        actionName: `Klinische Pharmakologie & Mehrfachmedikations-Vergleich (${targetLang.toUpperCase()})`,
+        model: 'gemini-2.5-flash',
+        promptTokens: response.usageMetadata?.promptTokenCount || 600,
+        candidatesTokens: response.usageMetadata?.candidatesTokenCount || 900
+      });
+
+      return res.json({
+        analyzedAt: new Date().toISOString(),
+        triageLevel,
+        triageLabel,
+        markdownContent,
+        medicationsSummary: meds.map((m: any) => `${m.name} (${m.dosierung || 'Standard'})`),
+        patientProfileSummary: {
+          gender: patientCase?.geschlecht,
+          isPregnant: lifestyle?.isPregnant,
+          pregnancyMonth: lifestyle?.pregnancyMonth,
+          alcoholPureMgPerDay: lifestyle?.alcoholPureMgPerDay,
+        }
+      });
+    } catch (err: any) {
+      console.error("[ClinicalComparison] Error:", err?.message || err);
+      res.status(500).json({ error: "Clinical comparison failed", details: err?.message });
     }
   });
 

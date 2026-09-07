@@ -656,27 +656,78 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
   };
 
   return (
-    <div className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full space-y-6">
-      {/* Top Header Card */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs relative overflow-hidden">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-teal-50 text-teal-700 rounded-xl border border-teal-100/80 shadow-2xs shrink-0">
-            <Mic className="w-6 h-6" />
+    <div className="w-full space-y-6">
+      {/* Top Header Card (Uniform Falldokumentation Design) */}
+      <div className="w-full bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs relative overflow-hidden">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-teal-700 text-white flex items-center justify-center font-bold text-base shadow-xs shrink-0 font-serif">
+              <Mic className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h1 className="text-xl font-bold text-slate-900 font-serif">
+                  {t('tabQuickIntake')}
+                </h1>
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-50 text-teal-800 border border-teal-200/80 shadow-2xs">
+                  {t('acuteIntakeBadge')}
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {t('quickIntakePageSubtitle')}
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-              {t('tabQuickIntake')}
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-500">
-              {t('quickIntakePageSubtitle')}
-            </p>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            {onGoToMateriaMedica && (
+              <button
+                type="button"
+                onClick={onGoToMateriaMedica}
+                className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
+              >
+                <BookOpen className="w-3.5 h-3.5 text-teal-700" />
+                <span>{t('tabMateriaMedica')}</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Structured 3-Column Meta Grid (Exact match with Falldokumentation's metadata row) */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4 text-xs">
+          <div className="bg-slate-50/70 p-3 rounded-xl border border-slate-100 flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center shrink-0 border border-teal-100/80">
+              <Mic className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <span className="block text-[11px] text-slate-400 font-medium">{t('acuteFeatureVoice')}</span>
+              <span className="font-semibold text-slate-800 text-xs truncate block">{t('acuteFeatureVoiceSub')}</span>
+            </div>
+          </div>
+          <div className="bg-slate-50/70 p-3 rounded-xl border border-slate-100 flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center shrink-0 border border-teal-100/80">
+              <Stethoscope className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <span className="block text-[11px] text-slate-400 font-medium">{t('acuteFeatureAnalysis')}</span>
+              <span className="font-semibold text-slate-800 text-xs truncate block">{t('acuteFeatureAnalysisSub')}</span>
+            </div>
+          </div>
+          <div className="bg-slate-50/70 p-3 rounded-xl border border-slate-100 flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center shrink-0 border border-teal-100/80">
+              <Sparkles className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <span className="block text-[11px] text-slate-400 font-medium">{t('acuteFeatureRemedies')}</span>
+              <span className="font-semibold text-slate-800 text-xs truncate block">{t('acuteFeatureRemediesSub')}</span>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Main Intake Card: Single Full-Width Voice & Text Recording Hub */}
       <div className="w-full animate-in fade-in duration-200">
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs flex flex-col space-y-4 relative overflow-hidden">
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs flex flex-col space-y-4 relative overflow-hidden">
           {/* Header Row: HAUPTBESCHWERDE & LEITSYMPTOM * on left, Eingabe löschen on right */}
           <div className="flex items-center justify-between gap-2">
             <label className="text-xs sm:text-sm font-bold text-slate-800 uppercase tracking-wider">
@@ -708,7 +759,7 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
                   setIsClarificationApplied(false);
                 }}
                 placeholder={t('recordedSymptomsPlaceholder')}
-                className="w-full h-full min-h-[140px] p-4 bg-white border border-[#009688] rounded-2xl text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 transition-all resize-none pr-9"
+                className="w-full h-full min-h-[140px] p-4 bg-white border border-slate-300 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 transition-all resize-none pr-9 shadow-2xs"
               />
               {symptomText && (
                 <button
@@ -727,7 +778,7 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
               type="button"
               onClick={isRecording ? stopVoiceRecording : startVoiceRecording}
               disabled={!isSpeechSupported}
-              className={`w-full sm:w-32 md:w-36 shrink-0 rounded-2xl text-white flex flex-col items-center justify-center gap-2.5 p-4 transition-all shadow-xs cursor-pointer min-h-[140px] border ${
+              className={`w-full sm:w-32 md:w-36 shrink-0 rounded-xl text-white flex flex-col items-center justify-center gap-2.5 p-4 transition-all shadow-xs cursor-pointer min-h-[140px] border ${
                 isRecording
                   ? 'bg-rose-600 hover:bg-rose-700 animate-pulse border-rose-700'
                   : 'bg-[#00897b] hover:bg-[#00796b] border-teal-800/20'
@@ -853,38 +904,40 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
             )}
           </div>
 
-          {/* Hahnemann Organon §§ 83-104 Anamnesis Launch or Completed Banner */}
-          {!hahnemannData ? (
-            <button
-              type="button"
-              onClick={() => setIsHahnemannWizardOpen(true)}
-              className="w-full py-3.5 px-4 rounded-xl bg-[#006655] hover:bg-[#005544] text-white text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer border border-[#005544]"
-            >
-              <Stethoscope className="w-4 h-4 text-teal-200" />
-              <span>{t('hahnemannLaunchFromAcuteVoice')}</span>
-            </button>
-          ) : (
-            <div className="bg-teal-50/90 border border-teal-200 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-teal-700 shrink-0" />
-                <div>
-                  <span className="text-xs font-bold text-teal-950 block">
-                    {t('hahnemannAnamnesisCompletedBadge')}
-                  </span>
-                  <span className="text-[11px] text-teal-700">
-                    {hahnemannData.caseType === 'chronisch' ? t('hahnemannCaseTypeChronicShort') : t('hahnemannCaseTypeAcuteShort')} • {hahnemannData.differentialRemedies?.slice(0, 3).join(', ')}
-                  </span>
-                </div>
-              </div>
+          {/* Hahnemann Organon §§ 83-104 Anamnesis Launch or Completed Banner - appears after entering Hauptbeschwerde & Leitsymptom */}
+          {(symptomText.trim().length > 0 || hahnemannData) && (
+            !hahnemannData ? (
               <button
                 type="button"
                 onClick={() => setIsHahnemannWizardOpen(true)}
-                className="px-3 py-1.5 rounded-lg bg-white border border-teal-300 hover:bg-teal-100/50 text-teal-900 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer self-start sm:self-auto shrink-0 shadow-2xs"
+                className="w-full py-3.5 px-4 rounded-xl bg-[#006655] hover:bg-[#005544] text-white text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer border border-[#005544] animate-in fade-in duration-200"
               >
-                <Edit3 className="w-3.5 h-3.5 text-teal-700" />
-                <span>{t('hahnemannReopenBtn')}</span>
+                <Stethoscope className="w-4 h-4 text-teal-200" />
+                <span>{t('hahnemannLaunchFromAcuteVoice')}</span>
               </button>
-            </div>
+            ) : (
+              <div className="bg-teal-50/90 border border-teal-200 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 animate-in fade-in duration-200">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-teal-700 shrink-0" />
+                  <div>
+                    <span className="text-xs font-bold text-teal-950 block">
+                      {t('hahnemannAnamnesisCompletedBadge')}
+                    </span>
+                    <span className="text-[11px] text-teal-700">
+                      {hahnemannData.caseType === 'chronisch' ? t('hahnemannCaseTypeChronicShort') : t('hahnemannCaseTypeAcuteShort')} • {hahnemannData.differentialRemedies?.slice(0, 3).join(', ')}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsHahnemannWizardOpen(true)}
+                  className="px-3 py-1.5 rounded-lg bg-white border border-teal-300 hover:bg-teal-100/50 text-teal-900 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer self-start sm:self-auto shrink-0 shadow-2xs"
+                >
+                  <Edit3 className="w-3.5 h-3.5 text-teal-700" />
+                  <span>{t('hahnemannReopenBtn')}</span>
+                </button>
+              </div>
+            )
           )}
 
           {/* Disclaimer: Not a case documentation matching image.png */}
@@ -1030,7 +1083,7 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
           />
 
         {/* 3-Column Responsive Cards Grid matching Bild 1 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {displayedRemedies.map(({ remedy, rec, isRecommended, index, kentSummary }) => {
             const authorsInfo = getRemedyClassicalAuthors(remedy.id);
             const hasAnyAuthors = authorsInfo.hahnemann || authorsInfo.kent || authorsInfo.hering;
@@ -1041,7 +1094,7 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
                 className={`bg-white rounded-2xl border p-5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between group ${
                   isRecommended && index === 0
                     ? 'border-teal-500 ring-2 ring-teal-500/25 bg-gradient-to-b from-teal-50/20 to-white hover:border-teal-600'
-                    : 'border-slate-200/90 hover:border-teal-300'
+                    : 'border-slate-200/80 hover:border-teal-300'
                 }`}
               >
                 <div className="space-y-3.5">

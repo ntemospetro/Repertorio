@@ -20,12 +20,15 @@ import {
   Clock,
   ArrowRight,
   Mail,
-  Phone
+  Phone,
+  Scale,
+  X
 } from 'lucide-react';
 import { PatientCase } from '../types';
 import { TranslationKey } from '../i18n/translations';
 import { useTranslation } from '../i18n/LanguageContext';
 import { MedicationMonographView } from './MedicationMonographView';
+import { MedicationMultiComparisonView } from './MedicationMultiComparisonView';
 import { 
   searchMedications, 
   fetchMedicationDetails, 
@@ -43,7 +46,7 @@ interface MedicationResearchViewProps {
   currentCase: Partial<PatientCase>;
   allCases?: PatientCase[];
   onSelectCase?: (caseId: string) => void;
-  onOpenMedicationsModal?: () => void;
+  onOpenMedicationsModal?: (autoAddNew?: boolean) => void;
   onUpdateCase?: (updatedCase: Partial<PatientCase>) => void;
 }
 
@@ -66,9 +69,29 @@ export const MedicationResearchView: React.FC<MedicationResearchViewProps> = ({
   const patientMeds = currentCase.medikamenteList || [];
   const [selectedMedIndex, setSelectedMedIndex] = useState<number>(0);
   const [researchedMedDetail, setResearchedMedDetail] = useState<MedicationSuggestion | null>(null);
-  const [viewMode, setViewMode] = useState<'structured' | 'fluid'>('structured');
+  const [viewMode, setViewMode] = useState<'structured' | 'fluid' | 'comparison'>('structured');
+  const [isComparisonModalOpen, setIsComparisonModalOpen] = useState(false);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Close modal on Escape
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isComparisonModalOpen) {
+        setIsComparisonModalOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isComparisonModalOpen]);
+
+  // Ensure comparison tab gracefully resets if medication count falls to 1 or 0
+  useEffect(() => {
+    if (patientMeds.length <= 1) {
+      if (viewMode === 'comparison') setViewMode('structured');
+      if (isComparisonModalOpen) setIsComparisonModalOpen(false);
+    }
+  }, [patientMeds.length, viewMode, isComparisonModalOpen]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -549,21 +572,24 @@ export const MedicationResearchView: React.FC<MedicationResearchViewProps> = ({
                 {patientMeds.length}
               </span>
             </h2>
-
-            {onOpenMedicationsModal && (
-              <button
-                type="button"
-                onClick={onOpenMedicationsModal}
-                className="text-[11px] font-bold text-teal-700 hover:text-teal-900 flex items-center gap-1 cursor-pointer"
-              >
-                <Plus className="w-3 h-3" />
-                <span>{t('medNewBtn' as TranslationKey) || 'Neu'}</span>
-              </button>
-            )}
           </div>
 
           {/* List of Medications */}
           <div className="flex-1 overflow-y-auto p-3 space-y-2">
+            {/* Add Medication Button - positioned directly above Kombinations- & Risikovergleich in equal width */}
+            {onOpenMedicationsModal && (
+              <button
+                type="button"
+                id="btn-add-patient-medication-list"
+                onClick={() => onOpenMedicationsModal(true)}
+                className="w-full p-2.5 rounded-xl border border-teal-600 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer group"
+                title={t('addMedication' as TranslationKey) || 'Medikament hinzufügen'}
+              >
+                <Plus className="w-4 h-4 text-white group-hover:scale-110 transition-transform" />
+                <span>{t('addMedication' as TranslationKey) || 'Medikament hinzufügen'}</span>
+              </button>
+            )}
+
             {patientMeds.length === 0 ? (
               <div className="p-6 text-center">
                 <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3">
@@ -575,71 +601,89 @@ export const MedicationResearchView: React.FC<MedicationResearchViewProps> = ({
                 <p className="text-[11px] text-slate-500 mb-4 leading-relaxed">
                   {t('medNoMedsRecordedDesc' as TranslationKey) || 'Erfassen Sie Medikamente schnell über das Eingabefenster oder recherchieren Sie beliebige Präparate direkt im Suchfeld.'}
                 </p>
-                {onOpenMedicationsModal && (
-                  <button
-                    type="button"
-                    onClick={onOpenMedicationsModal}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition-colors cursor-pointer shadow-xs"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>{t('medAddOrEditMeds' as TranslationKey) || 'Medikamente erfassen'}</span>
-                  </button>
-                )}
               </div>
             ) : (
-              patientMeds.map((m, idx) => {
-                const isSelected = !researchedMedDetail && selectedMedIndex === idx;
-                const hasInteractions = !!(m.wechselwirkungen?.length || m.risiken);
-
-                return (
+              <>
+                {/* Comparison Shortcut if more than 1 medication - opens full-width popup */}
+                {patientMeds.length > 1 && (
                   <button
-                    key={idx}
                     type="button"
-                    onClick={() => {
-                      setResearchedMedDetail(null);
-                      setSelectedMedIndex(idx);
-                    }}
-                    className={`w-full text-left p-3 rounded-xl border transition-all cursor-pointer ${
-                      isSelected
-                        ? 'bg-teal-50/70 border-teal-500 shadow-2xs ring-2 ring-teal-500/10'
-                        : 'bg-white hover:bg-slate-50 border-slate-200/80 shadow-2xs'
-                    }`}
+                    onClick={() => setIsComparisonModalOpen(true)}
+                    className="w-full mb-2.5 p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-between transition-all cursor-pointer bg-teal-50/80 hover:bg-teal-100/90 border-teal-200/90 text-teal-950 shadow-2xs group"
+                    title={t('medComparisonModalFullWidthTitle' as TranslationKey) || 'Kombinations- & Risikovergleich in Vollansicht öffnen'}
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0 flex-1">
-                        <div className="font-bold text-xs text-slate-900 flex items-center gap-1.5 truncate">
-                          <span>{m.name}</span>
-                          {hasInteractions && (
-                            <span title={t('medInteractionsRecordedTooltip' as TranslationKey) || 'Interaktionen/Risiken erfasst'}>
-                              <AlertTriangle className="w-3 h-3 text-amber-500 shrink-0" />
-                            </span>
-                          )}
-                        </div>
-                        {m.wirkstoff && (
-                          <div className="text-[10px] text-teal-700 font-medium truncate">
-                            {m.wirkstoff}
-                          </div>
-                        )}
-                        <div className="flex flex-wrap items-center gap-2 mt-1.5 text-[11px] text-slate-600">
-                          {m.dosierung && (
-                            <span className="font-semibold text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded">
-                              {m.dosierung}
-                            </span>
-                          )}
-                          {m.einnahmeart && (
-                            <span className="font-medium text-slate-600 flex items-center gap-1">
-                              <Clock className="w-3 h-3 text-slate-400" />
-                              {m.einnahmeart}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      <ChevronRight className={`w-4 h-4 shrink-0 mt-1 transition-transform ${isSelected ? 'text-teal-700 translate-x-0.5' : 'text-slate-300'}`} />
+                    <div className="flex items-center gap-2">
+                      <Scale className="w-4 h-4 text-teal-700 group-hover:scale-110 transition-transform" />
+                      <span className="font-bold">
+                        {t('medViewModeComparison' as TranslationKey) || 'Kombinations- & Risikovergleich'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-teal-200 text-teal-900">
+                        {patientMeds.length}
+                      </span>
+                      <span className="text-[10px] text-teal-700 font-medium">Popup</span>
                     </div>
                   </button>
-                );
-              })
+                )}
+
+                {patientMeds.map((m, idx) => {
+                  const isSelected = !researchedMedDetail && selectedMedIndex === idx && viewMode !== 'comparison';
+                  const hasInteractions = !!(m.wechselwirkungen?.length || m.risiken);
+
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => {
+                        setResearchedMedDetail(null);
+                        setSelectedMedIndex(idx);
+                        if (viewMode === 'comparison') {
+                          setViewMode('structured');
+                        }
+                      }}
+                      className={`w-full text-left p-3 rounded-xl border transition-all cursor-pointer ${
+                        isSelected
+                          ? 'bg-teal-50/70 border-teal-500 shadow-2xs ring-2 ring-teal-500/10'
+                          : 'bg-white hover:bg-slate-50 border-slate-200/80 shadow-2xs'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="font-bold text-xs text-slate-900 flex items-center gap-1.5 truncate">
+                            <span>{m.name}</span>
+                            {hasInteractions && (
+                              <span title={t('medInteractionsRecordedTooltip' as TranslationKey) || 'Interaktionen/Risiken erfasst'}>
+                                <AlertTriangle className="w-3 h-3 text-amber-500 shrink-0" />
+                              </span>
+                            )}
+                          </div>
+                          {m.wirkstoff && (
+                            <div className="text-[10px] text-teal-700 font-medium truncate">
+                              {m.wirkstoff}
+                            </div>
+                          )}
+                          <div className="flex flex-wrap items-center gap-2 mt-1.5 text-[11px] text-slate-600">
+                            {m.dosierung && (
+                              <span className="font-semibold text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded">
+                                {m.dosierung}
+                              </span>
+                            )}
+                            {m.einnahmeart && (
+                              <span className="font-medium text-slate-600 flex items-center gap-1">
+                                <Clock className="w-3 h-3 text-slate-400" />
+                                {m.einnahmeart}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <ChevronRight className={`w-4 h-4 shrink-0 mt-1 transition-transform ${isSelected ? 'text-teal-700 translate-x-0.5' : 'text-slate-300'}`} />
+                      </div>
+                    </button>
+                  );
+                })}
+              </>
             )}
           </div>
         </div>
@@ -654,38 +698,57 @@ export const MedicationResearchView: React.FC<MedicationResearchViewProps> = ({
                   <div>
                     <div className="flex items-center gap-2">
                       <h2 className="text-lg font-bold text-slate-900 tracking-tight">
-                        {displayItem?.name || activeDisplayItem.name}
+                        {viewMode === 'comparison'
+                          ? (t('medComparisonHeading' as TranslationKey) || 'Mehrfachmedikations-Vergleich & Kumulative Risikoanalyse')
+                          : (displayItem?.name || activeDisplayItem.name)}
                       </h2>
                       <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 border border-teal-200">
-                        <ShieldCheck className="w-3 h-3" />
-                        <span>{t('medStrictAuthorityBadge' as TranslationKey) || 'Geprüfte Fachinformation'}</span>
+                        {viewMode === 'comparison' ? (
+                          <>
+                            <Scale className="w-3 h-3" />
+                            <span>{t('medComparisonBadge' as TranslationKey) || 'Klinische Pharmakologie & Arzneimittelsicherheit'}</span>
+                          </>
+                        ) : (
+                          <>
+                            <ShieldCheck className="w-3 h-3" />
+                            <span>{t('medStrictAuthorityBadge' as TranslationKey) || 'Geprüfte Fachinformation'}</span>
+                          </>
+                        )}
                       </span>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-slate-600">
-                      {displayItem?.activeSubstance && (
+                      {viewMode === 'comparison' ? (
                         <span>
-                          <strong className="text-slate-800">{t('medActiveSubstanceLabel' as TranslationKey) || 'Wirkstoff'}:</strong> {displayItem.activeSubstance}
+                          {(t('medComparisonPrescribedCountNotice' as TranslationKey) || '{count} verordnete Medikamente im patientenspezifischen Risikovergleich').replace('{count}', patientMeds.length.toString())}
                         </span>
-                      )}
-                      {displayItem?.category && (
+                      ) : (
                         <>
-                          <span className="text-slate-300">•</span>
-                          <span>
-                            <strong className="text-slate-800">{t('medCategoryLabel' as TranslationKey) || 'Kategorie'}:</strong> {displayItem.category}
-                          </span>
+                          {displayItem?.activeSubstance && (
+                            <span>
+                              <strong className="text-slate-800">{t('medActiveSubstanceLabel' as TranslationKey) || 'Wirkstoff'}:</strong> {displayItem.activeSubstance}
+                            </span>
+                          )}
+                          {displayItem?.category && (
+                            <>
+                              <span className="text-slate-300">•</span>
+                              <span>
+                                <strong className="text-slate-800">{t('medCategoryLabel' as TranslationKey) || 'Kategorie'}:</strong> {displayItem.category}
+                              </span>
+                            </>
+                          )}
+                          {isTranslatingStructured && (
+                            <span className="inline-flex items-center gap-1 text-[11px] text-teal-700 bg-teal-50 px-2 py-0.5 rounded-md border border-teal-200 ml-1">
+                              <Loader2 className="w-3 h-3 animate-spin text-teal-600" />
+                              <span>{t('medMonographTranslating' as TranslationKey) || 'Fachinformation wird übersetzt...'}</span>
+                            </span>
+                          )}
                         </>
-                      )}
-                      {isTranslatingStructured && (
-                        <span className="inline-flex items-center gap-1 text-[11px] text-teal-700 bg-teal-50 px-2 py-0.5 rounded-md border border-teal-200 ml-1">
-                          <Loader2 className="w-3 h-3 animate-spin text-teal-600" />
-                          <span>{t('medMonographTranslating' as TranslationKey) || 'Fachinformation wird übersetzt...'}</span>
-                        </span>
                       )}
                     </div>
                   </div>
 
-                  {/* View Mode Toggle: Kompaktansicht vs. Fließtext-Monographie */}
+                  {/* View Mode Toggle: Kompaktansicht vs. Fließtext-Monographie vs. Kombinations- & Risikovergleich */}
                   <div className="inline-flex rounded-lg border border-slate-200 bg-slate-100 p-0.5 shadow-2xs">
                     <button
                       type="button"
@@ -715,7 +778,7 @@ export const MedicationResearchView: React.FC<MedicationResearchViewProps> = ({
                 </div>
 
                 {/* If researched item is currently displayed, offer one-click add to patient */}
-                {researchedMedDetail && (
+                {researchedMedDetail && viewMode !== 'comparison' && (
                   <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between">
                     <span className="text-xs text-teal-800 font-medium">
                       {t('medResearchedNotYetAddedNote' as TranslationKey) || 'Dieses recherchierte Präparat ist noch nicht der Patientenakte hinzugefügt.'}
@@ -734,7 +797,13 @@ export const MedicationResearchView: React.FC<MedicationResearchViewProps> = ({
 
               {/* Detail Content */}
               <div className="flex-1 overflow-y-auto p-5">
-                {(isLoadingDetail && !activeDisplayItem.monographText) || isFinishingLoad ? (
+                {viewMode === 'comparison' ? (
+                  <MedicationMultiComparisonView
+                    currentCase={currentCase}
+                    onUpdateCase={onUpdateCase}
+                    onOpenMedicationsModal={onOpenMedicationsModal}
+                  />
+                ) : (isLoadingDetail && !activeDisplayItem.monographText) || isFinishingLoad ? (
                   <div className="py-12 px-4 flex flex-col items-center justify-center">
                     <div className="w-full max-w-md p-6 sm:p-8 bg-white rounded-2xl border border-slate-200/80 shadow-xs text-center animate-in fade-in-50 duration-200">
                       <div className="w-12 h-12 rounded-2xl bg-teal-50 border border-teal-100 flex items-center justify-center mx-auto mb-4 text-teal-600 shadow-2xs">
@@ -1077,6 +1146,70 @@ export const MedicationResearchView: React.FC<MedicationResearchViewProps> = ({
           )}
         </div>
       </div>
+
+      {/* ========================================================================= */}
+      {/* FULL-WIDTH POPUP MODAL: KOMBINATIONS- & RISIKOVERGLEICH                  */}
+      {/* ========================================================================= */}
+      {isComparisonModalOpen && (
+        <div
+          id="comparison-modal-backdrop"
+          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 md:p-6 animate-in fade-in duration-150"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setIsComparisonModalOpen(false);
+          }}
+        >
+          <div
+            id="comparison-modal-container"
+            className="bg-slate-50 w-full h-[94vh] max-h-[96vh] rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden animate-in zoom-in-95 duration-200"
+          >
+            {/* Modal Top Header Bar */}
+            <div className="px-5 py-3.5 bg-white border-b border-slate-200 flex items-center justify-between shrink-0 shadow-2xs">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 shrink-0 shadow-2xs">
+                  <Scale className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight">
+                      {t('medComparisonHeading' as TranslationKey) || 'Mehrfachmedikations-Vergleich & Kumulative Risikoanalyse'}
+                    </h2>
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-teal-100 text-teal-800 border border-teal-200">
+                      <span>{patientMeds.length} {t('medComparisonCountBadge' as TranslationKey) || 'Medikamente erfasst'}</span>
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    {currentCase.patientName ? `${currentCase.patientName} • ` : ''}
+                    {currentCase.patientAge ? `${currentCase.patientAge} ${t('yearsOld' as TranslationKey) || 'Jahre'} • ` : ''}
+                    {getGenderLabel(currentCase.patientGender)}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  id="btn-close-comparison-modal"
+                  onClick={() => setIsComparisonModalOpen(false)}
+                  className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+                  title={t('medComparisonModalClose' as TranslationKey) || 'Schließen (Esc)'}
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Scrollable Body */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 bg-slate-50/70">
+              <MedicationMultiComparisonView
+                currentCase={currentCase}
+                onUpdateCase={onUpdateCase}
+                onOpenMedicationsModal={onOpenMedicationsModal}
+                onClose={() => setIsComparisonModalOpen(false)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

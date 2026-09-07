@@ -209,6 +209,7 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
   const [isComplaintWizardModalOpen, setIsComplaintWizardModalOpen] = useState(false);
   const [isFindingsModalOpen, setIsFindingsModalOpen] = useState(false);
   const [isMedicationsModalOpen, setIsMedicationsModalOpen] = useState(false);
+  const [medicationsModalAutoAddNew, setMedicationsModalAutoAddNew] = useState(false);
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const [isNoMasterDataModalOpen, setIsNoMasterDataModalOpen] = useState(false);
   const [isPatientSelectionModalOpen, setIsPatientSelectionModalOpen] = useState(false);
@@ -1722,7 +1723,21 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
               <span>{t('tabPatientDirectory')}</span>
             </button>
 
-            {/* 2. Akutaufnahme & Voice-Analyse */}
+            {/* 2. Falldokumentation & Repertorisation */}
+            <button
+              type="button"
+              onClick={() => handleSelectTab('cases')}
+              className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-3 transition-colors cursor-pointer ${
+                panelTab === 'cases'
+                  ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/50'
+                  : 'text-slate-600 hover:bg-slate-200/50 hover:text-slate-900'
+              }`}
+            >
+              <LayoutDashboard className="w-4 h-4 text-teal-600" />
+              <span>{t('tabCaseManagement')}</span>
+            </button>
+
+            {/* 3. Akutanalyse (unter Falldokumentation & Repertorisation) */}
             <button
               type="button"
               id="sidebar-nav-tab-quickintake"
@@ -1735,20 +1750,6 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
             >
               <Mic className="w-4 h-4 text-teal-600" />
               <span>{t('tabQuickIntake')}</span>
-            </button>
-
-            {/* 3. Falldokumentation & Repertorisation */}
-            <button
-              type="button"
-              onClick={() => handleSelectTab('cases')}
-              className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-3 transition-colors cursor-pointer ${
-                panelTab === 'cases'
-                  ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/50'
-                  : 'text-slate-600 hover:bg-slate-200/50 hover:text-slate-900'
-              }`}
-            >
-              <LayoutDashboard className="w-4 h-4 text-teal-600" />
-              <span>{t('tabCaseManagement')}</span>
             </button>
 
             {/* 4. Medikamente & Analyse */}
@@ -1971,7 +1972,10 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
               setCurrentCase(targetCase);
             }
           }}
-          onOpenMedicationsModal={() => setIsMedicationsModalOpen(true)}
+          onOpenMedicationsModal={(autoAddNew) => {
+            setMedicationsModalAutoAddNew(Boolean(autoAddNew));
+            setIsMedicationsModalOpen(true);
+          }}
           onUpdateCase={(updatedCase) => {
             setCurrentCase(updatedCase);
             refreshCases();
@@ -3984,13 +3988,16 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
       {/* Medications Wizard Modal */}
       <MedicationsWizardModal
         isOpen={isMedicationsModalOpen}
+        autoAddNew={medicationsModalAutoAddNew}
         onClose={() => {
           closeModal();
           setIsMedicationsModalOpen(false);
+          setMedicationsModalAutoAddNew(false);
         }}
         nimmtMedikamente={currentCase.nimmtMedikamente}
         medikamenteList={currentCase.medikamenteList || []}
         onSave={(data) => {
+          setMedicationsModalAutoAddNew(false);
           setCurrentCase(prev => {
             const updatedCase: Partial<PatientCase> = {
               ...prev,

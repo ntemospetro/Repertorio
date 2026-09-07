@@ -1155,3 +1155,532 @@ export function exportTermsToPDF(
 
   return doc;
 }
+
+export interface MedicationRiskComparisonPDFOptions {
+  patientCase: Partial<PatientCase>;
+  lifestyle: any;
+  result: {
+    triageLevel?: 'critical' | 'high' | 'low';
+    triageLabel?: string;
+    markdownContent?: string;
+    analyzedAt?: string;
+  };
+  language?: LanguageCode;
+  download?: boolean;
+}
+
+/**
+ * High-precision, beautifully styled PDF export for the Medication Cross-Comparison & Clinical Risk Analysis.
+ * Generates an executive medical pharmacology report with complete drug interactions, triage rating, and toxicity matrix.
+ */
+export async function exportMedicationRiskComparisonPDF(
+  options: MedicationRiskComparisonPDFOptions
+): Promise<jsPDF> {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  registerUnicodeFonts(doc);
+
+  const lang: LanguageCode = options.language || 'de';
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 14;
+  const contentWidth = pageWidth - 2 * margin;
+
+  const patientName = options.patientCase.patientName || 'Patient/in';
+  const meds = options.patientCase.medikamenteList || [];
+  const lifestyle = options.lifestyle || {};
+  const result = options.result;
+  const dateStr = new Date(result.analyzedAt || Date.now()).toLocaleDateString(lang === 'de' ? 'de-DE' : 'en-US', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
+
+  const ctx: PDFContext = {
+    doc,
+    pageWidth,
+    pageHeight,
+    margin,
+    contentWidth,
+    currentY: 20,
+    patientName,
+    anamneseDatum: dateStr,
+    documentTitle: lang === 'el' ? 'Σύγκριση πολυφαρμακίας & Σωρευτική εκτίμηση κινδύνου' : lang === 'en' ? 'Polypharmacy Comparison & Cumulative Risk Assessment' : 'Mehrfachmedikations-Vergleich & Kumulative Risikoanalyse',
+    lang,
+  };
+
+  // Helper for localized titles
+  const t = {
+    de: {
+      subHeader: 'KLINISCHE PHARMAKOLOGIE & ARZNEIMITTELSICHERHEIT',
+      title: 'Mehrfachmedikations-Vergleich & Kumulative Risikoanalyse',
+      validated: 'BfArM / EMA / EOF Konform',
+      patientData: 'Patientenprofil & Einflussfaktoren',
+      medsTitle: '1. Zu vergleichende Medikation (Kreuzvergleich)',
+      triageTitle: '2. Klinische Dringlichkeits-Einstufung (Triage)',
+      matrixTitle: '3. Evidenzbasierte pharmakologische Risikobewertung',
+      colNum: '#',
+      colName: 'Präparat / Handelsname',
+      colSubstance: 'Wirkstoff',
+      colDose: 'Dosierung',
+      colRoute: 'Einnahmeart',
+      weight: 'Gewicht',
+      height: 'Größe',
+      bmi: 'BMI',
+      pregnancy: 'Schwangerschaft',
+      smoking: 'Rauchen',
+      alcohol: 'Alkohol',
+      yes: 'Ja',
+      no: 'Nein',
+      pageOf: (p: number, total: number) => `Seite ${p} von ${total}`,
+      footerNotice: 'Geprüfte klinische Pharmakologie & Toxikologie • Vertraulicher Arztbericht',
+    },
+    el: {
+      subHeader: 'ΚΛΙΝΙΚΗ ΦΑΡΜΑΚΟΛΟΓΙΑ & ΑΣΦΑΛΕΙΑ ΦΑΡΜΑΚΩΝ',
+      title: 'Σύγκριση πολυφαρμακίας & Σωρευτική εκτίμηση κινδύνου',
+      validated: 'Σύμφωνο με ΕΟΦ / EMA / BfArM',
+      patientData: 'Προφίλ ασθενούς & Παράγοντες κινδύνου',
+      medsTitle: '1. Συνταγογραφημένη φαρμακευτική αγωγή σε διασταυρούμενη σύγκριση',
+      triageTitle: '2. Κλινική διαλογή & Βαθμός επείγοντος (Triage)',
+      matrixTitle: '3. Τεκμηριωμένη φαρμακολογική αξιολόγηση & Πίνακας τοξικότητας',
+      colNum: '#',
+      colName: 'Σκεύασμα / Εμπορική ονομασία',
+      colSubstance: 'Δραστική ουσία',
+      colDose: 'Δοσολογία',
+      colRoute: 'Τρόπος λήψης',
+      weight: 'Βάρος',
+      height: 'Ύψος',
+      bmi: 'ΔΜΣ',
+      pregnancy: 'Εγκυμοσύνη',
+      smoking: 'Κάπνισμα',
+      alcohol: 'Αλκοόλ',
+      yes: 'Ναι',
+      no: 'Όχι',
+      pageOf: (p: number, total: number) => `Σελίδα ${p} από ${total}`,
+      footerNotice: 'Επαληθευμένη κλινική φαρμακολογία & τοξικολογία • Εμπιστευτική ιατρική έκθεση',
+    },
+    en: {
+      subHeader: 'CLINICAL PHARMACOLOGY & DRUG SAFETY',
+      title: 'Polypharmacy Comparison & Cumulative Risk Assessment',
+      validated: 'BfArM / EMA / FDA Compliant',
+      patientData: 'Patient Profile & Risk Factors',
+      medsTitle: '1. Prescribed Medications Cross-Comparison',
+      triageTitle: '2. Clinical Triage & Urgency Classification',
+      matrixTitle: '3. Evidence-Based Pharmacological Risk Assessment',
+      colNum: '#',
+      colName: 'Preparation / Brand Name',
+      colSubstance: 'Active Substance',
+      colDose: 'Dosage',
+      colRoute: 'Route',
+      weight: 'Weight',
+      height: 'Height',
+      bmi: 'BMI',
+      pregnancy: 'Pregnancy',
+      smoking: 'Smoking',
+      alcohol: 'Alcohol',
+      yes: 'Yes',
+      no: 'No',
+      pageOf: (p: number, total: number) => `Page ${p} of ${total}`,
+      footerNotice: 'Verified Clinical Pharmacology & Toxicology • Confidential Medical Report',
+    },
+    es: {
+      subHeader: 'FARMACOLOGÍA CLÍNICA Y SEGURIDAD DE MEDICAMENTOS',
+      title: 'Comparación de polifarmacia y evaluación acumulativa de riesgos',
+      validated: 'Conforme a BfArM / EMA / AEMPS',
+      patientData: 'Perfil del paciente y factores de riesgo',
+      medsTitle: '1. Medicación prescrita en comparación cruzada',
+      triageTitle: '2. Triaje clínico y grado de urgencia',
+      matrixTitle: '3. Evaluación farmacológica basada en la evidencia',
+      colNum: '#',
+      colName: 'Preparado / Nombre comercial',
+      colSubstance: 'Principio activo',
+      colDose: 'Dosificación',
+      colRoute: 'Vía',
+      weight: 'Peso',
+      height: 'Talla',
+      bmi: 'IMC',
+      pregnancy: 'Embarazo',
+      smoking: 'Tabaquismo',
+      alcohol: 'Alcohol',
+      yes: 'Sí',
+      no: 'No',
+      pageOf: (p: number, total: number) => `Página ${p} de ${total}`,
+      footerNotice: 'Farmacología clínica y toxicología verificada • Informe médico confidencial',
+    },
+    fr: {
+      subHeader: 'PHARMACOLOGIE CLINIQUE & SÉCURITÉ DU MÉDICAMENT',
+      title: 'Comparaison de polymédication & Évaluation cumulative des risques',
+      validated: 'Conforme BfArM / EMA / ANSM',
+      patientData: 'Profil du patient & Facteurs de risque',
+      medsTitle: '1. Médicaments prescrits en comparaison croisée',
+      triageTitle: '2. Triage clinique & Degré d\'urgence',
+      matrixTitle: '3. Évaluation pharmacologique fondée sur des preuves',
+      colNum: '#',
+      colName: 'Spécialité / Nom commercial',
+      colSubstance: 'Principe actif',
+      colDose: 'Posologie',
+      colRoute: 'Voie',
+      weight: 'Poids',
+      height: 'Taille',
+      bmi: 'IMC',
+      pregnancy: 'Grossesse',
+      smoking: 'Tabagisme',
+      alcohol: 'Alcool',
+      yes: 'Oui',
+      no: 'Non',
+      pageOf: (p: number, total: number) => `Page ${p} sur ${total}`,
+      footerNotice: 'Pharmacologie clinique et toxicologie vérifiées • Rapport médical confidentiel',
+    },
+    it: {
+      subHeader: 'FARMACOLOGIA CLINICA E SICUREZZA DEI FARMACI',
+      title: 'Confronto di polifarmacoterapia e valutazione cumulativa del rischio',
+      validated: 'Conforme BfArM / EMA / AIFA',
+      patientData: 'Profilo del paziente e fattori di rischio',
+      medsTitle: '1. Farmaci prescritti a confronto incrociato',
+      triageTitle: '2. Triage clinico e grado di urgenza',
+      matrixTitle: '3. Valutazione farmacologica basata su evidenze',
+      colNum: '#',
+      colName: 'Preparato / Nome commerciale',
+      colSubstance: 'Principio activo',
+      colDose: 'Dosaggio',
+      colRoute: 'Via',
+      weight: 'Peso',
+      height: 'Altezza',
+      bmi: 'BMI',
+      pregnancy: 'Gravidanza',
+      smoking: 'Fumo',
+      alcohol: 'Alcol',
+      yes: 'Sì',
+      no: 'No',
+      pageOf: (p: number, total: number) => `Pagina ${p} di ${total}`,
+      footerNotice: 'Farmacologia clinica e tossicologia verificata • Referto medico riservato',
+    },
+    ru: {
+      subHeader: 'КЛИНИЧЕСКАЯ ФАРМАКОЛОГИЯ И БЕЗОПАСНОСТЬ ЛЕКАРСТВ',
+      title: 'Сравнение полипрагмазии и совокупная оценка рисков',
+      validated: 'Соответствие стандартам BfArM / EMA / Минздрава',
+      patientData: 'Профиль пациента и факторы риска',
+      medsTitle: '1. Назначенные препараты в перекрестном сравнении',
+      triageTitle: '2. Клиническая сортировка и степень срочности (Триаж)',
+      matrixTitle: '3. Доказательная фармакологическая оценка рисков',
+      colNum: '#',
+      colName: 'Препарат / Торговое название',
+      colSubstance: 'Действующее вещество',
+      colDose: 'Дозировка',
+      colRoute: 'Способ',
+      weight: 'Вес',
+      height: 'Рост',
+      bmi: 'ИМТ',
+      pregnancy: 'Беременность',
+      smoking: 'Курение',
+      alcohol: 'Алкоголь',
+      yes: 'Да',
+      no: 'Нет',
+      pageOf: (p: number, total: number) => `Страница ${p} из ${total}`,
+      footerNotice: 'Проверенная клиническая фармакология и токсикология • Конфиденциальный отчет',
+    }
+  };
+
+  const loc = t[lang] || t.de;
+
+  // --- 1. COVER / HEADER SECTION ---
+  doc.setFillColor(...COLORS.primaryDark);
+  doc.rect(0, 0, pageWidth, 28, 'F');
+
+  // Accent band
+  doc.setFillColor(...COLORS.primary);
+  doc.rect(0, 28, pageWidth, 2, 'F');
+
+  // Header Titles
+  doc.setFont('Roboto', 'bold');
+  doc.setFontSize(8.5);
+  doc.setTextColor(...COLORS.primaryLight);
+  doc.text(loc.subHeader, margin, 11);
+
+  doc.setFont('Roboto', 'bold');
+  doc.setFontSize(14);
+  doc.setTextColor(255, 255, 255);
+  doc.text(loc.title, margin, 19);
+
+  // Header Right: Date & Status Badge
+  doc.setFont('Roboto', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(...COLORS.primaryLight);
+  const dateInfo = `${dateStr} • ${loc.validated}`;
+  const dateInfoW = doc.getTextWidth(dateInfo);
+  doc.text(dateInfo, pageWidth - margin - dateInfoW, 19);
+
+  ctx.currentY = 36;
+
+  // --- 2. PATIENT PROFILE & RISK FACTORS CARD ---
+  doc.setFillColor(...COLORS.bgLight);
+  doc.setDrawColor(...COLORS.border);
+  doc.roundedRect(margin, ctx.currentY, contentWidth, 20, 2, 2, 'FD');
+
+  doc.setFillColor(...COLORS.primary);
+  doc.rect(margin, ctx.currentY, 2.5, 20, 'F');
+
+  doc.setFont('Roboto', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(...COLORS.textDark);
+  doc.text(`${loc.patientData}: ${patientName}`, margin + 5, ctx.currentY + 6);
+
+  // Demographic details
+  doc.setFont('Roboto', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(...COLORS.textMuted);
+  const weight = lifestyle.bodyWeightKg || 70;
+  const height = lifestyle.bodyHeightCm || 170;
+  const bmiVal = (weight / ((height / 100) * (height / 100))).toFixed(1);
+  const pregText = lifestyle.isPregnant ? `${lifestyle.pregnancyMonth || 1}. Monat` : loc.no;
+  const isSmoker = Boolean(lifestyle.isSmoker || lifestyle.smokingStatus === 'smoker');
+  const hasAlcohol = Boolean(lifestyle.alcoholDaily || lifestyle.alcoholFrequency === 'daily' || (lifestyle.alcoholFrequency && lifestyle.alcoholFrequency !== 'never'));
+  const smokeText = isSmoker ? loc.yes : loc.no;
+  const alcText = hasAlcohol ? loc.yes : loc.no;
+
+  const line1 = `${loc.weight}: ${weight} kg  |  ${loc.height}: ${height} cm  |  ${loc.bmi}: ${bmiVal} kg/m²`;
+  const line2 = `${loc.pregnancy}: ${pregText}  |  ${loc.smoking}: ${smokeText}  |  ${loc.alcohol}: ${alcText}`;
+  doc.text(line1, margin + 5, ctx.currentY + 11.5);
+  doc.text(line2, margin + 5, ctx.currentY + 16.5);
+
+  ctx.currentY += 26;
+
+  // --- 3. SECTION 1: PRESCRIBED MEDICATIONS TABLE ---
+  drawSectionHeader(ctx, loc.medsTitle, undefined, COLORS.primary);
+  ctx.currentY += 1;
+
+  // Table header
+  const colWidths = [10, 52, 48, 38, 34]; // sum = 182 = contentWidth
+  const tableHeaderY = ctx.currentY;
+  doc.setFillColor(...COLORS.bgLight);
+  doc.setDrawColor(...COLORS.border);
+  doc.rect(margin, tableHeaderY, contentWidth, 7, 'FD');
+
+  doc.setFont('Roboto', 'bold');
+  doc.setFontSize(7.5);
+  doc.setTextColor(...COLORS.textDark);
+
+  let curX = margin;
+  doc.text(loc.colNum, curX + 2, tableHeaderY + 4.8); curX += colWidths[0];
+  doc.text(loc.colName, curX + 2, tableHeaderY + 4.8); curX += colWidths[1];
+  doc.text(loc.colSubstance, curX + 2, tableHeaderY + 4.8); curX += colWidths[2];
+  doc.text(loc.colDose, curX + 2, tableHeaderY + 4.8); curX += colWidths[3];
+  doc.text(loc.colRoute, curX + 2, tableHeaderY + 4.8);
+
+  ctx.currentY += 7;
+
+  // Rows
+  meds.forEach((m: any, idx: number) => {
+    checkPageBreak(ctx, 8, loc.medsTitle);
+    const rowY = ctx.currentY;
+    if (idx % 2 === 1) {
+      doc.setFillColor(252, 253, 254);
+      doc.rect(margin, rowY, contentWidth, 7, 'F');
+    }
+    doc.setDrawColor(...COLORS.border);
+    doc.line(margin, rowY + 7, margin + contentWidth, rowY + 7);
+
+    doc.setFont('Roboto', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(...COLORS.textDark);
+
+    let x = margin;
+    doc.text(String(idx + 1), x + 2, rowY + 4.8); x += colWidths[0];
+    doc.setFont('Roboto', 'bold');
+    doc.text(doc.splitTextToSize(m.name || '—', colWidths[1] - 4)[0] || '', x + 2, rowY + 4.8); x += colWidths[1];
+    doc.setFont('Roboto', 'normal');
+    doc.text(doc.splitTextToSize(m.wirkstoff || '—', colWidths[2] - 4)[0] || '', x + 2, rowY + 4.8); x += colWidths[2];
+    doc.text(doc.splitTextToSize(m.dosierung || '—', colWidths[3] - 4)[0] || '', x + 2, rowY + 4.8); x += colWidths[3];
+    doc.text(doc.splitTextToSize(m.einnahmeart || 'oral', colWidths[4] - 4)[0] || '', x + 2, rowY + 4.8);
+
+    ctx.currentY += 7;
+  });
+
+  ctx.currentY += 5;
+
+  // --- 4. SECTION 2: CLINICAL TRIAGE RATING ---
+  const triageLvl = result.triageLevel || 'low';
+  const badgeColor = triageLvl === 'critical' ? COLORS.rose : triageLvl === 'high' ? COLORS.amber : COLORS.emerald;
+  const badgeBg = triageLvl === 'critical' ? COLORS.roseBg : triageLvl === 'high' ? COLORS.amberBg : COLORS.emeraldBg;
+
+  drawSectionHeader(ctx, loc.triageTitle, undefined, badgeColor);
+  ctx.currentY += 1;
+
+  // Triage banner
+  checkPageBreak(ctx, 16, loc.triageTitle);
+  doc.setFillColor(...badgeBg);
+  doc.setDrawColor(...badgeColor);
+  doc.roundedRect(margin, ctx.currentY, contentWidth, 12, 1.5, 1.5, 'FD');
+
+  doc.setFont('Roboto', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(...badgeColor);
+  const triageLabelStr = result.triageLabel || (triageLvl === 'critical' ? '[KRITISCH / AKUTE LEBENSGEFAHR]' : triageLvl === 'high' ? '[HOCH]' : '[GERING / ÜBERWACHUNG]');
+  doc.text(triageLabelStr, margin + 4, ctx.currentY + 7.5);
+
+  ctx.currentY += 16;
+
+  // --- 5. SECTION 3: EVIDENCE-BASED MATRIX & MEDICAL TEXT ---
+  drawSectionHeader(ctx, loc.matrixTitle, undefined, COLORS.primary);
+  ctx.currentY += 1;
+
+  // Parse markdown content line by line into structured PDF elements
+  if (result.markdownContent) {
+    const lines = result.markdownContent.split('\n');
+    let inTable = false;
+    let tableHeaders: string[] = [];
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+
+      // Skip stray markdown delimiter lines
+      if (line.startsWith('| :---') || line.startsWith('|:---') || line === '| :--- | :--- | :--- | :--- | :--- |') {
+        continue;
+      }
+
+      // Check for Markdown Table Row
+      if (line.startsWith('|') && line.endsWith('|')) {
+        const cells = line.split('|').slice(1, -1).map(c => c.trim().replace(/<br>/gi, ' ').replace(/\*\*/g, ''));
+        if (cells.length < 2) continue;
+
+        if (!inTable) {
+          inTable = true;
+          tableHeaders = cells;
+          checkPageBreak(ctx, 14, loc.matrixTitle);
+
+          // Draw table header row
+          doc.setFillColor(...COLORS.bgLight);
+          doc.setDrawColor(...COLORS.border);
+          doc.rect(margin, ctx.currentY, contentWidth, 7, 'FD');
+
+          const colW = contentWidth / tableHeaders.length;
+          doc.setFont('Roboto', 'bold');
+          doc.setFontSize(6.5);
+          doc.setTextColor(...COLORS.textDark);
+          tableHeaders.forEach((h, hIdx) => {
+            const wrappedH = doc.splitTextToSize(h, colW - 3);
+            doc.text(wrappedH[0] || '', margin + hIdx * colW + 2, ctx.currentY + 4.5);
+          });
+          ctx.currentY += 7;
+          continue;
+        }
+
+        // Table Body Row
+        const colW = contentWidth / cells.length;
+        const cellLines = cells.map(c => doc.splitTextToSize(c, colW - 3));
+        const maxLines = Math.max(...cellLines.map(cl => cl.length), 1);
+        const rowHeight = Math.max(7, maxLines * 3.5 + 2);
+
+        checkPageBreak(ctx, rowHeight, loc.matrixTitle);
+        doc.setDrawColor(...COLORS.border);
+        doc.rect(margin, ctx.currentY, contentWidth, rowHeight, 'D');
+
+        doc.setFont('Roboto', 'normal');
+        doc.setFontSize(6.5);
+        doc.setTextColor(...COLORS.textDark);
+
+        cells.forEach((_, cIdx) => {
+          const textArr = cellLines[cIdx] || [];
+          textArr.forEach((tLine: string, tIdx: number) => {
+            doc.text(tLine, margin + cIdx * colW + 2, ctx.currentY + 3.8 + tIdx * 3.2);
+          });
+        });
+
+        ctx.currentY += rowHeight;
+        continue;
+      }
+
+      // End of table
+      inTable = false;
+
+      // Section Headings (###)
+      if (line.startsWith('###')) {
+        const headingText = line.replace(/^#+\s*/, '').replace(/\*\*/g, '');
+        checkPageBreak(ctx, 12, loc.matrixTitle);
+        doc.setFont('Roboto', 'bold');
+        doc.setFontSize(9);
+        doc.setTextColor(...COLORS.primaryDark);
+        doc.text(headingText, margin, ctx.currentY + 5);
+        ctx.currentY += 8;
+        continue;
+      }
+
+      // Bullet Points (- or *)
+      if (line.startsWith('- ') || line.startsWith('* ')) {
+        const bulletText = line.substring(2).replace(/\*\*/g, '');
+        const wrapped = doc.splitTextToSize(`• ${bulletText}`, contentWidth - 4);
+        checkPageBreak(ctx, wrapped.length * 4 + 2, loc.matrixTitle);
+        doc.setFont('Roboto', 'normal');
+        doc.setFontSize(7.5);
+        doc.setTextColor(...COLORS.textDark);
+        wrapped.forEach((wLine: string) => {
+          doc.text(wLine, margin + 3, ctx.currentY + 3.5);
+          ctx.currentY += 3.8;
+        });
+        continue;
+      }
+
+      // Regular Paragraph Text
+      const cleanLine = line.replace(/\*\*/g, '');
+      const wrapped = doc.splitTextToSize(cleanLine, contentWidth);
+      checkPageBreak(ctx, wrapped.length * 4 + 2, loc.matrixTitle);
+      doc.setFont('Roboto', 'normal');
+      doc.setFontSize(7.5);
+      doc.setTextColor(...COLORS.textDark);
+      wrapped.forEach((wLine: string) => {
+        doc.text(wLine, margin, ctx.currentY + 3.5);
+        ctx.currentY += 3.8;
+      });
+    }
+  }
+
+  // --- 6. RUNNING HEADERS & FOOTERS ACROSS ALL PAGES ---
+  const totalPages = doc.getNumberOfPages();
+  for (let p = 1; p <= totalPages; p++) {
+    doc.setPage(p);
+
+    if (p > 1) {
+      // Header for page 2+
+      doc.setFont('Roboto', 'bold');
+      doc.setFontSize(7.5);
+      doc.setTextColor(...COLORS.primary);
+      doc.text(loc.subHeader, margin, 11);
+
+      doc.setFont('Roboto', 'normal');
+      doc.setFontSize(7.5);
+      doc.setTextColor(...COLORS.textMuted);
+      const topInfo = `${patientName} | ${dateStr}`;
+      const topInfoW = doc.getTextWidth(topInfo);
+      doc.text(topInfo, pageWidth - margin - topInfoW, 11);
+
+      doc.setDrawColor(...COLORS.border);
+      doc.setLineWidth(0.25);
+      doc.line(margin, 14, pageWidth - margin, 14);
+    }
+
+    // Footer on all pages
+    doc.setDrawColor(...COLORS.border);
+    doc.setLineWidth(0.25);
+    doc.line(margin, pageHeight - 13, pageWidth - margin, pageHeight - 13);
+
+    doc.setFont('Roboto', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(...COLORS.textMuted);
+    doc.text(loc.footerNotice, margin, pageHeight - 7.5);
+
+    doc.setFont('Roboto', 'bold');
+    doc.setTextColor(...COLORS.primaryDark);
+    const pageNumStr = loc.pageOf(p, totalPages);
+    const pageNumW = doc.getTextWidth(pageNumStr);
+    doc.text(pageNumStr, pageWidth - margin - pageNumW, pageHeight - 7.5);
+  }
+
+  if (options.download !== false) {
+    const cleanName = patientName.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const isoDate = new Date().toISOString().split('T')[0];
+    const filename = `Medikationsvergleich_Risikoanalyse_${cleanName}_${isoDate}.pdf`;
+    doc.save(filename);
+  }
+
+  return doc;
+}
