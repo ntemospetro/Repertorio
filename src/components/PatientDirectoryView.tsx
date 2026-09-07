@@ -29,7 +29,8 @@ import {
   Pill,
   Clock,
   Trash2,
-  AlertTriangle
+  AlertTriangle,
+  ChevronDown
 } from 'lucide-react';
 
 interface PatientDirectoryViewProps {
@@ -102,6 +103,28 @@ export const PatientDirectoryView: React.FC<PatientDirectoryViewProps> = ({
   const [selectedPatientKey, setSelectedPatientKey] = useState<string | null>(null);
   const [activeCaseTabId, setActiveCaseTabId] = useState<string | null>(null);
   
+  // Case Search & Accordion State
+  const [caseSearchQuery, setCaseSearchQuery] = useState('');
+  const [expandedCaseIds, setExpandedCaseIds] = useState<Set<string>>(new Set());
+
+  // Reset case search and collapse all cases when changing selected patient
+  useEffect(() => {
+    setCaseSearchQuery('');
+    setExpandedCaseIds(new Set());
+  }, [selectedPatientKey]);
+
+  const toggleCaseExpanded = (caseId: string) => {
+    setExpandedCaseIds(prev => {
+      const next = new Set(prev);
+      if (next.has(caseId)) {
+        next.delete(caseId);
+      } else {
+        next.add(caseId);
+      }
+      return next;
+    });
+  };
+
   // Patient / Customer Selection Modal
   const [isSelectPatientModalOpen, setIsSelectPatientModalOpen] = useState(false);
   const [modalSearchQuery, setModalSearchQuery] = useState('');
@@ -331,6 +354,69 @@ export const PatientDirectoryView: React.FC<PatientDirectoryViewProps> = ({
     }
     return activePatient.cases[0];
   }, [activePatient, activeCaseTabId]);
+
+  // Filtered cases for active patient based on search query (all contents & dates)
+  const filteredCases = useMemo(() => {
+    if (!activePatient) return [];
+    const q = caseSearchQuery.trim().toLowerCase();
+    if (!q) return activePatient.cases;
+
+    return activePatient.cases.filter((c, idx) => {
+      const caseNum = (activePatient.cases.length - idx).toString();
+      const caseNumText = `fall ${caseNum}`;
+
+      // Dates: raw ISO, formatted in current language, short format
+      const rawDate = (c.anamneseDatum || '').toLowerCase();
+      let formattedDate = '';
+      let formattedDateShort = '';
+      if (c.anamneseDatum) {
+        try {
+          formattedDate = new Date(c.anamneseDatum).toLocaleDateString(language, { year: 'numeric', month: 'long', day: 'numeric' }).toLowerCase();
+          formattedDateShort = new Date(c.anamneseDatum).toLocaleDateString(language, { year: 'numeric', month: '2-digit', day: '2-digit' }).toLowerCase();
+        } catch {
+          // ignore
+        }
+      }
+
+      // Complaints, notes, modalities, symptoms
+      const hauptbeschwerde = (c.hauptbeschwerde || '').toLowerCase();
+      const spontanbericht = (c.spontanbericht || '').toLowerCase();
+      const gemuetPsyche = (c.gemuetPsyche || '').toLowerCase();
+      const lokalsymptome = (c.lokalsymptome || '').toLowerCase();
+      const koerperAllgemein = (c.koerperAllgemein || '').toLowerCase();
+      const modalitaetenBesser = (c.modalitaetenBesser || '').toLowerCase();
+      const modalitaetenSchlechter = (c.modalitaetenSchlechter || '').toLowerCase();
+      const bisherigeMittel = (c.bisherigeMittel || '').toLowerCase();
+
+      // Medications
+      const medsText = (c.medikamenteList || []).map(m => `${m.name} ${m.dosierung || ''}`).join(' ').toLowerCase();
+
+      // Remedy suggestions
+      const remediesText = (c.remedySuggestions || []).map(r => `${r.name} ${r.potency || ''} ${r.description || ''}`).join(' ').toLowerCase();
+
+      // Follow-ups
+      const followUpsText = (c.followUps || []).map(f => `${f.notes || ''} ${f.trend || ''} ${f.befindenVerlauf || ''} ${f.remedyRecommendations || ''} ${f.dateDisplay || ''}`).join(' ').toLowerCase();
+
+      return (
+        caseNum === q ||
+        caseNumText.includes(q) ||
+        rawDate.includes(q) ||
+        formattedDate.includes(q) ||
+        formattedDateShort.includes(q) ||
+        hauptbeschwerde.includes(q) ||
+        spontanbericht.includes(q) ||
+        gemuetPsyche.includes(q) ||
+        lokalsymptome.includes(q) ||
+        koerperAllgemein.includes(q) ||
+        modalitaetenBesser.includes(q) ||
+        modalitaetenSchlechter.includes(q) ||
+        bisherigeMittel.includes(q) ||
+        medsText.includes(q) ||
+        remediesText.includes(q) ||
+        followUpsText.includes(q)
+      );
+    });
+  }, [activePatient, caseSearchQuery, language]);
 
   // Helper to compute patient's last edited/consulted timestamp
   const getPatientLastActivityTimestamp = (patient: GroupedPatient): number => {
@@ -693,37 +779,75 @@ export const PatientDirectoryView: React.FC<PatientDirectoryViewProps> = ({
             </div>
           </div>
 
-          {/* 2. CASES UNDER CUSTOMER (FULL WIDTH WITH RICH DETAILS & REPERTORISATION BUTTON) */}
-          <div className="w-full space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
+          {/* 2. CASES UNDER CUSTOMER (FULL WIDTH ACCORDION WITH SEARCH & SCROLL) */}
+          <div className="w-full space-y-3">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+              <div className="flex items-center gap-2 shrink-0">
                 <FileText className="w-5 h-5 text-teal-600" />
                 <h3 className="font-bold text-slate-900 text-base">
                   {t('casesOfPatient').replace('{count}', activePatient.cases.length.toString())}
                 </h3>
               </div>
 
-              {onNewCaseForPatient && (
-                <button
-                  type="button"
-                  onClick={() => onNewCaseForPatient(activePatient.name, activePatient.primaryCase)}
-                  className="px-3.5 py-1.5 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>{t('btnNewPatientAdmission')}</span>
-                </button>
-              )}
+              <div className="flex items-center gap-2.5 flex-1 max-w-lg md:justify-end">
+                {/* Search input for cases */}
+                <div className="relative flex-1 min-w-[200px]">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={caseSearchQuery}
+                    onChange={(e) => setCaseSearchQuery(e.target.value)}
+                    placeholder={t('searchCasesPlaceholder')}
+                    className="w-full pl-8 pr-8 py-1.5 text-xs rounded-xl border border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-teal-600 focus:ring-1 focus:ring-teal-600/30 transition-all shadow-2xs"
+                  />
+                  {caseSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setCaseSearchQuery('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                      title={t('clearBtn')}
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {onNewCaseForPatient && (
+                  <button
+                    type="button"
+                    onClick={() => onNewCaseForPatient(activePatient.name, activePatient.primaryCase)}
+                    className="px-3.5 py-1.5 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors shrink-0"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>{t('btnNewPatientAdmission')}</span>
+                  </button>
+                )}
+              </div>
             </div>
 
+            {/* Cases list or empty states */}
             {activePatient.cases.length === 0 ? (
               <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-slate-500 text-xs">
                 <FileText className="w-8 h-8 mx-auto mb-2 text-slate-300" />
                 <p className="font-semibold text-slate-700">{t('noCasesForPatient')}</p>
               </div>
+            ) : filteredCases.length === 0 ? (
+              <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-slate-500 text-xs space-y-2">
+                <Search className="w-7 h-7 mx-auto text-slate-300" />
+                <p className="font-semibold text-slate-700">{t('noCasesFoundForSearch')}</p>
+                <button
+                  type="button"
+                  onClick={() => setCaseSearchQuery('')}
+                  className="px-3 py-1.5 rounded-lg bg-teal-50 text-teal-800 border border-teal-200 text-xs font-semibold cursor-pointer hover:bg-teal-100 transition-colors"
+                >
+                  {t('clearBtn')}
+                </button>
+              </div>
             ) : (
-              <div className="space-y-4">
-                {activePatient.cases.map((c, idx) => {
-                  const caseNum = activePatient.cases.length - idx;
+              <div className={filteredCases.length > 5 ? "max-h-[580px] overflow-y-auto pr-1.5 space-y-3 scrollbar-thin" : "space-y-3"}>
+                {filteredCases.map((c, idx) => {
+                  const originalIndex = activePatient.cases.findIndex(item => item.id === c.id);
+                  const caseNum = originalIndex !== -1 ? activePatient.cases.length - originalIndex : activePatient.cases.length - idx;
                   const dateFormatted = c.anamneseDatum 
                     ? new Date(c.anamneseDatum).toLocaleDateString(language, { year: 'numeric', month: 'long', day: 'numeric' })
                     : t('unknownDate');
@@ -732,15 +856,30 @@ export const PatientDirectoryView: React.FC<PatientDirectoryViewProps> = ({
                   const hasNotes = !!(c.spontanbericht?.trim() || c.gemuetPsyche?.trim() || c.lokalsymptome?.trim() || c.koerperAllgemein?.trim());
                   const hasMedications = !!(c.medikamenteList && c.medikamenteList.length > 0) || !!c.bisherigeMittel?.trim();
                   const hasRemedies = !!(c.remedySuggestions && c.remedySuggestions.length > 0);
+                  const isExpanded = expandedCaseIds.has(c.id);
 
                   return (
                     <div
                       key={c.id}
-                      className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs hover:border-slate-300 transition-all space-y-4"
+                      className="bg-white rounded-2xl border border-slate-200 shadow-xs hover:border-slate-300 transition-all overflow-hidden"
                     >
-                      {/* Case Card Header Row */}
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                      {/* Case Card Header Row (Clickable Accordion Trigger) */}
+                      <div
+                        onClick={() => toggleCaseExpanded(c.id)}
+                        className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 cursor-pointer select-none hover:bg-slate-50/70 transition-colors ${
+                          isExpanded ? 'border-b border-slate-100 bg-slate-50/30' : ''
+                        }`}
+                      >
                         <div className="flex items-center gap-2.5 flex-wrap">
+                          <div
+                            className={`p-1 rounded-md text-slate-400 hover:text-slate-700 transition-transform duration-200 ${
+                              isExpanded ? 'rotate-180 text-teal-700' : ''
+                            }`}
+                            title={isExpanded ? t('collapseCase') : t('expandCase')}
+                          >
+                            <ChevronDown className="w-4 h-4" />
+                          </div>
+
                           <span className="px-3 py-1 rounded-xl bg-teal-50 text-teal-900 border border-teal-200/80 font-bold text-xs">
                             {t('caseAdmission').replace('{num}', caseNum.toString())}
                           </span>
@@ -765,126 +904,132 @@ export const PatientDirectoryView: React.FC<PatientDirectoryViewProps> = ({
                           )}
                         </div>
 
-                        {/* Action Buttons: Fall löschen & Repertorisation */}
-                        <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto flex-wrap">
+                        {/* Action Buttons: Fall löschen & Repertorisation (compact with icons) */}
+                        <div 
+                          className="flex items-center gap-2 shrink-0 self-start sm:self-auto flex-wrap"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <button
                             type="button"
                             onClick={() => handleRequestDeleteCase(c, caseNum, activePatient.name)}
-                            className="px-3 py-2 rounded-xl border border-slate-200 bg-white hover:bg-rose-50 hover:border-rose-200 text-slate-600 hover:text-rose-700 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
+                            className="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-rose-50 hover:border-rose-200 text-slate-600 hover:text-rose-600 text-xs font-medium flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
                             title={t('btnDeleteCase')}
                           >
-                            <Trash2 className="w-3.5 h-3.5 text-slate-400 group-hover:text-rose-600" />
+                            <Trash2 className="w-3.5 h-3.5 text-slate-400" />
                             <span>{t('btnDeleteCase')}</span>
                           </button>
 
                           <button
                             type="button"
                             onClick={() => onOpenCaseInWorkspace(c)}
-                            className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-white text-xs sm:text-sm font-bold flex items-center gap-2 cursor-pointer transition-all shadow-xs"
+                            className="px-3 py-1.5 rounded-lg bg-[#00897b] hover:bg-[#00796b] active:bg-[#00695c] text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-all shadow-2xs"
+                            title={t('repertorisationBtn')}
                           >
-                            <ArrowRight className="w-4 h-4" />
+                            <ArrowRight className="w-3.5 h-3.5 text-white" />
                             <span>{t('repertorisationBtn')}</span>
                           </button>
                         </div>
                       </div>
 
-                      {/* Case Details Body */}
-                      <div className="space-y-3 text-xs">
-                        {/* Hauptbeschwerde */}
-                        <div className="bg-slate-50/80 p-3.5 rounded-xl border border-slate-100 space-y-1">
-                          <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block flex items-center gap-1.5">
-                            <Activity className="w-3.5 h-3.5 text-teal-600" />
-                            <span>{t('caseChiefComplaint')}</span>
-                          </span>
-                          <p className="text-slate-900 text-sm font-medium leading-relaxed">
-                            {c.hauptbeschwerde || t('noChiefComplaint')}
-                          </p>
-                        </div>
-
-                        {/* Modalities, Symptoms & Medications Grid */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                          {/* Modalitäten */}
-                          {hasModalities && (
-                            <div className="p-3 rounded-xl border border-slate-100 bg-white space-y-1.5 shadow-2xs">
-                              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
-                                {t('caseModalities')}
-                              </span>
-                              {c.modalitaetenBesser && (
-                                <div className="text-slate-700 text-[11px]">
-                                  <strong className="text-emerald-700">{t('betterPrefix')}</strong> {c.modalitaetenBesser}
-                                </div>
-                              )}
-                              {c.modalitaetenSchlechter && (
-                                <div className="text-slate-700 text-[11px]">
-                                  <strong className="text-rose-700">{t('worsePrefix')}</strong> {c.modalitaetenSchlechter}
-                                </div>
-                              )}
-                            </div>
-                          )}
-
-                          {/* Spontanbericht & Symptomnotizen */}
-                          {hasNotes && (
-                            <div className="p-3 rounded-xl border border-slate-100 bg-white space-y-1 shadow-2xs">
-                              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
-                                {t('caseNotes')}
-                              </span>
-                              {c.spontanbericht && (
-                                <p className="text-slate-700 text-[11px] line-clamp-3 leading-relaxed">
-                                  {c.spontanbericht}
-                                </p>
-                              )}
-                              {c.gemuetPsyche && !c.spontanbericht && (
-                                <p className="text-slate-700 text-[11px] line-clamp-3 leading-relaxed">
-                                  {c.gemuetPsyche}
-                                </p>
-                              )}
-                            </div>
-                          )}
-
-                          {/* Medikation & Bisherige Mittel */}
-                          {hasMedications && (
-                            <div className="p-3 rounded-xl border border-slate-100 bg-white space-y-1.5 shadow-2xs">
-                              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block flex items-center gap-1">
-                                <Pill className="w-3 h-3 text-teal-600" />
-                                <span>{t('caseMedications')}</span>
-                              </span>
-                              {c.medikamenteList && c.medikamenteList.length > 0 ? (
-                                <div className="flex flex-wrap gap-1">
-                                  {c.medikamenteList.map((m, mIdx) => (
-                                    <span key={mIdx} className="px-2 py-0.5 rounded bg-slate-100 text-slate-800 text-[10px] font-medium">
-                                      {m.name}{m.dosierung ? ` (${m.dosierung})` : ''}
-                                    </span>
-                                  ))}
-                                </div>
-                              ) : c.bisherigeMittel ? (
-                                <p className="text-slate-700 text-[11px] line-clamp-2">
-                                  {c.bisherigeMittel}
-                                </p>
-                              ) : null}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Top-Mittel / Repertorisations-Empfehlungen */}
-                        {hasRemedies && (
-                          <div className="p-3 rounded-xl bg-teal-50/50 border border-teal-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                            <div className="flex items-center gap-1.5 text-[11px] font-bold text-teal-950">
-                              <Sparkles className="w-3.5 h-3.5 text-teal-600" />
-                              <span>{t('caseTopRemedies')}:</span>
-                            </div>
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              {c.remedySuggestions?.slice(0, 4).map((r, rIdx) => (
-                                <span
-                                  key={rIdx}
-                                  className="px-2.5 py-0.5 rounded-lg bg-white border border-teal-200 text-teal-900 font-bold text-xs shadow-2xs"
-                                >
-                                  {r.name} <span className="text-teal-600 font-normal">({r.score}%)</span>
-                                </span>
-                              ))}
-                            </div>
+                      {/* Case Details Body - Accordion style (expanded only) */}
+                      {isExpanded && (
+                        <div className="p-5 pt-4 space-y-3 text-xs animate-in fade-in slide-in-from-top-1 duration-150">
+                          {/* Hauptbeschwerde */}
+                          <div className="bg-slate-50/80 p-3.5 rounded-xl border border-slate-100 space-y-1">
+                            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block flex items-center gap-1.5">
+                              <Activity className="w-3.5 h-3.5 text-teal-600" />
+                              <span>{t('caseChiefComplaint')}</span>
+                            </span>
+                            <p className="text-slate-900 text-sm font-medium leading-relaxed">
+                              {c.hauptbeschwerde || t('noChiefComplaint')}
+                            </p>
                           </div>
-                        )}
-                      </div>
+
+                          {/* Modalities, Symptoms & Medications Grid */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {/* Modalitäten */}
+                            {hasModalities && (
+                              <div className="p-3 rounded-xl border border-slate-100 bg-white space-y-1.5 shadow-2xs">
+                                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+                                  {t('caseModalities')}
+                                </span>
+                                {c.modalitaetenBesser && (
+                                  <div className="text-slate-700 text-[11px]">
+                                    <strong className="text-emerald-700">{t('betterPrefix')}</strong> {c.modalitaetenBesser}
+                                  </div>
+                                )}
+                                {c.modalitaetenSchlechter && (
+                                  <div className="text-slate-700 text-[11px]">
+                                    <strong className="text-rose-700">{t('worsePrefix')}</strong> {c.modalitaetenSchlechter}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Spontanbericht & Symptomnotizen */}
+                            {hasNotes && (
+                              <div className="p-3 rounded-xl border border-slate-100 bg-white space-y-1 shadow-2xs">
+                                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+                                  {t('caseNotes')}
+                                </span>
+                                {c.spontanbericht && (
+                                  <p className="text-slate-700 text-[11px] line-clamp-3 leading-relaxed">
+                                    {c.spontanbericht}
+                                  </p>
+                                )}
+                                {c.gemuetPsyche && !c.spontanbericht && (
+                                  <p className="text-slate-700 text-[11px] line-clamp-3 leading-relaxed">
+                                    {c.gemuetPsyche}
+                                  </p>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Medikation & Bisherige Mittel */}
+                            {hasMedications && (
+                              <div className="p-3 rounded-xl border border-slate-100 bg-white space-y-1.5 shadow-2xs">
+                                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block flex items-center gap-1">
+                                  <Pill className="w-3 h-3 text-teal-600" />
+                                  <span>{t('caseMedications')}</span>
+                                </span>
+                                {c.medikamenteList && c.medikamenteList.length > 0 ? (
+                                  <div className="flex flex-wrap gap-1">
+                                    {c.medikamenteList.map((m, mIdx) => (
+                                      <span key={mIdx} className="px-2 py-0.5 rounded bg-slate-100 text-slate-800 text-[10px] font-medium">
+                                        {m.name}{m.dosierung ? ` (${m.dosierung})` : ''}
+                                      </span>
+                                    ))}
+                                  </div>
+                                ) : c.bisherigeMittel ? (
+                                  <p className="text-slate-700 text-[11px] line-clamp-2">
+                                    {c.bisherigeMittel}
+                                  </p>
+                                ) : null}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Top-Mittel / Repertorisations-Empfehlungen */}
+                          {hasRemedies && (
+                            <div className="p-3 rounded-xl bg-teal-50/50 border border-teal-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                              <div className="flex items-center gap-1.5 text-[11px] font-bold text-teal-950">
+                                <Sparkles className="w-3.5 h-3.5 text-teal-600" />
+                                <span>{t('caseTopRemedies')}:</span>
+                              </div>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                {c.remedySuggestions?.slice(0, 4).map((r, rIdx) => (
+                                  <span
+                                    key={rIdx}
+                                    className="px-2.5 py-0.5 rounded-lg bg-white border border-teal-200 text-teal-900 font-bold text-xs shadow-2xs"
+                                  >
+                                    {r.name} <span className="text-teal-600 font-normal">({r.score}%)</span>
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })}

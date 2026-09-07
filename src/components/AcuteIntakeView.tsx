@@ -67,8 +67,12 @@ import {
   AlertTriangle,
   Snowflake,
   Flame,
-  Award
+  Award,
+  Trash2,
+  Layers,
+  X
 } from 'lucide-react';
+import { splitMultipleComplaints } from '../services/complaintQuestionGenerator';
 
 interface AcuteIntakeViewProps {
   onSelectRemedyForCase?: (remedyName: string, potency: string) => void;
@@ -654,228 +658,244 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
   return (
     <div className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full space-y-6">
       {/* Top Header Card */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs relative overflow-hidden">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2.5">
-              <div className="p-2.5 bg-teal-50 text-teal-700 rounded-xl border border-teal-100/80 shadow-2xs">
-                <Mic className="w-6 h-6" />
-              </div>
-              <div>
-                <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-                  {t('tabQuickIntake')}
-                </h1>
-                <p className="text-xs sm:text-sm text-slate-500">
-                  {t('quickIntakePageSubtitle')}
-                </p>
-              </div>
-            </div>
+      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs relative overflow-hidden">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 bg-teal-50 text-teal-700 rounded-xl border border-teal-100/80 shadow-2xs shrink-0">
+            <Mic className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+              {t('tabQuickIntake')}
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-500">
+              {t('quickIntakePageSubtitle')}
+            </p>
           </div>
         </div>
       </div>
 
       {/* Main Intake Card: Single Full-Width Voice & Text Recording Hub */}
       <div className="w-full animate-in fade-in duration-200">
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-xs flex flex-col space-y-4 relative overflow-hidden">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className={`p-2 rounded-xl ${isRecording ? 'bg-rose-100 text-rose-700 animate-pulse' : 'bg-teal-50 text-teal-700'}`}>
-                    <Mic className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h2 className="text-base font-bold text-slate-900">
-                      {t('quickIntakeTitle')}
-                    </h2>
-                    <p className="text-xs text-slate-500">
-                      {t('quickIntakeSubtitle')}
-                    </p>
-                  </div>
-                </div>
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs flex flex-col space-y-4 relative overflow-hidden">
+          {/* Header Row: HAUPTBESCHWERDE & LEITSYMPTOM * on left, Eingabe löschen on right */}
+          <div className="flex items-center justify-between gap-2">
+            <label className="text-xs sm:text-sm font-bold text-slate-800 uppercase tracking-wider">
+              {t('mainComplaintTitle')}
+            </label>
 
-                {/* 60s Timer Display */}
-                <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-mono font-bold ${
-                  isRecording 
-                    ? 'bg-rose-50 border-rose-200 text-rose-700 animate-pulse' 
-                    : 'bg-slate-50 border-slate-200 text-slate-600'
-                }`}>
-                  <Clock className="w-3.5 h-3.5" />
-                  <span>00:{recordSecondsLeft < 10 ? `0${recordSecondsLeft}` : recordSecondsLeft}</span>
-                </div>
-              </div>
+            {symptomText && (
+              <button
+                type="button"
+                onClick={handleClearSymptomText}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 text-xs font-semibold cursor-pointer transition-colors"
+                title={t('clearHauptbeschwerdeBtn')}
+              >
+                <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                <span>{t('clearHauptbeschwerdeBtn')}</span>
+              </button>
+            )}
+          </div>
 
-              {/* Progress Bar for 60 Seconds */}
-              {isRecording && (
-                <div className="space-y-1.5">
-                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                    <div
-                      className="bg-rose-500 h-full transition-all duration-1000 ease-linear rounded-full"
-                      style={{ width: `${((60 - recordSecondsLeft) / 60) * 100}%` }}
-                    />
-                  </div>
-                  <div className="flex justify-between text-[10px] text-slate-400 font-semibold">
-                    <span>{t('voiceRecordingStatus')}</span>
-                    <span>{t('voiceMaxSeconds')}</span>
-                  </div>
-                </div>
-              )}
-
-              {/* Action Buttons */}
-              <div className="flex flex-wrap gap-2.5 pt-1">
+          {/* Side-by-Side: Textarea on the left, Vertical Aufnahme Button on the right */}
+          <div className="flex flex-col sm:flex-row gap-3 items-stretch">
+            {/* Textarea container */}
+            <div className="relative flex-1">
+              <textarea
+                rows={5}
+                value={symptomText}
+                onChange={(e) => {
+                  setSymptomText(e.target.value);
+                  setIsClarificationApplied(false);
+                }}
+                placeholder={t('recordedSymptomsPlaceholder')}
+                className="w-full h-full min-h-[140px] p-4 bg-white border border-[#009688] rounded-2xl text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 transition-all resize-none pr-9"
+              />
+              {symptomText && (
                 <button
                   type="button"
-                  onClick={startVoiceRecording}
-                  disabled={!isSpeechSupported}
-                  className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-bold transition-all shadow-xs cursor-pointer ${
-                    isRecording
-                      ? 'bg-rose-600 hover:bg-rose-700 text-white animate-pulse'
-                      : 'bg-teal-700 hover:bg-teal-800 text-white'
-                  } ${!isSpeechSupported ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  onClick={handleClearSymptomText}
+                  className="absolute top-3.5 right-3.5 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer transition-colors"
+                  title={t('clearHauptbeschwerdeBtn')}
                 >
-                  {isRecording ? (
-                    <>
-                      <MicOff className="w-4 h-4" />
-                      <span>{t('voiceStopBtn')} ({recordSecondsLeft}s)</span>
-                    </>
-                  ) : (
-                    <>
-                      <Mic className="w-4 h-4" />
-                      <span>{t('voiceStartBtn')}</span>
-                    </>
-                  )}
+                  <X className="w-4 h-4" />
                 </button>
+              )}
+            </div>
 
-                {symptomText && (
-                  <button
-                    type="button"
-                    onClick={handleClearSymptomText}
-                    className="px-3.5 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer border border-slate-200"
-                    title={t('clearBtn')}
-                  >
-                    <RotateCcw className="w-4 h-4" />
-                    <span>{t('clearBtn')}</span>
-                  </button>
+            {/* Vertical Aufnahme Button matching image.png */}
+            <button
+              type="button"
+              onClick={isRecording ? stopVoiceRecording : startVoiceRecording}
+              disabled={!isSpeechSupported}
+              className={`w-full sm:w-32 md:w-36 shrink-0 rounded-2xl text-white flex flex-col items-center justify-center gap-2.5 p-4 transition-all shadow-xs cursor-pointer min-h-[140px] border ${
+                isRecording
+                  ? 'bg-rose-600 hover:bg-rose-700 animate-pulse border-rose-700'
+                  : 'bg-[#00897b] hover:bg-[#00796b] border-teal-800/20'
+              } ${!isSpeechSupported ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center text-white shadow-inner">
+                {isRecording ? (
+                  <MicOff className="w-6 h-6 text-white" />
+                ) : (
+                  <Mic className="w-6 h-6 text-white" />
                 )}
               </div>
+              <span className="text-xs sm:text-sm font-semibold text-white tracking-wide">
+                {isRecording ? `${t('voiceStopBtn')} (${recordSecondsLeft}s)` : t('voiceRecordCardLabel')}
+              </span>
+            </button>
+          </div>
 
-              {!isSpeechSupported && (
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-700 flex items-start gap-2">
-                  <Info className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
-                  <span>
-                    {t('speechNotSupportedMsg')}
-                  </span>
-                </div>
-              )}
-
-              {/* Symptom Input Textarea - expands flexibly */}
-              <div className="space-y-1.5 flex flex-col flex-1">
-                <label className="block text-xs font-bold text-slate-700">
-                  {t('recordedSymptomsLabel')}:
-                </label>
-                <textarea
-                  rows={5}
-                  value={symptomText}
-                  onChange={(e) => {
-                    setSymptomText(e.target.value);
-                    setIsClarificationApplied(false);
-                  }}
-                  placeholder={t('recordedSymptomsPlaceholder')}
-                  className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all resize-none flex-1 min-h-[140px]"
+          {/* Progress Bar for 60 Seconds when recording */}
+          {isRecording && (
+            <div className="space-y-1.5">
+              <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                <div
+                  className="bg-rose-500 h-full transition-all duration-1000 ease-linear rounded-full"
+                  style={{ width: `${((60 - recordSecondsLeft) / 60) * 100}%` }}
                 />
               </div>
+              <div className="flex justify-between text-[10px] text-slate-400 font-semibold">
+                <span>{t('voiceRecordingStatus')}</span>
+                <span>{t('voiceMaxSeconds')}</span>
+              </div>
+            </div>
+          )}
 
-              {/* Erkannte Symptome (Symptom Extraction Panel) */}
-              <div className="p-3.5 bg-slate-50/90 rounded-xl border border-slate-200/90 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-teal-700" />
-                    <span className="text-xs font-bold text-slate-900">
-                      {t('recognizedSymptomsTitle')}
-                    </span>
-                  </div>
-                  {recognizedSymptoms.length > 0 ? (
-                    <span className="text-[10px] font-bold text-teal-800 bg-teal-50 border border-teal-200/80 px-2 py-0.5 rounded-md">
-                      {recognizedSymptoms.length} {t('recognizedSymptomsTitle')}
-                    </span>
-                  ) : (
-                    <span className="text-[10px] text-slate-400">
-                      {t('noRecognizedSymptomsYet')}
-                    </span>
-                  )}
+          {!isSpeechSupported && (
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-700 flex items-start gap-2">
+              <Info className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
+              <span>{t('speechNotSupportedMsg')}</span>
+            </div>
+          )}
+
+          {/* Single/Multiple Detected Complaints Separation Panel (ERKANNTES EINZELSYMPTOM) */}
+          {symptomText.trim() && (() => {
+            const detectedComplaints = splitMultipleComplaints(symptomText);
+            if (detectedComplaints.length === 0) return null;
+            return (
+              <div className="p-4 bg-[#f0fdf9] rounded-2xl border border-teal-200/90 space-y-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-bold text-teal-900 uppercase tracking-wider flex items-center gap-1.5">
+                    <Layers className="w-4 h-4 text-teal-700" />
+                    {detectedComplaints.length > 1
+                      ? t('separateComplaintsDetected', { count: detectedComplaints.length })
+                      : t('singleSymptomDetected')}
+                  </span>
+                  <span className="text-xs text-teal-700 font-normal">
+                    {t('autoComplaintSeparation')}
+                  </span>
                 </div>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {detectedComplaints.map((complaint, idx) => (
+                    <div
+                      key={idx}
+                      className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-teal-300 text-xs font-semibold text-slate-800 shadow-2xs"
+                    >
+                      <span className="w-4 h-4 rounded-full bg-teal-700 text-white text-[10px] font-bold flex items-center justify-center shrink-0 font-mono">
+                        {idx + 1}
+                      </span>
+                      <span className="font-bold text-slate-900">{complaint}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
 
-                {recognizedSymptoms.length > 0 ? (
-                  <div className="flex flex-wrap gap-1.5 pt-1">
-                    {recognizedSymptoms.map((sym) => (
-                      <div
-                        key={sym.id}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-xs text-slate-800 shadow-2xs"
-                      >
-                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider ${
-                          sym.category === 'leit' ? 'bg-amber-100 text-amber-900 border border-amber-200' :
-                          sym.category === 'causa' ? 'bg-blue-100 text-blue-900 border border-blue-200' :
-                          sym.category === 'modalitaet' ? 'bg-purple-100 text-purple-900 border border-purple-200' :
-                          sym.category === 'empfindung' ? 'bg-rose-100 text-rose-900 border border-rose-200' :
-                          sym.category === 'gemuet' ? 'bg-indigo-100 text-indigo-900 border border-indigo-200' :
-                          'bg-teal-100 text-teal-900 border border-teal-200'
-                        }`}>
-                          {sym.categoryLabel}
-                        </span>
-                        <span className="font-semibold text-slate-900">{sym.label}</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-[11px] text-slate-500 italic">
-                    {t('acuteVoiceAnalysisSubtitle')}
-                  </p>
-                )}
+          {/* Erkannte Symptome (Symptom Extraction Panel) matching image.png layout */}
+          <div className="p-4 bg-slate-50/40 rounded-xl border border-slate-200 space-y-2.5">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div className="space-y-1">
+                <div className="flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-teal-600 shrink-0" />
+                  <span className="text-xs sm:text-sm font-bold text-slate-900">
+                    {t('recognizedSymptomsTitle')}
+                  </span>
+                </div>
+                <p className="text-[11px] sm:text-xs text-slate-500 italic leading-relaxed">
+                  {t('acuteVoiceAnalysisSubtitle')}
+                </p>
               </div>
 
-              {/* Hahnemann Organon §§ 83-104 Anamnesis Launch or Completed Banner */}
-              {!hahnemannData ? (
-                <button
-                  type="button"
-                  onClick={() => setIsHahnemannWizardOpen(true)}
-                  className="w-full py-3 px-4 rounded-xl bg-teal-800 hover:bg-teal-900 text-white text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer border border-teal-700 hover:shadow-sm"
-                >
-                  <Stethoscope className="w-4 h-4 text-teal-300" />
-                  <span>{t('hahnemannLaunchFromAcuteVoice')}</span>
-                </button>
+              {recognizedSymptoms.length > 0 ? (
+                <span className="text-[10px] font-bold text-teal-800 bg-teal-50 border border-teal-200/80 px-2.5 py-1 rounded-md shrink-0 self-start sm:self-center">
+                  {recognizedSymptoms.length} {t('recognizedSymptomsTitle')}
+                </span>
               ) : (
-                <div className="bg-teal-50/90 border border-teal-200 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-teal-700 shrink-0" />
-                    <div>
-                      <span className="text-xs font-bold text-teal-950 block">
-                        {t('hahnemannAnamnesisCompletedBadge')}
-                      </span>
-                      <span className="text-[11px] text-teal-700">
-                        {hahnemannData.caseType === 'chronisch' ? t('hahnemannCaseTypeChronicShort') : t('hahnemannCaseTypeAcuteShort')} • {hahnemannData.differentialRemedies?.slice(0, 3).join(', ')}
-                      </span>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setIsHahnemannWizardOpen(true)}
-                    className="px-3 py-1.5 rounded-lg bg-white border border-teal-300 hover:bg-teal-100/50 text-teal-900 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer self-start sm:self-auto shrink-0 shadow-2xs"
-                  >
-                    <Edit3 className="w-3.5 h-3.5 text-teal-700" />
-                    <span>{t('hahnemannReopenBtn')}</span>
-                  </button>
-                </div>
+                <span className="text-xs text-slate-400 shrink-0 self-start sm:self-center">
+                  {t('noRecognizedSymptomsYet')}
+                </span>
               )}
             </div>
 
-            {/* Disclaimer: Not a case documentation */}
-            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-start gap-2.5 text-xs text-slate-700 mt-auto">
-              <ShieldAlert className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
-              <span className="leading-snug">
-                {t('acuteQuestionsDisclaimer')}
-              </span>
+            {recognizedSymptoms.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 pt-1.5 border-t border-slate-200/60">
+                {recognizedSymptoms.map((sym) => (
+                  <div
+                    key={sym.id}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-xs text-slate-800 shadow-2xs"
+                  >
+                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider ${
+                      sym.category === 'leit' ? 'bg-amber-100 text-amber-900 border border-amber-200' :
+                      sym.category === 'causa' ? 'bg-blue-100 text-blue-900 border border-blue-200' :
+                      sym.category === 'modalitaet' ? 'bg-purple-100 text-purple-900 border border-purple-200' :
+                      sym.category === 'empfindung' ? 'bg-rose-100 text-rose-900 border border-rose-200' :
+                      sym.category === 'gemuet' ? 'bg-indigo-100 text-indigo-900 border border-indigo-200' :
+                      'bg-teal-100 text-teal-900 border border-teal-200'
+                    }`}>
+                      {sym.categoryLabel}
+                    </span>
+                    <span className="font-semibold text-slate-900">{sym.label}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Hahnemann Organon §§ 83-104 Anamnesis Launch or Completed Banner */}
+          {!hahnemannData ? (
+            <button
+              type="button"
+              onClick={() => setIsHahnemannWizardOpen(true)}
+              className="w-full py-3.5 px-4 rounded-xl bg-[#006655] hover:bg-[#005544] text-white text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer border border-[#005544]"
+            >
+              <Stethoscope className="w-4 h-4 text-teal-200" />
+              <span>{t('hahnemannLaunchFromAcuteVoice')}</span>
+            </button>
+          ) : (
+            <div className="bg-teal-50/90 border border-teal-200 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-teal-700 shrink-0" />
+                <div>
+                  <span className="text-xs font-bold text-teal-950 block">
+                    {t('hahnemannAnamnesisCompletedBadge')}
+                  </span>
+                  <span className="text-[11px] text-teal-700">
+                    {hahnemannData.caseType === 'chronisch' ? t('hahnemannCaseTypeChronicShort') : t('hahnemannCaseTypeAcuteShort')} • {hahnemannData.differentialRemedies?.slice(0, 3).join(', ')}
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsHahnemannWizardOpen(true)}
+                className="px-3 py-1.5 rounded-lg bg-white border border-teal-300 hover:bg-teal-100/50 text-teal-900 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer self-start sm:self-auto shrink-0 shadow-2xs"
+              >
+                <Edit3 className="w-3.5 h-3.5 text-teal-700" />
+                <span>{t('hahnemannReopenBtn')}</span>
+              </button>
             </div>
+          )}
+
+          {/* Disclaimer: Not a case documentation matching image.png */}
+          <div className="p-3 bg-slate-50/60 rounded-xl border border-slate-200 flex items-center gap-2.5 text-xs text-slate-600">
+            <Info className="w-4 h-4 text-slate-500 shrink-0" />
+            <span className="leading-snug">
+              {t('acuteQuestionsDisclaimer')}
+            </span>
           </div>
         </div>
+      </div>
 
       {/* Full-Width Remedies Grid (DRUNTER wie auf Bild 1) - ONLY rendered when isClarificationApplied === true and displayedRemedies.length > 0 */}
       {isClarificationApplied && displayedRemedies.length > 0 && (
