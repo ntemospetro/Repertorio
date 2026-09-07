@@ -11,7 +11,6 @@ import {
   HomeopathicRemedyInfo,
   COMMON_HOMEO_REMEDIES_DB
 } from '../services/homeopathyDatabase';
-import { exportComprehensiveAnalysisToPDF } from '../services/pdfExportService';
 import {
   getLocalizedPresetValue,
   localizeTherapyRecommendations,
@@ -27,24 +26,15 @@ import {
 import {
   AlertTriangle,
   CheckCircle2,
-  Clock,
   Pill,
-  Sparkles,
   Plus,
   Trash2,
-  FileDown,
-  Save,
-  ArrowLeft,
-  ChevronDown,
-  Info,
   Search,
   Check,
   Stethoscope,
-  ShieldAlert,
-  Calendar,
-  Layers,
-  HeartPulse,
-  BookOpen
+  BookOpen,
+  ChevronUp,
+  ChevronDown
 } from 'lucide-react';
 
 interface TherapyRecommendationsViewProps {
@@ -54,14 +44,122 @@ interface TherapyRecommendationsViewProps {
   onSaveCase?: () => void;
   onPreviousStep?: () => void;
 }
+
+function getNextStepValue(currentVal: string, presets: string[], direction: 1 | -1): string {
+  if (!presets || presets.length === 0) return currentVal || '';
+  
+  const trimmed = (currentVal || '').trim().toLowerCase();
+  const currentIndex = presets.findIndex(p => p.trim().toLowerCase() === trimmed);
+  
+  if (currentIndex !== -1) {
+    let nextIdx = currentIndex + direction;
+    if (nextIdx >= presets.length) nextIdx = 0;
+    if (nextIdx < 0) nextIdx = presets.length - 1;
+    return presets[nextIdx];
+  }
+
+  // If user entered custom text with a number (e.g. "4 Tage" or "2 Gaben" or "5"):
+  const matchNum = (currentVal || '').match(/(\d+)/);
+  if (matchNum) {
+    const num = parseInt(matchNum[1], 10);
+    const newNum = Math.max(1, num + direction);
+    return currentVal.replace(/\d+/, String(newNum));
+  }
+
+  return direction === 1 ? presets[0] : presets[presets.length - 1];
+}
+
+interface StepperInputProps {
+  value: string;
+  onChange: (val: string) => void;
+  presets: string[];
+  placeholder?: string;
+  className?: string;
+}
+
+const StepperInput: React.FC<StepperInputProps> = ({
+  value,
+  onChange,
+  presets,
+  placeholder,
+  className = '',
+}) => {
+  const handleStep = (direction: 1 | -1) => {
+    const nextVal = getNextStepValue(value, presets, direction);
+    onChange(nextVal);
+  };
+
+  return (
+    <div className="relative flex items-center w-full">
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className={`w-full pl-3 pr-7 py-2 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-900 focus:bg-white focus:ring-1 focus:ring-teal-500 focus:border-teal-500 shadow-2xs ${className}`}
+      />
+      <div className="absolute right-1 top-1/2 -translate-y-1/2 flex flex-col items-center justify-center">
+        <button
+          type="button"
+          onClick={() => handleStep(1)}
+          className="p-0.5 text-slate-400 hover:text-teal-700 hover:bg-slate-100 rounded transition-colors cursor-pointer"
+          title="▲"
+          tabIndex={-1}
+        >
+          <ChevronUp className="w-3 h-3 stroke-[2.5]" />
+        </button>
+        <button
+          type="button"
+          onClick={() => handleStep(-1)}
+          className="p-0.5 text-slate-400 hover:text-teal-700 hover:bg-slate-100 rounded transition-colors cursor-pointer"
+          title="▼"
+          tabIndex={-1}
+        >
+          <ChevronDown className="w-3 h-3 stroke-[2.5]" />
+        </button>
+      </div>
+    </div>
+  );
+};
+
 export const TherapyRecommendationsView: React.FC<TherapyRecommendationsViewProps> = ({
   patientCase,
   analysis,
   onUpdateCase,
-  onSaveCase,
-  onPreviousStep,
 }) => {
   const { t, language } = useTranslation();
+
+  // Presets for the 4 Intake Schedule Fields
+  const tagesdosisPresets = useMemo(() => [
+    t('dosePreset1'),
+    t('dosePreset2'),
+    t('dosePreset3'),
+    t('dosePreset4'),
+  ], [t]);
+
+  const haeufigkeitPresets = useMemo(() => [
+    t('freqPreset1'),
+    t('freqPreset2'),
+    t('freqPreset3'),
+    t('freqPreset4'),
+    t('freqPreset5'),
+  ], [t]);
+
+  const dauerPresets = useMemo(() => [
+    t('durPreset1'),
+    t('durPreset2'),
+    t('durPreset3'),
+    t('durPreset4'),
+    t('durPreset5'),
+  ], [t]);
+
+  const zeitraumPresets = useMemo(() => [
+    t('phasePreset1'),
+    t('phasePreset2'),
+    t('phasePreset3'),
+    t('phasePreset4'),
+    t('phasePreset5'),
+  ], [t]);
 
   // Determine initial doctor recommendation from red flags
   const redFlagList = analysis.redFlags?.warnings || [];
@@ -113,7 +211,7 @@ export const TherapyRecommendationsView: React.FC<TherapyRecommendationsViewProp
   // Live search state for custom remedy addition
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<HomeopathicRemedyInfo[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
+  const [, setIsSearching] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [selectedDbRemedy, setSelectedDbRemedy] = useState<HomeopathicRemedyInfo | null>(null);
 
@@ -128,7 +226,6 @@ export const TherapyRecommendationsView: React.FC<TherapyRecommendationsViewProp
     if (matched) {
       setSelectedRemedyForModal(matched);
     } else {
-      // Fallback object if not directly in standard list
       setSelectedRemedyForModal({
         id: remedyName.toLowerCase().replace(/\s+/g, '-'),
         latinName: remedyName,
@@ -157,7 +254,6 @@ export const TherapyRecommendationsView: React.FC<TherapyRecommendationsViewProp
   const [customAnwendungsdauer, setCustomAnwendungsdauer] = useState(() => t('durPreset1'));
   const [customZeitraum, setCustomZeitraum] = useState(() => t('phasePreset1'));
   const [customNote, setCustomNote] = useState('');
-  const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
 
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
@@ -310,243 +406,104 @@ export const TherapyRecommendationsView: React.FC<TherapyRecommendationsViewProp
     }));
   };
 
-  const handleExportPDF = () => {
-    exportComprehensiveAnalysisToPDF(patientCase, analysis, language, 'empfehlungen');
-  };
-
-  const handleExportFullPDF = () => {
-    exportComprehensiveAnalysisToPDF(patientCase, analysis, language);
-  };
-
-  const handleSave = () => {
-    if (onSaveCase) {
-      onSaveCase();
-      setSaveSuccessMsg(t('saveSuccess') || 'Empfehlungen gespeichert!');
-      setTimeout(() => setSaveSuccessMsg(null), 3500);
-    }
-  };
-
-  // Quick preset chips helper
-  const renderQuickPresets = (
-    currentVal: string,
-    presets: string[],
-    onSelect: (val: string) => void
-  ) => (
-    <div className="flex flex-wrap gap-1 mt-1">
-      {presets.map(p => (
-        <button
-          key={p}
-          type="button"
-          onClick={() => onSelect(p)}
-          className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors cursor-pointer border ${
-            currentVal === p
-              ? 'bg-teal-700 text-white border-teal-800 shadow-2xs'
-              : 'bg-white text-slate-700 border-slate-200 hover:bg-teal-50 hover:border-teal-300'
-          }`}
-        >
-          {p}
-        </button>
-      ))}
-    </div>
-  );
-
   return (
-    <div className="space-y-8 animate-in fade-in duration-200">
-      {/* Toast Notification */}
-      {saveSuccessMsg && (
-        <div className="fixed bottom-6 right-6 z-50 bg-emerald-700 text-white px-5 py-3 rounded-xl shadow-xl flex items-center gap-2 text-sm font-semibold animate-in slide-in-from-bottom-3 duration-200">
-          <CheckCircle2 className="w-5 h-5 text-white" />
-          <span>{saveSuccessMsg}</span>
-        </div>
-      )}
-
-      {/* Header Banner */}
-      <div className="p-6 rounded-2xl bg-gradient-to-r from-teal-900 via-slate-900 to-teal-950 text-white shadow-md flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded-full bg-teal-400/20 text-teal-300 font-bold text-xs uppercase tracking-wider border border-teal-400/30">
-              {t('step8Name')}
-            </span>
-            <span className="text-xs text-slate-300 font-medium">{t('step8PracticePlan')}</span>
-          </div>
-          <h2 className="text-xl sm:text-2xl font-serif font-bold flex items-center gap-2">
-            <Pill className="w-6 h-6 text-teal-400" />
-            <span>{t('recommendationsTitle')}</span>
-          </h2>
-          <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
-            {t('recommendationsSubtitle')}
-          </p>
-        </div>
-
-        {/* Top Actions */}
-        <div className="flex flex-col items-end gap-2.5 shrink-0">
-          <button
-            type="button"
-            onClick={handleExportPDF}
-            className="px-3.5 py-2 rounded-xl bg-teal-500/20 hover:bg-teal-500/30 text-teal-200 border border-teal-400/30 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
-            title={t('downloadRecommendationsPDF')}
-          >
-            <FileDown className="w-4 h-4 text-teal-300" />
-            <span>{t('downloadRecommendationsPDF')}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleSave}
-            className="px-4 py-2 rounded-xl bg-teal-400 hover:bg-teal-300 text-slate-950 font-bold text-xs flex items-center gap-1.5 transition-all shadow-md cursor-pointer self-end"
-          >
-            <Save className="w-4 h-4" />
-            <span>{t('btnSaveCase')}</span>
-          </button>
-        </div>
-      </div>
-
+    <div className="space-y-6 animate-in fade-in duration-200">
       {/* SECTION 1: ÄRZTLICHE ABKLÄRUNG (RED FLAGS & WARNHINWEISE) */}
-      <section className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-        <div className="p-5 bg-gradient-to-r from-slate-50 to-rose-50/40 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${recommendations.doctorConsultationRequired ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
-              {recommendations.doctorConsultationRequired ? <ShieldAlert className="w-5 h-5" /> : <Stethoscope className="w-5 h-5 text-emerald-700" />}
+      <section className="bg-white rounded-2xl border border-slate-200/90 p-6 shadow-xs space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+              <Stethoscope className="w-5 h-5 text-emerald-600" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <span>{t('doctorConsultationTitle')}</span>
+              <h3 className="text-base font-bold text-slate-900">
+                {t('doctorConsultationTitle')}
               </h3>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-500 mt-0.5">
                 {t('doctorConsultationSubtitle')}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={recommendations.doctorConsultationRequired}
-                onChange={(e) => setRecommendations(prev => ({
-                  ...prev,
-                  doctorConsultationRequired: e.target.checked,
-                  doctorConsultationUrgency: e.target.checked ? (prev.doctorConsultationUrgency === 'Keine' ? 'Empfohlen' : prev.doctorConsultationUrgency) : 'Keine'
-                }))}
-                className="w-4 h-4 rounded text-teal-600 focus:ring-teal-500 border-slate-300"
-              />
-              <span>{t('doctorConsultationRecommended')}</span>
-            </label>
-          </div>
+          <label className="text-xs font-semibold text-slate-600 flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={recommendations.doctorConsultationRequired}
+              onChange={(e) => setRecommendations(prev => ({
+                ...prev,
+                doctorConsultationRequired: e.target.checked,
+                doctorConsultationUrgency: e.target.checked
+                  ? (prev.doctorConsultationUrgency === 'Keine' ? 'Empfohlen' : prev.doctorConsultationUrgency)
+                  : 'Keine'
+              }))}
+              className="w-4 h-4 rounded text-teal-600 focus:ring-teal-500 border-slate-300 cursor-pointer"
+            />
+            <span>{t('doctorConsultationRecommended')}</span>
+          </label>
         </div>
 
-        <div className="p-6 space-y-5">
-          {/* Status Box */}
-          <div className={`p-4 rounded-xl border flex flex-col sm:flex-row items-start gap-3.5 ${
-            recommendations.doctorConsultationRequired 
-              ? 'bg-rose-50/70 border-rose-200 text-rose-950' 
-              : 'bg-emerald-50/70 border-emerald-200 text-emerald-950'
-          }`}>
+        {/* Status Box */}
+        <div className={`p-4 rounded-xl border ${
+          recommendations.doctorConsultationRequired 
+            ? 'bg-rose-50/60 border-rose-200 text-rose-950' 
+            : 'bg-emerald-50/40 border-emerald-200 text-emerald-950'
+        }`}>
+          <div className="flex items-center gap-2 font-bold text-sm">
             {recommendations.doctorConsultationRequired ? (
-              <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+              <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />
             ) : (
-              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
             )}
-            <div className="space-y-1 text-xs sm:text-sm flex-1">
-              <div className="font-bold flex items-center gap-2">
-                <span>{recommendations.doctorConsultationRequired ? t('doctorConsultationRecommended') : t('doctorConsultationNone')}</span>
-                <span className={`px-2 py-0.5 rounded text-[11px] font-bold uppercase ${
-                  recommendations.doctorConsultationUrgency === 'Notfall' ? 'bg-rose-600 text-white' :
-                  recommendations.doctorConsultationUrgency === 'Dringend' ? 'bg-amber-600 text-white' :
-                  recommendations.doctorConsultationUrgency === 'Empfohlen' ? 'bg-teal-700 text-white' :
-                  'bg-slate-200 text-slate-800'
-                }`}>
-                  {recommendations.doctorConsultationUrgency === 'Notfall' ? t('urgencyEmergency') :
-                   recommendations.doctorConsultationUrgency === 'Dringend' ? t('urgencyUrgent') :
-                   recommendations.doctorConsultationUrgency === 'Empfohlen' ? t('urgencyRecommended') :
-                   recommendations.doctorConsultationUrgency === 'Optional' ? t('urgencyOptional') :
-                   t('urgencyNone')}
-                </span>
-              </div>
-              <p className="text-slate-700">
-                <strong>{t('doctorConsultationReasonLabel')}</strong> {recommendations.doctorConsultationReason || t('noCriticalRedFlags')}
-              </p>
-            </div>
+            <span className="text-slate-900 font-bold">
+              {recommendations.doctorConsultationRequired ? t('doctorConsultationRecommended') : t('doctorConsultationNone')}
+            </span>
+            <span className="px-2 py-0.5 rounded bg-slate-200/80 text-slate-700 text-[10px] font-bold uppercase tracking-wider">
+              {recommendations.doctorConsultationUrgency === 'Notfall' ? t('urgencyEmergency') :
+               recommendations.doctorConsultationUrgency === 'Dringend' ? t('urgencyUrgent') :
+               recommendations.doctorConsultationUrgency === 'Empfohlen' ? t('urgencyRecommended') :
+               recommendations.doctorConsultationUrgency === 'Optional' ? t('urgencyOptional') :
+               t('urgencyNone')}
+            </span>
           </div>
+          <p className="text-slate-700 text-xs mt-1.5 pl-7">
+            <strong>{t('doctorConsultationReasonLabel')}</strong>{' '}
+            {recommendations.doctorConsultationReason || t('noCriticalRedFlags')}
+          </p>
+        </div>
 
-          {/* Form Controls for Doctor Recommendation */}
-          <div className="space-y-5 text-xs sm:text-sm">
-            {/* 1. Urgency Level - On top, full-width, evenly distributed across 5 buttons */}
-            <div className="space-y-2">
-              <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider">
-                {t('doctorConsultationUrgencyLabel')}
-              </label>
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                {(['Notfall', 'Dringend', 'Empfohlen', 'Optional', 'Keine'] as const).map(urg => {
-                  const isSelected = recommendations.doctorConsultationUrgency === urg;
-                  return (
-                    <button
-                      key={urg}
-                      type="button"
-                      onClick={() => setRecommendations(prev => ({
-                        ...prev,
-                        doctorConsultationUrgency: urg,
-                        doctorConsultationRequired: urg !== 'Keine'
-                      }))}
-                      className={`py-2.5 px-2 rounded-xl font-bold text-xs transition-all border text-center cursor-pointer shadow-2xs flex items-center justify-center ${
-                        isSelected
-                          ? (urg === 'Notfall' ? 'bg-rose-600 text-white border-rose-700 shadow-sm' :
-                             urg === 'Dringend' ? 'bg-amber-600 text-white border-amber-700 shadow-sm' :
-                             urg === 'Empfohlen' ? 'bg-teal-700 text-white border-teal-800 shadow-sm' :
-                             urg === 'Optional' ? 'bg-slate-700 text-white border-slate-800 shadow-sm' :
-                             'bg-slate-300 text-slate-900 border-slate-400 shadow-sm')
-                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:border-slate-300'
-                      }`}
-                    >
-                      <span className="truncate">
-                        {urg === 'Notfall' ? t('urgencyEmergency') :
-                         urg === 'Dringend' ? t('urgencyUrgent') :
-                         urg === 'Empfohlen' ? t('urgencyRecommended') :
-                         urg === 'Optional' ? t('urgencyOptional') :
-                         t('urgencyNone')}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-
-            {/* 3. Doctor Notes / Individual Advice */}
-            <div className="space-y-2">
-              <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider">
-                {t('doctorNotesLabel')}
-              </label>
-              <textarea
-                rows={2}
-                value={recommendations.doctorConsultationNotes}
-                onChange={(e) => setRecommendations(prev => ({ ...prev, doctorConsultationNotes: e.target.value }))}
-                placeholder={t('doctorNotesPlaceholder')}
-                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors shadow-2xs"
-              />
-            </div>
-          </div>
+        {/* Doctor Notes / Individual Advice */}
+        <div className="space-y-1.5 pt-1">
+          <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider">
+            {t('doctorNotesLabel')}
+          </label>
+          <textarea
+            rows={2}
+            value={recommendations.doctorConsultationNotes}
+            onChange={(e) => setRecommendations(prev => ({ ...prev, doctorConsultationNotes: e.target.value }))}
+            placeholder={t('doctorNotesPlaceholder')}
+            className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors shadow-2xs resize-y"
+          />
         </div>
       </section>
 
       {/* SECTION 2: HOMÖOPATHISCHE MITTEL-EMPFEHLUNGEN & VERORDNUNGSPLAN */}
-      <section className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-        <div className="p-5 bg-gradient-to-r from-slate-50 to-teal-50/40 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-teal-100 text-teal-800 flex items-center justify-center">
-              <Pill className="w-5 h-5 text-teal-700" />
+      <section className="bg-white rounded-2xl border border-slate-200/90 p-6 shadow-xs space-y-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center shrink-0">
+              <Pill className="w-5 h-5 text-teal-600" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <span>{t('homeoPrescriptionTitle')}</span>
+              <h3 className="text-base font-bold text-slate-900">
+                {t('homeoPrescriptionTitle')}
               </h3>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-500 mt-0.5">
                 {t('homeoPrescriptionDesc')}
               </p>
             </div>
           </div>
 
-          <span className="text-xs font-semibold text-slate-500 bg-white px-3 py-1 rounded-full border border-slate-200">
+          <span className="text-xs font-medium text-slate-600 bg-slate-50 px-3 py-1 rounded-full border border-slate-200">
             {t('remediesSelectedCount', {
               count: recommendations.remedies.filter(r => r.isSelected).length,
               selected: recommendations.remedies.filter(r => r.isSelected).length,
@@ -555,388 +512,344 @@ export const TherapyRecommendationsView: React.FC<TherapyRecommendationsViewProp
           </span>
         </div>
 
-        <div className="p-6 space-y-6">
-          {/* List of Remedy Cards */}
-          <div className="space-y-4">
-            {recommendations.remedies.map((remedy, idx) => (
-              <div
-                key={remedy.id}
-                className={`p-4 sm:p-5 rounded-xl border transition-all ${
-                  remedy.isSelected
-                    ? 'bg-white border-teal-300 ring-2 ring-teal-500/20 shadow-xs'
-                    : 'bg-slate-50/80 border-slate-200 opacity-80'
-                }`}
-              >
-                {/* Remedy Header */}
-                <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100">
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => handleUpdateRemedy(remedy.id, { isSelected: !remedy.isSelected })}
-                      className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer border ${
-                        remedy.isSelected
-                          ? 'bg-teal-700 text-white border-teal-800 shadow-2xs'
-                          : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-100'
-                      }`}
-                    >
-                      <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center ${remedy.isSelected ? 'border-white bg-white/20' : 'border-slate-400'}`}>
-                        {remedy.isSelected && <Check className="w-2.5 h-2.5 text-white" />}
-                      </div>
-                      <span>{remedy.isSelected ? t('remedySelected') : t('remedyNotSelected')}</span>
-                    </button>
-
-                    <div className="flex items-center gap-2">
-                      <span className="w-6 h-6 rounded-full bg-slate-800 text-white text-xs font-bold flex items-center justify-center">
-                        {idx + 1}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleOpenMonograph(remedy.name)}
-                        className="font-bold text-slate-900 text-base hover:text-teal-700 hover:underline transition-colors text-left cursor-pointer"
-                        title={t('viewMonograph')}
-                      >
-                        {remedy.name}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-2">
-                    {remedy.isCustom ? (
-                      <span className="px-2 py-0.5 rounded bg-purple-100 text-purple-900 font-semibold text-[11px] border border-purple-200">
-                        {t('manuallyAdded')}
-                      </span>
-                    ) : (
-                      <span className="px-2 py-0.5 rounded bg-teal-50 text-teal-900 font-semibold text-[11px] border border-teal-200">
-                        {t('suggestedFromAnalysis')} {remedy.score ? `(${remedy.score}% ${t('scoreMatch')})` : ''}
-                      </span>
-                    )}
-
-                    <button
-                      type="button"
-                      onClick={() => handleOpenMonograph(remedy.name)}
-                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold text-teal-800 bg-teal-50 hover:bg-teal-100 hover:text-teal-950 border border-teal-200/90 transition-all cursor-pointer shadow-2xs hover:shadow-xs"
-                      title={t('viewMonograph')}
-                    >
-                      <BookOpen className="w-3.5 h-3.5 text-teal-600 shrink-0" />
-                      <span>{t('viewMonograph')}</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveRemedy(remedy.id)}
-                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                      title={t('removeRemedyTitle')}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Remedy Details & Editable Fields */}
-                <div className="pt-3 space-y-3">
-                  {/* Potency Row */}
-                  <div className="flex flex-wrap items-center gap-2 text-xs">
-                    <label className="font-bold text-slate-700 shrink-0">
-                      {t('potencyLabel')}
-                    </label>
-                    <input
-                      type="text"
-                      value={remedy.potency}
-                      onChange={(e) => handleUpdateRemedy(remedy.id, { potency: e.target.value })}
-                      placeholder="z.B. C30"
-                      className="w-24 px-2.5 py-1 bg-slate-50 border border-slate-300 rounded-md font-bold text-teal-900 focus:bg-white focus:ring-1 focus:ring-teal-500"
-                    />
-                    <div className="flex flex-wrap gap-1">
-                      {['C30', 'C200', 'LM VI', 'D12', 'D6', '1M', 'Q-Potenz'].map(p => (
-                        <button
-                          key={p}
-                          type="button"
-                          onClick={() => handleUpdateRemedy(remedy.id, { potency: p })}
-                          className={`px-2 py-0.5 rounded text-[11px] font-semibold border cursor-pointer ${
-                            remedy.potency === p
-                              ? 'bg-teal-700 text-white border-teal-800'
-                              : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
-                          }`}
-                        >
-                          {p}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* 4 Required Intake Schedule Fields */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs bg-slate-50/80 p-3.5 rounded-xl border border-slate-200">
-                    {/* 1. Empfohlene Dosis am Tag */}
-                    <div className="space-y-1">
-                      <label className="font-bold text-slate-700 block text-[11px]">
-                        {t('dosagePerDayLabel')}
-                      </label>
-                      <input
-                        type="text"
-                        value={remedy.tagesdosis}
-                        onChange={(e) => handleUpdateRemedy(remedy.id, { tagesdosis: e.target.value })}
-                        placeholder={t('dosagePerDayPlaceholder')}
-                        className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-900 focus:ring-1 focus:ring-teal-500"
-                      />
-                      {renderQuickPresets(
-                        remedy.tagesdosis,
-                        [t('dosePreset1'), t('dosePreset2'), t('dosePreset3'), t('dosePreset4')],
-                        (val) => handleUpdateRemedy(remedy.id, { tagesdosis: val })
-                      )}
-                    </div>
-
-                    {/* 2. Wie oft (Häufigkeit) */}
-                    <div className="space-y-1">
-                      <label className="font-bold text-slate-700 block text-[11px]">
-                        {t('frequencyLabel')}
-                      </label>
-                      <input
-                        type="text"
-                        value={remedy.haeufigkeit}
-                        onChange={(e) => handleUpdateRemedy(remedy.id, { haeufigkeit: e.target.value })}
-                        placeholder={t('frequencyPlaceholder')}
-                        className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-900 focus:ring-1 focus:ring-teal-500"
-                      />
-                      {renderQuickPresets(
-                        remedy.haeufigkeit,
-                        [t('freqPreset1'), t('freqPreset2'), t('freqPreset3'), t('freqPreset4'), t('freqPreset5')],
-                        (val) => handleUpdateRemedy(remedy.id, { haeufigkeit: val })
-                      )}
-                    </div>
-
-                    {/* 3. Wie lange (Dauer) */}
-                    <div className="space-y-1">
-                      <label className="font-bold text-slate-700 block text-[11px]">
-                        {t('durationLabel')}
-                      </label>
-                      <input
-                        type="text"
-                        value={remedy.anwendungsdauer}
-                        onChange={(e) => handleUpdateRemedy(remedy.id, { anwendungsdauer: e.target.value })}
-                        placeholder={t('durationPlaceholder')}
-                        className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-900 focus:ring-1 focus:ring-teal-500"
-                      />
-                      {renderQuickPresets(
-                        remedy.anwendungsdauer,
-                        [t('durPreset1'), t('durPreset2'), t('durPreset3'), t('durPreset4'), t('durPreset5')],
-                        (val) => handleUpdateRemedy(remedy.id, { anwendungsdauer: val })
-                      )}
-                    </div>
-
-                    {/* 4. Zeitraum / Anwendungsphase */}
-                    <div className="space-y-1">
-                      <label className="font-bold text-slate-700 block text-[11px]">
-                        {t('applicationPhaseLabel')}
-                      </label>
-                      <input
-                        type="text"
-                        value={remedy.zeitraum}
-                        onChange={(e) => handleUpdateRemedy(remedy.id, { zeitraum: e.target.value })}
-                        placeholder={t('applicationPhasePlaceholder')}
-                        className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-900 focus:ring-1 focus:ring-teal-500"
-                      />
-                      {renderQuickPresets(
-                        remedy.zeitraum,
-                        [t('phasePreset1'), t('phasePreset2'), t('phasePreset3'), t('phasePreset4'), t('phasePreset5')],
-                        (val) => handleUpdateRemedy(remedy.id, { zeitraum: val })
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Therapist Note / Specific Einnahmehinweis */}
-                  <div className="space-y-1 text-xs">
-                    <label className="font-bold text-slate-700 block text-[11px]">
-                      {t('therapistNoteLabel')}
-                    </label>
-                    <input
-                      type="text"
-                      value={remedy.therapistNotes || ''}
-                      onChange={(e) => handleUpdateRemedy(remedy.id, { therapistNotes: e.target.value })}
-                      placeholder={t('therapistNotePlaceholder')}
-                      className="w-full px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs text-slate-900 focus:bg-white focus:ring-1 focus:ring-teal-500"
-                    />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* SECTION 3: WEITERES MITTEL SELBST EMPFEHLEN (LIVE-SEARCH & + HINZUFÜGEN) */}
-          <div className="p-5 rounded-2xl bg-teal-50/50 border-2 border-dashed border-teal-200 space-y-4">
-            <div className="flex items-center gap-2">
-              <Plus className="w-5 h-5 text-teal-700" />
-              <h4 className="font-bold text-teal-950 text-sm">
-                {t('addCustomRemedyBtn')}
-              </h4>
-            </div>
-
-            {/* Live Search Input & Autocomplete Dropdown */}
-            <div className="relative" ref={searchContainerRef}>
-              <div className="relative">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onFocus={() => setIsDropdownOpen(true)}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    setIsDropdownOpen(true);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      handleAddCustomRemedy();
-                    }
-                  }}
-                  placeholder={t('searchRemedyPlaceholder')}
-                  className="w-full pl-10 pr-10 py-2.5 bg-white border border-teal-300 rounded-xl text-xs sm:text-sm text-slate-900 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 shadow-2xs"
-                />
-                {searchQuery && (
+        {/* List of Remedy Cards */}
+        <div className="space-y-4">
+          {recommendations.remedies.map((remedy, idx) => (
+            <div
+              key={remedy.id}
+              className="p-4 sm:p-5 rounded-2xl border border-teal-400/90 bg-white shadow-xs space-y-3.5"
+            >
+              {/* Remedy Header */}
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
                   <button
                     type="button"
-                    onClick={() => {
-                      setSearchQuery('');
-                      setSelectedDbRemedy(null);
-                    }}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold"
+                    onClick={() => handleUpdateRemedy(remedy.id, { isSelected: !remedy.isSelected })}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                      remedy.isSelected
+                        ? 'bg-[#00897b] hover:bg-[#00796b] text-white shadow-2xs'
+                        : 'bg-white text-slate-600 border border-slate-300 hover:bg-slate-50'
+                    }`}
                   >
-                    ✕
+                    {remedy.isSelected && <Check className="w-3.5 h-3.5 stroke-[2.5]" />}
+                    <span>{remedy.isSelected ? t('remedySelected') : t('remedyNotSelected')}</span>
                   </button>
-                )}
+
+                  <div className="flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full bg-slate-900 text-white text-xs font-bold flex items-center justify-center shrink-0">
+                      {idx + 1}
+                    </span>
+                    <span className="font-bold text-slate-900 text-base">
+                      {remedy.name}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  {remedy.isCustom ? (
+                    <span className="px-2.5 py-1 rounded-lg bg-teal-50 text-teal-800 text-xs font-medium border border-teal-200/80">
+                      {t('manuallyAdded')}
+                    </span>
+                  ) : (
+                    <span className="px-2.5 py-1 rounded-lg bg-teal-50 text-teal-800 text-xs font-medium border border-teal-200/80">
+                      {t('suggestedFromAnalysis')}{remedy.score ? ` (${remedy.score}% ${t('scoreMatch')})` : ''}
+                    </span>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => handleOpenMonograph(remedy.name)}
+                    className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold text-teal-800 bg-white hover:bg-teal-50 border border-teal-300 transition-all cursor-pointer"
+                    title={t('viewMonograph')}
+                  >
+                    <BookOpen className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+                    <span>{t('viewMonograph')}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveRemedy(remedy.id)}
+                    className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer ml-1"
+                    title={t('removeRemedyTitle')}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
 
-              {/* Autocomplete Dropdown Menu */}
-              {isDropdownOpen && (
-                <div className="absolute z-30 left-0 right-0 mt-1.5 max-h-60 overflow-y-auto bg-white rounded-xl border border-slate-200 shadow-xl divide-y divide-slate-100 text-xs">
-                  {searchResults.length > 0 ? (
-                    searchResults.map((r, rIdx) => (
-                      <div
-                        key={rIdx}
-                        onClick={() => handleSelectDbRemedy(r)}
-                        className="p-3 hover:bg-teal-50/80 cursor-pointer transition-colors flex items-center justify-between gap-2"
-                      >
-                        <div>
-                          <div className="font-bold text-slate-900 text-xs sm:text-sm flex items-center gap-2">
-                            <span>{r.name}</span>
-                            {r.category && (
-                              <span className="px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 text-[10px] font-medium border border-slate-200">
-                                {r.category}
-                              </span>
-                            )}
-                          </div>
-                          {r.keyIndications && (
-                            <div className="text-[11px] text-slate-500 mt-0.5">
-                              {t('keyIndicationsPrefix')}: {r.keyIndications.join(' • ')}
-                            </div>
-                          )}
-                        </div>
-                        <div className="text-right shrink-0">
-                          <span className="text-[10px] font-semibold text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
-                            {r.defaultPotencies[0]}
-                          </span>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="p-4 text-center text-slate-500 text-xs">
-                      {t('noRemedyFoundInDb')}
-                    </div>
-                  )}
+              {/* Potency Row */}
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <label className="font-bold text-slate-700 shrink-0">
+                  {t('potencyLabel')}
+                </label>
+                <input
+                  type="text"
+                  value={remedy.potency}
+                  onChange={(e) => handleUpdateRemedy(remedy.id, { potency: e.target.value })}
+                  placeholder="C30"
+                  className="w-20 px-2.5 py-1 bg-white border border-slate-300 rounded-lg font-bold text-slate-800 focus:ring-1 focus:ring-teal-500 text-xs"
+                />
+                <div className="flex flex-wrap gap-1">
+                  {['C30', 'C200', 'LM VI', 'D12', 'D6', '1M', 'Q-Potenz'].map(p => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => handleUpdateRemedy(remedy.id, { potency: p })}
+                      className={`px-2 py-0.5 rounded text-[11px] font-semibold border cursor-pointer ${
+                        remedy.potency === p
+                          ? 'bg-[#00897b] text-white border-[#00796b]'
+                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  ))}
                 </div>
+              </div>
+
+              {/* 4 Required Intake Schedule Fields with Stepper Arrows */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                {/* 1. Empfohlene Dosis am Tag */}
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700 block text-[11px]">
+                    {t('dosagePerDayLabel')}
+                  </label>
+                  <StepperInput
+                    value={remedy.tagesdosis}
+                    onChange={(val) => handleUpdateRemedy(remedy.id, { tagesdosis: val })}
+                    presets={tagesdosisPresets}
+                    placeholder={t('dosagePerDayPlaceholder')}
+                  />
+                </div>
+
+                {/* 2. Wie oft (Häufigkeit) */}
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700 block text-[11px]">
+                    {t('frequencyLabel')}
+                  </label>
+                  <StepperInput
+                    value={remedy.haeufigkeit}
+                    onChange={(val) => handleUpdateRemedy(remedy.id, { haeufigkeit: val })}
+                    presets={haeufigkeitPresets}
+                    placeholder={t('frequencyPlaceholder')}
+                  />
+                </div>
+
+                {/* 3. Wie lange (Dauer) */}
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700 block text-[11px]">
+                    {t('durationLabel')}
+                  </label>
+                  <StepperInput
+                    value={remedy.anwendungsdauer}
+                    onChange={(val) => handleUpdateRemedy(remedy.id, { anwendungsdauer: val })}
+                    presets={dauerPresets}
+                    placeholder={t('durationPlaceholder')}
+                  />
+                </div>
+
+                {/* 4. Zeitraum / Anwendungsphase */}
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700 block text-[11px]">
+                    {t('applicationPhaseLabel')}
+                  </label>
+                  <StepperInput
+                    value={remedy.zeitraum}
+                    onChange={(val) => handleUpdateRemedy(remedy.id, { zeitraum: val })}
+                    presets={zeitraumPresets}
+                    placeholder={t('applicationPhasePlaceholder')}
+                  />
+                </div>
+              </div>
+
+              {/* Therapist Note / Specific Einnahmehinweis */}
+              <div className="space-y-1 text-xs">
+                <label className="font-bold text-slate-700 block text-[11px]">
+                  {t('therapistNoteLabel')}
+                </label>
+                <input
+                  type="text"
+                  value={remedy.therapistNotes || ''}
+                  onChange={(e) => handleUpdateRemedy(remedy.id, { therapistNotes: e.target.value })}
+                  placeholder={t('therapistNotePlaceholder')}
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-900 focus:bg-white focus:ring-1 focus:ring-teal-500"
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* SECTION 3: WEITERES MITTEL SELBST EMPFEHLEN (LIVE-SEARCH & + HINZUFÜGEN) */}
+        <div className="p-5 rounded-2xl bg-white border-2 border-dashed border-teal-300/90 space-y-3">
+          <div className="flex items-center gap-2">
+            <Plus className="w-4 h-4 text-teal-600" />
+            <h4 className="font-bold text-teal-900 text-sm">
+              {t('addCustomRemedyBtn')}
+            </h4>
+          </div>
+
+          {/* Live Search Input & Autocomplete Dropdown */}
+          <div className="relative" ref={searchContainerRef}>
+            <div className="relative">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchQuery}
+                onFocus={() => setIsDropdownOpen(true)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setIsDropdownOpen(true);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleAddCustomRemedy();
+                  }
+                }}
+                placeholder={t('searchRemedyPlaceholder')}
+                className="w-full pl-10 pr-10 py-2.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 shadow-2xs"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setSelectedDbRemedy(null);
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold"
+                >
+                  ✕
+                </button>
               )}
             </div>
 
-            {/* Config Fields for Custom Remedy */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 text-xs">
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">{t('potencyLabel')}</label>
-                <input
-                  type="text"
-                  value={customPotency}
-                  onChange={(e) => setCustomPotency(e.target.value)}
-                  placeholder="C30"
-                  className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-900"
-                />
+            {/* Autocomplete Dropdown Menu */}
+            {isDropdownOpen && (
+              <div className="absolute z-30 left-0 right-0 mt-1.5 max-h-60 overflow-y-auto bg-white rounded-xl border border-slate-200 shadow-xl divide-y divide-slate-100 text-xs">
+                {searchResults.length > 0 ? (
+                  searchResults.map((r, rIdx) => (
+                    <div
+                      key={rIdx}
+                      onClick={() => handleSelectDbRemedy(r)}
+                      className="p-3 hover:bg-teal-50/80 cursor-pointer transition-colors flex items-center justify-between gap-2"
+                    >
+                      <div>
+                        <div className="font-bold text-slate-900 text-xs sm:text-sm flex items-center gap-2">
+                          <span>{r.name}</span>
+                          {r.category && (
+                            <span className="px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 text-[10px] font-medium border border-slate-200">
+                              {r.category}
+                            </span>
+                          )}
+                        </div>
+                        {r.keyIndications && (
+                          <div className="text-[11px] text-slate-500 mt-0.5">
+                            {t('keyIndicationsPrefix')}: {r.keyIndications.join(' • ')}
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-right shrink-0">
+                        <span className="text-[10px] font-semibold text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+                          {r.defaultPotencies[0]}
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-4 text-center text-slate-500 text-xs">
+                    {t('noRemedyFoundInDb')}
+                  </div>
+                )}
               </div>
+            )}
+          </div>
 
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">{t('dosagePerDayLabel')}</label>
-                <input
-                  type="text"
-                  value={customTagesdosis}
-                  onChange={(e) => setCustomTagesdosis(e.target.value)}
-                  placeholder={t('dosagePerDayPlaceholder')}
-                  className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs text-slate-900"
-                />
-              </div>
-
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">{t('frequencyLabel')}</label>
-                <input
-                  type="text"
-                  value={customHaeufigkeit}
-                  onChange={(e) => setCustomHaeufigkeit(e.target.value)}
-                  placeholder={t('frequencyPlaceholder')}
-                  className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs text-slate-900"
-                />
-              </div>
-
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">{t('durationLabel')}</label>
-                <input
-                  type="text"
-                  value={customAnwendungsdauer}
-                  onChange={(e) => setCustomAnwendungsdauer(e.target.value)}
-                  placeholder={t('durationPlaceholder')}
-                  className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs text-slate-900"
-                />
-              </div>
-
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">{t('applicationPhaseLabel')}</label>
-                <input
-                  type="text"
-                  value={customZeitraum}
-                  onChange={(e) => setCustomZeitraum(e.target.value)}
-                  placeholder={t('applicationPhasePlaceholder')}
-                  className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs text-slate-900"
-                />
-              </div>
-            </div>
-
-            {/* Note field & Add Button */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+          {/* Config Fields for Custom Remedy with Stepper Arrows */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 text-xs">
+            <div>
+              <label className="font-bold text-slate-700 block mb-1">{t('potencyLabel')}</label>
               <input
                 type="text"
-                value={customNote}
-                onChange={(e) => setCustomNote(e.target.value)}
-                placeholder={t('therapistNotePlaceholder')}
-                className="flex-1 px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs text-slate-900"
+                value={customPotency}
+                onChange={(e) => setCustomPotency(e.target.value)}
+                placeholder="C30"
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-900"
               />
-
-              <button
-                type="button"
-                onClick={handleAddCustomRemedy}
-                disabled={!searchQuery.trim()}
-                className={`px-5 py-2 rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs cursor-pointer ${
-                  searchQuery.trim()
-                    ? 'bg-teal-700 hover:bg-teal-800 text-white'
-                    : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                }`}
-              >
-                <Plus className="w-4 h-4" />
-                <span>{t('addRemedyConfirmBtn')}</span>
-              </button>
             </div>
+
+            <div>
+              <label className="font-bold text-slate-700 block mb-1">{t('dosagePerDayLabel')}</label>
+              <StepperInput
+                value={customTagesdosis}
+                onChange={setCustomTagesdosis}
+                presets={tagesdosisPresets}
+                placeholder={t('dosagePerDayPlaceholder')}
+              />
+            </div>
+
+            <div>
+              <label className="font-bold text-slate-700 block mb-1">{t('frequencyLabel')}</label>
+              <StepperInput
+                value={customHaeufigkeit}
+                onChange={setCustomHaeufigkeit}
+                presets={haeufigkeitPresets}
+                placeholder={t('frequencyPlaceholder')}
+              />
+            </div>
+
+            <div>
+              <label className="font-bold text-slate-700 block mb-1">{t('durationLabel')}</label>
+              <StepperInput
+                value={customAnwendungsdauer}
+                onChange={setCustomAnwendungsdauer}
+                presets={dauerPresets}
+                placeholder={t('durationPlaceholder')}
+              />
+            </div>
+
+            <div>
+              <label className="font-bold text-slate-700 block mb-1">{t('applicationPhaseLabel')}</label>
+              <StepperInput
+                value={customZeitraum}
+                onChange={setCustomZeitraum}
+                presets={zeitraumPresets}
+                placeholder={t('applicationPhasePlaceholder')}
+              />
+            </div>
+          </div>
+
+          {/* Note field & Add Button */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1">
+            <input
+              type="text"
+              value={customNote}
+              onChange={(e) => setCustomNote(e.target.value)}
+              placeholder={t('therapistNotePlaceholder')}
+              className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-900"
+            />
+
+            <button
+              type="button"
+              onClick={handleAddCustomRemedy}
+              disabled={!searchQuery.trim()}
+              className={`px-5 py-2 rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs cursor-pointer ${
+                searchQuery.trim()
+                  ? 'bg-[#00897b] hover:bg-[#00796b] text-white'
+                  : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+              }`}
+            >
+              <Plus className="w-4 h-4" />
+              <span>{t('addRemedyConfirmBtn')}</span>
+            </button>
           </div>
         </div>
       </section>
 
       {/* SECTION 4: ALLGEMEINE HINWEISE & VERORDNUNGSNOTIZEN */}
-      <section className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-3">
+      <section className="bg-white rounded-2xl border border-slate-200/90 shadow-xs p-6 space-y-3">
         <div className="flex items-center gap-2">
           <BookOpen className="w-5 h-5 text-teal-700" />
-          <h3 className="font-bold text-slate-900 text-base">
+          <h3 className="font-bold text-slate-900 text-sm sm:text-base">
             {t('generalTherapyNotesLabel')}
           </h3>
         </div>
@@ -945,7 +858,7 @@ export const TherapyRecommendationsView: React.FC<TherapyRecommendationsViewProp
           value={recommendations.generalTherapyNotes || ''}
           onChange={(e) => setRecommendations(prev => ({ ...prev, generalTherapyNotes: e.target.value }))}
           placeholder={t('generalTherapyNotesPlaceholder')}
-          className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors"
+          className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors shadow-2xs resize-y"
         />
       </section>
 
