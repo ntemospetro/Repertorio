@@ -1097,13 +1097,21 @@ export function extractSymptomsDeterministically(
       lang === 'el' ? 'Δεξιόστροφη ημικρανία κροτάφου' : 'Правосторонняя мигрень'
     );
   } else if (lower.includes('kopf') || lower.includes('headache') || lower.includes('cabeza') || lower.includes('tête') || lower.includes('testa') || lower.includes('πονοκέφαλ')) {
+    const isThrobbing = lower.includes('puls') || lower.includes('klopf') || lower.includes('throb') || lower.includes('battant');
     primaryComplaints.push(
-      lang === 'de' ? 'Akute pulsierende Kopfschmerzen' :
-      lang === 'en' ? 'Acute throbbing headache' :
-      lang === 'es' ? 'Cefalea punzante aguda' :
-      lang === 'fr' ? 'Maux de tête battants aigus' :
-      lang === 'it' ? 'Cefalea pulsante acuta' :
-      lang === 'el' ? 'Οξύς σφύζων πονοκέφαλος' : 'Острая пульсирующая головная боль'
+      isThrobbing
+        ? (lang === 'de' ? 'Akute pulsierende Kopfschmerzen' :
+           lang === 'en' ? 'Acute throbbing headache' :
+           lang === 'es' ? 'Cefalea punzante aguda' :
+           lang === 'fr' ? 'Maux de tête battants aigus' :
+           lang === 'it' ? 'Cefalea pulsante acuta' :
+           lang === 'el' ? 'Οξύς σφύζων πονοκέφαλος' : 'Острая пульсирующая головная боль')
+        : (lang === 'de' ? 'Kopfschmerzen' :
+           lang === 'en' ? 'Headache' :
+           lang === 'es' ? 'Dolor de cabeza' :
+           lang === 'fr' ? 'Maux de tête' :
+           lang === 'it' ? 'Mal di testa' :
+           lang === 'el' ? 'Πονοκέφαλος' : 'Головная боль')
     );
   }
 
@@ -1132,24 +1140,64 @@ export function extractSymptomsDeterministically(
   }
 
   if (lower.includes('fieber') || lower.includes('fever') || lower.includes('fiebre') || lower.includes('fièvre') || lower.includes('febbre') || lower.includes('πυρετ') || lower.includes('лихорад')) {
-    primaryComplaints.push(
-      lang === 'de' ? 'Plötzliches hohes Fieber und Hitzegefühl' :
-      lang === 'en' ? 'Sudden high fever and heat sensation' :
-      lang === 'es' ? 'Fiebre alta repentina' :
-      lang === 'fr' ? 'Fièvre élevée soudaine' :
-      lang === 'it' ? 'Febbre alta improvvisa' :
-      lang === 'el' ? 'Αιφνίδιος υψηλός πυρετός' : 'Внезапная высокая температура'
-    );
+    const isSudden = lower.includes('plötzlich') || lower.includes('sudden') || lower.includes('repent') || lower.includes('soudain') || lower.includes('improvvis') || lower.includes('αιφνίδι') || lower.includes('внезапн');
+    const isHigh = lower.includes('hoch') || lower.includes('high') || lower.includes('alta') || lower.includes('élevé') || lower.includes('υψηλ') || lower.includes('высок');
+    
+    if (isSudden && isHigh) {
+      primaryComplaints.push(
+        lang === 'de' ? 'Plötzliches hohes Fieber' :
+        lang === 'en' ? 'Sudden high fever' :
+        lang === 'es' ? 'Fiebre alta repentina' :
+        lang === 'fr' ? 'Fièvre élevée soudaine' :
+        lang === 'it' ? 'Febbre alta improvvisa' :
+        lang === 'el' ? 'Αιφνίδιος υψηλός πυρετός' : 'Внезапная высокая температура'
+      );
+    } else if (isHigh) {
+      primaryComplaints.push(
+        lang === 'de' ? 'Hohes Fieber' :
+        lang === 'en' ? 'High fever' :
+        lang === 'es' ? 'Fiebre alta' :
+        lang === 'fr' ? 'Forte fièvre' :
+        lang === 'it' ? 'Febbre alta' :
+        lang === 'el' ? 'Υψηλός πυρετός' : 'Высокая температура'
+      );
+    } else if (isSudden) {
+      primaryComplaints.push(
+        lang === 'de' ? 'Plötzliches Fieber' :
+        lang === 'en' ? 'Sudden fever' :
+        lang === 'es' ? 'Fiebre repentina' :
+        lang === 'fr' ? 'Fièvre soudaine' :
+        lang === 'it' ? 'Febbre improvvisa' :
+        lang === 'el' ? 'Αιφνίδιος πυρετός' : 'Внезапная температура'
+      );
+    } else {
+      primaryComplaints.push(
+        lang === 'de' ? 'Fieber' :
+        lang === 'en' ? 'Fever' :
+        lang === 'es' ? 'Fiebre' :
+        lang === 'fr' ? 'Fièvre' :
+        lang === 'it' ? 'Febbre' :
+        lang === 'el' ? 'Πυρετός' : 'Лихорадка / температура'
+      );
+    }
   }
 
   if (lower.includes('bauch') || lower.includes('magen') || lower.includes('stomach') || lower.includes('krampf') || lower.includes('kolik') || lower.includes('cramp') || lower.includes('colic') || lower.includes('κοιλ') || lower.includes('живот')) {
+    const isSpasm = lower.includes('krampf') || lower.includes('kolik') || lower.includes('cramp') || lower.includes('colic') || lower.includes('spasm');
     primaryComplaints.push(
-      lang === 'de' ? 'Akute krampfartige Bauchschmerzen (Kolik)' :
-      lang === 'en' ? 'Acute spasmodic abdominal colic' :
-      lang === 'es' ? 'Cólico abdominal espasmódico agudo' :
-      lang === 'fr' ? 'Coliques abdominales spasmodiques aiguës' :
-      lang === 'it' ? 'Colica addominale crampiforme acuta' :
-      lang === 'el' ? 'Οξείες σπαστικές κοιλιακές κράμπες' : 'Острые спастические боли в животе'
+      isSpasm
+        ? (lang === 'de' ? 'Akute krampfartige Bauchschmerzen (Kolik)' :
+           lang === 'en' ? 'Acute spasmodic abdominal colic' :
+           lang === 'es' ? 'Cólico abdominal espasmódico agudo' :
+           lang === 'fr' ? 'Coliques abdominales spasmodiques aiguës' :
+           lang === 'it' ? 'Colica addominale crampiforme acuta' :
+           lang === 'el' ? 'Οξείες σπαστικές κοιλιακές κράμπες' : 'Острые спастические боли в животе')
+        : (lang === 'de' ? 'Bauchschmerzen' :
+           lang === 'en' ? 'Abdominal pain' :
+           lang === 'es' ? 'Dolor abdominal' :
+           lang === 'fr' ? 'Douleurs abdominales' :
+           lang === 'it' ? 'Dolori addominali' :
+           lang === 'el' ? 'Κοιλιακός πόνος' : 'Боль в животе')
     );
   }
 
@@ -1165,34 +1213,62 @@ export function extractSymptomsDeterministically(
 
   // 2. Causa (Auslöser/Ursache: Wetter, Emotion, Unfall, Genussmittel)
   let causa = '';
-  if (lower.includes('strand') || lower.includes('beach') || lower.includes('playa') || lower.includes('θάλασσ') || lower.includes('θαλασσ') || lower.includes('παραλί') || lower.includes('ήλι') || lower.includes('ηλι') || lower.includes('sun') || lower.includes('sonne') || lower.includes('hitze') || lower.includes('heat') || lower.includes('calor')) {
-    causa = lang === 'de' ? 'Exposition gegenüber Meerwasser, Sonne und Hitze' :
-            lang === 'en' ? 'Exposure to sea air, sun and heat' :
-            lang === 'es' ? 'Exposición al mar, sol y calor' :
-            lang === 'fr' ? 'Exposition à la mer, au soleil et à la chaleur' :
-            lang === 'it' ? 'Esposizione al mare, sole e calore' :
-            lang === 'el' ? 'Έκθεση στη θάλασσα / παραμονή στη θάλασσα (ήλιος/θαλασσινός αέρας)' : 'Воздействие морского воздуха, солнца и тепла';
-  } else if (lower.includes('wind') || lower.includes('kalt') || lower.includes('cold') || lower.includes('frio') || lower.includes('froid') || lower.includes('ψυχρ') || lower.includes('холод')) {
+
+  // Echte Causa-Prüfungen: Nur zuordnen, wenn ein konkreter Auslöser im Text tatsächlich geschildert wurde!
+  const hasBeachSeaCausa = lower.includes('strand') || lower.includes('beach') || lower.includes('playa') || lower.includes('meerwasser') || lower.includes('im meer') || lower.includes('am meer') || lower.includes('ozean') || lower.includes('ocean') || lower.includes('θάλασσ') || lower.includes('θαλασσ') || lower.includes('παραλί') || lower.includes('παραλι') || lower.includes('пляж') || lower.includes('морск');
+
+  const hasSunHeatCausa = lower.includes('sonnenstich') || lower.includes('hitzschlag') || lower.includes('sonnenbad') || lower.includes('sonnenbrand') || lower.includes('pralle sonne') || lower.includes('prallen sonne') || lower.includes('starke sonne') || lower.includes('sonneneinstrahlung') || lower.includes('sunstroke') || lower.includes('heatstroke') || lower.includes('sunburn') || lower.includes('sun exposure') || lower.includes('golpe de calor') || lower.includes('insolacion') || lower.includes('coup de soleil') || lower.includes('colpo di calore') || lower.includes('ηλίαση') || lower.includes('ηλιαση') || lower.includes('солнечный удар');
+
+  const hasColdWindCausa = lower.includes('zugluft') || lower.includes('kalter wind') || lower.includes('kaltem wind') || lower.includes('kaltluft') || lower.includes('unterkühlt') || lower.includes('unterkühlung') || lower.includes('durch kälte') || lower.includes('nach kälte') || lower.includes('cold wind') || lower.includes('draft') || lower.includes('exposure to cold') || lower.includes('chilling') || lower.includes('viento frío') || lower.includes('vent froid') || lower.includes('coup de froid') || lower.includes('vento freddo') || lower.includes('ψυχρό άνεμο') || lower.includes('ψυχρο ανεμο') || lower.includes('переохлаждение') || lower.includes('сквозняк');
+
+  const hasWetCausa = lower.includes('durchnässt') || lower.includes('durchnässung') || lower.includes('nass geworden') || lower.includes('im regen nass') || lower.includes('drenched') || lower.includes('getting wet') || lower.includes('mojado por lluvia') || lower.includes('mouillé par la pluie') || lower.includes('bagnato dalla pioggia') || lower.includes('βρεγμένος') || lower.includes('промокание');
+
+  const hasShockCausa = lower.includes('schreck') || lower.includes('schock') || lower.includes('akute angst') || lower.includes('plötzliche angst') || lower.includes('fright') || lower.includes('sudden shock') || lower.includes('susto') || lower.includes('frayeur') || lower.includes('spavento') || lower.includes('ψυχικό σοκ') || lower.includes('испуг');
+
+  const hasDietStressCausa = lower.includes('überlastung') || lower.includes('überarbeitung') || lower.includes('zu viel kaffee') || lower.includes('zu viel alkohol') || lower.includes('verdorbenes essen') || lower.includes('overwork') || lower.includes('dietary overload') || lower.includes('unfall') || lower.includes('accident') || lower.includes('trauma');
+
+  if (hasBeachSeaCausa) {
+    causa = lang === 'de' ? 'Exposition gegenüber Meerwasser & Strand' :
+            lang === 'en' ? 'Exposure to seawater and beach' :
+            lang === 'es' ? 'Exposición al agua de mar y playa' :
+            lang === 'fr' ? 'Exposition à l\'eau de mer et plage' :
+            lang === 'it' ? 'Esposizione ad acqua di mare e spiaggia' :
+            lang === 'el' ? 'Έκθεση σε θαλασσινό νερό & παραλία' : 'Воздействие морской воды и пляжа';
+  } else if (hasSunHeatCausa) {
+    causa = lang === 'de' ? 'Sonnen- & Hitze-Exposition (Sonnenstich / Überhitzung)' :
+            lang === 'en' ? 'Sun and heat exposure (Sunstroke / Overheating)' :
+            lang === 'es' ? 'Exposición al sol y calor (Insolación)' :
+            lang === 'fr' ? 'Exposition au soleil et à la chaleur (Coup de soleil)' :
+            lang === 'it' ? 'Esposizione a sole e calore (Colpo di sole)' :
+            lang === 'el' ? 'Έκθεση σε ήλιο και ζέστη (Ηλίαση)' : 'Воздействие солнца и перегрев (Солнечный удар)';
+  } else if (hasColdWindCausa) {
     causa = lang === 'de' ? 'Exposition gegenüber kaltem, trockenem Wind / Kälte' :
             lang === 'en' ? 'Exposure to dry, cold wind / chill' :
             lang === 'es' ? 'Exposición a viento frío y seco' :
             lang === 'fr' ? 'Exposition au vent froid et sec' :
             lang === 'it' ? 'Esposizione a vento freddo e secco' :
             lang === 'el' ? 'Έκθεση σε ξηρό ψυχρό άνεμο' : 'Воздействие сухого холодного ветра';
-  } else if (lower.includes('schreck') || lower.includes('angst') || lower.includes('fear') || lower.includes('fright') || lower.includes('miedo') || lower.includes('peur') || lower.includes('φόβ') || lower.includes('φοβ')) {
+  } else if (hasWetCausa) {
+    causa = lang === 'de' ? 'Durchnässung / Kaltes Wasser' :
+            lang === 'en' ? 'Drenching / Cold rain exposure' :
+            lang === 'es' ? 'Mojarse por lluvia o agua fría' :
+            lang === 'fr' ? 'Imbibation / Pluie froide' :
+            lang === 'it' ? 'Inzuppamento da pioggia o freddo' :
+            lang === 'el' ? 'Έκθεση σε βροχή & υγρασία' : 'Промокание под дождем / сырость';
+  } else if (hasShockCausa) {
     causa = lang === 'de' ? 'Plötzlicher Schreck / seelische Erschütterung' :
             lang === 'en' ? 'Sudden fright / emotional shock' :
             lang === 'es' ? 'Susto o conmoción emocional repentina' :
             lang === 'fr' ? 'Frayeur soudaine / choc émotionnel' :
             lang === 'it' ? 'Spavento improvviso / shock emotivo' :
             lang === 'el' ? 'Αιφνίδιος φόβος / ψυχικό σοκ' : 'Внезапный испуг / эмоциональный шок';
-  } else if (lower.includes('überlastung') || lower.includes('stress') || lower.includes('kaffee') || lower.includes('alkohol') || lower.includes('essen') || lower.includes('unfall') || lower.includes('accident') || lower.includes('trauma')) {
-    causa = lang === 'de' ? 'Diätische Überlastung, Stress oder Genussmittel' :
-            lang === 'en' ? 'Dietary overload, stress or stimulants' :
-            lang === 'es' ? 'Sobrecarga dietética, estrés o estimulantes' :
-            lang === 'fr' ? 'Surcharge alimentaire, stress ou stimulants' :
-            lang === 'it' ? 'Sovraccarico dietetico, stress o stimolanti' :
-            lang === 'el' ? 'Διαιτητική υπερφόρτωση, στρες, διεγερτικά' : 'Перегрузка, стресс или стимуляторы';
+  } else if (hasDietStressCausa) {
+    causa = lang === 'de' ? 'Diätische Überlastung, Stress oder Überarbeitung' :
+            lang === 'en' ? 'Dietary overload, mental stress or overwork' :
+            lang === 'es' ? 'Sobrecarga dietética, estrés o sobreesfuerzo' :
+            lang === 'fr' ? 'Surcharge alimentaire, stress ou surmenage' :
+            lang === 'it' ? 'Sovraccarico dietetico, stress o superlavoro' :
+            lang === 'el' ? 'Διαιτητική υπερφόρτωση, στρες ή υπερκόπωση' : 'Диетическая перегрузка, стресс или переутомление';
   } else {
     // Strikt nach Vorgabe: wenn im Text nicht genannt, Unbekannt (Bitte erfragen)
     causa = lang === 'de' ? 'Unbekannt (Bitte erfragen)' :
@@ -1203,10 +1279,16 @@ export function extractSymptomsDeterministically(
             lang === 'el' ? 'Άγνωστο (Παρακαλώ ρωτήστε)' : 'Неизвестно (Уточнить)';
   }
 
-  // 3. Modalitäten (Was verschlimmert oder verbessert) - Keine < oder > Zeichen
+  // 3. Modalitäten (Was verschlimmert oder verbessert) - Erfordert explizite Besserungs- oder Verschlimmerungs-Angabe
   let modalitaeten = '';
-  const hasRestModal = lower.includes('ruhe') || lower.includes('rest') || lower.includes('repos') || lower.includes('riposo') || lower.includes('ηρεμ') || lower.includes('ανάπαυσ') || lower.includes('αναπαυσ') || lower.includes('ξεκουρασ') || lower.includes('покой');
-  const hasAirModal = lower.includes('luft') || lower.includes('air') || lower.includes('aire') || lower.includes('aria') || lower.includes('αέρ') || lower.includes('αερ') || lower.includes('δροσερ') || lower.includes('καθαρ') || lower.includes('καθένας αέρας') || lower.includes('воздух');
+  const indicatesBetter = /\b(besser|gebessert|besserung|erleichter|linderung|better|amelior|relie|mejora|mejor|soulag|mieux|miglior|meglio|βελτίωσ|βελτιωσ|καλύτερ|улучш|лучше)\b/i.test(lower) || lower.includes('besser') || lower.includes('gebessert') || lower.includes('besserung') || lower.includes('better') || lower.includes('mejora') || lower.includes('soulage');
+  const indicatesWorse = /\b(schlimmer|schlechter|verschlimm|verschlecht|unerträglich|verstärkt|worse|aggravat|peor|empeor|agrava|pire|peggior|peggio|χειρότερ|επιδείνωσ|хуже|ухудш)\b/i.test(lower) || lower.includes('schlimmer') || lower.includes('schlechter') || lower.includes('verschlimm') || lower.includes('worse') || lower.includes('aggravat') || lower.includes('peor') || lower.includes('empeora');
+
+  const hasRestKeyword = lower.includes('ruhe') || lower.includes('liegen') || lower.includes('bett') || lower.includes('rest') || lower.includes('lying') || lower.includes('repos') || lower.includes('riposo') || lower.includes('ανάπαυσ') || lower.includes('покой');
+  const hasMotionKeyword = lower.includes('bewegung') || lower.includes('aufsteh') || lower.includes('aufrichten') || lower.includes('laufen') || lower.includes('gehen') || lower.includes('motion') || lower.includes('movement') || lower.includes('rising') || lower.includes('movimiento') || lower.includes('mouvement') || lower.includes('κίνησ') || lower.includes('движен');
+  const hasAirKeyword = lower.includes('frische luft') || lower.includes('frischer luft') || lower.includes('kühle luft') || lower.includes('fresh air') || lower.includes('cool air') || lower.includes('aire fresco') || lower.includes('air frais') || lower.includes('aria fresca') || lower.includes('καθαρό αέρα') || lower.includes('свежий воздух');
+  const hasWarmthKeyword = lower.includes('wärme') || lower.includes('warme umschläge') || lower.includes('einhüllen') || lower.includes('warmes zimmer') || lower.includes('warmth') || lower.includes('warm applications') || lower.includes('wrapping up') || lower.includes('calor local') || lower.includes('chaleur locale') || lower.includes('calore locale') || lower.includes('τοπική ζέστη') || lower.includes('тепло');
+  const hasColdKeyword = lower.includes('kälte') || lower.includes('kaltes wasser') || lower.includes('kalte umschläge') || lower.includes('cold applications') || lower.includes('cold water') || lower.includes('compresas frías') || lower.includes('compresses froides') || lower.includes('κρύα επιθέματα') || lower.includes('холодные компрессы');
 
   if (lower.includes('aufsteh') || lower.includes('aufstehe') || lower.includes('aufrichten') || lower.includes('rising') || lower.includes('levantar') || lower.includes('lever')) {
     modalitaeten = lang === 'de' ? 'Verschlimmert beim Aufstehen / Aufrichten | Gebessert durch Ruhe im Liegen' :
@@ -1216,7 +1298,7 @@ export function extractSymptomsDeterministically(
                    lang === 'it' ? 'Peggiorato alzandosi o drizzandosi | Migliorato dal riposo a letto' :
                    lang === 'el' ? 'Επιδείνωση κατά την έγερση / σήκωμα | Βελτίωση σε ανάπαυση στο κρεβάτι' :
                    'Ухудшение при вставании / выпрямлении | Улучшение в покое лежа';
-  } else if (hasRestModal && hasAirModal) {
+  } else if ((hasRestKeyword && hasAirKeyword && indicatesBetter) || (hasRestKeyword && hasAirKeyword && !indicatesWorse)) {
     modalitaeten = lang === 'de' ? 'Besserung durch Ruhe & frische Luft | Verschlimmert durch Bewegung & stickige Wärme' :
                    lang === 'en' ? 'Ameliorated by rest & fresh air | Aggravated by motion & stuffy warmth' :
                    lang === 'es' ? 'Mejora con reposo y aire fresco | Empeora con movimiento y calor sofocante' :
@@ -1224,15 +1306,7 @@ export function extractSymptomsDeterministically(
                    lang === 'it' ? 'Miglioramento con riposo e aria fresca | Peggioramento con movimento e calore soffocante' :
                    lang === 'el' ? 'Βελτίωση με ανάπαυση, ηρεμία και καθαρό αέρα | Επιδείνωση με κίνηση & ζέστη' :
                    'Улучшение от покоя и свежего воздуха | Ухудшение от движения и духоты';
-  } else if (lower.includes('20') || lower.includes('16') || lower.includes('abend') || lower.includes('evening') || lower.includes('tarde') || lower.includes('soir')) {
-    modalitaeten = lang === 'de' ? 'Typische Verschlimmerung am Abend (ca. 16–20 Uhr) | Besserung durch Ruhe im abgedunkelten Raum' :
-                   lang === 'en' ? 'Characteristic aggravation in the evening (approx. 4–8 PM) | Ameliorated by resting in a dark room' :
-                   lang === 'es' ? 'Agravación típica al atardecer (16–20 h) | Mejora con reposo en habitación oscura' :
-                   lang === 'fr' ? 'Aggravation caractéristique vers le soir (16–20h) | Amélioration par le repos dans l\'obscurité' :
-                   lang === 'it' ? 'Peggioramento serale (ore 16–20) | Migliorato dal riposo in stanza buia' :
-                   lang === 'el' ? 'Χαρακτηριστική επιδείνωση το απόγευμα/βράδυ (16–20) | Βελτίωση με ανάπαυση σε σκοτεινό δωμάτιο' :
-                   'Ухудшение вечером (16–20 ч) | Улучшение в покое в темноте';
-  } else if (lower.includes('wärm') || lower.includes('warm') || lower.includes('calor') || lower.includes('chaleur') || lower.includes('caldo') || lower.includes('θερμ') || lower.includes('ζεστ')) {
+  } else if (hasWarmthKeyword && (indicatesBetter || (indicatesWorse && hasColdKeyword))) {
     modalitaeten = lang === 'de' ? 'Gebessert durch lokale Wärme und warme Umschläge | Verschlimmert durch Kälte' :
                    lang === 'en' ? 'Ameliorated by local warmth and warm applications | Aggravated by cold' :
                    lang === 'es' ? 'Mejora por calor local y compresas calientes | Empeora por frío' :
@@ -1240,7 +1314,7 @@ export function extractSymptomsDeterministically(
                    lang === 'it' ? 'Miglioramento col calore locale | Peggioramento col freddo' :
                    lang === 'el' ? 'Βελτίωση με τοπική ζέστη | Επιδείνωση με κρύο' :
                    'Улучшение от тепла | Ухудшение от холода';
-  } else if (lower.includes('kälte') || lower.includes('kalt') || lower.includes('cold') || lower.includes('frio') || lower.includes('froid') || hasAirModal || lower.includes('ψυχρ') || lower.includes('κρύ')) {
+  } else if ((hasColdKeyword || hasAirKeyword) && (indicatesBetter || (indicatesWorse && hasWarmthKeyword))) {
     modalitaeten = lang === 'de' ? 'Gebessert durch Kälte und kühle Luft | Verschlimmert durch Wärme' :
                    lang === 'en' ? 'Ameliorated by cold and cool air | Aggravated by warmth' :
                    lang === 'es' ? 'Mejora con frío y aire fresco | Empeora con calor' :
@@ -1248,7 +1322,7 @@ export function extractSymptomsDeterministically(
                    lang === 'it' ? 'Migliorato dal freddo e aria fresca | Peggiorato dal calore' :
                    lang === 'el' ? 'Βελτίωση με κρύο και δροσερό αέρα | Επιδείνωση με ζέστη' :
                    'Улучшение от холода и свежего воздуха | Ухудшение от тепла';
-  } else if (lower.includes('bewegung') || hasRestModal || lower.includes('motion') || lower.includes('movimiento') || lower.includes('κίνησ')) {
+  } else if (hasMotionKeyword && (indicatesWorse || (hasRestKeyword && indicatesBetter))) {
     modalitaeten = lang === 'de' ? 'Verschlimmert durch geringste Bewegung und Erschütterung | Gebessert durch absolute Ruhe' :
                    lang === 'en' ? 'Aggravated by slightest movement and jarring | Ameliorated by complete rest' :
                    lang === 'es' ? 'Empeora con el menor movimiento | Mejora con reposo absoluto' :

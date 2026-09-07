@@ -503,6 +503,8 @@ Analysiere den Text und ordne die Wörter ausnahmslos in diese vier Variablen ei
 - [Modalitäten] = Was verschlimmert (>) oder verbessert (<) den Zustand (Kälte, Wärme, Tageszeit, Bewegung)?
 - [Begleitsymptome] = Welche zusätzlichen Symptome oder Gemütszustände liegen vor?
 
+WICHTIG / KEINE HALLUZINATIONEN: Erfinde NIEMALS eine Causa (wie z. B. Meerwasser, Sonne, Hitze, Kälte) oder Modalitäten (wie Besserung durch Wärme), wenn diese im Text des Patienten nicht explizit genannt wurden! Wenn der Patient nur "Fieber" eingibt, ist Leitsymptom "Fieber" und Causa, Modalitäten sowie Begleitsymptome müssen strikt "Unbekannt (Bitte erfragen)" sein.
+
 2. SCHRITT: PRIMÄR-FILTER (Arznei-Pool)
 Suche in deiner homöopathischen Datenbank nach allen Arzneimitteln, die eine hohe Wertigkeit für die Kombination aus [Leitsymptom] und [Causa] besitzen. Dies ist dein "Start-Pool".
 
@@ -1083,8 +1085,13 @@ Bei der Aufnahme mehrerer Beschwerden (z. B. Fieber und Kopfschmerzen, Husten un
 4. Modalitäten (Verschlechterung oder Besserung durch Wärme, Kälte, Ruhe, Bewegung, Druck, Tageszeit): ${hasModalitaeten ? "Erfasst: " + currentMatrix.modalitaeten : "Falls in Eingabe genannt -> extrahieren, sonst erfragen"}
 5. Begleitsymptome und das Gemüt (Concomitants wie Durst, Schweiß, Temperaturverlangen UND psychischer Zustand / Gemütsverfassung wie Unruhe, Reizbarkeit, Furcht, Apathie): ${hasBegleitsymptome && hasGemuet ? "Erfasst: Begleit=" + currentMatrix.begleitsymptome.join(", ") + " | Gemüt=" + currentMatrix.gemuet : "Falls in Eingabe genannt -> extrahieren, sonst erfragen"}
 
-### VERMEIDUNG HALLUZINIERTER SYMPTOME:
-Erfasse jeden Patienten absolut individuell und vermeide halluzinierte Symptome! Nimm nur auf, was der Patient explizit geäußert hat. Füge keine hypothetischen Symptome hinzu, die nicht genannt wurden.
+### VERMEIDUNG HALLUZINIERTER SYMPTOME & MINIMAL-EINGABEN:
+- Erfasse jeden Patienten absolut individuell und vermeide halluzinierte Symptome! Nimm nur auf, was der Patient explizit geäußert hat. Füge keine hypothetischen Symptome hinzu, die nicht genannt wurden.
+- WENN DER PATIENT NUR EIN EINZELNES WORT ODER KURZES SYMPTOM EINGIBT (z. B. "Fieber", "Kopfschmerzen", "Halsschmerzen", "Bauchschmerzen"):
+  * Trage in "wichtige_symptom_fragmente" NUR die Lokalisation ein (z. B. "Fieber" bzw. "Kopfschmerzen").
+  * Setze "causa", "empfindung", "modalitaeten" und "gemuet" zwingend auf null und "begleitsymptome" auf []!
+  * Erfinde KEINESFALLS Auslöser (wie Meerwasser, Sonnenhitze, Kälte) oder Modalitäten (wie Besserung durch Wärme), wenn diese vom Patienten nicht genannt wurden!
+  * Frage in "naechste_frage" nach der ersten tatsächlich noch fehlenden Säule (z. B. Causa / Auslöser).
 
 ### VORDEFINIERTE ANKLICKBARE OPTIONEN:
 Für die Fragen generierst du im Pop-up stets 4 bis 6 vordefinierte, treffende homöopathische anklickbare Optionen passend zum individuellen Symptom des Patienten. (Der Anwender erhält im Frontend dazu stets ein verbindliches Freitextfeld).

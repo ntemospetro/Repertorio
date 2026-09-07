@@ -498,7 +498,7 @@ export function enrichClinicalText(
             case 'ru':
               return '< Ухудшение от жары / горячего воздуха | > Улучшение от прохлады и свежего воздуха';
           }
-        } else {
+        } else if (userIndicatedBetter) {
           switch (lang) {
             case 'de':
               return '> Gebessert durch lokale Wärme & Einhüllen | < Kälte';
@@ -554,7 +554,7 @@ export function enrichClinicalText(
             case 'ru':
               return '< Ухудшение от холода, холодного ветра и раскрывания | > Улучшение от тепла';
           }
-        } else {
+        } else if (userIndicatedBetter) {
           switch (lang) {
             case 'de':
               return '> Gebessert durch kühle, frische Luft & Kälte | < Wärme';
@@ -593,7 +593,7 @@ export function enrichClinicalText(
             case 'ru':
               return '< Ухудшение в покое и неподвижности | > Улучшение от мягкого движения';
           }
-        } else {
+        } else if (userIndicatedBetter) {
           switch (lang) {
             case 'de':
               return '> Gebessert durch absolute Ruhe & Liegen | < Geringste Bewegung';
@@ -644,7 +644,7 @@ export function enrichClinicalText(
             case 'ru':
               return '> Улучшение от умеренного непрерывного движения | < Ухудшение в покое';
           }
-        } else {
+        } else if (userIndicatedWorse) {
           switch (lang) {
             case 'de':
               return '< Verschlimmert durch Bewegung | > Gebessert durch Ruhe';
@@ -664,16 +664,16 @@ export function enrichClinicalText(
         }
       }
 
-      // 7. Pressure / Hard pressure
+      // 7. Pressure / Hard pressure (only if better indicated)
       if (
-        lower.includes('druck') ||
+        (lower.includes('druck') ||
         lower.includes('press') ||
         lower.includes('pression') ||
         lower.includes('pressione') ||
         lower.includes('πίεσ') ||
-        lower.includes('πιεσ') ||
         lower.includes('σφίξιμο') ||
-        lower.includes('давлен')
+        lower.includes('давлен')) &&
+        userIndicatedBetter
       ) {
         switch (lang) {
           case 'de':
@@ -693,9 +693,9 @@ export function enrichClinicalText(
         }
       }
 
-      // 8. Evening / Time modalities (16-20h)
+      // 8. Evening / Time modalities (16-20h) (only if worse indicated)
       if (
-        lower.includes('abend') ||
+        (lower.includes('abend') ||
         lower.includes('evening') ||
         lower.includes('tarde') ||
         lower.includes('soir') ||
@@ -706,7 +706,8 @@ export function enrichClinicalText(
         lower.includes('απογευμα') ||
         lower.includes('вечер') ||
         lower.includes('16') ||
-        lower.includes('20')
+        lower.includes('20')) &&
+        userIndicatedWorse
       ) {
         switch (lang) {
           case 'de':
@@ -726,9 +727,9 @@ export function enrichClinicalText(
         }
       }
 
-      // 9. Morning / Waking
+      // 9. Morning / Waking (only if worse indicated)
       if (
-        lower.includes('morgen') ||
+        (lower.includes('morgen') ||
         lower.includes('morning') ||
         lower.includes('mañana') ||
         lower.includes('matin') ||
@@ -736,7 +737,8 @@ export function enrichClinicalText(
         lower.includes('πρωί') ||
         lower.includes('πρωι') ||
         lower.includes('ξύπνημα') ||
-        lower.includes('утро')
+        lower.includes('утро')) &&
+        userIndicatedWorse
       ) {
         switch (lang) {
           case 'de':
@@ -771,8 +773,8 @@ export function enrichClinicalText(
     }
 
     case 'causa': {
-      // 1. Sun & Heat / Beach / Sea (matches "Gestern am Strand gewesen" or "Έκθεση στη θάλασσα / ήλιος")
-      if (
+      // 1. Sea / Beach / Maritime Air (only if explicit marine words are used)
+      const hasMarine =
         lower.includes('strand') ||
         lower.includes('beach') ||
         lower.includes('playa') ||
@@ -782,28 +784,33 @@ export function enrichClinicalText(
         lower.includes('παραλια') ||
         lower.includes('θάλασσ') ||
         lower.includes('θαλασσ') ||
-        lower.includes('meer') ||
-        lower.includes('sea') ||
-        lower.includes('mar') ||
-        lower.includes('mare') ||
+        lower.includes('meerwasser') ||
+        lower.includes('im meer') ||
+        lower.includes('am meer') ||
+        lower.includes('sea air') ||
         lower.includes('пляж') ||
-        lower.includes('море') ||
-        lower.includes('sonne') ||
-        lower.includes('sun') ||
-        lower.includes('sol') ||
-        lower.includes('soleil') ||
-        lower.includes('sole') ||
-        lower.includes('ήλι') ||
-        lower.includes('ηλι') ||
-        lower.includes('солнц') ||
-        lower.includes('hitze') ||
-        lower.includes('heat') ||
-        lower.includes('calor') ||
-        lower.includes('chaleur') ||
-        lower.includes('caldo') ||
-        lower.includes('ζέστ') ||
-        lower.includes('ζεστ')
-      ) {
+        lower.includes('на море');
+
+      // Sunstroke / Heatstroke / Intense direct sun exposure
+      const hasSunstroke =
+        lower.includes('sonnenstich') ||
+        lower.includes('sonnenbad') ||
+        lower.includes('hitzschlag') ||
+        lower.includes('sonnenbrand') ||
+        lower.includes('pralle sonne') ||
+        lower.includes('in der sonne') ||
+        lower.includes('sunstroke') ||
+        lower.includes('heatstroke') ||
+        lower.includes('sunburn') ||
+        lower.includes('coup de soleil') ||
+        lower.includes('insolacion') ||
+        lower.includes('insolation') ||
+        lower.includes('colpo di calore') ||
+        lower.includes('ηλίαση') ||
+        lower.includes('ηλιαση') ||
+        lower.includes('солнечный удар');
+
+      if (hasMarine && hasSunstroke) {
         switch (lang) {
           case 'de':
             return `${capitalizeFirst(targetText)} (Sonnen-, Hitze- & Meeresluft-Exposition)`;
@@ -822,23 +829,55 @@ export function enrichClinicalText(
         }
       }
 
-      // 2. Cold Wind / Draft
-      if (
-        lower.includes('wind') ||
+      if (hasMarine) {
+        switch (lang) {
+          case 'de':
+            return `${capitalizeFirst(targetText)} (Meeresluft- & Meeres-Exposition)`;
+          case 'en':
+            return `${capitalizeFirst(targetText)} (Sea air and maritime exposure)`;
+          case 'es':
+            return `${capitalizeFirst(targetText)} (Exposición a la brisa marina y mar)`;
+          case 'fr':
+            return `${capitalizeFirst(targetText)} (Exposition à l'air marin et la mer)`;
+          case 'it':
+            return `${capitalizeFirst(targetText)} (Esposizione ad aria marina e mare)`;
+          case 'el':
+            return `${capitalizeFirst(targetText)} (Έκθεση σε θαλασσινό αέρα / θάλασσα)`;
+          case 'ru':
+            return `${capitalizeFirst(targetText)} (Воздействие морского воздуха и моря)`;
+        }
+      }
+
+      if (hasSunstroke) {
+        switch (lang) {
+          case 'de':
+            return `${capitalizeFirst(targetText)} (Sonnenstich / intensive Hitze-Exposition)`;
+          case 'en':
+            return `${capitalizeFirst(targetText)} (Sunstroke / intense heat exposure)`;
+          case 'es':
+            return `${capitalizeFirst(targetText)} (Insolación / exposición intensa al calor)`;
+          case 'fr':
+            return `${capitalizeFirst(targetText)} (Insolation / coup de chaleur)`;
+          case 'it':
+            return `${capitalizeFirst(targetText)} (Colpo di sole / calore intenso)`;
+          case 'el':
+            return `${capitalizeFirst(targetText)} (Ηλίαση / έντονη έκθεση σε θερμότητα)`;
+          case 'ru':
+            return `${capitalizeFirst(targetText)} (Солнечный удар / сильный перегрев)`;
+        }
+      }
+
+      // 2. Cold Wind / Draft (requires draft/wind, not just generic cold)
+      const hasDraftOrColdWind =
         lower.includes('zugluft') ||
         lower.includes('draft') ||
-        lower.includes('kalt') ||
-        lower.includes('cold') ||
-        lower.includes('frio') ||
-        lower.includes('froid') ||
-        lower.includes('freddo') ||
-        lower.includes('άνεμ') ||
-        lower.includes('ανεμ') ||
         lower.includes('ρεύμα') ||
         lower.includes('ρευμα') ||
-        lower.includes('ветер') ||
-        lower.includes('сквозняк')
-      ) {
+        lower.includes('сквозняк') ||
+        ((lower.includes('wind') || lower.includes('άνεμ') || lower.includes('ветер')) &&
+         (lower.includes('kalt') || lower.includes('cold') || lower.includes('frio') || lower.includes('froid') || lower.includes('freddo') || lower.includes('ψυχρ') || lower.includes('холод')));
+
+      if (hasDraftOrColdWind) {
         switch (lang) {
           case 'de':
             return `${capitalizeFirst(targetText)} (Kalter, trockener Wind / Zugluft-Exposition)`;
@@ -999,13 +1038,34 @@ export function enrichClinicalText(
         lower.includes('αιμορροΐδ') ||
         lower.includes('геморро');
 
+      const isThrobbing =
+        lower.includes('puls') ||
+        lower.includes('klopf') ||
+        lower.includes('poch') ||
+        lower.includes('throb') ||
+        lower.includes('schlag') ||
+        lower.includes('palpit');
+
+      const isMigraine =
+        lower.includes('migrän') ||
+        lower.includes('migraen') ||
+        lower.includes('migraine') ||
+        lower.includes('ημικραν');
+
       const headText =
-        lang === 'de' ? 'Akute pulsierende Kopfschmerzen / Migräne' :
-        lang === 'en' ? 'Acute throbbing headache / migraine' :
-        lang === 'es' ? 'Cefalea pulsátil aguda / migraña' :
-        lang === 'fr' ? 'Maux de tête battants aigus / migraine' :
-        lang === 'it' ? 'Cefalea pulsante acuta / emicrania' :
-        lang === 'el' ? 'Πονοκέφαλος (Κεφαλαλγία)' : 'Острая пульсирующая головная боль / мигрень';
+        (isThrobbing || isMigraine)
+          ? (lang === 'de' ? 'Akute pulsierende Kopfschmerzen / Migräne' :
+             lang === 'en' ? 'Acute throbbing headache / migraine' :
+             lang === 'es' ? 'Cefalea pulsátil aguda / migraña' :
+             lang === 'fr' ? 'Maux de tête battants aigus / migraine' :
+             lang === 'it' ? 'Cefalea pulsante acuta / emicrania' :
+             lang === 'el' ? 'Πονοκέφαλος (Κεφαλαλγία)' : 'Острая пульсирующая головная боль / мигрень')
+          : (lang === 'de' ? 'Kopfschmerzen' :
+             lang === 'en' ? 'Headache' :
+             lang === 'es' ? 'Dolor de cabeza' :
+             lang === 'fr' ? 'Maux de tête' :
+             lang === 'it' ? 'Mal di testa' :
+             lang === 'el' ? 'Πονοκέφαλος' : 'Головная боль');
 
       const analText =
         lang === 'de' ? 'Anal- & Gesäßschmerzen (Hämorrhoidalbeschwerden)' :
@@ -1025,7 +1085,7 @@ export function enrichClinicalText(
         return headText;
       }
 
-      // Sudden High Fever
+      // Fever
       if (
         lower.includes('fieber') ||
         lower.includes('fever') ||
@@ -1035,21 +1095,58 @@ export function enrichClinicalText(
         lower.includes('πυρετ') ||
         lower.includes('лихорад')
       ) {
+        const isSudden = lower.includes('plötzlich') || lower.includes('sudden') || lower.includes('repent') || lower.includes('soudain') || lower.includes('improvvis') || lower.includes('αιφνίδι') || lower.includes('внезапн');
+        const isHigh = lower.includes('hoch') || lower.includes('high') || lower.includes('alt') || lower.includes('élevé') || lower.includes('υψηλ') || lower.includes('высок');
+        const hasHeatSensation = lower.includes('hitze') || lower.includes('heat') || lower.includes('calor') || lower.includes('chaleur') || lower.includes('caldo') || lower.includes('ζέστ') || lower.includes('жар');
+
+        if (isSudden && isHigh && hasHeatSensation) {
+          switch (lang) {
+            case 'de':
+              return 'Plötzliches hohes Fieber und Hitzegefühl';
+            case 'en':
+              return 'Sudden high fever and heat sensation';
+            case 'es':
+              return 'Fiebre alta repentina y sensación de calor';
+            case 'fr':
+              return 'Fièvre élevée soudaine et sensation de chaleur';
+            case 'it':
+              return 'Febbre alta improvvisa e sensazione di calore';
+            case 'el':
+              return 'Αιφνίδιος υψηλός πυρετός και αίσθημα θερμότητας';
+            case 'ru':
+              return 'Внезапная высокая температура и ощущение жара';
+          }
+        }
+        if (isSudden && isHigh) {
+          switch (lang) {
+            case 'de': return 'Plötzliches hohes Fieber';
+            case 'en': return 'Sudden high fever';
+            case 'es': return 'Fiebre alta repentina';
+            case 'fr': return 'Fièvre élevée soudaine';
+            case 'it': return 'Febbre alta improvvisa';
+            case 'el': return 'Αιφνίδιος υψηλός πυρετός';
+            case 'ru': return 'Внезапная высокая температура';
+          }
+        }
+        if (isHigh) {
+          switch (lang) {
+            case 'de': return 'Hohes Fieber';
+            case 'en': return 'High fever';
+            case 'es': return 'Fiebre alta';
+            case 'fr': return 'Forte fièvre';
+            case 'it': return 'Febbre alta';
+            case 'el': return 'Υψηλός πυρετός';
+            case 'ru': return 'Высокая температура';
+          }
+        }
         switch (lang) {
-          case 'de':
-            return 'Plötzliches hohes Fieber und Hitzegefühl';
-          case 'en':
-            return 'Sudden high fever and heat sensation';
-          case 'es':
-            return 'Fiebre alta repentina y sensación de calor';
-          case 'fr':
-            return 'Fièvre élevée soudaine et sensation de chaleur';
-          case 'it':
-            return 'Febbre alta improvvisa e sensazione di calore';
-          case 'el':
-            return 'Αιφνίδιος υψηλός πυρετός και αίσθημα θερμότητας';
-          case 'ru':
-            return 'Внезапная высокая температура и ощущение жара';
+          case 'de': return 'Fieber';
+          case 'en': return 'Fever';
+          case 'es': return 'Fiebre';
+          case 'fr': return 'Fièvre';
+          case 'it': return 'Febbre';
+          case 'el': return 'Πυρετός';
+          case 'ru': return 'Лихорадка / температура';
         }
       }
 
@@ -1068,21 +1165,39 @@ export function enrichClinicalText(
         lower.includes('στομαχ') ||
         lower.includes('живот')
       ) {
+        const isColic =
+          lower.includes('krampf') ||
+          lower.includes('kolik') ||
+          lower.includes('cramp') ||
+          lower.includes('colic') ||
+          lower.includes('σπασμ');
+
+        if (isColic) {
+          switch (lang) {
+            case 'de':
+              return 'Akute krampfartige Bauchschmerzen (Kolik)';
+            case 'en':
+              return 'Acute spasmodic abdominal colic';
+            case 'es':
+              return 'Cólico abdominal espasmódico agudo';
+            case 'fr':
+              return 'Coliques abdominales spasmodiques aiguës';
+            case 'it':
+              return 'Colica addominale crampiforme acuta';
+            case 'el':
+              return 'Οξείες σπαστικές κοιλιακές κράμπες (κολικός)';
+            case 'ru':
+              return 'Острые спастические боли в животе (колика)';
+          }
+        }
         switch (lang) {
-          case 'de':
-            return 'Akute krampfartige Bauchschmerzen (Kolik)';
-          case 'en':
-            return 'Acute spasmodic abdominal colic';
-          case 'es':
-            return 'Cólico abdominal espasmódico agudo';
-          case 'fr':
-            return 'Coliques abdominales spasmodiques aiguës';
-          case 'it':
-            return 'Colica addominale crampiforme acuta';
-          case 'el':
-            return 'Οξείες σπαστικές κοιλιακές κράμπες (κολικός)';
-          case 'ru':
-            return 'Острые спастические боли в животе (колика)';
+          case 'de': return 'Bauchschmerzen';
+          case 'en': return 'Abdominal pain';
+          case 'es': return 'Dolor abdominal';
+          case 'fr': return 'Douleurs abdominales';
+          case 'it': return 'Dolore addominale';
+          case 'el': return 'Κοιλιακό άλγος';
+          case 'ru': return 'Боли в животе';
         }
       }
 
@@ -1266,6 +1381,23 @@ export function formatClinicalVariableForDisplay(
 ): string {
   const trimmed = (val || '').trim();
   if (!trimmed) return '';
+
+  const lowerTrimmed = trimmed.toLowerCase();
+  if (
+    lowerTrimmed.includes('unbekannt') ||
+    lowerTrimmed.includes('unknown') ||
+    lowerTrimmed.includes('desconocido') ||
+    lowerTrimmed.includes('inconnu') ||
+    lowerTrimmed.includes('sconosciuto') ||
+    lowerTrimmed.includes('άγνωστο') ||
+    lowerTrimmed.includes('αγνωστο') ||
+    lowerTrimmed.includes('неизвестно') ||
+    lowerTrimmed.includes('noch nicht genannt') ||
+    lowerTrimmed.includes('bitte erfragen') ||
+    lowerTrimmed.includes('please inquire')
+  ) {
+    return trimmed;
+  }
 
   const { coreText, isBetter, isWorse, isConcomitant, isCausa } = stripClinicalPrefix(trimmed);
 

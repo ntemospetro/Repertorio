@@ -32,8 +32,13 @@ import {
   CaseType 
 } from '../services/hahnemannEngineService';
 import { KentRepertorySection } from './KentRepertorySection';
+import { 
+  performKentMathematicalRepertorisation,
+  KentRemedySummary,
+  KentRepertorisationMatrix,
+} from '../services/kentRepertoryService';
 import { useTranslation, useLanguage } from '../i18n/LanguageContext';
-import { HomeopathicExpertResult } from '../types';
+import { HomeopathicExpertResult, LanguageCode } from '../types';
 import { analyzeAcuteCaseWithAIOrFallback } from '../services/homeopathicExpertEngine';
 import { getRemedyClassicalAuthors } from '../data/classicalAuthorsMap';
 import { 
@@ -61,7 +66,8 @@ import {
   Edit3,
   AlertTriangle,
   Snowflake,
-  Flame
+  Flame,
+  Award
 } from 'lucide-react';
 
 interface AcuteIntakeViewProps {
@@ -137,99 +143,7 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
     return getLocalizedRemedies(language);
   }, [language]);
 
-  // Displayed remedies: Shown when clarification or Hahnemann analysis is completed
-  const displayedRemedies = useMemo(() => {
-    if (!isClarificationApplied && !hahnemannData) {
-      return [];
-    }
-
-    // If Hahnemann 6-Pillar evaluation provided specific differential remedies
-    if (hahnemannData && hahnemannData.differentialRemedies && hahnemannData.differentialRemedies.length > 0) {
-      const matchedFromHahnemann: Array<{ remedy: LocalizedRemedy; rec: SymptomMatchResult; isRecommended: boolean; index: number }> = [];
-      const usedIds = new Set<string>();
-
-      hahnemannData.differentialRemedies.forEach((remName, idx) => {
-        const cleanTarget = remName.toLowerCase().trim();
-        const found = localizedRemedies.find(r => {
-          const latin = r.latinName.toLowerCase();
-          const common = r.commonName.toLowerCase();
-          const id = r.id.toLowerCase().replace(/-/g, ' ');
-          return (
-            latin === cleanTarget ||
-            latin.startsWith(cleanTarget) ||
-            cleanTarget.startsWith(latin) ||
-            id === cleanTarget ||
-            common === cleanTarget
-          );
-        });
-
-        if (found && !usedIds.has(found.id)) {
-          usedIds.add(found.id);
-          const existingRec = recommendations.find(rec => rec.remedy.id === found.id);
-          const baseScore = idx === 0 ? 96 : idx === 1 ? 89 : idx === 2 ? 83 : Math.max(74, 80 - idx * 4);
-          
-          const matrix = hahnemannData.matrix;
-          const rationale = existingRec?.clinicalRationale || 
-            (idx === 0 
-              ? t('hahnemannSimileMatchesTotality', {
-                  name: found.latinName,
-                  causa: matrix.causa || 'akut',
-                  lokalisierung: matrix.lokalisierung || 'spezifisch',
-                  empfindung: matrix.empfindung || 'charakteristisch',
-                  modalitaeten: matrix.modalitaeten || 'prägnant'
-                })
-              : t('hahnemannDiffAlternativeNote'));
-
-          const matchResult: SymptomMatchResult = {
-            remedy: found,
-            matchScore: existingRec?.matchScore ? Math.max(existingRec.matchScore, baseScore) : baseScore,
-            matchedKeywords: existingRec?.matchedKeywords || [matrix.lokalisierung || '', matrix.empfindung || ''].filter(Boolean),
-            matchedIndications: existingRec?.matchedIndications || found.mainIndications.slice(0, 2),
-            matchedKeynotes: existingRec?.matchedKeynotes || found.keynotes.slice(0, 2),
-            matchedModalities: existingRec?.matchedModalities || [found.modalitiesBetter[0], found.modalitiesWorse[0]].filter(Boolean),
-            clinicalRationale: rationale,
-            differentialNote: idx > 0 
-              ? (existingRec?.differentialNote || t('hahnemannDiffVersusPrimaryNote', { primary: hahnemannData.differentialRemedies[0] || '' }))
-              : undefined,
-            isPrimarySimile: idx === 0,
-          };
-
-          matchedFromHahnemann.push({
-            remedy: found,
-            rec: matchResult,
-            isRecommended: true,
-            index: idx,
-          });
-        }
-      });
-
-      // Supplement with further matches from recommendations if available (up to 3-4 remedies)
-      if (matchedFromHahnemann.length > 0) {
-        recommendations.forEach((rec) => {
-          if (!usedIds.has(rec.remedy.id) && matchedFromHahnemann.length < 4) {
-            usedIds.add(rec.remedy.id);
-            matchedFromHahnemann.push({
-              remedy: rec.remedy,
-              rec,
-              isRecommended: false,
-              index: matchedFromHahnemann.length,
-            });
-          }
-        });
-        return matchedFromHahnemann;
-      }
-    }
-
-    if (recommendations.length > 0) {
-      return recommendations.map((rec, index) => ({
-        remedy: rec.remedy,
-        rec,
-        isRecommended: true,
-        index,
-      }));
-    }
-    return [];
-  }, [isClarificationApplied, hahnemannData, recommendations, localizedRemedies]);
+  const currentLang = (language as LanguageCode) || 'de';
 
   // Helper: check if a variable string is missing, empty, or unknown
   const isVarMissing = (val: string | undefined | null): boolean => {
@@ -462,6 +376,155 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
       }
     }
   }, [language, localizedRemedies]);
+
+  // 1. Calculate the Kent Mathematical Repertorisation (§ 153 Organon)
+  // Evaluates characteristic rubrics, grades (1, 2, 3), Gesamtpunktzahl (Grad-Summe), Treffer and Leading Simile
+  const kentRepertorisation: KentRepertorisationMatrix = useMemo(() => {
+    return performKentMathematicalRepertorisation(
+      hahnemannData?.matrix || null,
+      comprehensiveCaseText || symptomText,
+      currentLang
+    );
+  }, [hahnemannData?.matrix, comprehensiveCaseText, symptomText, currentLang]);
+
+  // Displayed remedies: Synchronized 1:1 with Kent Mathematical Repertorisation & Kennrubriken
+  const displayedRemedies = useMemo(() => {
+    if (!isClarificationApplied && !hahnemannData) {
+      return [];
+    }
+
+    // Always prioritize the Kent Mathematical Repertorisation (§ 153 Organon)
+    // so that remedies, order, points (Gesamtpunktzahl / Grad-Summe), hits and Simile match 100%
+    if (kentRepertorisation && kentRepertorisation.remedies.length > 0) {
+      const matchedFromKent: Array<{
+        remedy: LocalizedRemedy;
+        rec: SymptomMatchResult;
+        isRecommended: boolean;
+        index: number;
+        kentSummary: KentRemedySummary;
+      }> = [];
+
+      kentRepertorisation.remedies.forEach((kentRem, idx) => {
+        const targetLatin = kentRem.latinName.toLowerCase().trim();
+        const targetShort = kentRem.shortName.toLowerCase().replace(/\./g, '').trim();
+        const targetKey = kentRem.key.toLowerCase().replace(/_/g, '-').trim();
+
+        let found = localizedRemedies.find((r) => r.latinName.toLowerCase().trim() === targetLatin);
+        if (!found) {
+          found = localizedRemedies.find(
+            (r) => r.id.toLowerCase() === targetKey || r.id.toLowerCase().replace(/-/g, '_') === kentRem.key
+          );
+        }
+        if (!found) {
+          found = localizedRemedies.find((r) => {
+            const rLatin = r.latinName.toLowerCase().trim();
+            return rLatin.startsWith(targetLatin) || targetLatin.startsWith(rLatin);
+          });
+        }
+        if (!found) {
+          const firstWord = targetLatin.split(' ')[0];
+          if (firstWord && firstWord.length >= 4) {
+            found = localizedRemedies.find((r) => r.latinName.toLowerCase().startsWith(firstWord));
+          }
+        }
+        if (!found && targetShort.length >= 3) {
+          found = localizedRemedies.find((r) => r.id.toLowerCase().includes(targetShort));
+        }
+
+        const remedy: LocalizedRemedy = found || {
+          id: kentRem.key.replace(/_/g, '-'),
+          latinName: kentRem.latinName,
+          commonName: kentRem.shortName,
+          categoryKey: 'plant',
+          category: 'Klassisches Einzelmittel',
+          origin: 'Kent Repertory § 153',
+          essence: kentRem.materiaMedicaVerification[currentLang] || kentRem.materiaMedicaVerification.de,
+          mainIndications: [kentRem.latinName],
+          keynotes: [
+            `${kentRem.totalScore} ${t('kentPointsAbbr')} ${t('kentTableTotalScoreRow')}`,
+            `${kentRem.hits}/${kentRem.totalRubrics} ${t('kentTableHitsRow')}`,
+          ],
+          mindEmotional: '',
+          modalitiesBetter: [],
+          modalitiesWorse: [],
+          potenciesAndDosage: 'C30 oder D12 (akut)',
+          sphereOfAction: [],
+          differentialRemedies: [],
+          searchKeywords: [kentRem.latinName, kentRem.shortName],
+        };
+
+        const existingRec = recommendations.find((rec) => rec.remedy.id === remedy.id);
+
+        const maxScorePossible = Math.max(1, kentRepertorisation.totalAnalyzedRubrics * 3);
+        const relativeRatio = kentRem.totalScore / maxScorePossible;
+        const calculatedMatchScore =
+          idx === 0 ? 98 : Math.min(94, Math.max(68, Math.round(relativeRatio * 100)));
+
+        const verificationText =
+          kentRem.materiaMedicaVerification[currentLang] || kentRem.materiaMedicaVerification.de;
+        const matrix = hahnemannData?.matrix;
+
+        const rationale =
+          idx === 0
+            ? verificationText ||
+              (matrix
+                ? t('hahnemannSimileMatchesTotality', {
+                    name: remedy.latinName,
+                    causa: matrix.causa || 'akut',
+                    lokalisierung: matrix.lokalisierung || 'spezifisch',
+                    empfindung: matrix.empfindung || 'charakteristisch',
+                    modalitaeten: matrix.modalitaeten || 'prägnant',
+                  })
+                : `${kentRem.totalScore} ${t('kentPointsAbbr')} - ${t('kentTableTotalScoreRow')}`)
+            : existingRec?.clinicalRationale || verificationText || t('hahnemannDiffAlternativeNote');
+
+        const matchResult: SymptomMatchResult = {
+          remedy,
+          matchScore: calculatedMatchScore,
+          matchedKeywords:
+            existingRec?.matchedKeywords ||
+            (matrix
+              ? [matrix.lokalisierung || '', matrix.empfindung || ''].filter(Boolean)
+              : [kentRem.latinName]),
+          matchedIndications: existingRec?.matchedIndications || remedy.mainIndications.slice(0, 2),
+          matchedKeynotes: existingRec?.matchedKeynotes || remedy.keynotes.slice(0, 2),
+          matchedModalities:
+            existingRec?.matchedModalities ||
+            [remedy.modalitiesBetter[0], remedy.modalitiesWorse[0]].filter(Boolean),
+          clinicalRationale: rationale,
+          differentialNote:
+            idx > 0
+              ? existingRec?.differentialNote ||
+                t('hahnemannDiffVersusPrimaryNote', {
+                  primary: kentRepertorisation.remedies[0]?.latinName || '',
+                })
+              : undefined,
+          isPrimarySimile: idx === 0,
+        };
+
+        matchedFromKent.push({
+          remedy,
+          rec: matchResult,
+          isRecommended: idx === 0,
+          index: idx,
+          kentSummary: kentRem,
+        });
+      });
+
+      return matchedFromKent;
+    }
+
+    if (recommendations.length > 0) {
+      return recommendations.map((rec, index) => ({
+        remedy: rec.remedy,
+        rec,
+        isRecommended: index === 0,
+        index,
+        kentSummary: undefined as any,
+      }));
+    }
+    return [];
+  }, [isClarificationApplied, hahnemannData, kentRepertorisation, localizedRemedies, recommendations, currentLang, t]);
 
   // Cleanup speech recognition on unmount
   useEffect(() => {
@@ -942,12 +1005,13 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
           <KentRepertorySection 
             matrix={hahnemannData?.matrix || null} 
             rawText={symptomText} 
+            repertorisation={kentRepertorisation}
             defaultExpanded={true} 
           />
 
         {/* 3-Column Responsive Cards Grid matching Bild 1 */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {displayedRemedies.map(({ remedy, rec, isRecommended, index }) => {
+          {displayedRemedies.map(({ remedy, rec, isRecommended, index, kentSummary }) => {
             const authorsInfo = getRemedyClassicalAuthors(remedy.id);
             const hasAnyAuthors = authorsInfo.hahnemann || authorsInfo.kent || authorsInfo.hering;
 
@@ -1016,12 +1080,18 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
                       >
                         {remedy.category}
                       </span>
-                      {rec && (
+                      {kentSummary ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300 shadow-2xs">
+                          <Award className="w-3 h-3 text-amber-700 shrink-0" />
+                          <span>{kentSummary.totalScore} {t('kentPointsAbbr')}</span>
+                          <span className="text-[10px] text-amber-700 font-normal">({kentSummary.hits}/{kentSummary.totalRubrics})</span>
+                        </span>
+                      ) : rec ? (
                         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-600 text-white shadow-2xs">
                           <Sparkles className="w-3 h-3" />
                           {rec.matchScore}%
                         </span>
-                      )}
+                      ) : null}
                     </div>
                   </div>
 
@@ -1060,9 +1130,10 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
                         )}
                       </div>
                       <p className="leading-relaxed text-[11px] text-slate-700">
-                        {index === 0 && expertResult?.recommendedSimile?.rationale
-                          ? expertResult.recommendedSimile.rationale
-                          : rec?.clinicalRationale}
+                        {rec?.clinicalRationale ||
+                          (index === 0 && expertResult?.recommendedSimile?.remedyName?.toLowerCase().includes(remedy.latinName.toLowerCase().split(' ')[0])
+                            ? expertResult.recommendedSimile.rationale
+                            : remedy.essence)}
                       </p>
                     </div>
                   )}

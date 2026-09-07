@@ -44,14 +44,15 @@ export interface KentRepertorisationMatrix {
 }
 
 // Canonical Kent Repertory Rubrics with authentic Kent degrees (3=Bold, 2=Italic, 1=Plain)
+// Strict adherence to J.T. Kent's Repertory of the Homeopathic Materia Medica
 const CANONICAL_KENT_RUBRICS: KentRubricDefinition[] = [
   // 1. CAUSA & GENERALS
   {
     id: 'causa_cold_dry_wind',
     chapter: 'Generals',
-    rubricName: 'Generals - Cold - air, dry, agg.',
+    rubricName: 'GENERALS - COLD - air - dry, cold air agg.',
     category: 'causa',
-    keywords: ['kalt', 'wind', 'ostwind', 'trocken', 'zugluft', 'cold', 'wind', 'dry', 'draft', 'viento', 'frio', 'vent', 'froid', 'freddo', 'vento', 'κρύο', 'άνεμος', 'холод', 'ветер'],
+    keywords: ['kalter wind', 'trockene kälte', 'ostwind', 'kaltem trockenem wind', 'trockener kälte', 'zugluft', 'cold dry wind', 'dry cold wind', 'viento frío y seco', 'vent froid et sec', 'vento freddo e secco', 'κρύο και ξηρό άνεμο', 'сухой холодный ветер'],
     remedyGrades: {
       acon: 3,
       bry: 2,
@@ -67,9 +68,9 @@ const CANONICAL_KENT_RUBRICS: KentRubricDefinition[] = [
   {
     id: 'causa_wet_getting',
     chapter: 'Generals',
-    rubricName: 'Generals - Wet - getting, agg.',
+    rubricName: 'GENERALS - WET - getting wet, agg.',
     category: 'causa',
-    keywords: ['nass', 'regen', 'durchnässt', 'unterkühlung', 'feucht', 'wet', 'rain', 'drenched', 'mojado', 'pluie', 'mouillé', 'bagnato', 'βροχή', 'дождь', 'промок'],
+    keywords: ['durchnässt', 'durchnässung', 'im regen', 'nass geworden', 'feuchte kälte', 'getting wet', 'drenched', 'mojado', 'mouillé', 'bagnato', 'βρέξιμο', 'промокание'],
     remedyGrades: {
       rhus_t: 3,
       dulc: 3,
@@ -83,9 +84,9 @@ const CANONICAL_KENT_RUBRICS: KentRubricDefinition[] = [
   {
     id: 'causa_fright_shock',
     chapter: 'Mind',
-    rubricName: 'Mind - Fright, ailments from',
+    rubricName: 'MIND - FRIGHT - complaints from',
     category: 'causa',
-    keywords: ['schreck', 'schock', 'trauma', 'unfall', 'angstauslöser', 'fright', 'shock', 'trauma', 'susto', 'peur', 'spavento', 'τρομάρα', 'испуг', 'шок'],
+    keywords: ['schreck', 'schock', 'plötzlicher schreck', 'trauma', 'fright', 'shock', 'susto', 'frayeur', 'spavento', 'τρομάρα', 'испуг'],
     remedyGrades: {
       acon: 3,
       ign: 3,
@@ -100,9 +101,9 @@ const CANONICAL_KENT_RUBRICS: KentRubricDefinition[] = [
   {
     id: 'causa_anger_vexation',
     chapter: 'Mind',
-    rubricName: 'Mind - Anger, vexation, ailments from',
+    rubricName: 'MIND - ANGER, vexation, ailments from',
     category: 'causa',
-    keywords: ['ärger', 'wut', 'kränkung', 'zorn', 'anger', 'vexation', 'indignation', 'ira', 'colere', 'rabbia', 'θυμός', 'гнев', 'обида'],
+    keywords: ['ärger', 'wut', 'kränkung', 'zorn', 'anger', 'vexation', 'indignation', 'ira', 'colère', 'rabbia', 'θυμός', 'гнев', 'обида'],
     remedyGrades: {
       cham: 3,
       coloc: 3,
@@ -116,9 +117,9 @@ const CANONICAL_KENT_RUBRICS: KentRubricDefinition[] = [
   {
     id: 'causa_heat_sun',
     chapter: 'Generals',
-    rubricName: 'Generals - Heat - sun, from',
+    rubricName: 'GENERALS - SUN - exposure to the sun, from',
     category: 'causa',
-    keywords: ['sonne', 'hitze', 'sonnenstich', 'überhitzung', 'sun', 'heat', 'sunstroke', 'sol', 'calor', 'soleil', 'sole', 'ήλιος', 'солнце', 'перегрев'],
+    keywords: ['sonnenstich', 'hitzschlag', 'sonnenhitze', 'sonnenexposition', 'sunstroke', 'heatstroke', 'exposure to sun', 'insolación', 'coup de soleil', 'colpo di sole', 'ηλίαση', 'солнечный удар'],
     remedyGrades: {
       glon: 3,
       bell: 3,
@@ -131,7 +132,7 @@ const CANONICAL_KENT_RUBRICS: KentRubricDefinition[] = [
   {
     id: 'causa_injury_trauma',
     chapter: 'Generals',
-    rubricName: 'Generals - Wounds - injuries, blows, falls',
+    rubricName: 'GENERALS - INJURIES, blows, falls',
     category: 'causa',
     keywords: ['sturz', 'schlag', 'unfall', 'prellung', 'verletzung', 'blow', 'fall', 'injury', 'bruise', 'golpe', 'chute', 'trauma', 'τραύμα', 'травма', 'ушиб'],
     remedyGrades: {
@@ -147,9 +148,9 @@ const CANONICAL_KENT_RUBRICS: KentRubricDefinition[] = [
   {
     id: 'mind_fear_death',
     chapter: 'Mind',
-    rubricName: 'Mind - Fear - death, of',
+    rubricName: 'MIND - FEAR - death, of',
     category: 'gemuet',
-    keywords: ['todesangst', 'angst zu sterben', 'panik', 'sterben', 'fear of death', 'death', 'miedo a morir', 'peur de la mort', 'paura di morire', 'φόβος θανάτου', 'страх смерти'],
+    keywords: ['todesangst', 'angst zu sterben', 'panik vor dem tod', 'fear of death', 'miedo a morir', 'peur de la mort', 'paura di morire', 'φόβος θανάτου', 'страх смерти'],
     remedyGrades: {
       acon: 3,
       ars: 3,
@@ -163,9 +164,9 @@ const CANONICAL_KENT_RUBRICS: KentRubricDefinition[] = [
   {
     id: 'mind_restlessness',
     chapter: 'Mind',
-    rubricName: 'Mind - Restlessness, nervousness',
+    rubricName: 'MIND - RESTLESSNESS',
     category: 'gemuet',
-    keywords: ['unruhe', 'rastlos', 'nervös', 'hin und her', 'unruhig', 'restlessness', 'restless', 'inquietud', 'agitation', 'irrequietezza', 'ανησυχία', 'беспокойство'],
+    keywords: ['unruhe', 'rastlos', 'angstvolle unruhe', 'hin und her getrieben', 'körperliche unruhe', 'restlessness', 'restless', 'inquietud', 'agitation', 'irrequietezza', 'ανησυχία', 'беспокойство'],
     remedyGrades: {
       acon: 3,
       ars: 3,
@@ -179,9 +180,9 @@ const CANONICAL_KENT_RUBRICS: KentRubricDefinition[] = [
   {
     id: 'mind_irritability',
     chapter: 'Mind',
-    rubricName: 'Mind - Irritability',
+    rubricName: 'MIND - IRRITABILITY',
     category: 'gemuet',
-    keywords: ['reizbar', 'zornig', 'will seine ruhe', 'ärgerlich', 'unleidlich', 'irritability', 'angry', 'quiet', 'irritable', 'irascible', 'irritabile', 'ευερεθιστότητα', 'раздражительность'],
+    keywords: ['reizbar', 'zornig', 'will seine ruhe', 'ärgerlich', 'unleidlich', 'will in ruhe gelassen werden', 'irritability', 'irritable', 'irascible', 'irritabile', 'ευερεθιστότητα', 'раздражительность'],
     remedyGrades: {
       bry: 3,
       cham: 3,
@@ -195,7 +196,7 @@ const CANONICAL_KENT_RUBRICS: KentRubricDefinition[] = [
   {
     id: 'mind_weeping_tearful',
     chapter: 'Mind',
-    rubricName: 'Mind - Weeping, tearful mood',
+    rubricName: 'MIND - WEEPING - tearful mood',
     category: 'gemuet',
     keywords: ['weinen', 'weinerlich', 'anhänglich', 'trostbedürftig', 'weinerliche stimmung', 'weeping', 'tearful', 'crying', 'llanto', 'pleurs', 'pianto', 'κλάμα', 'плаксивость'],
     remedyGrades: {
@@ -210,9 +211,9 @@ const CANONICAL_KENT_RUBRICS: KentRubricDefinition[] = [
   {
     id: 'mind_dullness_stupor',
     chapter: 'Mind',
-    rubricName: 'Mind - Dullness, sluggishness, stupor',
+    rubricName: 'MIND - DULLNESS, sluggishness',
     category: 'gemuet',
-    keywords: ['benommen', 'schläfrig', 'dumpf', 'schwer', 'apatisch', 'dullness', 'sluggishness', 'drowsy', 'embotamiento', 'lourdeur', 'ottusita', 'λήθαργος', 'вялость', 'отупение'],
+    keywords: ['benommen', 'schläfrig', 'dumpf', 'schwer', 'apathisch', 'dullness', 'sluggishness', 'drowsy', 'embotamiento', 'lourdeur', 'ottusita', 'λήθαργος', 'вялость', 'отупение'],
     remedyGrades: {
       gels: 3,
       bapt: 3,
@@ -228,9 +229,9 @@ const CANONICAL_KENT_RUBRICS: KentRubricDefinition[] = [
   {
     id: 'mod_motion_agg',
     chapter: 'Generals',
-    rubricName: 'Generals - Motion - agg.',
+    rubricName: 'GENERALS - MOTION - agg.',
     category: 'modalitaeten',
-    keywords: ['bewegung schlechter', 'jede bewegung', 'stillliegen', 'erschütterung', 'motion agg', 'movement worse', 'movimiento peor', 'mouvement aggrave', 'movimento peggiora', 'κίνηση επιδεινώνει', 'движение ухудшает'],
+    keywords: ['bewegung verschlimmert', 'bewegung schlechter', 'geringste bewegung verschlimmert', 'stillliegen', 'erschütterung verschlimmert', 'motion agg', 'movement worse', 'movimiento peor', 'mouvement aggrave', 'movimento peggiora', 'κίνηση επιδεινώνει', 'движение ухудшает'],
     remedyGrades: {
       bry: 3,
       bell: 2,
@@ -244,9 +245,9 @@ const CANONICAL_KENT_RUBRICS: KentRubricDefinition[] = [
   {
     id: 'mod_motion_amel',
     chapter: 'Generals',
-    rubricName: 'Generals - Motion - continued, amel.',
+    rubricName: 'GENERALS - MOTION - continued motion amel.',
     category: 'modalitaeten',
-    keywords: ['bewegung besser', 'umhergehen', 'ständiger lagewechsel', 'fortgesetzte bewegung', 'motion amel', 'movement better', 'movimiento mejor', 'mouvement ameliore', 'movimento migliora', 'κίνηση βελτιώνει', 'движение улучшает'],
+    keywords: ['fortgesetzte bewegung bessert', 'bewegung bessert', 'bewegung besser', 'umhergehen bessert', 'lagewechsel bessert', 'motion amel', 'movement better', 'movimiento mejor', 'mouvement ameliore', 'movimento migliora', 'κίνηση βελτιώνει', 'движение улучшает'],
     remedyGrades: {
       rhus_t: 3,
       puls: 3,
@@ -256,11 +257,26 @@ const CANONICAL_KENT_RUBRICS: KentRubricDefinition[] = [
     },
   },
   {
+    id: 'mod_rest_amel',
+    chapter: 'Generals',
+    rubricName: 'GENERALS - REST - amel.',
+    category: 'modalitaeten',
+    keywords: ['ruhe bessert', 'ruhe besser', 'absolute ruhe bessert', 'im bett ruhig liegen', 'rest amel', 'reposo mejora', 'repos améliore', 'riposo migliora', 'ηρεμία βελτιώνει', 'покой улучшает'],
+    remedyGrades: {
+      bry: 3,
+      bell: 2,
+      colch: 2,
+      acon: 1,
+      nux_v: 2,
+      arn: 1,
+    },
+  },
+  {
     id: 'mod_warmth_amel',
     chapter: 'Generals',
-    rubricName: 'Generals - Warmth - amel.',
+    rubricName: 'GENERALS - WARMTH - amel.',
     category: 'modalitaeten',
-    keywords: ['wärme besser', 'warm einpacken', 'heiße anwendungen', 'bettwärme', 'warmth amel', 'heat relieves', 'calor mejora', 'chaleur ameliore', 'calore migliora', 'ζέστη βελτιώνει', 'тепло улучшает'],
+    keywords: ['wärme bessert', 'wärme besser', 'warm einpacken bessert', 'heiße anwendungen bessert', 'bettwärme bessert', 'warmth amel', 'heat relieves', 'calor mejora', 'chaleur améliore', 'calore migliora', 'ζέστη βελτιώνει', 'тепло улучшает'],
     remedyGrades: {
       ars: 3,
       hep: 3,
@@ -274,9 +290,9 @@ const CANONICAL_KENT_RUBRICS: KentRubricDefinition[] = [
   {
     id: 'mod_cold_amel',
     chapter: 'Generals',
-    rubricName: 'Generals - Cold - applications amel.',
+    rubricName: 'GENERALS - COLD - applications, amel.',
     category: 'modalitaeten',
-    keywords: ['kälte besser', 'kalte umschläge', 'frische luft', 'abdecken', 'cold amel', 'fresh air', 'frio mejora', 'froid ameliore', 'freddo migliora', 'κρύο βελτιώνει', 'холод улучшает'],
+    keywords: ['kälte bessert', 'kälte besser', 'kalte umschläge bessert', 'frische luft bessert', 'entblößen bessert', 'cold amel', 'fresh air', 'frío mejora', 'froid améliore', 'freddo migliora', 'κρύο βελτιώνει', 'холод улучшает'],
     remedyGrades: {
       apis: 3,
       puls: 3,
@@ -289,9 +305,9 @@ const CANONICAL_KENT_RUBRICS: KentRubricDefinition[] = [
   {
     id: 'mod_pressure_amel',
     chapter: 'Generals',
-    rubricName: 'Generals - Pressure - external amel.',
+    rubricName: 'GENERALS - PRESSURE - amel.',
     category: 'modalitaeten',
-    keywords: ['druck besser', 'festes bandagieren', 'auf der schmerzhaften seite liegen', 'pressure amel', 'presion mejora', 'pression ameliore', 'pressione migliora', 'πίεση βελτιώνει', 'давление улучшает'],
+    keywords: ['druck bessert', 'druck besser', 'festes bandagieren bessert', 'auf schmerzhafter seite liegen bessert', 'pressure amel', 'presión mejora', 'pression améliore', 'pressione migliora', 'πίεση βελτιώνει', 'давление улучшает'],
     remedyGrades: {
       bry: 3,
       coloc: 3,
@@ -304,9 +320,9 @@ const CANONICAL_KENT_RUBRICS: KentRubricDefinition[] = [
   {
     id: 'mod_night_agg',
     chapter: 'Generals',
-    rubricName: 'Generals - Night - agg.',
+    rubricName: 'GENERALS - NIGHT - agg.',
     category: 'modalitaeten',
-    keywords: ['nacht', 'mitternacht', 'nachts schlechter', 'nach mitternacht', 'night agg', 'midnight', 'noche peor', 'nuit aggrave', 'notte peggiora', 'νύχτα επιδεινώνει', 'ночь ухудшает'],
+    keywords: ['nacht verschlimmert', 'nachts schlechter', 'nach mitternacht schlechter', 'nachts schlimmer', 'night agg', 'midnight worse', 'noche peor', 'nuit aggrave', 'notte peggiora', 'νύχτα επιδεινώνει', 'ночь ухудшает'],
     remedyGrades: {
       ars: 3,
       merc: 3,
@@ -318,13 +334,82 @@ const CANONICAL_KENT_RUBRICS: KentRubricDefinition[] = [
     },
   },
 
-  // 4. LOKALISATION & EMPFINDUNG / ALLGEMEINES
+  // 4. LOKALISATION, EMPFINDUNG & ALLGEMEINES
+  {
+    id: 'fever_heat_general',
+    chapter: 'Fever',
+    rubricName: 'FEVER - HEAT in general',
+    category: 'allgemein',
+    keywords: ['fieber', 'hohes fieber', 'erhöhte temperatur', 'fever', 'high fever', 'fièvre', 'fiebre', 'febbre', 'febbre alta', 'πυρετός', 'υψηλός πυρετός', 'жар', 'высокая температура', 'лихорадка'],
+    remedyGrades: {
+      acon: 3,
+      bell: 3,
+      bry: 3,
+      ars: 3,
+      rhus_t: 2,
+      gels: 2,
+      nux_v: 2,
+      puls: 2,
+      cham: 2,
+      apis: 2,
+      ferr_p: 2,
+      chin: 2,
+      arn: 2,
+      hep: 2,
+      merc: 2,
+      phos: 2,
+      sil: 2,
+    },
+  },
+  {
+    id: 'chill_general',
+    chapter: 'Chill',
+    rubricName: 'CHILL - CHILLINESS',
+    category: 'allgemein',
+    keywords: ['schüttelfrost', 'frösteln', 'frost', 'kältezittern', 'chill', 'chills', 'chilliness', 'frissons', 'escalofríos', 'brividi', 'ρίγος', 'озноб'],
+    remedyGrades: {
+      acon: 3,
+      ars: 3,
+      nux_v: 3,
+      gels: 3,
+      bry: 2,
+      puls: 2,
+      chin: 3,
+      rhus_t: 2,
+      bell: 1,
+      cham: 1,
+      hep: 2,
+      sil: 2,
+    },
+  },
+  {
+    id: 'head_pain_general',
+    chapter: 'Head',
+    rubricName: 'HEAD - PAIN, in general',
+    category: 'lokal',
+    keywords: ['kopfschmerz', 'kopfweh', 'kopfschmerzen', 'stirnkopfschmerz', 'headache', 'head pain', 'maux de tête', 'mal de tête', 'dolor de cabeza', 'mal di testa', 'πονοκέφαλος', 'головная боль'],
+    remedyGrades: {
+      bell: 3,
+      bry: 3,
+      gels: 3,
+      nux_v: 3,
+      glon: 3,
+      acon: 2,
+      puls: 2,
+      ars: 2,
+      rhus_t: 2,
+      sil: 2,
+      chin: 2,
+      merc: 2,
+      spig: 3,
+    },
+  },
   {
     id: 'head_throbbing_pain',
     chapter: 'Head',
-    rubricName: 'Head - Pain - pulsating, throbbing',
+    rubricName: 'HEAD - PAIN - pulsating',
     category: 'lokal',
-    keywords: ['pochend', 'hämmernd', 'pulsierend', 'klopfen', 'throbbing', 'pulsating', 'hammering', 'latidos', 'pulsatile', 'pulsante', 'σφυγμικός', 'пульсирующая'],
+    keywords: ['pochender kopfschmerz', 'hämmernder kopfschmerz', 'pulsierender kopfschmerz', 'klopfen im kopf', 'throbbing headache', 'pulsating headache', 'dolor pulsátil de cabeza', 'maux de tête battants', 'mal di testa pulsante', 'σφυγμικός πονοκέφαλος', 'пульсирующая головная боль'],
     remedyGrades: {
       bell: 3,
       glon: 3,
@@ -336,11 +421,65 @@ const CANONICAL_KENT_RUBRICS: KentRubricDefinition[] = [
     },
   },
   {
+    id: 'throat_pain_swallowing',
+    chapter: 'Throat',
+    rubricName: 'THROAT - PAIN - swallowing, on',
+    category: 'lokal',
+    keywords: ['halsschmerz', 'halsweh', 'schluckbeschwerden', 'schmerzen beim schlucken', 'sore throat', 'throat pain on swallowing', 'mal de gorge', 'douleur en avalant', 'dolor de garganta', 'mal di gola', 'πονόλαιμος', 'πόνος στην κατάποση', 'боль в горле', 'боль при глотании'],
+    remedyGrades: {
+      bell: 3,
+      hep: 3,
+      merc: 3,
+      apis: 3,
+      lach: 3,
+      acon: 2,
+      phyt: 3,
+      bry: 1,
+      nux_v: 1,
+    },
+  },
+  {
+    id: 'cough_dry',
+    chapter: 'Cough',
+    rubricName: 'COUGH - DRY',
+    category: 'lokal',
+    keywords: ['trockener husten', 'reizhusten', 'trockenem husten', 'hustenanfall', 'dry cough', 'cough dry', 'toux sèche', 'tos seca', 'tosse secca', 'ξηρός βήχας', 'сухой кашель'],
+    remedyGrades: {
+      acon: 3,
+      bell: 3,
+      bry: 3,
+      spong: 3,
+      dros: 3,
+      hep: 2,
+      phos: 3,
+      rumx: 3,
+      nux_v: 2,
+      puls: 1,
+    },
+  },
+  {
+    id: 'abdomen_pain_cramping',
+    chapter: 'Abdomen',
+    rubricName: 'ABDOMEN - PAIN - cramping, griping',
+    category: 'lokal',
+    keywords: ['bauchschmerz', 'bauchkrämpfe', 'magenkrämpfe', 'kolik', 'bauchkolik', 'cramping abdominal pain', 'stomach cramps', 'colic', 'dolor abdominal espasmódico', 'maux de ventre spasmodiques', 'crampi addominali', 'κοιλιακοί σπασμοί', 'спазмы в животе', 'колики'],
+    remedyGrades: {
+      coloc: 3,
+      mag_p: 3,
+      nux_v: 3,
+      bell: 2,
+      cham: 2,
+      bry: 2,
+      ars: 2,
+      puls: 2,
+    },
+  },
+  {
     id: 'stitching_pain',
     chapter: 'Generals',
-    rubricName: 'Generals - Pain - stitching, stinging',
+    rubricName: 'GENERALS - PAIN - stitching, internally',
     category: 'lokal',
-    keywords: ['stechend', 'stiche', 'wie nadeln', 'pieksend', 'stitching', 'sharp stitching', 'punzadas', 'piqures', 'pungente', 'σουβλιές', 'колющая'],
+    keywords: ['stechende schmerzen', 'stechender schmerz', 'stiche wie nadeln', 'stitching pain', 'dolor punzante', 'douleur piquante', 'dolore pungente', 'σουβλιά', 'колющая боль'],
     remedyGrades: {
       bry: 3,
       kali_c: 3,
@@ -354,9 +493,9 @@ const CANONICAL_KENT_RUBRICS: KentRubricDefinition[] = [
   {
     id: 'burning_pain_amel_heat',
     chapter: 'Generals',
-    rubricName: 'Generals - Pain - burning - heat amel.',
+    rubricName: 'GENERALS - PAIN - burning - heat amel.',
     category: 'allgemein',
-    keywords: ['brennend', 'brennen', 'feurig', 'wie glühende kohlen', 'burning', 'burns', 'ardiente', 'brulure', 'bruciante', 'κάψιμο', 'жгучая'],
+    keywords: ['brennende schmerzen durch wärme gebessert', 'brennender schmerz wärme bessert', 'wie glühende kohlen wärme lindert', 'burning pain heat amel', 'dolor ardiente que mejora con calor', 'douleur brûlante améliorée par la chaleur', 'жгучая боль облегчается теплом'],
     remedyGrades: {
       ars: 3,
       rhus_t: 2,
@@ -368,9 +507,9 @@ const CANONICAL_KENT_RUBRICS: KentRubricDefinition[] = [
   {
     id: 'stinging_burning_heat_agg',
     chapter: 'Generals',
-    rubricName: 'Generals - Pain - stinging - heat agg.',
+    rubricName: 'GENERALS - PAIN - stinging - heat agg.',
     category: 'allgemein',
-    keywords: ['bienenstich', 'stechend brennend', 'ödem', 'stinging burning', 'picadura', 'piqure brulante', 'pungente bruciante', 'κεντρί', 'жгуче-колющая'],
+    keywords: ['stechend brennende schmerzen durch hitze verschlimmert', 'bienenstichartige schmerzen', 'stinging pain heat agg', 'dolor picante que empeora con calor', 'douleur piquante aggravée par la chaleur', 'колюще-жгучая боль от тепла хуже'],
     remedyGrades: {
       apis: 3,
       led: 2,
@@ -380,9 +519,9 @@ const CANONICAL_KENT_RUBRICS: KentRubricDefinition[] = [
   {
     id: 'thirst_extreme_large_qty',
     chapter: 'Stomach',
-    rubricName: 'Stomach - Thirst - extreme - large quantities, for',
+    rubricName: 'STOMACH - THIRST - large quantities, for',
     category: 'allgemein',
-    keywords: ['durst groß', 'große mengen', 'viel trinken', 'kaltes wasser verlangen', 'thirst large quantities', 'sed grandes cantidades', 'soif grandes quantites', 'sete grandi quantita', 'δίψα μεγάλες ποσότητες', 'жажда большими глотками'],
+    keywords: ['großer durst auf viel wasser', 'große mengen auf einmal', 'unstillbarer durst', 'thirst large quantities', 'sed de grandes cantidades', 'soif de grandes quantités', 'sete di grandi quantità', 'δίψα για μεγάλες ποσότητες', 'жажда большими глотками'],
     remedyGrades: {
       bry: 3,
       acon: 2,
@@ -395,9 +534,9 @@ const CANONICAL_KENT_RUBRICS: KentRubricDefinition[] = [
   {
     id: 'thirst_small_quantities_often',
     chapter: 'Stomach',
-    rubricName: 'Stomach - Thirst - small quantities, for - often',
+    rubricName: 'STOMACH - THIRST - small quantities, for - often',
     category: 'allgemein',
-    keywords: ['schluckweise', 'häufig kleine mengen', 'nippen', 'thirst small quantities', 'sed sorbos', 'soif petites quantites', 'sete a piccoli sorsi', 'δίψα μικρές γουλιές', 'жажда маленькими глотками'],
+    keywords: ['häufig kleine mengen trinken', 'schluckweise trinken', 'häufig kleine schlucke', 'thirst small quantities often', 'sed de pequeños sorbos frecuentes', 'soif de petites quantités souvent', 'sete a piccoli sorsi frequenti', 'δίψα για μικρές συχνές γουλιές', 'жажда часто маленькими глотками'],
     remedyGrades: {
       ars: 3,
       chin: 2,
@@ -408,9 +547,9 @@ const CANONICAL_KENT_RUBRICS: KentRubricDefinition[] = [
   {
     id: 'thirstless_heat',
     chapter: 'Stomach',
-    rubricName: 'Stomach - Thirstless',
+    rubricName: 'STOMACH - THIRSTLESSNESS',
     category: 'allgemein',
-    keywords: ['kein durst', 'durstlos', 'kein verlangen nach wasser', 'thirstless', 'sin sed', 'sans soif', 'senza sete', 'ανδίψα', 'отсутствие жажды'],
+    keywords: ['völlige durstlosigkeit', 'durstlos', 'kein durst', 'kein verlangen nach wasser', 'thirstlessness', 'thirstless', 'sin sed', 'sans soif', 'senza sete', 'ανδίψα', 'отсутствие жажды'],
     remedyGrades: {
       apis: 3,
       puls: 3,
@@ -419,32 +558,17 @@ const CANONICAL_KENT_RUBRICS: KentRubricDefinition[] = [
     },
   },
   {
-    id: 'fever_sudden_dry_heat',
+    id: 'fever_dry_heat_red_face',
     chapter: 'Fever',
-    rubricName: 'Fever - Heat - dry - red face, with',
+    rubricName: 'FEVER - HEAT - dry heat',
     category: 'allgemein',
-    keywords: ['plötzliches fieber', 'heißer kopf', 'trockene hitze', 'rote backen', 'dry heat', 'high fever', 'fiebre subita', 'fievre elevee', 'febbre improvvisa', 'ξαφνικός πυρετός', 'внезапный жар'],
+    keywords: ['trockene hitze', 'trockenes fieber', 'glühende haut ohne schweiß', 'dry heat', 'calor seco', 'chaleur sèche', 'calore secco', 'ξηρή θερμότητα', 'сухой жар'],
     remedyGrades: {
       bell: 3,
       acon: 3,
       ferr_p: 2,
       bry: 1,
       gels: 1,
-    },
-  },
-  {
-    id: 'cough_sudden_dry_suffocative',
-    chapter: 'Respiration',
-    rubricName: 'Larynx - Cough - dry, sudden, violent',
-    category: 'lokal',
-    keywords: ['husten', 'krupp', 'trockener husten', 'hart', 'heisern', 'cough', 'dry cough', 'tos seca', 'toux seche', 'tosse secca', 'βήχας ξηρός', 'сухой кашель'],
-    remedyGrades: {
-      acon: 3,
-      bell: 2,
-      bry: 2,
-      spong: 3,
-      hep: 2,
-      dros: 2,
     },
   },
 ];
@@ -608,16 +732,41 @@ export function performKentMathematicalRepertorisation(
 
   const matchedRubricIds = new Set<string>();
 
-  // Helper to match text against rubric keywords
+  // Helper to check if text is empty or a mere placeholder
+  const isPlaceholderOrEmpty = (str: string): boolean => {
+    if (!str) return true;
+    const trimmed = str.trim().toLowerCase();
+    if (trimmed.length === 0) return true;
+    const placeholders = [
+      'unbekannt', 'nicht angegeben', 'noch nicht genannt', 'nicht genannt',
+      'noch unklar', 'bitte erfragen', 'keine angabe', 'keine', 'kein',
+      'ohne befund', 'ohne', 'nichts', 'unknown', 'none', 'n/a', 'not specified',
+      'sin datos', 'desconocido', 'ninguno', 'inconnu', 'non spécifié', 'aucun',
+      'sconosciuto', 'nessuno', 'άγνωστο', 'κανένα', 'неизвестно', 'нет данных'
+    ];
+    return placeholders.some((p) => trimmed === p || trimmed.startsWith(p + ' ') || trimmed.endsWith(' ' + p));
+  };
+
+  // Helper to match text against rubric keywords respecting strict Hahnemann categories
   const evaluateTextForRubric = (
     text: string,
-    category: 'causa' | 'gemuet' | 'modalitaeten' | 'allgemein' | 'lokal'
+    targetCategory: 'causa' | 'gemuet' | 'modalitaeten' | 'allgemein' | 'lokal'
   ) => {
-    if (!text || text.trim().length === 0) return;
+    if (isPlaceholderOrEmpty(text)) return;
     const lower = text.toLowerCase();
 
     for (const rubricDef of CANONICAL_KENT_RUBRICS) {
       if (matchedRubricIds.has(rubricDef.id)) continue;
+
+      // Category strictness filter:
+      // Causa text only matches Causa rubrics; Gemüt only matches Gemüt; Modalitäten only matches Modalitäten
+      if (targetCategory === 'causa' && rubricDef.category !== 'causa') continue;
+      if (targetCategory === 'gemuet' && rubricDef.category !== 'gemuet') continue;
+      if (targetCategory === 'modalitaeten' && rubricDef.category !== 'modalitaeten') continue;
+      if ((targetCategory === 'lokal' || targetCategory === 'allgemein') &&
+          (rubricDef.category === 'causa' || rubricDef.category === 'gemuet' || rubricDef.category === 'modalitaeten')) {
+        continue;
+      }
 
       // Check if keyword matches
       const hasKeyword = rubricDef.keywords.some((kw) => lower.includes(kw.toLowerCase()));
@@ -647,7 +796,7 @@ export function performKentMathematicalRepertorisation(
     }
   };
 
-  // Rule 1 (§ 153): Select ONLY from documented Hahnemann 6-pillars
+  // Rule 1 (§§ 83–84 & § 153): Select ONLY from documented Hahnemann 6-pillars
   if (matrix) {
     if (matrix.causa) {
       evaluateTextForRubric(matrix.causa, 'causa');
@@ -669,37 +818,14 @@ export function performKentMathematicalRepertorisation(
     }
   }
 
-  // Fallback if matrix was sparse but raw text exists
-  if (selectedRubricMatches.length < 2 && rawAcuteText && rawAcuteText.trim().length > 0) {
+  // Fallback if matrix was sparse but raw text exists (evaluate general/local symptoms explicitly stated by patient)
+  if (selectedRubricMatches.length < 2 && rawAcuteText && !isPlaceholderOrEmpty(rawAcuteText)) {
     evaluateTextForRubric(rawAcuteText, 'allgemein');
   }
 
-  // If still no rubric matched (e.g. brand new blank input), provide default classical acute sample rubrics strictly grounded in acute pathology
-  if (selectedRubricMatches.length === 0) {
-    const defaultSampleIds = ['causa_cold_dry_wind', 'mind_fear_death', 'mind_restlessness', 'fever_sudden_dry_heat'];
-    for (const defId of defaultSampleIds) {
-      const def = CANONICAL_KENT_RUBRICS.find((r) => r.id === defId);
-      if (def) {
-        const gradesObj: Record<string, 0 | 1 | 2 | 3> = {};
-        for (const remKey of Object.keys(REMEDY_METADATA)) {
-          gradesObj[remKey] = def.remedyGrades[remKey] || 0;
-        }
-        selectedRubricMatches.push({
-          id: def.id,
-          chapter: def.chapter,
-          rubricName: def.rubricName,
-          category: def.category,
-          symptomOrigin: '§§ 83–104 Akutbefund',
-          grades: gradesObj,
-        });
-        selectedSymptomsList.push({
-          category: def.category,
-          text: 'Charakteristisches Leitsymptom (§ 153)',
-          rubricName: def.rubricName,
-        });
-      }
-    }
-  }
+  // NOTE: In strict accordance with Organon §§ 83–84 (strict prohibition of interpretation & hallucination),
+  // we do NOT inject any artificial default sample rubrics. If the patient has not named matching symptoms,
+  // the repertorisation matrix remains strictly empty until explicit symptoms are recorded.
 
   // Calculate scores for each candidate remedy across all matched rubrics
   const candidateScores: KentRemedySummary[] = [];
