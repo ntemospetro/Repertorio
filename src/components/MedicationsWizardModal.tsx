@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { TranslationKey } from '../i18n/translations';
 import { MedicationLiveInput, MedicationData } from './MedicationLiveInput';
-import { X, Plus, Pill, Save, Check, AlertCircle } from 'lucide-react';
+import { X, Pill, Save, Check } from 'lucide-react';
 
 interface Props {
   isOpen: boolean;
@@ -56,7 +56,8 @@ export const MedicationsWizardModal: React.FC<Props> = ({
         }));
         if (autoAddNew) {
           // Gleichzeitig neue Felder für die Eingabe eines neuen Medikaments öffnen
-          setList([createEmptyMedication(), ...mapped]);
+          const hasEmpty = mapped.some(m => !m.name || !m.name.trim());
+          setList(hasEmpty ? mapped : [...mapped, createEmptyMedication()]);
         } else {
           setList(mapped);
         }
@@ -71,14 +72,17 @@ export const MedicationsWizardModal: React.FC<Props> = ({
 
   if (!isOpen) return null;
 
-  const hasUnsavedItem = list.some(item => {
-    const isSaved = item.isSaved !== undefined ? item.isSaved : Boolean(item.name?.trim());
-    return !isSaved;
-  });
-
-  const handleAddMedication = () => {
-    if (hasUnsavedItem) return;
-    setList(prev => [createEmptyMedication(), ...prev]);
+  const handleSaveItem = (index: number, savedMed: MedicationData) => {
+    setList(prev => {
+      const copy = [...prev];
+      copy[index] = { ...copy[index], ...savedMed, isSaved: true };
+      // Funktions-Verschmelzung: "Αποθήκευση φαρμάκου" übernimmt die ursprüngliche Funktion von "Προσθήκη φαρμάκου"
+      const hasEmptyItem = copy.some(m => !m.name || !m.name.trim());
+      if (!hasEmptyItem) {
+        return [...copy, createEmptyMedication()];
+      }
+      return copy;
+    });
   };
 
   const handleUpdateMedication = (index: number, updated: MedicationData) => {
@@ -152,7 +156,7 @@ export const MedicationsWizardModal: React.FC<Props> = ({
 
         {/* Body Content */}
         <div className="flex-1 overflow-y-auto p-6 bg-white space-y-6">
-          {/* Subtitle / Description Box with integrated Add Button */}
+          {/* Subtitle / Description Box */}
           <div className="bg-teal-50/40 border border-teal-200/80 rounded-2xl p-4 sm:p-5 flex flex-col gap-3">
             <div className="flex items-start gap-3">
               <Pill className="w-5 h-5 text-teal-600 shrink-0 mt-0.5" />
@@ -165,27 +169,6 @@ export const MedicationsWizardModal: React.FC<Props> = ({
                 </p>
               </div>
             </div>
-
-            <button
-              type="button"
-              id="btn-add-medication-in-box"
-              onClick={handleAddMedication}
-              disabled={hasUnsavedItem}
-              className={`w-full py-2.5 px-4 border-2 border-dashed rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-2xs mt-1 ${
-                hasUnsavedItem
-                  ? "border-slate-200 bg-slate-100/70 text-slate-400 cursor-not-allowed opacity-60"
-                  : "border-teal-300 hover:border-teal-500 bg-white hover:bg-teal-50/60 text-teal-700 cursor-pointer"
-              }`}
-            >
-              <Plus className="w-4 h-4" />
-              <span>{t('addMedication' as TranslationKey)}</span>
-            </button>
-            {hasUnsavedItem && (
-              <p className="text-[11px] text-amber-800 bg-amber-50/90 border border-amber-200/80 px-3 py-1.5 rounded-lg flex items-center gap-1.5 mt-0.5">
-                <AlertCircle className="w-3.5 h-3.5 shrink-0 text-amber-600" />
-                <span>{t('unsavedMedicationWarning' as TranslationKey) || 'Ein Medikament befindet sich noch in Bearbeitung. Bitte speichern oder löschen Sie dieses zuerst, bevor Sie ein weiteres hinzufügen.'}</span>
-              </p>
-            )}
           </div>
 
           {/* Medication List */}
@@ -205,6 +188,7 @@ export const MedicationsWizardModal: React.FC<Props> = ({
                   med={med}
                   onChange={(updated) => handleUpdateMedication(index, updated)}
                   onRemove={() => handleRemoveMedication(index)}
+                  onSaveItem={(saved) => handleSaveItem(index, saved)}
                   showResearchDetails={false}
                   t={t}
                 />

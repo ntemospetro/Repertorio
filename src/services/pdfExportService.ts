@@ -1122,8 +1122,8 @@ export function exportTermsToPDF(
     }
 
     // Section Header (### § ...)
-    if (line.startsWith('### ')) {
-      const headingText = line.replace('### ', '').trim();
+    if (line.startsWith('###')) {
+      const headingText = line.replace(/#/g, '').trim();
       checkTermsPageBreak(14);
 
       // Section title box
@@ -1138,21 +1138,23 @@ export function exportTermsToPDF(
       doc.setFont('Roboto', 'bold');
       doc.setFontSize(9);
       doc.setTextColor(...COLORS.textDark);
-      doc.text(headingText, margin + 5, currentY + 5);
+      const wrappedH = doc.splitTextToSize(headingText, contentWidth - 8);
+      doc.text(wrappedH[0] || headingText, margin + 5, currentY + 5);
 
       currentY += 10.5;
       continue;
     }
 
     // Main Header (## ...)
-    if (line.startsWith('## ')) {
-      const headingText = line.replace('## ', '').trim();
+    if (line.startsWith('##')) {
+      const headingText = line.replace(/#/g, '').trim();
       checkTermsPageBreak(12);
 
       doc.setFont('Roboto', 'bold');
       doc.setFontSize(10);
       doc.setTextColor(...COLORS.primaryDark);
-      doc.text(headingText, margin, currentY + 4);
+      const wrappedH = doc.splitTextToSize(headingText, contentWidth);
+      doc.text(wrappedH[0] || headingText, margin, currentY + 4);
 
       currentY += 8;
       continue;
@@ -1311,7 +1313,7 @@ export async function exportMedicationRiskComparisonPDF(
       medsTitle: '1. Zu vergleichende Medikation (Kreuzvergleich)',
       triageTitle: '2. Klinische Dringlichkeits-Einstufung (Triage)',
       matrixTitle: '3. Evidenzbasierte pharmakologische Risikobewertung',
-      colNum: '#',
+      colNum: 'Nr.',
       colName: 'Präparat / Handelsname',
       colSubstance: 'Wirkstoff',
       colDose: 'Dosierung',
@@ -1335,7 +1337,7 @@ export async function exportMedicationRiskComparisonPDF(
       medsTitle: '1. Συνταγογραφημένη φαρμακευτική αγωγή σε διασταυρούμενη σύγκριση',
       triageTitle: '2. Κλινική διαλογή & Βαθμός επείγοντος (Triage)',
       matrixTitle: '3. Τεκμηριωμένη φαρμακολογική αξιολόγηση & Πίνακας τοξικότητας',
-      colNum: '#',
+      colNum: 'Α/Α',
       colName: 'Σκεύασμα / Εμπορική ονομασία',
       colSubstance: 'Δραστική ουσία',
       colDose: 'Δοσολογία',
@@ -1359,7 +1361,7 @@ export async function exportMedicationRiskComparisonPDF(
       medsTitle: '1. Prescribed Medications Cross-Comparison',
       triageTitle: '2. Clinical Triage & Urgency Classification',
       matrixTitle: '3. Evidence-Based Pharmacological Risk Assessment',
-      colNum: '#',
+      colNum: 'No.',
       colName: 'Preparation / Brand Name',
       colSubstance: 'Active Substance',
       colDose: 'Dosage',
@@ -1383,7 +1385,7 @@ export async function exportMedicationRiskComparisonPDF(
       medsTitle: '1. Medicación prescrita en comparación cruzada',
       triageTitle: '2. Triaje clínico y grado de urgencia',
       matrixTitle: '3. Evaluación farmacológica basada en la evidencia',
-      colNum: '#',
+      colNum: 'N.º',
       colName: 'Preparado / Nombre comercial',
       colSubstance: 'Principio activo',
       colDose: 'Dosificación',
@@ -1407,7 +1409,7 @@ export async function exportMedicationRiskComparisonPDF(
       medsTitle: '1. Médicaments prescrits en comparaison croisée',
       triageTitle: '2. Triage clinique & Degré d\'urgence',
       matrixTitle: '3. Évaluation pharmacologique fondée sur des preuves',
-      colNum: '#',
+      colNum: 'N°',
       colName: 'Spécialité / Nom commercial',
       colSubstance: 'Principe actif',
       colDose: 'Posologie',
@@ -1431,7 +1433,7 @@ export async function exportMedicationRiskComparisonPDF(
       medsTitle: '1. Farmaci prescritti a confronto incrociato',
       triageTitle: '2. Triage clinico e grado di urgenza',
       matrixTitle: '3. Valutazione farmacologica basata su evidenze',
-      colNum: '#',
+      colNum: 'N.',
       colName: 'Preparato / Nome commerciale',
       colSubstance: 'Principio activo',
       colDose: 'Dosaggio',
@@ -1455,7 +1457,7 @@ export async function exportMedicationRiskComparisonPDF(
       medsTitle: '1. Назначенные препараты в перекрестном сравнении',
       triageTitle: '2. Клиническая сортировка и степень срочности (Триаж)',
       matrixTitle: '3. Доказательная фармакологическая оценка рисков',
-      colNum: '#',
+      colNum: '№',
       colName: 'Препарат / Торговое название',
       colSubstance: 'Действующее вещество',
       colDose: 'Дозировка',
@@ -1475,34 +1477,62 @@ export async function exportMedicationRiskComparisonPDF(
 
   const loc = t[lang] || t.de;
 
+  // Dedicated page break handler for medication risk comparison to avoid duplicate headers
+  const checkComparisonPageBreak = (neededHeight: number) => {
+    if (ctx.currentY + neededHeight > pageHeight - 20) {
+      doc.addPage();
+      ctx.currentY = 22;
+
+      // Draw clean running header on new page
+      doc.setFont('Roboto', 'bold');
+      doc.setFontSize(7.5);
+      doc.setTextColor(...COLORS.primary);
+      doc.text(loc.subHeader, margin, 11);
+
+      doc.setFont('Roboto', 'normal');
+      doc.setFontSize(7.5);
+      doc.setTextColor(...COLORS.textMuted);
+      const topInfo = `${patientName} | ${dateStr}`;
+      const topInfoW = doc.getTextWidth(topInfo);
+      doc.text(topInfo, pageWidth - margin - topInfoW, 11);
+
+      doc.setDrawColor(...COLORS.border);
+      doc.setLineWidth(0.25);
+      doc.line(margin, 14, pageWidth - margin, 14);
+    }
+  };
+
   // --- 1. COVER / HEADER SECTION ---
   doc.setFillColor(...COLORS.primaryDark);
-  doc.rect(0, 0, pageWidth, 28, 'F');
+  doc.rect(0, 0, pageWidth, 32, 'F');
 
   // Accent band
   doc.setFillColor(...COLORS.primary);
-  doc.rect(0, 28, pageWidth, 2, 'F');
+  doc.rect(0, 32, pageWidth, 2, 'F');
 
-  // Header Titles
+  // Header Subtitle & Date Status (top row, Y = 10)
   doc.setFont('Roboto', 'bold');
-  doc.setFontSize(8.5);
+  doc.setFontSize(7.5);
   doc.setTextColor(...COLORS.primaryLight);
-  doc.text(loc.subHeader, margin, 11);
+  doc.text(loc.subHeader, margin, 10);
 
-  doc.setFont('Roboto', 'bold');
-  doc.setFontSize(14);
-  doc.setTextColor(255, 255, 255);
-  doc.text(loc.title, margin, 19);
-
-  // Header Right: Date & Status Badge
   doc.setFont('Roboto', 'normal');
-  doc.setFontSize(8);
+  doc.setFontSize(7.5);
   doc.setTextColor(...COLORS.primaryLight);
   const dateInfo = `${dateStr} • ${loc.validated}`;
   const dateInfoW = doc.getTextWidth(dateInfo);
-  doc.text(dateInfo, pageWidth - margin - dateInfoW, 19);
+  doc.text(dateInfo, pageWidth - margin - dateInfoW, 10);
 
-  ctx.currentY = 36;
+  // Header Main Title: Full width row below (Y = 18), wrapped to contentWidth so it never overlaps or cuts off
+  doc.setFont('Roboto', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(255, 255, 255);
+  const titleLines = doc.splitTextToSize(loc.title, contentWidth);
+  titleLines.forEach((tLine: string, tIdx: number) => {
+    doc.text(tLine, margin, 18 + tIdx * 5.2);
+  });
+
+  ctx.currentY = 38;
 
   // --- 2. PATIENT PROFILE & RISK FACTORS CARD ---
   doc.setFillColor(...COLORS.bgLight);
@@ -1513,7 +1543,7 @@ export async function exportMedicationRiskComparisonPDF(
   doc.rect(margin, ctx.currentY, 2.5, 20, 'F');
 
   doc.setFont('Roboto', 'bold');
-  doc.setFontSize(9);
+  doc.setFontSize(8.5);
   doc.setTextColor(...COLORS.textDark);
   doc.text(`${loc.patientData}: ${patientName}`, margin + 5, ctx.currentY + 6);
 
@@ -1542,7 +1572,7 @@ export async function exportMedicationRiskComparisonPDF(
   ctx.currentY += 1;
 
   // Table header
-  const colWidths = [10, 52, 48, 38, 34]; // sum = 182 = contentWidth
+  const colWidths = [12, 50, 48, 38, 34]; // sum = 182 = contentWidth
   const tableHeaderY = ctx.currentY;
   doc.setFillColor(...COLORS.bgLight);
   doc.setDrawColor(...COLORS.border);
@@ -1563,7 +1593,7 @@ export async function exportMedicationRiskComparisonPDF(
 
   // Rows
   meds.forEach((m: any, idx: number) => {
-    checkPageBreak(ctx, 8, loc.medsTitle);
+    checkComparisonPageBreak(8);
     const rowY = ctx.currentY;
     if (idx % 2 === 1) {
       doc.setFillColor(252, 253, 254);
@@ -1596,25 +1626,33 @@ export async function exportMedicationRiskComparisonPDF(
   const badgeBg = triageLvl === 'critical' ? COLORS.roseBg : triageLvl === 'high' ? COLORS.amberBg : COLORS.emeraldBg;
 
   drawSectionHeader(ctx, loc.triageTitle, undefined, badgeColor);
-  ctx.currentY += 1;
+  ctx.currentY += 2;
 
-  // Triage banner
-  checkPageBreak(ctx, 16, loc.triageTitle);
+  // Triage banner - dynamically measured and wrapped to prevent overflowing box & page
+  doc.setFont('Roboto', 'bold');
+  doc.setFontSize(8);
+  const rawTriageLabel = result.triageLabel || (triageLvl === 'critical' ? '[KRITISCH / AKUTE LEBENSGEFAHR]' : triageLvl === 'high' ? '[HOCH]' : '[GERING / ÜBERWACHUNG]');
+  const cleanTriageLabel = rawTriageLabel.replace(/#/g, '').trim();
+  const wrappedTriage = doc.splitTextToSize(cleanTriageLabel, contentWidth - 8);
+  const triageBoxHeight = Math.max(12, wrappedTriage.length * 4.2 + 5);
+
+  checkComparisonPageBreak(triageBoxHeight + 4);
   doc.setFillColor(...badgeBg);
   doc.setDrawColor(...badgeColor);
-  doc.roundedRect(margin, ctx.currentY, contentWidth, 12, 1.5, 1.5, 'FD');
+  doc.roundedRect(margin, ctx.currentY, contentWidth, triageBoxHeight, 1.5, 1.5, 'FD');
 
   doc.setFont('Roboto', 'bold');
-  doc.setFontSize(9);
+  doc.setFontSize(8);
   doc.setTextColor(...badgeColor);
-  const triageLabelStr = result.triageLabel || (triageLvl === 'critical' ? '[KRITISCH / AKUTE LEBENSGEFAHR]' : triageLvl === 'high' ? '[HOCH]' : '[GERING / ÜBERWACHUNG]');
-  doc.text(triageLabelStr, margin + 4, ctx.currentY + 7.5);
+  wrappedTriage.forEach((wLine: string, wIdx: number) => {
+    doc.text(wLine, margin + 4, ctx.currentY + 5 + wIdx * 4.2);
+  });
 
-  ctx.currentY += 16;
+  ctx.currentY += triageBoxHeight + 5;
 
   // --- 5. SECTION 3: EVIDENCE-BASED MATRIX & MEDICAL TEXT ---
   drawSectionHeader(ctx, loc.matrixTitle, undefined, COLORS.primary);
-  ctx.currentY += 1;
+  ctx.currentY += 2;
 
   // Parse markdown content line by line into structured PDF elements
   if (result.markdownContent) {
@@ -1623,48 +1661,57 @@ export async function exportMedicationRiskComparisonPDF(
     let tableHeaders: string[] = [];
 
     for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
-      if (!line) continue;
+      const rawLine = lines[i].trim();
+      if (!rawLine) continue;
 
       // Skip stray markdown delimiter lines
-      if (line.startsWith('| :---') || line.startsWith('|:---') || line === '| :--- | :--- | :--- | :--- | :--- |') {
+      if (rawLine.startsWith('| :---') || rawLine.startsWith('|:---') || rawLine === '| :--- | :--- | :--- | :--- | :--- |') {
         continue;
       }
 
       // Check for Markdown Table Row
-      if (line.startsWith('|') && line.endsWith('|')) {
-        const cells = line.split('|').slice(1, -1).map(c => c.trim().replace(/<br>/gi, ' ').replace(/\*\*/g, ''));
+      if (rawLine.startsWith('|') && rawLine.endsWith('|')) {
+        const cells = rawLine.split('|').slice(1, -1).map(c => c.trim().replace(/<br>/gi, ' ').replace(/\*\*/g, '').replace(/#/g, ''));
         if (cells.length < 2) continue;
 
         if (!inTable) {
           inTable = true;
           tableHeaders = cells;
-          checkPageBreak(ctx, 14, loc.matrixTitle);
+          
+          const colW = contentWidth / tableHeaders.length;
+          doc.setFont('Roboto', 'bold');
+          doc.setFontSize(6.5);
+          const headerLines = tableHeaders.map(h => doc.splitTextToSize(h, colW - 3));
+          const maxHeaderLines = Math.max(...headerLines.map(hl => hl.length), 1);
+          const headerHeight = Math.max(7, maxHeaderLines * 3.2 + 3);
+
+          checkComparisonPageBreak(headerHeight + 2);
 
           // Draw table header row
           doc.setFillColor(...COLORS.bgLight);
           doc.setDrawColor(...COLORS.border);
-          doc.rect(margin, ctx.currentY, contentWidth, 7, 'FD');
+          doc.rect(margin, ctx.currentY, contentWidth, headerHeight, 'FD');
 
-          const colW = contentWidth / tableHeaders.length;
-          doc.setFont('Roboto', 'bold');
-          doc.setFontSize(6.5);
           doc.setTextColor(...COLORS.textDark);
-          tableHeaders.forEach((h, hIdx) => {
-            const wrappedH = doc.splitTextToSize(h, colW - 3);
-            doc.text(wrappedH[0] || '', margin + hIdx * colW + 2, ctx.currentY + 4.5);
+          tableHeaders.forEach((_, hIdx) => {
+            const hTextArr = headerLines[hIdx] || [];
+            hTextArr.forEach((hLine: string, hlIdx: number) => {
+              doc.text(hLine, margin + hIdx * colW + 2, ctx.currentY + 3.8 + hlIdx * 3.0);
+            });
           });
-          ctx.currentY += 7;
+          ctx.currentY += headerHeight;
           continue;
         }
 
         // Table Body Row
         const colW = contentWidth / cells.length;
+        doc.setFont('Roboto', 'normal');
+        doc.setFontSize(6.5);
         const cellLines = cells.map(c => doc.splitTextToSize(c, colW - 3));
         const maxLines = Math.max(...cellLines.map(cl => cl.length), 1);
-        const rowHeight = Math.max(7, maxLines * 3.5 + 2);
+        const rowHeight = Math.max(7, maxLines * 3.2 + 3);
 
-        checkPageBreak(ctx, rowHeight, loc.matrixTitle);
+        checkComparisonPageBreak(rowHeight + 1);
         doc.setDrawColor(...COLORS.border);
         doc.rect(margin, ctx.currentY, contentWidth, rowHeight, 'D');
 
@@ -1675,7 +1722,7 @@ export async function exportMedicationRiskComparisonPDF(
         cells.forEach((_, cIdx) => {
           const textArr = cellLines[cIdx] || [];
           textArr.forEach((tLine: string, tIdx: number) => {
-            doc.text(tLine, margin + cIdx * colW + 2, ctx.currentY + 3.8 + tIdx * 3.2);
+            doc.text(tLine, margin + cIdx * colW + 2, ctx.currentY + 3.8 + tIdx * 3.0);
           });
         });
 
@@ -1686,70 +1733,61 @@ export async function exportMedicationRiskComparisonPDF(
       // End of table
       inTable = false;
 
-      // Section Headings (###)
-      if (line.startsWith('###')) {
-        const headingText = line.replace(/^#+\s*/, '').replace(/\*\*/g, '');
-        checkPageBreak(ctx, 12, loc.matrixTitle);
+      // Section Headings (starts with #)
+      if (rawLine.startsWith('#')) {
+        const headingText = rawLine.replace(/#/g, '').replace(/\*\*/g, '').trim();
+        if (!headingText) continue;
         doc.setFont('Roboto', 'bold');
-        doc.setFontSize(9);
+        doc.setFontSize(8.5);
+        const wrappedH = doc.splitTextToSize(headingText, contentWidth);
+        const hHeight = wrappedH.length * 4.2 + 4;
+        checkComparisonPageBreak(hHeight);
         doc.setTextColor(...COLORS.primaryDark);
-        doc.text(headingText, margin, ctx.currentY + 5);
-        ctx.currentY += 8;
+        wrappedH.forEach((hLine: string) => {
+          doc.text(hLine, margin, ctx.currentY + 4.5);
+          ctx.currentY += 4.2;
+        });
+        ctx.currentY += 1.5;
         continue;
       }
 
-      // Bullet Points (- or *)
-      if (line.startsWith('- ') || line.startsWith('* ')) {
-        const bulletText = line.substring(2).replace(/\*\*/g, '');
-        const wrapped = doc.splitTextToSize(`• ${bulletText}`, contentWidth - 4);
-        checkPageBreak(ctx, wrapped.length * 4 + 2, loc.matrixTitle);
+      // Bullet Points (- or * or •)
+      if (rawLine.startsWith('- ') || rawLine.startsWith('* ') || rawLine.startsWith('• ')) {
+        const bulletText = rawLine.replace(/^[-*•]\s*/, '').replace(/#/g, '').replace(/\*\*/g, '').trim();
+        if (!bulletText) continue;
         doc.setFont('Roboto', 'normal');
         doc.setFontSize(7.5);
+        const wrapped = doc.splitTextToSize(`• ${bulletText}`, contentWidth - 4);
+        const bHeight = wrapped.length * 3.8 + 2;
+        checkComparisonPageBreak(bHeight);
         doc.setTextColor(...COLORS.textDark);
         wrapped.forEach((wLine: string) => {
-          doc.text(wLine, margin + 3, ctx.currentY + 3.5);
-          ctx.currentY += 3.8;
+          doc.text(wLine, margin + 2, ctx.currentY + 3.5);
+          ctx.currentY += 3.6;
         });
         continue;
       }
 
       // Regular Paragraph Text
-      const cleanLine = line.replace(/\*\*/g, '');
-      const wrapped = doc.splitTextToSize(cleanLine, contentWidth);
-      checkPageBreak(ctx, wrapped.length * 4 + 2, loc.matrixTitle);
+      const cleanLine = rawLine.replace(/#/g, '').replace(/\*\*/g, '').trim();
+      if (!cleanLine) continue;
       doc.setFont('Roboto', 'normal');
       doc.setFontSize(7.5);
+      const wrapped = doc.splitTextToSize(cleanLine, contentWidth);
+      const pHeight = wrapped.length * 3.8 + 2;
+      checkComparisonPageBreak(pHeight);
       doc.setTextColor(...COLORS.textDark);
       wrapped.forEach((wLine: string) => {
         doc.text(wLine, margin, ctx.currentY + 3.5);
-        ctx.currentY += 3.8;
+        ctx.currentY += 3.6;
       });
     }
   }
 
-  // --- 6. RUNNING HEADERS & FOOTERS ACROSS ALL PAGES ---
+  // --- 6. RUNNING FOOTERS ACROSS ALL PAGES ---
   const totalPages = doc.getNumberOfPages();
   for (let p = 1; p <= totalPages; p++) {
     doc.setPage(p);
-
-    if (p > 1) {
-      // Header for page 2+
-      doc.setFont('Roboto', 'bold');
-      doc.setFontSize(7.5);
-      doc.setTextColor(...COLORS.primary);
-      doc.text(loc.subHeader, margin, 11);
-
-      doc.setFont('Roboto', 'normal');
-      doc.setFontSize(7.5);
-      doc.setTextColor(...COLORS.textMuted);
-      const topInfo = `${patientName} | ${dateStr}`;
-      const topInfoW = doc.getTextWidth(topInfo);
-      doc.text(topInfo, pageWidth - margin - topInfoW, 11);
-
-      doc.setDrawColor(...COLORS.border);
-      doc.setLineWidth(0.25);
-      doc.line(margin, 14, pageWidth - margin, 14);
-    }
 
     // Footer on all pages
     doc.setDrawColor(...COLORS.border);

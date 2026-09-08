@@ -423,16 +423,23 @@ const FieldRenderer: React.FC<{
   const innerContent = () => {
     // Specialized medication list renderer matching image.png & step 5
     if (field.id === 'medikamente_liste') {
-      const list: MedicationItem[] = Array.isArray(value) && value.length > 0 ? value : [];
+      const list: MedicationItem[] = Array.isArray(value) && value.length > 0 
+        ? value 
+        : [createEmptyMedication()];
 
-      const hasUnsavedItem = list.some(item => {
-        const isSaved = item.isSaved !== undefined ? item.isSaved : Boolean(item.name?.trim());
-        return !isSaved;
-      });
-
-      const handleAddMed = () => {
-        if (hasUnsavedItem) return;
-        const updated: MedicationItem[] = [createEmptyMedication(), ...list];
+      const handleSaveItem = (idx: number, savedItem: MedicationData) => {
+        const updated: MedicationItem[] = [...list];
+        updated[idx] = { 
+          ...updated[idx], 
+          ...savedItem,
+          isSaved: true,
+          _id: (updated[idx] as any)?._id || (savedItem as any)?._id || `med_${idx}`
+        };
+        // Funktions-Verschmelzung: "Αποθήκευση φαρμάκου" übernimmt die ursprüngliche Funktion von "Προσθήκη φαρμάκου"
+        const hasEmpty = updated.some(m => !m.name || !m.name.trim());
+        if (!hasEmpty) {
+          updated.push(createEmptyMedication());
+        }
         onChange(updated);
       };
 
@@ -448,7 +455,7 @@ const FieldRenderer: React.FC<{
 
       const handleRemoveMed = (idx: number) => {
         const updated = list.filter((_, i) => i !== idx);
-        onChange(updated);
+        onChange(updated.length === 0 ? [createEmptyMedication()] : updated);
       };
 
       const validMedsCount = list.filter(m => m.name && m.name.trim().length > 0).length;
@@ -470,27 +477,6 @@ const FieldRenderer: React.FC<{
                 </p>
               </div>
             </div>
-
-            <button
-              type="button"
-              id="btn-add-medication-anamnesis-in-box"
-              disabled={hasUnsavedItem}
-              onClick={handleAddMed}
-              className={`w-full py-2.5 px-4 border-2 border-dashed rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-2xs mt-1 ${
-                hasUnsavedItem
-                  ? "border-slate-200 bg-slate-100/70 text-slate-400 cursor-not-allowed opacity-60"
-                  : "border-teal-300 hover:border-teal-500 bg-white hover:bg-teal-50/60 text-teal-700 cursor-pointer"
-              }`}
-            >
-              <Plus className="w-4 h-4" />
-              <span>{t('addMedication' as TranslationKey) || '+ Medikament hinzufügen'}</span>
-            </button>
-            {hasUnsavedItem && (
-              <p className="text-[11px] text-amber-800 bg-amber-50/90 border border-amber-200/80 px-3 py-1.5 rounded-lg flex items-center gap-1.5 mt-0.5">
-                <AlertCircle className="w-3.5 h-3.5 shrink-0 text-amber-600" />
-                <span>{t('unsavedMedicationWarning' as TranslationKey) || 'Ein Medikament befindet sich noch in Bearbeitung. Bitte speichern oder löschen Sie dieses zuerst, bevor Sie ein weiteres hinzufügen.'}</span>
-              </p>
-            )}
           </div>
 
           {/* Section Bar */}
@@ -524,6 +510,7 @@ const FieldRenderer: React.FC<{
                 med={med}
                 onChange={(updated) => handleUpdateMed(medIdx, updated)}
                 onRemove={() => handleRemoveMed(medIdx)}
+                onSaveItem={(saved) => handleSaveItem(medIdx, saved)}
                 showResearchDetails={false}
                 t={t}
               />

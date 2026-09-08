@@ -2588,36 +2588,6 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                 </div>
               )}
 
-              {/* Active Step Section Header & Progress Card (as shown in image) */}
-              <div className="w-full bg-white border border-emerald-200/70 rounded-2xl p-5 shadow-2xs space-y-2.5" id="active-step-progress-card">
-                <div className="flex justify-between items-center text-xs">
-                  <div className="flex items-center gap-2 text-slate-800">
-                    <span className="w-2 h-2 rounded-full bg-emerald-600 shrink-0" />
-                    <span>
-                      {t('sectionCompletionRate') || 'Bearbeitungsstand im Abschnitt'}:{' '}
-                      <strong className="text-slate-900 font-bold">{currentStepConfig.shortName || currentStepConfig.name}</strong>
-                    </span>
-                  </div>
-                  <span className="font-bold text-slate-900 text-xs font-mono">{getStepInfo(currentStep).percent}%</span>
-                </div>
-
-                {/* Progress bar: Bearbeitungsstand im Abschnitt */}
-                <div className="w-full bg-slate-200/80 h-2.5 rounded-full overflow-hidden">
-                  <div
-                    className="bg-[#00897b] h-2.5 rounded-full transition-all duration-300"
-                    style={{ width: `${getStepInfo(currentStep).percent}%` }}
-                  />
-                </div>
-
-                <div className="flex justify-between text-[11px] font-medium text-slate-400">
-                  <span>0%</span>
-                  <span>25%</span>
-                  <span>50%</span>
-                  <span>75%</span>
-                  <span>100%</span>
-                </div>
-              </div>
-
               {/* Active Step Form Card */}
               <div className="w-full bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs space-y-5">
                 {/* SEQUENTIAL STEP BODIES */}

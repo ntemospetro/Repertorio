@@ -576,7 +576,31 @@ export const MedicationResearchView: React.FC<MedicationResearchViewProps> = ({
 
           {/* List of Medications */}
           <div className="flex-1 overflow-y-auto p-3 space-y-2">
-            {/* Add Medication Button - positioned directly above Kombinations- & Risikovergleich in equal width */}
+            {/* Comparison Shortcut if more than 1 medication - positioned directly ABOVE Add Medication button */}
+            {patientMeds.length > 1 && (
+              <button
+                type="button"
+                id="btn-comparison-modal-shortcut"
+                onClick={() => setIsComparisonModalOpen(true)}
+                className="w-full p-2.5 rounded-xl border border-[#fa657c] text-xs font-semibold flex items-center justify-between transition-all cursor-pointer bg-[#FF788C] hover:bg-[#fa657c] active:bg-[#f05970] text-white shadow-xs group"
+                title={t('medComparisonModalFullWidthTitle' as TranslationKey) || 'Kombinations- & Risikovergleich in Vollansicht öffnen'}
+              >
+                <div className="flex items-center gap-2">
+                  <Scale className="w-4 h-4 text-white group-hover:scale-110 transition-transform" />
+                  <span className="font-bold text-white">
+                    {t('medViewModeComparison' as TranslationKey) || 'Kombinations- & Risikovergleich'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-white text-[#e11d48] shadow-2xs">
+                    {patientMeds.length}
+                  </span>
+                  <span className="text-[10px] text-white/95 font-medium">Popup</span>
+                </div>
+              </button>
+            )}
+
+            {/* Add Medication Button */}
             {onOpenMedicationsModal && (
               <button
                 type="button"
@@ -603,31 +627,7 @@ export const MedicationResearchView: React.FC<MedicationResearchViewProps> = ({
                 </p>
               </div>
             ) : (
-              <>
-                {/* Comparison Shortcut if more than 1 medication - opens full-width popup */}
-                {patientMeds.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => setIsComparisonModalOpen(true)}
-                    className="w-full mb-2.5 p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-between transition-all cursor-pointer bg-teal-50/80 hover:bg-teal-100/90 border-teal-200/90 text-teal-950 shadow-2xs group"
-                    title={t('medComparisonModalFullWidthTitle' as TranslationKey) || 'Kombinations- & Risikovergleich in Vollansicht öffnen'}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Scale className="w-4 h-4 text-teal-700 group-hover:scale-110 transition-transform" />
-                      <span className="font-bold">
-                        {t('medViewModeComparison' as TranslationKey) || 'Kombinations- & Risikovergleich'}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-teal-200 text-teal-900">
-                        {patientMeds.length}
-                      </span>
-                      <span className="text-[10px] text-teal-700 font-medium">Popup</span>
-                    </div>
-                  </button>
-                )}
-
-                {patientMeds.map((m, idx) => {
+              patientMeds.map((m, idx) => {
                   const isSelected = !researchedMedDetail && selectedMedIndex === idx && viewMode !== 'comparison';
                   const hasInteractions = !!(m.wechselwirkungen?.length || m.risiken);
 
@@ -682,8 +682,7 @@ export const MedicationResearchView: React.FC<MedicationResearchViewProps> = ({
                       </div>
                     </button>
                   );
-                })}
-              </>
+                })
             )}
           </div>
         </div>

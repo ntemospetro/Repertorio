@@ -352,8 +352,11 @@ export const MedicationLiveInput: React.FC<MedicationLiveInputProps> = ({
       ...med,
       isSaved: true
     };
-    onChange(savedMed);
-    onSaveItem?.(savedMed);
+    if (onSaveItem) {
+      onSaveItem(savedMed);
+    } else {
+      onChange(savedMed);
+    }
   };
 
   const inputBorderClasses = !isSaved
