@@ -728,9 +728,61 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
                 )}
               </div>
 
+              {/* VERBINDLICHES FREITEXTFELD (MANDATORY FREE-TEXT FIELD) MIT VOICE-BUTTON */}
+              <div className="space-y-2 pt-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-teal-700" />
+                    {t('hahnemannMandatoryFreeText')}
+                  </span>
+                  <span className="text-[11px] text-slate-500 font-medium">
+                    {t('hahnemannFreeTextRequired')}
+                  </span>
+                </div>
+
+                <div className="relative flex items-end gap-2">
+                  <textarea
+                    value={currentAnswer}
+                    onChange={(e) => setCurrentAnswer(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        const combined = selectedOptions.length > 0
+                          ? (currentAnswer.trim() ? `${selectedOptions.join(', ')}. ${currentAnswer.trim()}` : selectedOptions.join(', '))
+                          : currentAnswer.trim();
+                        handleSendAnswer(combined);
+                      }
+                    }}
+                    disabled={isProcessing}
+                    placeholder={t('hahnemannMandatoryFreeTextPlaceholder')}
+                    rows={2}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-teal-600 focus:border-transparent text-xs sm:text-sm text-slate-800 placeholder-slate-400 resize-none shadow-2xs"
+                  />
+
+                  {/* Direct Voice Input Button */}
+                  <div className="shrink-0 pb-0.5">
+                    <VoiceInputButton
+                      size="sm"
+                      value={currentAnswer}
+                      onChange={(spokenText) => {
+                        setCurrentAnswer(spokenText);
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-0.5">
+                  <span className="text-[11px] text-slate-400">
+                    {selectedOptions.length > 0 
+                      ? t('hahnemannOptionsSelectedAndFreeText', { count: selectedOptions.length })
+                      : t('hahnemannSelectOptionsOrFreeText')}
+                  </span>
+                </div>
+              </div>
+
               {/* VORDEFINIERTE ANKLICKBARE OPTIONEN (Auswahlkästen) */}
               {activeOptions && activeOptions.length > 0 && (
-                <div className="space-y-3 pt-1">
+                <div className="space-y-3 pt-3 border-t border-teal-100">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
                       <CheckSquare className="w-3.5 h-3.5 text-teal-700" />
@@ -780,58 +832,6 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
                   </div>
                 </div>
               )}
-
-              {/* VERBINDLICHES FREITEXTFELD (MANDATORY FREE-TEXT FIELD) MIT VOICE-BUTTON */}
-              <div className="space-y-2 pt-3 border-t border-teal-100">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-teal-700" />
-                    {t('hahnemannMandatoryFreeText')}
-                  </span>
-                  <span className="text-[11px] text-slate-500 font-medium">
-                    {t('hahnemannFreeTextRequired')}
-                  </span>
-                </div>
-
-                <div className="relative flex items-end gap-2">
-                  <textarea
-                    value={currentAnswer}
-                    onChange={(e) => setCurrentAnswer(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        const combined = selectedOptions.length > 0
-                          ? (currentAnswer.trim() ? `${selectedOptions.join(', ')}. ${currentAnswer.trim()}` : selectedOptions.join(', '))
-                          : currentAnswer.trim();
-                        handleSendAnswer(combined);
-                      }
-                    }}
-                    disabled={isProcessing}
-                    placeholder={t('hahnemannMandatoryFreeTextPlaceholder')}
-                    rows={2}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-teal-600 focus:border-transparent text-xs sm:text-sm text-slate-800 placeholder-slate-400 resize-none shadow-2xs"
-                  />
-
-                  {/* Direct Voice Input Button */}
-                  <div className="shrink-0 pb-0.5">
-                    <VoiceInputButton
-                      size="sm"
-                      value={currentAnswer}
-                      onChange={(spokenText) => {
-                        setCurrentAnswer(spokenText);
-                      }}
-                    />
-                  </div>
-                </div>
-
-                <div className="pt-1">
-                  <span className="text-[11px] text-slate-400">
-                    {selectedOptions.length > 0 
-                      ? t('hahnemannOptionsSelectedAndFreeText', { count: selectedOptions.length })
-                      : t('hahnemannSelectOptionsOrFreeText')}
-                  </span>
-                </div>
-              </div>
             </div>
           ) : (
             /* SECTION 3: ABSCHLUSS & ZUSAMMENFASSUNG */
