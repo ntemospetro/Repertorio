@@ -44,6 +44,7 @@ export const AcuteClarificationModal: React.FC<AcuteClarificationModalProps> = (
   const [answers, setAnswers] = useState<AcuteAnswers>(initialAnswers);
   const [currentStep, setCurrentStep] = useState<number>(0);
   const [showExcluded, setShowExcluded] = useState<boolean>(false);
+  const [isCompletedConfirmed, setIsCompletedConfirmed] = useState<boolean>(false);
 
   // Sync initialAnswers when opening
   useEffect(() => {
@@ -51,6 +52,7 @@ export const AcuteClarificationModal: React.FC<AcuteClarificationModalProps> = (
       setAnswers(initialAnswers);
       setCurrentStep(0);
       setShowExcluded(false);
+      setIsCompletedConfirmed(false);
     }
   }, [isOpen, initialAnswers]);
 
@@ -84,6 +86,7 @@ export const AcuteClarificationModal: React.FC<AcuteClarificationModalProps> = (
   const activeQuestion = allQuestions[currentStep] || allQuestions[0];
 
   const handleSelectOption = (questionId: string, optionId: string) => {
+    setIsCompletedConfirmed(false);
     setAnswers((prev) => {
       const current = (prev as any)[questionId];
       return {
@@ -94,13 +97,23 @@ export const AcuteClarificationModal: React.FC<AcuteClarificationModalProps> = (
   };
 
   const handleSetIntensity = (grade: number) => {
+    setIsCompletedConfirmed(false);
     setAnswers((prev) => ({
       ...prev,
       intensity: prev.intensity === grade ? undefined : grade
     }));
   };
 
+  const handleSetCustomText = (questionId: string, text: string) => {
+    setIsCompletedConfirmed(false);
+    setAnswers((prev) => ({
+      ...prev,
+      [`${questionId}_ownText`]: text
+    }));
+  };
+
   const handleReset = () => {
+    setIsCompletedConfirmed(false);
     setAnswers({});
     setCurrentStep(0);
   };
@@ -111,11 +124,11 @@ export const AcuteClarificationModal: React.FC<AcuteClarificationModalProps> = (
   };
 
   const answeredCount = [
-    answers.onset,
-    answers.modality,
-    answers.sensationMind,
-    answers.intensity,
-    answers.derivedClarification
+    Boolean(answers.onset) || Boolean(answers.onset_ownText?.trim()),
+    Boolean(answers.sensationMind) || Boolean(answers.sensationMind_ownText?.trim()),
+    Boolean(answers.modality) || Boolean(answers.modality_ownText?.trim()),
+    Boolean(answers.intensity) || Boolean(answers.intensity_ownText?.trim()),
+    Boolean(answers.derivedClarification) || Boolean(answers.derivedClarification_ownText?.trim())
   ].filter(Boolean).length;
 
   const scaleLabels: Record<number, string> = {
@@ -185,11 +198,11 @@ export const AcuteClarificationModal: React.FC<AcuteClarificationModalProps> = (
           {stepTitles.map((stTitle, idx) => {
             const isCurrent = idx === currentStep;
             const isCompleted = (
-              (idx === 0 && Boolean(answers.onset)) ||
-              (idx === 1 && Boolean(answers.sensationMind)) ||
-              (idx === 2 && Boolean(answers.modality)) ||
-              (idx === 3 && Boolean(answers.intensity)) ||
-              (idx === 4 && Boolean(answers.derivedClarification))
+              (idx === 0 && (Boolean(answers.onset) || Boolean(answers.onset_ownText?.trim()))) ||
+              (idx === 1 && (Boolean(answers.sensationMind) || Boolean(answers.sensationMind_ownText?.trim()))) ||
+              (idx === 2 && (Boolean(answers.modality) || Boolean(answers.modality_ownText?.trim()))) ||
+              (idx === 3 && (Boolean(answers.intensity) || Boolean(answers.intensity_ownText?.trim()))) ||
+              (idx === 4 && (Boolean(answers.derivedClarification) || Boolean(answers.derivedClarification_ownText?.trim())))
             );
             return (
               <button
@@ -333,75 +346,105 @@ export const AcuteClarificationModal: React.FC<AcuteClarificationModalProps> = (
                 </p>
               </div>
 
-              {/* Single choice question options */}
-              {activeQuestion.type === 'single' && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-                  {activeQuestion.options?.map((opt) => {
-                    const isSelected = (answers as any)[activeQuestion.id] === opt.id;
-                    return (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        onClick={() => handleSelectOption(activeQuestion.id, opt.id)}
-                        className={`p-3 rounded-xl border text-left text-xs transition-all flex flex-col justify-between cursor-pointer ${
-                          isSelected
-                            ? 'bg-teal-50/90 border-teal-600 text-teal-950 ring-2 ring-teal-600/40 shadow-xs'
-                            : 'bg-slate-50/70 border-slate-200 text-slate-700 hover:bg-slate-100 hover:border-slate-300'
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-1.5">
-                          <span className="font-semibold leading-snug text-slate-900">
-                            {opt.label}
-                          </span>
-                          {isSelected && (
-                            <div className="w-4 h-4 rounded-full bg-teal-600 text-white flex items-center justify-center shrink-0 mt-0.5">
-                              <Check className="w-2.5 h-2.5" />
-                            </div>
-                          )}
-                        </div>
-                        {opt.remedyHint && (
-                          <span className="text-[10px] font-semibold text-teal-700 mt-2 block">
-                            {t('acuteKeynoteRemedies')}: {opt.remedyHint}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
+              {/* Verbindliches Freitextfeld (Ergänzungen / Originalaussagen - Organon §§ 83–104) */}
+              <div className="pt-2">
+                <div className="flex items-center justify-between gap-2 mb-1.5 flex-wrap">
+                  <label 
+                    htmlFor={`patient-own-desc-${activeQuestion.id}`} 
+                    className="text-xs font-bold text-slate-800 flex items-center gap-1.5"
+                  >
+                    <span>{t('diffDiagPatientOwnDescriptionLabel')}</span>
+                  </label>
+                  <span className="text-[10px] text-teal-700 font-semibold bg-teal-50 px-2 py-0.5 rounded-md border border-teal-200/60">
+                    {t('diffDiagPatientOwnDescriptionOptional')}
+                  </span>
                 </div>
-              )}
+                <textarea
+                  id={`patient-own-desc-${activeQuestion.id}`}
+                  rows={2}
+                  value={(answers as any)[`${activeQuestion.id}_ownText`] || ''}
+                  onChange={(e) => handleSetCustomText(activeQuestion.id, e.target.value)}
+                  placeholder={t('diffDiagPatientOwnDescriptionPlaceholder')}
+                  className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-slate-50/70 focus:bg-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 text-slate-900 placeholder:text-slate-400 resize-none transition-all shadow-2xs"
+                />
+              </div>
 
-              {/* Scale question options (1 to 4) */}
-              {activeQuestion.type === 'scale' && (
-                <div className="space-y-3 pt-1">
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                    {[1, 2, 3, 4].map((grade) => {
-                      const isSelected = answers.intensity === grade;
+              {/* Oder passende Kategorie zur Orientierung wählen */}
+              <div className="pt-3 border-t border-slate-200/70">
+                <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block mb-2">
+                  {t('diffDiagOrSelectCategory')}
+                </span>
+
+                {/* Single choice question options */}
+                {activeQuestion.type === 'single' && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {activeQuestion.options?.map((opt) => {
+                      const isSelected = (answers as any)[activeQuestion.id] === opt.id;
                       return (
                         <button
-                          key={grade}
+                          key={opt.id}
                           type="button"
-                          onClick={() => handleSetIntensity(grade)}
-                          className={`p-3.5 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1.5 ${
+                          onClick={() => handleSelectOption(activeQuestion.id, opt.id)}
+                          className={`p-3 rounded-xl border text-left text-xs transition-all flex flex-col justify-between cursor-pointer ${
                             isSelected
-                              ? 'bg-teal-700 text-white border-teal-800 shadow-xs ring-2 ring-teal-600/40'
-                              : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 hover:border-slate-300'
+                              ? 'bg-teal-50/90 border-teal-600 text-teal-950 ring-2 ring-teal-600/40 shadow-xs'
+                              : 'bg-slate-50/70 border-slate-200 text-slate-700 hover:bg-slate-100 hover:border-slate-300'
                           }`}
                         >
-                          <span className="text-lg font-extrabold">
-                            {grade}
-                          </span>
-                          <span className={`text-[10px] leading-tight font-medium ${isSelected ? 'text-teal-100' : 'text-slate-500'}`}>
-                            {scaleLabels[grade]}
-                          </span>
+                          <div className="flex items-start justify-between gap-1.5">
+                            <span className="font-semibold leading-snug text-slate-900">
+                              {opt.label}
+                            </span>
+                            {isSelected && (
+                              <div className="w-4 h-4 rounded-full bg-teal-600 text-white flex items-center justify-center shrink-0 mt-0.5">
+                                <Check className="w-2.5 h-2.5" />
+                              </div>
+                            )}
+                          </div>
+                          {opt.remedyHint && (
+                            <span className="text-[10px] font-semibold text-teal-700 mt-2 block">
+                              {t('acuteKeynoteRemedies')}: {opt.remedyHint}
+                            </span>
+                          )}
                         </button>
                       );
                     })}
                   </div>
-                  <p className="text-[11px] text-slate-500 italic text-center">
-                    {t('acuteScaleHint')}
-                  </p>
-                </div>
-              )}
+                )}
+
+                {/* Scale question options (1 to 4) */}
+                {activeQuestion.type === 'scale' && (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                      {[1, 2, 3, 4].map((grade) => {
+                        const isSelected = answers.intensity === grade;
+                        return (
+                          <button
+                            key={grade}
+                            type="button"
+                            onClick={() => handleSetIntensity(grade)}
+                            className={`p-3.5 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1.5 ${
+                              isSelected
+                                ? 'bg-teal-700 text-white border-teal-800 shadow-xs ring-2 ring-teal-600/40'
+                                : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 hover:border-slate-300'
+                            }`}
+                          >
+                            <span className="text-lg font-extrabold">
+                              {grade}
+                            </span>
+                            <span className={`text-[10px] leading-tight font-medium ${isSelected ? 'text-teal-100' : 'text-slate-500'}`}>
+                              {scaleLabels[grade]}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p className="text-[11px] text-slate-500 italic text-center">
+                      {t('acuteScaleHint')}
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -435,11 +478,14 @@ export const AcuteClarificationModal: React.FC<AcuteClarificationModalProps> = (
             )}
           </div>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end flex-wrap">
             {currentStep > 0 && (
               <button
                 type="button"
-                onClick={() => setCurrentStep((prev) => Math.max(0, prev - 1))}
+                onClick={() => {
+                  setIsCompletedConfirmed(false);
+                  setCurrentStep((prev) => Math.max(0, prev - 1));
+                }}
                 className="px-3.5 py-2 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl transition-colors flex items-center gap-1 cursor-pointer"
               >
                 <ChevronLeft className="w-4 h-4" />
@@ -450,19 +496,31 @@ export const AcuteClarificationModal: React.FC<AcuteClarificationModalProps> = (
             {currentStep < totalSteps - 1 ? (
               <button
                 type="button"
-                onClick={() => setCurrentStep((prev) => Math.min(totalSteps - 1, prev + 1))}
-                className="px-4 py-2 bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold rounded-xl transition-all shadow-xs flex items-center gap-1 cursor-pointer"
+                onClick={() => {
+                  setIsCompletedConfirmed(false);
+                  setCurrentStep((prev) => Math.min(totalSteps - 1, prev + 1));
+                }}
+                className="px-4 py-2 bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
               >
-                <span>{t('diffDiagNextStep')}</span>
+                <span>{t('diffDiagConfirmAndNext')}</span>
                 <ChevronRight className="w-4 h-4" />
+              </button>
+            ) : !isCompletedConfirmed ? (
+              <button
+                type="button"
+                onClick={() => setIsCompletedConfirmed(true)}
+                className="px-4 py-2 bg-teal-700 hover:bg-teal-800 active:bg-teal-900 text-white text-xs font-bold rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+              >
+                <Check className="w-4 h-4 text-teal-200" />
+                <span>{t('diffDiagConfirmAndFinish')}</span>
               </button>
             ) : (
               <button
                 type="button"
                 onClick={handleApply}
-                className="px-5 py-2.5 bg-teal-700 hover:bg-teal-800 active:bg-teal-900 text-white text-xs font-bold rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold rounded-xl transition-all shadow-sm ring-2 ring-emerald-500/40 flex items-center gap-1.5 cursor-pointer animate-in fade-in"
               >
-                <Sparkles className="w-4 h-4 text-teal-200" />
+                <Sparkles className="w-4 h-4 text-emerald-100" />
                 <span>{t('acuteQuestionsApplyBtn')}</span>
               </button>
             )}

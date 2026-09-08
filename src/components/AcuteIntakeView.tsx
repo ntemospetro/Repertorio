@@ -267,8 +267,10 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
     // 4. In der Schritt-für-Schritt Differenzialdiagnose eingegebene Antworten (acuteAnswers)
     if (acuteAnswers && Object.keys(acuteAnswers).length > 0) {
       const answerLabels: string[] = [];
-      Object.entries(acuteAnswers).forEach(([, optVal]) => {
-        if (typeof optVal === 'string') {
+      Object.entries(acuteAnswers).forEach(([k, optVal]) => {
+        if (k.endsWith('_ownText') && typeof optVal === 'string' && optVal.trim()) {
+          answerLabels.push(`${t('diffDiagPatientOwnDescriptionLabel')} "${optVal.trim()}"`);
+        } else if (typeof optVal === 'string') {
           const optLabel = OPTION_LABELS_I18N[optVal]?.[language] || OPTION_LABELS_I18N[optVal]?.de;
           if (optLabel) {
             answerLabels.push(optLabel);

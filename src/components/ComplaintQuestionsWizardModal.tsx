@@ -824,36 +824,12 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-1">
+                <div className="pt-1">
                   <span className="text-[11px] text-slate-400">
                     {selectedOptions.length > 0 
                       ? t('hahnemannOptionsSelectedAndFreeText', { count: selectedOptions.length })
                       : t('hahnemannSelectOptionsOrFreeText')}
                   </span>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const combined = selectedOptions.length > 0
-                        ? (currentAnswer.trim() ? `${selectedOptions.join(', ')}. ${currentAnswer.trim()}` : selectedOptions.join(', '))
-                        : currentAnswer.trim();
-                      handleSendAnswer(combined);
-                    }}
-                    disabled={(!currentAnswer.trim() && selectedOptions.length === 0) || isProcessing}
-                    className="px-4 py-2 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-xs sm:text-sm font-semibold flex items-center gap-2 transition-all shadow-xs disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                  >
-                    {isProcessing ? (
-                      <>
-                        <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        <span>{t('regVerifySending')}</span>
-                      </>
-                    ) : (
-                      <>
-                        <Send className="w-3.5 h-3.5" />
-                        <span>{t('hahnemannSubmitAnswerBtn')}</span>
-                      </>
-                    )}
-                  </button>
                 </div>
               </div>
             </div>
@@ -1068,14 +1044,41 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
               {t('btnCancelModal')}
             </button>
 
-            <button
-              type="button"
-              onClick={handleSaveAndTransfer}
-              className="px-4 py-2 rounded-lg bg-teal-700 hover:bg-teal-800 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer"
-            >
-              <Check className="w-4 h-4" />
-              <span>{t('hahnemannBtnTransferToCase')}</span>
-            </button>
+            {analysisResult?.analyse_status !== 'completed' && analysisResult?.naechste_frage ? (
+              <button
+                type="button"
+                onClick={() => {
+                  const combined = selectedOptions.length > 0
+                    ? (currentAnswer.trim() ? `${selectedOptions.join(', ')}. ${currentAnswer.trim()}` : selectedOptions.join(', '))
+                    : currentAnswer.trim();
+                  handleSendAnswer(combined);
+                }}
+                disabled={(!currentAnswer.trim() && selectedOptions.length === 0) || isProcessing}
+                className="px-4 py-2 rounded-lg bg-teal-700 hover:bg-teal-800 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isProcessing ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>{t('regVerifySending')}</span>
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-3.5 h-3.5" />
+                    <span>{t('hahnemannSubmitAnswerBtn')}</span>
+                  </>
+                )}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleSaveAndTransfer}
+                disabled={isProcessing}
+                className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer disabled:opacity-50"
+              >
+                <Check className="w-4 h-4" />
+                <span>{t('hahnemannBtnTransferToCase')}</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
