@@ -9,6 +9,21 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=JetBrains+Mono:wght@400;500;600&family=Roboto:wght@400;500;700&family=Noto+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <script>
+      // Suppress harmless errors from third-party browser extensions or injected monitoring scripts
+      window.addEventListener('error', function (e) {
+        var msg = (e && (e.message || (e.error && e.error.message))) || '';
+        if (typeof msg === 'string' && (
+          msg.indexOf('startTime') !== -1 ||
+          msg.indexOf('reportAllChanges') !== -1 ||
+          msg.indexOf('message port closed') !== -1 ||
+          msg.indexOf('ResizeObserver loop') !== -1
+        )) {
+          e.preventDefault();
+          if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+          return true;
+        }
+      }, true);
+
       window.addEventListener('unhandledrejection', function (e) {
         var r = (e && e.reason && (e.reason.message || e.reason)) || '';
         if (typeof r === 'string' && (
@@ -18,6 +33,7 @@
         )) {
           e.preventDefault();
           if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+          return true;
         }
       });
     </script>

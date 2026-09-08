@@ -26,8 +26,8 @@ async function startServer() {
     res.json({ status: "ok" });
   });
 
-  // Country & Language Detection Endpoint
-  app.get("/api/detect-country", (req, res) => {
+  // Country & Language Detection Endpoint (GET, POST, OPTIONS, HEAD with or without trailing slash)
+  app.all(["/api/detect-country", "/api/detect-country/"], (req, res) => {
     const cfCountry = req.headers["cf-ipcountry"] || req.headers["x-country-code"] || req.headers["x-appengine-country"];
     let detectedCountry = typeof cfCountry === "string" ? cfCountry.toUpperCase() : "";
 
@@ -2477,7 +2477,7 @@ Checkliste für den Patienten:
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
-    app.get('*all', (req, res) => {
+    app.get('*', (req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }

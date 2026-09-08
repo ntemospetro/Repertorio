@@ -218,41 +218,15 @@ export function getInstantDetectedLanguage(): DetectedCountryInfo {
 }
 
 /**
- * Asynchronously detects the user's country and language via IP / server endpoint
+ * Asynchronously detects the user's country and language
  */
 export async function detectUserCountryAndLanguage(): Promise<DetectedCountryInfo> {
-  const instant = getInstantDetectedLanguage();
-
-  // Try server endpoint or IP api
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2500);
-
-    const res = await fetch('/api/detect-country', {
-      signal: controller.signal,
-    });
-    clearTimeout(timeoutId);
-
-    if (res.ok) {
-      const data = await res.json();
-      if (data?.countryCode && COUNTRY_TO_LANGUAGE_MAP[data.countryCode]) {
-        const match = COUNTRY_TO_LANGUAGE_MAP[data.countryCode];
-        const info: DetectedCountryInfo = {
-          countryCode: data.countryCode,
-          countryName: data.countryName || match.name,
-          language: match.language,
-          source: 'ip_geolocation',
-        };
-        try {
-          localStorage.setItem(STORAGE_DETECTED_COUNTRY_KEY, JSON.stringify(info));
-        } catch {}
-        return info;
-      }
-    }
-  } catch {
-    // fallback to instant
+  const cached = getCachedDetectedCountry();
+  if (cached && cached.countryCode && cached.language) {
+    return cached;
   }
 
+  const instant = getInstantDetectedLanguage();
   try {
     localStorage.setItem(STORAGE_DETECTED_COUNTRY_KEY, JSON.stringify(instant));
   } catch {}
