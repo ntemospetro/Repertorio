@@ -725,11 +725,27 @@ if ($route === 'medications/translate' || $route === 'translate') {
     exit;
 }
 
+function getDataFilePath($filename) {
+    $candidates = [
+        __DIR__ . '/../data/' . $filename,
+        __DIR__ . '/data/' . $filename,
+        __DIR__ . '/../../data/' . $filename
+    ];
+    foreach ($candidates as $c) {
+        if (file_exists($c)) return $c;
+    }
+    $defaultDir = __DIR__ . '/../data';
+    if (!is_dir($defaultDir)) {
+        @mkdir($defaultDir, 0755, true);
+    }
+    return $defaultDir . '/' . $filename;
+}
+
 // =========================================================================
 // ROUTE 5: SITE CONFIG (/api/site/config & /api/site-config)
 // =========================================================================
 if ($route === 'site/config' || $route === 'site-config') {
-    $siteConfigFile = __DIR__ . '/../data/site_config.json';
+    $siteConfigFile = getDataFilePath('site_config.json');
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $current = [];
         if (file_exists($siteConfigFile)) {
@@ -757,7 +773,7 @@ if ($route === 'site/config' || $route === 'site-config') {
 // ROUTE 6: EMAIL CONFIG (/api/email/config & /api/email-config)
 // =========================================================================
 if ($route === 'email/config' || $route === 'email-config' || $route === 'email/config/reset' || $route === 'email-config/reset') {
-    $emailConfigFile = __DIR__ . '/../data/email_config.json';
+    $emailConfigFile = getDataFilePath('email_config.json');
     $defaultEmailSettings = [
         'smtpHost' => 'smtp.hostinger.com',
         'smtpPort' => 465,
@@ -805,7 +821,7 @@ if ($route === 'email/config' || $route === 'email-config' || $route === 'email/
 // ROUTE 7: ADMIN CREDENTIALS (/api/admin/credentials & /api/admin-credentials)
 // =========================================================================
 if ($route === 'admin/credentials' || $route === 'admin-credentials') {
-    $credsFile = __DIR__ . '/../data/admin_credentials.json';
+    $credsFile = getDataFilePath('admin_credentials.json');
     $defaultCreds = [
         'username' => 'admin',
         'email' => 'admin@homeopilot360.com',

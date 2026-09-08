@@ -162,7 +162,7 @@ function callGeminiApi($prompt, $withSearch = false) {
     $apiKey = getGeminiKey();
     if (empty($apiKey)) return null;
 
-    $models = ['gemini-3.8-flash', 'gemini-flash-latest'];
+    $models = ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-flash-latest', 'gemini-2.5-flash'];
 
     foreach ($models as $model) {
         $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key=" . urlencode($apiKey);
@@ -725,8 +725,404 @@ if ($route === 'medications/translate' || $route === 'translate') {
     exit;
 }
 
+function getDataFilePath($filename) {
+    $candidates = [
+        __DIR__ . '/../data/' . $filename,
+        __DIR__ . '/data/' . $filename,
+        __DIR__ . '/../../data/' . $filename
+    ];
+    foreach ($candidates as $c) {
+        if (file_exists($c)) return $c;
+    }
+    $defaultDir = __DIR__ . '/../data';
+    if (!is_dir($defaultDir)) {
+        @mkdir($defaultDir, 0755, true);
+    }
+    return $defaultDir . '/' . $filename;
+}
+
+// =========================================================================
+// ROUTE 5: SITE CONFIG (/api/site/config & /api/site-config)
+// =========================================================================
+if ($route === 'site/config' || $route === 'site-config') {
+    $siteConfigFile = getDataFilePath('site_config.json');
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $current = [];
+        if (file_exists($siteConfigFile)) {
+            $raw = @file_get_contents($siteConfigFile);
+            $current = @json_decode($raw, true) ?: [];
+        }
+        $updated = array_merge(is_array($current) ? $current : [], is_array($body) ? $body : []);
+        @file_put_contents($siteConfigFile, json_encode($updated, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        echo json_encode($updated);
+        exit;
+    }
+    if (file_exists($siteConfigFile)) {
+        $raw = @file_get_contents($siteConfigFile);
+        $data = @json_decode($raw, true);
+        if (is_array($data)) {
+            echo json_encode($data);
+            exit;
+        }
+    }
+    echo json_encode(new stdClass());
+    exit;
+}
+
+// =========================================================================
+// ROUTE 6: EMAIL CONFIG (/api/email/config & /api/email-config)
+// =========================================================================
+if ($route === 'email/config' || $route === 'email-config' || $route === 'email/config/reset' || $route === 'email-config/reset') {
+    $emailConfigFile = getDataFilePath('email_config.json');
+    $defaultEmailSettings = [
+        'smtpHost' => 'smtp.hostinger.com',
+        'smtpPort' => 465,
+        'smtpSecure' => 'ssl',
+        'smtpUser' => 'therapie@homeopilot360.com',
+        'smtpPass' => '',
+        'senderEmail' => 'therapie@homeopilot360.com',
+        'senderName' => 'HomeoPilot 360',
+        'footerText' => 'Automatisch generiert durch HomeoPilot 360.'
+    ];
+
+    if (strpos($route, 'reset') !== false && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        @file_put_contents($emailConfigFile, json_encode($defaultEmailSettings, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        echo json_encode($defaultEmailSettings);
+        exit;
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $current = $defaultEmailSettings;
+        if (file_exists($emailConfigFile)) {
+            $raw = @file_get_contents($emailConfigFile);
+            $parsed = @json_decode($raw, true);
+            if (is_array($parsed)) $current = array_merge($current, $parsed);
+        }
+        $updated = array_merge($current, is_array($body) ? $body : []);
+        $updated['updatedAt'] = date('c');
+        @file_put_contents($emailConfigFile, json_encode($updated, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        echo json_encode($updated);
+        exit;
+    }
+
+    if (file_exists($emailConfigFile)) {
+        $raw = @file_get_contents($emailConfigFile);
+        $data = @json_decode($raw, true);
+        if (is_array($data)) {
+            echo json_encode($data);
+            exit;
+        }
+    }
+    echo json_encode($defaultEmailSettings);
+    exit;
+}
+
+// =========================================================================
+// ROUTE 7: ADMIN CREDENTIALS (/api/admin/credentials & /api/admin-credentials)
+// =========================================================================
+if ($route === 'admin/credentials' || $route === 'admin-credentials') {
+    $credsFile = getDataFilePath('admin_credentials.json');
+    $defaultCreds = [
+        'username' => 'admin',
+        'email' => 'admin@homeopilot360.com',
+        'displayName' => 'Praxisleitung',
+        'passwordHash' => ''
+    ];
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $current = $defaultCreds;
+        if (file_exists($credsFile)) {
+            $raw = @file_get_contents($credsFile);
+            $parsed = @json_decode($raw, true);
+            if (is_array($parsed)) $current = array_merge($current, $parsed);
+        }
+        $updated = array_merge($current, is_array($body) ? $body : []);
+        @file_put_contents($credsFile, json_encode($updated, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        echo json_encode($updated);
+        exit;
+    }
+    if (file_exists($credsFile)) {
+        $raw = @file_get_contents($credsFile);
+        $data = @json_decode($raw, true);
+        if (is_array($data)) {
+            echo json_encode($data);
+            exit;
+        }
+    }
+    echo json_encode($defaultCreds);
+    exit;
+}
+
+// =========================================================================
+// ROUTE 8: MEDICAL RELEVANCE FILTER (/api/check-medical-relevance)
+// =========================================================================
+if ($route === 'check-medical-relevance') {
+    $text = isset($body['text']) ? trim($body['text']) : '';
+    if (empty($text)) {
+        echo json_encode(['isRelevant' => false, 'reason' => 'empty_text']);
+        exit;
+    }
+    $apiKey = getGeminiKey();
+    if (empty($apiKey)) {
+        echo json_encode(['isRelevant' => true, 'reason' => 'no_api_key_passthrough']);
+        exit;
+    }
+    $prompt = "Du bist ein strenger medizinischer Relevanzfilter für eine professionelle homöopathische Anamnese.
+Prüfe folgende Aussage: \"{$text}\".
+Antworte AUSSCHLIESSLICH im JSON-Format: {\"isRelevant\": true, \"reason\": \"Erklärung\"}";
+    $aiRes = callGeminiApi($prompt, false);
+    $parsed = $aiRes ? extractJsonFromText($aiRes) : null;
+    if (is_array($parsed) && isset($parsed['isRelevant'])) {
+        echo json_encode($parsed);
+        exit;
+    }
+    echo json_encode(['isRelevant' => true, 'reason' => 'fallback']);
+    exit;
+}
+
+// =========================================================================
+// ROUTE 9: HAHNEMANN ORGANON §§ 83-104 ANAMNESE (/api/hahnemann-analysis)
+// =========================================================================
+if ($route === 'hahnemann-analysis' || $route === 'hahnemann/analysis') {
+    $text = isset($body['text']) ? trim($body['text']) : '';
+    if (empty($text)) {
+        http_response_code(400);
+        echo json_encode(['error' => 'text is required']);
+        exit;
+    }
+
+    $apiKey = getGeminiKey();
+    if (empty($apiKey)) {
+        http_response_code(503);
+        echo json_encode(['error' => 'GEMINI_API_KEY is not configured']);
+        exit;
+    }
+
+    $currentMatrix = isset($body['currentMatrix']) && is_array($body['currentMatrix']) ? $body['currentMatrix'] : [];
+    $conversationHistory = isset($body['conversationHistory']) && is_array($body['conversationHistory']) ? $body['conversationHistory'] : [];
+    $language = isset($body['language']) ? $body['language'] : 'de';
+    $forceComplete = !empty($body['forceComplete']);
+    $caseType = isset($body['caseType']) ? $body['caseType'] : 'akut';
+
+    $langNames = [
+        'de' => 'German (Deutsch)',
+        'en' => 'English',
+        'el' => 'Greek (Ελληνικά)',
+        'es' => 'Spanish (Español)',
+        'fr' => 'French (Français)',
+        'it' => 'Italian (Italiano)',
+        'ru' => 'Russian (Русский)'
+    ];
+    $targetLanguageName = $langNames[$language] ?? 'German (Deutsch)';
+
+    $currentStepCount = count($conversationHistory) + 1;
+    $hasCausa = !empty($currentMatrix['causa']) && $currentMatrix['causa'] !== 'Noch nicht genannt';
+    $hasLokalisierung = !empty($currentMatrix['lokalisierung']) && $currentMatrix['lokalisierung'] !== 'Noch nicht genannt';
+    $hasEmpfindung = !empty($currentMatrix['empfindung']) && $currentMatrix['empfindung'] !== 'Noch nicht genannt';
+    $hasModalitaeten = !empty($currentMatrix['modalitaeten']) && $currentMatrix['modalitaeten'] !== 'Noch nicht genannt';
+    $hasBegleitsymptome = !empty($currentMatrix['begleitsymptome']) && is_array($currentMatrix['begleitsymptome']) && count($currentMatrix['begleitsymptome']) > 0;
+    $hasGemuet = !empty($currentMatrix['gemuet']) && $currentMatrix['gemuet'] !== 'Noch nicht genannt';
+
+    $all6PillarsFilled = $hasCausa && $hasLokalisierung && $hasEmpfindung && $hasModalitaeten && $hasBegleitsymptome && $hasGemuet;
+    $maxStepsReached = count($conversationHistory) >= 7;
+    $mustComplete = $forceComplete || $all6PillarsFilled || ($maxStepsReached && $hasGemuet && $hasModalitaeten && $hasEmpfindung && $hasCausa);
+
+    $safeText = str_replace('"', '\"', $text);
+    $escapedMatrix = json_encode($currentMatrix, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    $escapedHistory = json_encode($conversationHistory, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+
+    $prompt = "Du bist die zentrale Logik-Engine für eine professionelle homöopathische Anamnese streng nach den Prinzipien von Samuel Hahnemann und den Paragraphen 83 bis 104 des Organon der Heilkunst.
+
+### LEITLINIEN AUS DEM ORGANON DER HEILKUNST (§§ 83–104):
+- § 83: Vorurteilslose Beobachtung und treue Aufnahme des Krankheitsbildes ohne Spekulationen.
+- § 84: Der Patient schildert seine Beschwerden; die Begleiter berichten. Der Arzt hört aufmerksam zu, ohne zu unterbrechen.
+- §§ 85–90: Gezieltes Nachfragen zur Präzisierung. Jedes Einzelsymptom wird isoliert abgefragt. Niemals Suggestivfragen stellen.
+- §§ 91–93: Unterscheidung chronische vs. akute Krankheiten.
+- § 94: Untersuchung von Lebensweise, Diät, Gemütszustand.
+- § 99: Akute Krankheiten: Erfragung des unmittelbaren Anlasses/Auslösers (Causa), des Beginns und des bisherigen Verlaufs.
+- §§ 100–102: Zusammenhängende / epidemische Erkrankungen: Erfassung des Gesamtbildes durch Verknüpfung der Symptome.
+- §§ 103–104: Vollständiges Fixieren des Krankheitsbildes (Totalität der Symptome als Fundament des Simile).
+
+### STRIKTE ANWEISUNG: BERÜCKSICHTIGUNG DES KONKRETEN PATIENTENSYMPTOMS & EXTRAKTION
+1. Analysiere ZUERST die aktuelle Benutzereingabe (\"{$safeText}\") sowie die bestehende Matrix.
+2. Wenn der Patient in seiner Eingabe bereits ein Symptom, eine Lokalisation, eine Empfindung, einen Auslöser/Causa oder Modalitäten genannt hat:
+   - Extrahiere diese Fakten SOFORT in die entsprechenden Felder von \"wichtige_symptom_fragmente\"!
+   - Frage NIEMALS nach einer Säule, die der Patient bereits genannt hat oder die in der bestehenden Matrix bereits vorhanden ist.
+3. Die nächste Frage (\"naechste_frage\") MUSS das konkrete Symptom des Patienten IMMER namentlich aufgreifen (z. B. \"Zu Ihren Kopfschmerzen: ...\", in der Zielsprache).
+4. Frage immer gezielt nach der nächsten TATSÄCHLICH NOCH FEHLENDEN Säule!
+
+### URSÄCHLICHER ZUSAMMENHANG BEI MEHREREN BESCHWERDEN:
+Bei der Aufnahme mehrerer Beschwerden (z. B. Fieber und Halsschmerzen) prüfst du IMMER zuerst, ob ein ursächlicher Zusammenhang besteht. Hinterfrage, ob beide durch denselben Auslöser/Infekt hervorgerufen wurden, um sie als zusammenhängenden Komplex zu erfassen.
+
+Soll jetzt abgeschlossen werden? " . ($mustComplete ? "JA (Abschluss der Organon-Anamnese)" : "NEIN (nächste Frage stellen)") . ".
+
+### AUSGABE-FORMAT (Strikte JSON-Struktur):
+Antworte AUSSCHLIESSLICH mit validem JSON in genau diesem Format (ohne Markdown, ohne Text davor oder danach):
+{
+  \"analyse_status\": \"" . ($mustComplete ? "completed" : "in_progress") . "\",
+  \"wichtige_symptom_fragmente\": {
+    \"causa\": null,
+    \"lokalisierung\": null,
+    \"empfindung\": null,
+    \"modalitaeten\": null,
+    \"begleitsymptome\": [],
+    \"gemuet\": null,
+    \"strahlungsoptionen\": null,
+    \"ursaechlicher_zusammenhang\": null,
+    \"fruehere_behandlungen_und_historie\": null
+  },
+  \"falltyp\": \"{$caseType}\",
+  \"mehrere_symptome_erkannt\": false,
+  \"symptomkomplex_bestaetigt\": false,
+  \"ignorierte_daten\": [],
+  \"kontroll_und_nachfrage_logik\": \"Begründung nach Organon §§ 83-104\",
+  \"naechste_frage\": \"" . ($mustComplete ? "" : "Hier steht genau eine gezielte Einzelfrage zur fehlenden Säule") . "\",
+  \"auswahl_optionen\": " . ($mustComplete ? "[]" : '["Option 1", "Option 2", "Option 3", "Option 4"]') . ",
+  \"auswahl_typ\": \"multiple\",
+  \"aktuelle_mittel_differenzierung\": [\"Aconitum napellus\", \"Belladonna\", \"Bryonia alba\"],
+  \"end_analyse_zusammenfassung\": " . ($mustComplete ? '"Zusammenfassung für den Therapeuten: ..."' : "null") . ",
+  \"sich_ergebende_fragen\": []
+}
+
+Bestehende Matrix:
+{$escapedMatrix}
+
+Bisheriger Verlauf:
+{$escapedHistory}
+
+Aktuelle Benutzereingabe:
+\"{$safeText}\"
+
+SPRACHE: Alle Fragen, Optionen und Zusammenfassungen in {$targetLanguageName} formulieren. Arzneimittelnamen stets in offiziellem Latein.";
+
+    $aiRes = callGeminiApi($prompt, false);
+    if ($aiRes) {
+        $parsed = extractJsonFromText($aiRes);
+        if (is_array($parsed) && isset($parsed['wichtige_symptom_fragmente'])) {
+            if ($mustComplete) {
+                $parsed['analyse_status'] = 'completed';
+                $parsed['naechste_frage'] = '';
+                $parsed['auswahl_optionen'] = [];
+            }
+            echo json_encode(['result' => $parsed]);
+            exit;
+        }
+    }
+
+    http_response_code(500);
+    echo json_encode(['error' => 'Failed to perform Hahnemann analysis via AI']);
+    exit;
+}
+
+// =========================================================================
+// ROUTE 10: 5-SCHRITTE-AKUT-REPERTORISATION (/api/acute-repertorise)
+// =========================================================================
+if ($route === 'acute-repertorise' || $route === 'acute/repertorise') {
+    $symptomText = isset($body['symptomText']) ? trim($body['symptomText']) : '';
+    if (empty($symptomText)) {
+        http_response_code(400);
+        echo json_encode(['error' => 'symptomText is required']);
+        exit;
+    }
+
+    $apiKey = getGeminiKey();
+    if (empty($apiKey)) {
+        http_response_code(503);
+        echo json_encode(['error' => 'GEMINI_API_KEY is not configured']);
+        exit;
+    }
+
+    $language = isset($body['language']) ? $body['language'] : 'de';
+    $langNames = [
+        'de' => 'German (Deutsch)',
+        'en' => 'English',
+        'el' => 'Greek (Ελληνικά)',
+        'es' => 'Spanish (Español)',
+        'fr' => 'French (Français)',
+        'it' => 'Italian (Italiano)',
+        'ru' => 'Russian (Русский)'
+    ];
+    $targetLanguageName = $langNames[$language] ?? 'German (Deutsch)';
+    $safeSymptom = str_replace('"', '\"', $symptomText);
+
+    $prompt = "Du bist das logische Hintergrund-Modul (Backend-Engine) einer bestehenden Homöopathie-App zur hochpräzisen, unvoreingenommenen Akutanalyse nach Hahnemanns Organon §§ 83–104 und Kent.
+Eingabetext: \"{$safeSymptom}\"
+Zielsprache: {$targetLanguageName}
+
+Antworte AUSSCHLIESSLICH mit einem validen JSON-Objekt (ohne Markdown, ohne Fließtext):
+{
+  \"extraktion\": {
+    \"hauptbeschwerde\": \"Leitsymptom\",
+    \"causa\": \"Causa oder Unbekannt (Bitte erfragen)\",
+    \"modalitaeten\": \"Modalitäten oder Unbekannt (Bitte erfragen)\",
+    \"begleitsymptome\": \"Begleitsymptome oder Unbekannt (Bitte erfragen)\"
+  },
+  \"app_layout_daten\": {
+    \"optimales_simile\": \"Name des Hauptmittels in Latein oder Fehlende Daten für Empfehlung\",
+    \"begruendung\": \"Kurze Begründung\"
+  },
+  \"diagnose_fragen_fuer_therapeut\": {
+    \"frage_1\": \"Leitfrage zu Modalitäten ODER eigene freie Beschreibung des Patienten (Originalworte)\",
+    \"frage_2\": \"Leitfrage zu Begleitsymptomen ODER eigene freie Beschreibung des Patienten (Originalworte)\"
+  },
+  \"baumstruktur_popup_daten\": {
+    \"start_knoten\": \"Ausgangssymptom\",
+    \"haupt_differenzierungs_frage\": \"Differenzierungsfrage\",
+    \"pfad_ja\": {
+      \"bedingung\": \"Wenn ja\",
+      \"folge_frage\": \"Nächste Frage\",
+      \"ergebnis_ja\": \"Mittel\",
+      \"ergebnis_nein\": \"Unvollständig\"
+    },
+    \"pfad_nein\": {
+      \"bedingung\": \"Wenn nein\",
+      \"folge_frage\": \"Warte auf Eingabe\",
+      \"ergebnis_ja\": \"Unvollständig\",
+      \"ergebnis_nein\": \"Unvollständig\"
+    }
+  }
+}";
+
+    $aiRes = callGeminiApi($prompt, false);
+    if ($aiRes) {
+        $raw = extractJsonFromText($aiRes);
+        if (is_array($raw)) {
+            $extraktion = $raw['extraktion'] ?? [
+                'hauptbeschwerde' => $symptomText,
+                'causa' => 'Unbekannt (Bitte erfragen)',
+                'modalitaeten' => 'Unbekannt (Bitte erfragen)',
+                'begleitsymptome' => 'Unbekannt (Bitte erfragen)'
+            ];
+            $app_layout_daten = $raw['app_layout_daten'] ?? [
+                'optimales_simile' => 'Fehlende Daten für Empfehlung',
+                'begruendung' => 'Informationen zur Differenzierung erforderlich.'
+            ];
+            $normalizedResult = [
+                'extraktion' => $extraktion,
+                'app_layout_daten' => $app_layout_daten,
+                'diagnose_fragen_fuer_therapeut' => $raw['diagnose_fragen_fuer_therapeut'] ?? [
+                    'frage_1' => 'Welche Modalitäten liegen vor?',
+                    'frage_2' => 'Gibt es Begleitsymptome?'
+                ],
+                'baumstruktur_popup_daten' => $raw['baumstruktur_popup_daten'] ?? null,
+                'extractedAnalysis' => $extraktion,
+                'recommendedSimile' => [
+                    'remedyName' => $app_layout_daten['optimales_simile'] ?? 'Fehlende Daten für Empfehlung',
+                    'rationale' => $app_layout_daten['begruendung'] ?? ''
+                ]
+            ];
+            echo json_encode(['result' => $normalizedResult]);
+            exit;
+        }
+    }
+
+    http_response_code(500);
+    echo json_encode(['error' => 'Failed to repertorise via AI']);
+    exit;
+}
+
 // =========================================================================
 // DEFAULT: Route nicht gefunden
 // =========================================================================
 http_response_code(404);
 echo json_encode(['error' => 'Endpoint not found', 'requestedRoute' => $route]);
+
