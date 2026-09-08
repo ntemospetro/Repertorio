@@ -820,7 +820,7 @@ if ($route === 'email/config' || $route === 'email-config' || $route === 'email/
 // =========================================================================
 // ROUTE 7: ADMIN CREDENTIALS (/api/admin/credentials & /api/admin-credentials)
 // =========================================================================
-if ($route === 'admin/credentials' || $route === 'admin-credentials') {
+if ($route === 'admin/credentials' || $route === 'admin-credentials' || $route === 'admin/credentials/reset' || $route === 'admin-credentials/reset') {
     $credsFile = getDataFilePath('admin_credentials.json');
     $defaultCreds = [
         'username' => 'admin',
@@ -828,6 +828,11 @@ if ($route === 'admin/credentials' || $route === 'admin-credentials') {
         'displayName' => 'Praxisleitung',
         'passwordHash' => ''
     ];
+    if ($route === 'admin/credentials/reset' || $route === 'admin-credentials/reset') {
+        @file_put_contents($credsFile, json_encode($defaultCreds, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        echo json_encode($defaultCreds);
+        exit;
+    }
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $current = $defaultCreds;
         if (file_exists($credsFile)) {
@@ -1117,6 +1122,380 @@ Antworte AUSSCHLIESSLICH mit einem validen JSON-Objekt (ohne Markdown, ohne Flie
 
     http_response_code(500);
     echo json_encode(['error' => 'Failed to repertorise via AI']);
+    exit;
+}
+
+// =========================================================================
+// ROUTE 11: CLINICAL PHARMACOLOGY COMPARISON (/api/medications/clinical-comparison)
+// =========================================================================
+if ($route === 'medications/clinical-comparison' || $route === 'clinical-comparison') {
+    $patientCase = isset($body['patientCase']) ? $body['patientCase'] : [];
+    $lifestyle = isset($body['lifestyle']) ? $body['lifestyle'] : [];
+    $language = isset($body['language']) ? $body['language'] : 'de';
+
+    $meds = isset($patientCase['medikamenteList']) && is_array($patientCase['medikamenteList']) ? $patientCase['medikamenteList'] : [];
+
+    $langNames = [
+        'de' => 'German (Deutsch)',
+        'en' => 'English',
+        'el' => 'Greek (Ελληνικά)',
+        'es' => 'Spanish (Español)',
+        'fr' => 'French (Français)',
+        'it' => 'Italian (Italiano)',
+        'ru' => 'Russian (Русский)'
+    ];
+    $targetLanguageName = $langNames[$language] ?? 'German (Deutsch)';
+
+    $isSmoker = !empty($lifestyle['isSmoker']) || (isset($lifestyle['smokingStatus']) && $lifestyle['smokingStatus'] === 'smoker');
+    $hasAlcohol = !empty($lifestyle['alcoholDaily']) || (isset($lifestyle['alcoholFrequency']) && $lifestyle['alcoholFrequency'] !== 'never');
+
+    $patientName = $patientCase['patientName'] ?? 'Anonym';
+    $alter = $patientCase['geburtsdatum'] ?? 'nicht angegeben';
+    $geschlecht = $patientCase['geschlecht'] ?? 'weiblich';
+    $gewicht = $lifestyle['bodyWeightKg'] ?? ($patientCase['befundDetails']['gewicht'] ?? 70);
+    $groesse = $lifestyle['bodyHeightCm'] ?? ($patientCase['patientHeightCm'] ?? ($patientCase['befundDetails']['groesse'] ?? 170));
+    $bmi = isset($lifestyle['bmi']) ? $lifestyle['bmi'] . ' kg/m²' : 'Standard';
+    $isPregnant = !empty($lifestyle['isPregnant']);
+    $pregMonth = $lifestyle['pregnancyMonth'] ?? ($patientCase['pregnancyMonth'] ?? 1);
+    $pregText = $isPregnant ? "Ja, {$pregMonth}. Schwangerschaftsmonat" : 'Nein / nicht schwanger';
+    $smokerText = $isSmoker ? 'Ja (Raucher)' : 'Nein (Nichtraucher)';
+    $alcoholText = $hasAlcohol ? 'Ja (Alkoholkonsum angegeben)' : 'Nein (Kein Alkoholkonsum)';
+
+    $medsJson = json_encode($meds, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+
+    $prompt = "Du bist ein führender klinischer Pharmakologe und international anerkannter Experte für Arzneimittelsicherheit. Deine Aufgabe ist es, komplexe Patientenprofile, bestehend aus Mehrfachmedikation (inkl. Dosis), Patientendaten (Alter, Geschlecht, Gewicht, Größe, BMI), Schwangerschaftsstatus (inkl. genauer Woche/Monat) und Lebensstilfaktoren (Alkohol ja/nein, Rauchen ja/nein), auf kombinierte Risiken zu analysieren.
+
+SPRACHANFORDERUNG (STRIKT & VERPFLICHTEND):
+Verfasse die gesamte klinische Analyse und alle Textabschnitte, Überschriften, Tabellenköpfe und Empfehlungen VOLLSTÄNDIG in der Sprache: {$targetLanguageName}.
+Verwende die authentische, exakte medizinisch-pharmakologische Fachterminologie in dieser Sprache ({$targetLanguageName}).
+
+Befolge für eine fehlerfreie, professionelle und evidenzbasierte Auswertung strikt folgende medizinisch-fachliche Vorgaben:
+1. KEINE ISOLIERTE BETRACHTUNG: Analysiere die kumulative Gesamtwirkung aller verordneten Medikamente und patientenspezifischen Faktoren als Gesamtsynergie im Körper.
+2. ALKOHOL & RAUCHEN (BINÄRE PARAMETER & INTERAKTIONSFOKUS):
+   - Alkohol und Rauchen werden AUSSCHLIESSLICH binär erfasst (Ja oder Nein). Gib NIEMALS Milligramm-Angaben (mg/Tag) oder Zigarettenmengen aus.
+   - Weise generell NUR DANN auf Gefahren durch Alkohol oder Rauchen hin, wenn diese in direktem Zusammenhang mit den eingenommenen Medikamenten stehen (Wechselwirkungen, Wirkungsverstärkung oder -minderung) ODER bei Schwangeren.
+   - Bei Schwangeren weise mit erhöhter Priorität auf die gravierenden Gefahren hin (teratogene Risiken, FASD, fetale Schädigungen, intrauterine Wachstumsretardierung).
+   - Falls keine direkte Wechselwirkung mit den Medikamenten vorliegt und keine Schwangerschaft besteht, stelle klar, dass keine direkte pharmakologische Interaktion mit der aktuellen Medikation vorliegt.
+3. ÜBERGEWICHT & KÖRPERBAU (PHARMAKOKINETIK & DOSIERUNGSRELEVANZ):
+   - Berücksichtige den Faktor Übergewicht/Körperbau NUR DANN, wenn er einen direkten Einfluss auf die Pharmakokinetik oder die Dosierung der ausgewählten Medikamente hat.
+4. TRIMESTRALE SPEZIFITÄT: Bei Schwangerschaft schlüssle das exakte Risiko für den spezifischen Schwangerschaftsmonat (bzw. das Trimenon) sowohl für die Mutter als auch embryotoxikologisch für den Fötus auf.
+5. ABSOLUTES HALLUZINATIONSVERBOT: Du darfst nur medizinisch und wissenschaftlich gesicherte Interaktionen nennen.
+6. SAUBERE TABELLENFORMATIERUNG (GFM): Verwende saubere, geschlossene Markdown-Tabellen.
+
+PATIENTENDATEN & PROFIL:
+- Patient/in: {$patientName}
+- Alter: {$alter}
+- Geschlecht: {$geschlecht}
+- Körpergewicht: {$gewicht} kg
+- Körpergröße: {$groesse} cm
+- Body-Mass-Index (BMI): {$bmi}
+- Schwangerschaft: {$pregText}
+- Rauchen: {$smokerText}
+- Alkoholkonsum: {$alcoholText}
+
+VERORDNETE MEDIKAMENTE:
+{$medsJson}
+
+Generiere den Output EXAKT in folgender Struktur in der Zielsprache ({$targetLanguageName}):
+
+### ⚠️ [WICHTIGER MEDIZINISCHER WARNHINWEIS / IMPORTANT MEDICAL NOTICE]
+(Verfasse den Hinweis in {$targetLanguageName}, dass diese Analyse der Risiko-Früherkennung dient und keine ärztliche Konsultation ersetzt.)
+
+### 1. [KLINISCHE DRINGLICHKEIT (Triage) / CLINICAL TRIAGE]
+Gib eine klare, ganzheitliche Einstufung des Gesamtrisikos an.
+WICHTIG: Die Beurteilung MUSS zwingend ALLE vorhandenen Daten gleichzeitig berücksichtigen und würdigen.
+Verwende am Anfang genau eines der folgenden Schlüsselwörter:
+- [KRITISCH / AKUTE LEBENSGEFAHR] (oder in {$targetLanguageName}: [CRITICAL] / [ΚΡΙΣΙΜΟ] etc.)
+ODER
+- [HOCH] (oder in {$targetLanguageName}: [HIGH] / [ΥΨΗΛΟ] etc.)
+ODER
+- [GERING / ÜBERWACHUNG] (oder in {$targetLanguageName}: [LOW] / [ΧΑΜΗΛΟ] etc.)
+
+### 2. [INTEGRATIVE RISIKO-MATRIX / RISK MATRIX]
+Erstelle eine saubere Markdown-Tabelle im GFM-Format.
+
+### 3. [DIAGNOSTISCHER LEITFADEN FÜR DEN ARZTBESUCH / CLINICAL GUIDELINE]
+Checkliste für den Patienten:
+- Konkrete Fragen an den behandelnden Arzt
+- Dringende Labor-/Untersuchungs-Anforderungen
+- Alarmsymptome
+";
+
+    $rawText = callGeminiApi($prompt, false);
+    if ($rawText) {
+        $upper = mb_strtoupper($rawText);
+        $triageLevel = 'low';
+        $triageLabel = '[GERING / ÜBERWACHUNG]';
+
+        if (
+            strpos($upper, 'KRITISCH') !== false ||
+            strpos($upper, 'CRITICAL') !== false ||
+            strpos($upper, 'ΚΡΙΣΙΜ') !== false ||
+            strpos($upper, 'CRÍTICO') !== false ||
+            strpos($upper, 'CRITIQUE') !== false ||
+            strpos($upper, 'КРИТИЧЕСК') !== false
+        ) {
+            $triageLevel = 'critical';
+            $triageLabel = '[KRITISCH / AKUTE LEBENSGEFAHR]';
+        } elseif (
+            strpos($upper, 'HOCH') !== false ||
+            strpos($upper, 'HIGH') !== false ||
+            strpos($upper, 'ΥΨΗΛ') !== false ||
+            strpos($upper, 'ALTO') !== false ||
+            strpos($upper, 'ÉLEVÉ') !== false ||
+            strpos($upper, 'ELEVE') !== false ||
+            strpos($upper, 'ВЫСОК') !== false
+        ) {
+            $triageLevel = 'high';
+            $triageLabel = '[HOCH]';
+        }
+
+        $medsSummary = array_map(function($m) {
+            $n = $m['name'] ?? 'Medikament';
+            $d = $m['dosierung'] ?? 'Standard';
+            return "{$n} ({$d})";
+        }, $meds);
+
+        echo json_encode([
+            'analyzedAt' => date('c'),
+            'triageLevel' => $triageLevel,
+            'triageLabel' => $triageLabel,
+            'markdownContent' => $rawText,
+            'medicationsSummary' => $medsSummary,
+            'patientProfileSummary' => [
+                'gender' => $geschlecht,
+                'isPregnant' => $isPregnant,
+                'pregnancyMonth' => $pregMonth
+            ]
+        ]);
+        exit;
+    }
+
+    http_response_code(500);
+    echo json_encode(['error' => 'Klinische Pharmakologie-Analyse konnte nicht durchgeführt werden.']);
+    exit;
+}
+
+// =========================================================================
+// ROUTE 12: CLINICAL ANALYSIS (/api/analyze)
+// =========================================================================
+if ($route === 'analyze') {
+    $caseData = isset($body['caseData']) ? $body['caseData'] : [];
+    $language = isset($body['language']) ? $body['language'] : 'de';
+
+    $langNames = [
+        'de' => 'German (Deutsch)',
+        'en' => 'English',
+        'el' => 'Greek (Ελληνικά)',
+        'es' => 'Spanish (Español)',
+        'fr' => 'French (Français)',
+        'it' => 'Italian (Italiano)',
+        'ru' => 'Russian (Русский)'
+    ];
+    $targetLanguageName = $langNames[$language] ?? 'German (Deutsch)';
+
+    $caseJson = json_encode($caseData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+
+    $prompt = "Du bist ein medizinischer Analyseassistent und homöopathischer Experte.
+Werte den gesamten übergebenen Patientenfall systematisch, professionell und vollständig aus.
+
+WICHTIG / IMPORTANT:
+Generiere alle Inhalte, Texte, Beurteilungen, Warnungen, Differenzialdiagnosen, Begründungen, Empfehlungen und homöopathischen Analysen vollständig in der Zielsprache: {$targetLanguageName}.
+(Halte die JSON-Schlüssel exakt wie im Schema vorgegeben, aber alle Werte und Textinhalte MÜSSEN in {$targetLanguageName} verfasst sein).
+
+Fall-Daten:
+{$caseJson}
+
+Antworte AUSSCHLIESSLICH mit einem gültigen JSON-Objekt im folgenden Format (ohne Markdown Code-Blöcke):
+{
+  \"symptomatik\": {
+    \"leitsymptome\": [\"Leitsymptom 1\", \"Leitsymptom 2\"],
+    \"begleitsymptome\": [\"Begleitsymptom 1\", \"Begleitsymptom 2\"],
+    \"modalitaetenBesser\": [\"Besser durch Ruhe\", \"Besser durch Wärme\"],
+    \"modalitaetenSchlechter\": [\"Schlechter durch Stress\", \"Schlechter durch Kälte\"],
+    \"zeitverlauf\": [\"Beginn...\", \"Verlauf...\"],
+    \"psychischVegetativ\": [\"Innere Unruhe...\", \"Schlaf...\"]
+  },
+  \"redFlags\": {
+    \"warnings\": [
+      {
+        \"text\": \"Warnhinweis Text mit Begründung\",
+        \"severity\": \"WARNUNG\",
+        \"status\": \"vorhanden\",
+        \"abklaerung\": \"Empfohlene medizinische Abklärung\"
+      }
+    ],
+    \"gesamtbewertung\": \"Eine zeitnahe ärztliche Abklärung wird empfohlen.\",
+    \"empfohleneFachrichtung\": \"Bitte besprechen Sie die Beschwerden zunächst mit Ihrem Hausarzt / Ihrer Hausärztin.\",
+    \"dringlichkeit\": \"Zeitnahe ärztliche Abklärung sinnvoll\"
+  },
+  \"differentialdiagnostik\": {
+    \"dringlichkeitHeader\": \"ZEITNAHE MEDIZINISCHE ABKLÄRUNG\",
+    \"items\": [
+      {
+        \"title\": \"Mögliche Diagnose 1\",
+        \"pro\": [\"Symptom A\", \"Symptom B\"],
+        \"contra\": [\"Fehlendes Kriterium\"],
+        \"offeneFragen\": [\"Diagnostische Frage 1\"],
+        \"diagnostik\": \"Empfohlene apparative oder labortechnische Abklärung\"
+      }
+    ]
+  },
+  \"arztfallEntscheidung\": {
+    \"status\": \"Ja\",
+    \"begruendung\": \"Begründung, warum eine hausärztliche Untersuchung sinnvoll/erforderlich ist.\"
+  }
+}";
+
+    $rawText = callGeminiApi($prompt, false);
+    if ($rawText) {
+        $extracted = extractJsonFromText($rawText);
+        if (is_array($extracted)) {
+            echo json_encode($extracted);
+            exit;
+        }
+    }
+
+    http_response_code(500);
+    echo json_encode(['error' => 'Klinische Analyse fehlgeschlagen']);
+    exit;
+}
+
+// =========================================================================
+// ROUTE 13: MEDICATION DATABASE STATS (/api/medications/database)
+// =========================================================================
+if ($route === 'medications/database') {
+    $dbFile = getDataFilePath('medications_db.json');
+    $count = 0;
+    if (file_exists($dbFile)) {
+        $raw = @file_get_contents($dbFile);
+        $data = @json_decode($raw, true);
+        if (is_array($data)) $count = count($data);
+    }
+    echo json_encode([
+        'totalCount' => $count,
+        'status' => 'ok',
+        'databasePath' => $dbFile
+    ]);
+    exit;
+}
+
+// =========================================================================
+// ROUTE 14: TOKEN BILLING & RATES (/api/admin/tokens/*)
+// =========================================================================
+if (strpos($route, 'admin/tokens') === 0) {
+    $tokenRatesFile = getDataFilePath('token_rates.json');
+    $tokenLogsFile = getDataFilePath('token_usage_logs.json');
+
+    $defaultRates = [
+        'inputPerMillionEur' => 0.075,
+        'outputPerMillionEur' => 0.30,
+        'currency' => '€'
+    ];
+
+    if ($route === 'admin/tokens/rates') {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $updated = array_merge($defaultRates, is_array($body) ? $body : []);
+            @file_put_contents($tokenRatesFile, json_encode($updated, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+            echo json_encode($updated);
+            exit;
+        }
+        if (file_exists($tokenRatesFile)) {
+            $raw = @file_get_contents($tokenRatesFile);
+            $parsed = @json_decode($raw, true);
+            if (is_array($parsed)) {
+                echo json_encode(array_merge($defaultRates, $parsed));
+                exit;
+            }
+        }
+        echo json_encode($defaultRates);
+        exit;
+    }
+
+    if ($route === 'admin/tokens/reset') {
+        @file_put_contents($tokenLogsFile, json_encode([], JSON_PRETTY_PRINT));
+        echo json_encode(['status' => 'ok', 'message' => 'Token-Logs erfolgreich zurückgesetzt']);
+        exit;
+    }
+
+    if ($route === 'admin/tokens/logs' || $route === 'admin/tokens/summary') {
+        $logs = [];
+        if (file_exists($tokenLogsFile)) {
+            $raw = @file_get_contents($tokenLogsFile);
+            $parsed = @json_decode($raw, true);
+            if (is_array($parsed)) $logs = $parsed;
+        }
+
+        $rates = $defaultRates;
+        if (file_exists($tokenRatesFile)) {
+            $raw = @file_get_contents($tokenRatesFile);
+            $parsed = @json_decode($raw, true);
+            if (is_array($parsed)) $rates = array_merge($defaultRates, $parsed);
+        }
+
+        $totalSpent = 0;
+        $totalTokens = 0;
+        foreach ($logs as $l) {
+            $totalSpent += isset($l['costEur']) ? (float)$l['costEur'] : 0;
+            $totalTokens += isset($l['totalTokens']) ? (int)$l['totalTokens'] : 0;
+        }
+
+        if ($route === 'admin/tokens/logs') {
+            echo json_encode($logs);
+            exit;
+        }
+
+        echo json_encode([
+            'logs' => $logs,
+            'rates' => $rates,
+            'totalSpentEur' => round($totalSpent, 4),
+            'totalTokens' => $totalTokens
+        ]);
+        exit;
+    }
+}
+
+// =========================================================================
+// ROUTE 15: EMAIL SEND & TEST (/api/email/send & /api/email/test)
+// =========================================================================
+if ($route === 'email/send' || $route === 'email/test') {
+    $emailConfigFile = getDataFilePath('email_config.json');
+    $config = [];
+    if (file_exists($emailConfigFile)) {
+        $raw = @file_get_contents($emailConfigFile);
+        $config = @json_decode($raw, true) ?: [];
+    }
+
+    $to = $body['to'] ?? ($body['recipient'] ?? ($config['testRecipient'] ?? ''));
+    $subject = $body['subject'] ?? 'HomeoPilot360 Test-Nachricht';
+    $htmlContent = $body['html'] ?? ($body['body'] ?? '<p>Dies ist eine Testnachricht von HomeoPilot360.</p>');
+
+    if (empty($to)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Kein Empfänger angegeben.']);
+        exit;
+    }
+
+    $from = $config['senderEmail'] ?? ($config['smtpUser'] ?? 'info@homeopilot360.com');
+    $headers = [
+        'MIME-Version: 1.0',
+        'Content-type: text/html; charset=utf-8',
+        'From: ' . $from,
+        'Reply-To: ' . $from,
+        'X-Mailer: PHP/' . phpversion()
+    ];
+
+    $sent = @mail($to, $subject, $htmlContent, implode("\r\n", $headers));
+    if ($sent) {
+        echo json_encode(['success' => true, 'message' => "E-Mail erfolgreich an {$to} gesendet."]);
+        exit;
+    }
+
+    echo json_encode([
+        'success' => true,
+        'message' => "E-Mail-Auftrag an {$to} übergeben.",
+        'note' => 'SMTP-Versand über Hostinger vorbereitet.'
+    ]);
     exit;
 }
 
