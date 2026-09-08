@@ -1923,6 +1923,8 @@ export const en = {
   hahnemannPillarShortGemuet: "Mind",
   hahnemannNoHallucinationsNotice: "No hallucinated symptoms: Only explicitly stated patient facts are recorded.",
   hahnemannLaunchFromAcuteVoice: "Launch Hahnemann Anamnesis (Organon §§ 83–104)",
+  hahnemannAnalyzingPrompt: "Preparing Hahnemann symptom analysis (§§ 83–104)...",
+  hahnemannAnalyzingSub: "Evaluating symptom totality and 6-pillar matrix...",
   hahnemannTransferToAcuteIntake: "Transfer to Acute Analysis",
   hahnemannRadiationLabel: "Radiation / Extension:",
   hahnemannChronicHistoryTitle: "History & Prior Treatments (§§ 83–98)",

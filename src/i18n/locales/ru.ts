@@ -1917,6 +1917,8 @@ export const ru = {
   hahnemannPillarShortGemuet: "Психика",
   hahnemannNoHallucinationsNotice: "Без вымышленных симптомов: Фиксируются только факты, явно высказанные пациентом.",
   hahnemannLaunchFromAcuteVoice: "Запустить анамнез Ганемана (Органон §§ 83–104)",
+  hahnemannAnalyzingPrompt: "Подготовка симптоматического анализа Ганемана (§§ 83–104)...",
+  hahnemannAnalyzingSub: "Оценка совокупности симптомов и матрицы 6 столпов...",
   hahnemannTransferToAcuteIntake: "Перенести в острый анализ",
   hahnemannRadiationLabel: "Иррадиация / Распространение:",
   hahnemannChronicHistoryTitle: "Анамнез и предшествующее лечение (§§ 83–98)",

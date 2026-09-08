@@ -1917,6 +1917,8 @@ export const fr = {
   hahnemannPillarShortGemuet: "Psychisme",
   hahnemannNoHallucinationsNotice: "Aucun symptôme halluciné : Seules les déclarations formulées explicitement par le patient sont enregistrées.",
   hahnemannLaunchFromAcuteVoice: "Lancer l'anamnèse Hahnemann (Organon §§ 83–104)",
+  hahnemannAnalyzingPrompt: "Préparation de l'analyse des symptômes de Hahnemann (§§ 83–104)...",
+  hahnemannAnalyzingSub: "Évaluation de la totalité des symptômes et de la matrice à 6 piliers...",
   hahnemannTransferToAcuteIntake: "Transférer vers l'analyse aiguë",
   hahnemannRadiationLabel: "Irradiation / Extension :",
   hahnemannChronicHistoryTitle: "Histoire & Traitements antérieurs (§§ 83–98)",

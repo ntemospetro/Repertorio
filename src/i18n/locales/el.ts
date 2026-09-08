@@ -1917,6 +1917,8 @@ export const el = {
   hahnemannPillarShortGemuet: "Ψυχισμός",
   hahnemannNoHallucinationsNotice: "Χωρίς υποθετικά συμπτώματα: Καταγράφονται μόνο γεγονότα που δήλωσε ρητά ο ασθενής.",
   hahnemannLaunchFromAcuteVoice: "Έναρξη αναμνηστικού Χάνεμαν (Όργανον §§ 83–104)",
+  hahnemannAnalyzingPrompt: "Προετοιμασία ανάλυσης συμπτωμάτων Χάνεμαν (§§ 83–104)...",
+  hahnemannAnalyzingSub: "Αξιολόγηση συνόλου συμπτωμάτων και πίνακα 6 πυλώνων...",
   hahnemannTransferToAcuteIntake: "Μεταφορά στην Οξεία Ανάλυση",
   hahnemannRadiationLabel: "Αντανάκλαση / Επέκταση:",
   hahnemannChronicHistoryTitle: "Ιστορικό & Προηγούμενες Θεραπείες (§§ 83–98)",

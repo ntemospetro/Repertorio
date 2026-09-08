@@ -1923,6 +1923,8 @@ export const de = {
   hahnemannPillarShortGemuet: "Gemüt",
   hahnemannNoHallucinationsNotice: "Keine halluzinierten Symptome: Ausschließlich explizit genannte Patientenaussagen werden erfasst.",
   hahnemannLaunchFromAcuteVoice: "Hahnemann-Anamnese nach Organon §§ 83–104 starten",
+  hahnemannAnalyzingPrompt: "Hahnemann-Symptomanalyse (§§ 83–104) wird vorbereitet...",
+  hahnemannAnalyzingSub: "Symptomkomplex und 6-Säulen-Matrix werden ausgewertet...",
   hahnemannTransferToAcuteIntake: "In Akutanalyse übernehmen",
   hahnemannRadiationLabel: "Ausstrahlung / Strahlung:",
   hahnemannChronicHistoryTitle: "Historie & Frühere Behandlungen (§§ 83–98)",

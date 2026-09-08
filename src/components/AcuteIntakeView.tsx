@@ -29,7 +29,9 @@ import { RemedyMonographModal } from './RemedyMonographModal';
 import { ComplaintQuestionsWizardModal } from './ComplaintQuestionsWizardModal';
 import { 
   Hahnemann6Pillars, 
-  CaseType 
+  CaseType,
+  runHahnemannAnalysis,
+  HahnemannAnalysisResult
 } from '../services/hahnemannEngineService';
 import { KentRepertorySection } from './KentRepertorySection';
 import { 
@@ -70,6 +72,7 @@ import {
   Award,
   Trash2,
   Layers,
+  Loader2,
   X
 } from 'lucide-react';
 import { splitMultipleComplaints } from '../services/complaintQuestionGenerator';
@@ -131,6 +134,8 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
   const [selectedRemedyForModal, setSelectedRemedyForModal] = useState<LocalizedRemedy | null>(null);
   const [modalHistory, setModalHistory] = useState<LocalizedRemedy[]>([]);
   const [isHahnemannWizardOpen, setIsHahnemannWizardOpen] = useState<boolean>(false);
+  const [isPreloadingHahnemann, setIsPreloadingHahnemann] = useState<boolean>(false);
+  const [preloadedHahnemannAnalysis, setPreloadedHahnemannAnalysis] = useState<HahnemannAnalysisResult | null>(null);
 
   const recognitionRef = useRef<SpeechRecognitionSession | null>(null);
   const timerIntervalRef = useRef<number | null>(null);
@@ -326,6 +331,47 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
       }
       return prev;
     });
+  };
+
+  // Preload Hahnemann Organon §§ 83-104 analysis before opening modal
+  const handleStartHahnemannAnalysis = async () => {
+    if (isPreloadingHahnemann) return;
+    setIsPreloadingHahnemann(true);
+
+    const textToAnalyze = (symptomText && symptomText.trim().length > 0)
+      ? symptomText.trim()
+      : (activeHauptbeschwerde || 'Akute Beschwerden');
+
+    const seedMatrix: Hahnemann6Pillars = {
+      lokalisierung: activeHauptbeschwerde && !isVarMissing(activeHauptbeschwerde) ? activeHauptbeschwerde : (symptomText.trim() || null),
+      causa: activeCausa && !isVarMissing(activeCausa) ? activeCausa : null,
+      modalitaeten: activeModalitaeten && !isVarMissing(activeModalitaeten) ? activeModalitaeten : null,
+      begleitsymptome: activeBegleitsymptome && !isVarMissing(activeBegleitsymptome) ? [activeBegleitsymptome] : [],
+      empfindung: null,
+      gemuet: null,
+      strahlungsoptionen: null,
+      ursaechlicher_zusammenhang: null,
+      fruehere_behandlungen_und_historie: null,
+    };
+
+    try {
+      const res = await runHahnemannAnalysis(
+        textToAnalyze,
+        seedMatrix,
+        [],
+        language,
+        false,
+        'akut'
+      );
+      setPreloadedHahnemannAnalysis(res);
+      setIsHahnemannWizardOpen(true);
+    } catch (err) {
+      console.error('Error preloading Hahnemann analysis:', err);
+      // Fallback: open wizard modal anyway so the user is never blocked
+      setIsHahnemannWizardOpen(true);
+    } finally {
+      setIsPreloadingHahnemann(false);
+    }
   };
 
   // Update recommendations & differential diagnosis whenever case text, acute answers, or language changes
@@ -909,14 +955,43 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
           {/* Hahnemann Organon §§ 83-104 Anamnesis Launch or Completed Banner - appears after entering Hauptbeschwerde & Leitsymptom */}
           {(symptomText.trim().length > 0 || hahnemannData) && (
             !hahnemannData ? (
-              <button
-                type="button"
-                onClick={() => setIsHahnemannWizardOpen(true)}
-                className="w-full py-3.5 px-4 rounded-xl bg-[#006655] hover:bg-[#005544] text-white text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer border border-[#005544] animate-in fade-in duration-200"
-              >
-                <Stethoscope className="w-4 h-4 text-teal-200" />
-                <span>{t('hahnemannLaunchFromAcuteVoice')}</span>
-              </button>
+              <div className="w-full space-y-1.5 animate-in fade-in duration-200">
+                <button
+                  type="button"
+                  disabled={isPreloadingHahnemann}
+                  onClick={handleStartHahnemannAnalysis}
+                  className={`w-full relative overflow-hidden py-3.5 px-4 rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 shadow-xs transition-all border ${
+                    isPreloadingHahnemann
+                      ? 'bg-[#004e40] border-[#003d33] cursor-wait text-teal-100'
+                      : 'bg-[#006655] hover:bg-[#005544] text-white border-[#005544] cursor-pointer'
+                  }`}
+                >
+                  {isPreloadingHahnemann ? (
+                    <>
+                      <Loader2 className="w-4 h-4 text-teal-200 animate-spin shrink-0" />
+                      <span className="truncate">{t('hahnemannAnalyzingPrompt')}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Stethoscope className="w-4 h-4 text-teal-200 shrink-0" />
+                      <span>{t('hahnemannLaunchFromAcuteVoice')}</span>
+                    </>
+                  )}
+
+                  {/* Discreet, professional progress bar at the bottom of the button during evaluation */}
+                  {isPreloadingHahnemann && (
+                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/20 overflow-hidden">
+                      <div className="h-full bg-linear-to-r from-teal-300 via-emerald-200 to-teal-300 w-1/2 rounded-full animate-progress-shimmer" />
+                    </div>
+                  )}
+                </button>
+
+                {isPreloadingHahnemann && (
+                  <p className="text-[11px] text-teal-800 text-center font-medium animate-pulse">
+                    {t('hahnemannAnalyzingSub')}
+                  </p>
+                )}
+              </div>
             ) : (
               <div className="bg-teal-50/90 border border-teal-200 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 animate-in fade-in duration-200">
                 <div className="flex items-center gap-2">
@@ -1417,9 +1492,13 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
       {/* Homoeopathic In-Depth Wizard Modal (Hahnemann Organon §§ 83–104) */}
       <ComplaintQuestionsWizardModal
         isOpen={isHahnemannWizardOpen}
-        onClose={() => setIsHahnemannWizardOpen(false)}
+        onClose={() => {
+          setIsHahnemannWizardOpen(false);
+          setPreloadedHahnemannAnalysis(null);
+        }}
         chiefComplaint={symptomText || activeHauptbeschwerde || ''}
         initialCaseType="akut"
+        preloadedAnalysis={preloadedHahnemannAnalysis}
         initialMatrix={{
           lokalisierung: activeHauptbeschwerde && !isVarMissing(activeHauptbeschwerde) ? activeHauptbeschwerde : (symptomText.trim() || null),
           causa: activeCausa && !isVarMissing(activeCausa) ? activeCausa : null,
@@ -1428,6 +1507,7 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
         }}
         onTransferToAnamnese={(data) => {
           setHahnemannData(data);
+          setPreloadedHahnemannAnalysis(null);
           setIsClarificationApplied(true);
           const matrix = data.matrix;
           setVariableOverrides(prev => ({

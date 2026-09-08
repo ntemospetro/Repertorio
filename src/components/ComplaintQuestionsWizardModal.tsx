@@ -5,7 +5,6 @@ import {
   Check, 
   AlertCircle, 
   Send, 
-  RotateCcw, 
   CheckCircle2, 
   HelpCircle,
   Stethoscope,
@@ -39,6 +38,7 @@ interface ComplaintQuestionsWizardModalProps {
   patientName?: string;
   initialCaseType?: CaseType;
   initialMatrix?: Partial<Hahnemann6Pillars>;
+  preloadedAnalysis?: HahnemannAnalysisResult | null;
   onTransferToAnamnese: (data: {
     matrix: Hahnemann6Pillars;
     summaryText: string;
@@ -54,6 +54,7 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
   patientName,
   initialCaseType = 'akut',
   initialMatrix,
+  preloadedAnalysis,
   onTransferToAnamnese,
 }) => {
   const { t, language } = useTranslation();
@@ -68,14 +69,23 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
   const [customClarifyingInput, setCustomClarifyingInput] = useState<Record<string, string>>({});
 
   const initialParsedRef = useRef(false);
+  const initialAnalysisRef = useRef<HahnemannAnalysisResult | null>(null);
 
   // Initialize analysis on modal open with chief complaint text, existing matrix and selected caseType
   useEffect(() => {
     if (isOpen && !initialParsedRef.current) {
       initialParsedRef.current = true;
-      setIsProcessing(true);
       const activeType = initialCaseType || 'akut';
       setCaseType(activeType);
+
+      if (preloadedAnalysis) {
+        initialAnalysisRef.current = JSON.parse(JSON.stringify(preloadedAnalysis));
+        setAnalysisResult(preloadedAnalysis);
+        setIsProcessing(false);
+        return;
+      }
+
+      setIsProcessing(true);
       const textToAnalyze = chiefComplaint && chiefComplaint.trim().length > 0 ? chiefComplaint.trim() : 'Akute Beschwerden';
       
       const seedMatrix: Hahnemann6Pillars | undefined = initialMatrix ? {
@@ -92,6 +102,7 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
 
       runHahnemannAnalysis(textToAnalyze, seedMatrix, [], language, false, activeType)
         .then((res) => {
+          initialAnalysisRef.current = JSON.parse(JSON.stringify(res));
           setAnalysisResult(res);
         })
         .catch((err) => {
@@ -104,8 +115,9 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
 
     if (!isOpen) {
       initialParsedRef.current = false;
+      initialAnalysisRef.current = null;
     }
-  }, [isOpen, chiefComplaint, language, initialCaseType, initialMatrix]);
+  }, [isOpen, chiefComplaint, language, initialCaseType, initialMatrix, preloadedAnalysis]);
 
   if (!isOpen) return null;
 
@@ -301,22 +313,6 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
       wichtige_symptom_fragmente: updatedMatrix,
       end_analyse_zusammenfassung: updatedSummary,
     });
-  };
-
-  const handleReset = () => {
-    setConversationHistory([]);
-    setCurrentAnswer('');
-    setSelectedOptions([]);
-    setClarifyingAnswers({});
-    setCustomClarifyingInput({});
-    setIsProcessing(true);
-    runHahnemannAnalysis(chiefComplaint, undefined, [], language, false, caseType)
-      .then((res) => {
-        setAnalysisResult(res);
-      })
-      .finally(() => {
-        setIsProcessing(false);
-      });
   };
 
   const handleSaveAndTransfer = () => {
@@ -1024,25 +1020,14 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
         </div>
 
         {/* Modal Footer */}
-        <div className="px-6 py-3.5 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3 shrink-0">
+        <div className="px-6 py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-2.5 shrink-0">
           <button
             type="button"
-            onClick={handleReset}
-            disabled={isProcessing}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-medium transition-colors cursor-pointer"
+            onClick={onClose}
+            className="px-4 py-2 rounded-lg border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-semibold transition-colors cursor-pointer"
           >
-            <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
-            <span>{t('hahnemannResetBtn')}</span>
+            {t('btnCancelModal')}
           </button>
-
-          <div className="flex items-center gap-2.5 ml-auto">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-lg border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-semibold transition-colors cursor-pointer"
-            >
-              {t('btnCancelModal')}
-            </button>
 
             {analysisResult?.analyse_status !== 'completed' && analysisResult?.naechste_frage ? (
               <button
@@ -1079,7 +1064,6 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
                 <span>{t('hahnemannBtnTransferToCase')}</span>
               </button>
             )}
-          </div>
         </div>
       </div>
     </div>

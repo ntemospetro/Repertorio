@@ -1917,6 +1917,8 @@ export const it = {
   hahnemannPillarShortGemuet: "Stato d'animo",
   hahnemannNoHallucinationsNotice: "Nessun sintomo allucinato: Vengono registrati solo i fatti espressi esplicitamente dal paziente.",
   hahnemannLaunchFromAcuteVoice: "Avvia anamnesi Hahnemann (Organon §§ 83–104)",
+  hahnemannAnalyzingPrompt: "Preparazione dell'analisi dei sintomi di Hahnemann (§§ 83–104)...",
+  hahnemannAnalyzingSub: "Valutazione della totalità dei sintomi e della matrice a 6 pilastri...",
   hahnemannTransferToAcuteIntake: "Trasferisci in analisi acuta",
   hahnemannRadiationLabel: "Irradiazione / Estensione:",
   hahnemannChronicHistoryTitle: "Storia e trattamenti pregressi (§§ 83–98)",
