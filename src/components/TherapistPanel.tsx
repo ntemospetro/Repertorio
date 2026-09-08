@@ -27,6 +27,7 @@ import { anamnesisSchema } from '../data/anamnesisSchema';
 import { CaseAnalysisModal } from './CaseAnalysisModal';
 import { ExtendedAnamnesisWizard } from './ExtendedAnamnesisWizard';
 import { ComplaintQuestionsWizardModal } from './ComplaintQuestionsWizardModal';
+import { runHahnemannAnalysis, HahnemannAnalysisResult, Hahnemann6Pillars } from '../services/hahnemannEngineService';
 import { FindingsWizardModal } from './FindingsWizardModal';
 import { MedicationsWizardModal } from './MedicationsWizardModal';
 import { UpgradeModal } from './UpgradeModal';
@@ -94,6 +95,7 @@ import {
   Mic,
   X,
   PanelLeft,
+  Loader2,
 } from 'lucide-react';
 
 interface TherapistPanelProps {
@@ -207,6 +209,10 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
   const [isAnalysisModalOpen, setIsAnalysisModalOpen] = useState(false);
   const [isExtendedAnamnesisWizardOpen, setIsExtendedAnamnesisWizardOpen] = useState(false);
   const [isComplaintWizardModalOpen, setIsComplaintWizardModalOpen] = useState(false);
+  const [isPreloadingWizard, setIsPreloadingWizard] = useState(false);
+  const [wizardProgress, setWizardProgress] = useState(0);
+  const [wizardStatusText, setWizardStatusText] = useState('');
+  const [wizardPreloadedAnalysis, setWizardPreloadedAnalysis] = useState<HahnemannAnalysisResult | null>(null);
   const [isFindingsModalOpen, setIsFindingsModalOpen] = useState(false);
   const [isMedicationsModalOpen, setIsMedicationsModalOpen] = useState(false);
   const [medicationsModalAutoAddNew, setMedicationsModalAutoAddNew] = useState(false);
@@ -247,6 +253,78 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
     setSaveToast(t('medListUpdatedSuccess' as TranslationKey) || t('toastExtendedAnamnesisSaved'));
     setTimeout(() => setSaveToast(null), 3000);
   };
+
+  const handleStartComplaintWizard = async () => {
+    if (!currentCase.hauptbeschwerde?.trim()) return;
+
+    setIsPreloadingWizard(true);
+    setWizardProgress(15);
+    setWizardStatusText(t('wizardLoadingProgress'));
+
+    const chief = currentCase.hauptbeschwerde.trim();
+    const fullText = [
+      chief,
+      currentCase.spontanbericht ? `Spontanbericht: ${currentCase.spontanbericht}` : '',
+      currentCase.lokalsymptome ? `Lokalsymptome: ${currentCase.lokalsymptome}` : '',
+      currentCase.modalitaetenBesser ? `Besser durch: ${currentCase.modalitaetenBesser}` : '',
+      currentCase.modalitaetenSchlechter ? `Schlechter durch: ${currentCase.modalitaetenSchlechter}` : '',
+      currentCase.gemuetPsyche ? `Gemüt/Zustand: ${currentCase.gemuetPsyche}` : '',
+    ].filter(Boolean).join('\n');
+
+    const seedMatrix: Hahnemann6Pillars = {
+      causa: null,
+      lokalisierung: currentCase.lokalsymptome?.trim() || currentCase.hauptbeschwerde?.trim() || null,
+      empfindung: null,
+      modalitaeten: [
+        currentCase.modalitaetenBesser ? `Besser: ${currentCase.modalitaetenBesser}` : '',
+        currentCase.modalitaetenSchlechter ? `Schlechter: ${currentCase.modalitaetenSchlechter}` : '',
+      ].filter(Boolean).join(', ') || null,
+      begleitsymptome: [],
+      gemuet: currentCase.gemuetPsyche?.trim() || null,
+      strahlungsoptionen: null,
+      ursaechlicher_zusammenhang: null,
+      fruehere_behandlungen_und_historie: null,
+    };
+
+    const timer1 = setTimeout(() => {
+      setWizardProgress(50);
+      setWizardStatusText(t('wizardLoadingAnalyzing'));
+    }, 280);
+
+    const timer2 = setTimeout(() => {
+      setWizardProgress(85);
+    }, 600);
+
+    try {
+      const res = await runHahnemannAnalysis(
+        fullText,
+        seedMatrix,
+        [],
+        language,
+        false,
+        'akut'
+      );
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+      setWizardProgress(100);
+      setWizardStatusText(t('wizardLoadingReady'));
+      setWizardPreloadedAnalysis(res);
+
+      setTimeout(() => {
+        setIsPreloadingWizard(false);
+        openModal('complaint-wizard');
+        setIsComplaintWizardModalOpen(true);
+      }, 250);
+    } catch (err) {
+      console.error('Error preloading Hahnemann wizard:', err);
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+      setIsPreloadingWizard(false);
+      openModal('complaint-wizard');
+      setIsComplaintWizardModalOpen(true);
+    }
+  };
+
   const hauptbeschwerdeRef = useRef<HTMLTextAreaElement>(null);
 
   // Collapsible sidebar user menu state
@@ -2759,29 +2837,59 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                               <p className="text-xs text-slate-600 mt-1 max-w-2xl leading-relaxed">
                                 {t('complaintWizardCardDesc')}
                               </p>
-                              <div className="mt-4 flex flex-wrap items-center gap-2">
-                                <button
-                                  type="button"
-                                  id="btn-open-complaint-wizard"
-                                  onClick={() => {
-                                    openModal('complaint-wizard');
-                                    setIsComplaintWizardModalOpen(true);
-                                  }}
-                                  disabled={!currentCase.hauptbeschwerde?.trim()}
-                                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#00897b] hover:bg-[#00796b] disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-semibold transition-all shadow-xs cursor-pointer"
-                                >
-                                  {hasQuestionsAnswered ? (
-                                    <>
-                                      <FolderOpen className="w-4 h-4" />
-                                      <span>{t('btnResumeComplaintWizard')}</span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Plus className="w-4 h-4" />
-                                      <span>{t('btnOpenComplaintWizard')}</span>
-                                    </>
-                                  )}
-                                </button>
+                              <div className="mt-4 flex flex-col gap-3">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <button
+                                    type="button"
+                                    id="btn-open-complaint-wizard"
+                                    onClick={handleStartComplaintWizard}
+                                    disabled={!currentCase.hauptbeschwerde?.trim() || isPreloadingWizard}
+                                    className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#00897b] hover:bg-[#00796b] disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-semibold transition-all shadow-xs cursor-pointer"
+                                  >
+                                    {isPreloadingWizard ? (
+                                      <>
+                                        <Loader2 className="w-4 h-4 animate-spin text-white" />
+                                        <span>{wizardStatusText || t('wizardLoadingProgress')}</span>
+                                      </>
+                                    ) : hasQuestionsAnswered ? (
+                                      <>
+                                        <FolderOpen className="w-4 h-4" />
+                                        <span>{t('btnResumeComplaintWizard')}</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Plus className="w-4 h-4" />
+                                        <span>{t('btnOpenComplaintWizard')}</span>
+                                      </>
+                                    )}
+                                  </button>
+                                </div>
+
+                                {/* Professional, subtle loading bar while analyzing before opening the popup */}
+                                {isPreloadingWizard && (
+                                  <div className="max-w-md bg-white/95 border border-teal-200 p-3.5 rounded-xl shadow-xs animate-in fade-in slide-in-from-top-1 duration-200">
+                                    <div className="flex items-center justify-between text-xs mb-1.5">
+                                      <span className="font-semibold text-teal-950 flex items-center gap-2">
+                                        <span className="relative flex h-2 w-2">
+                                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
+                                          <span className="relative inline-flex rounded-full h-2 w-2 bg-teal-600"></span>
+                                        </span>
+                                        {wizardStatusText}
+                                      </span>
+                                      <span className="font-bold text-teal-700 font-mono text-xs">{wizardProgress}%</span>
+                                    </div>
+                                    <div className="w-full h-2 bg-teal-100/80 rounded-full overflow-hidden">
+                                      <div 
+                                        className="h-full bg-gradient-to-r from-teal-500 via-teal-600 to-emerald-500 rounded-full transition-all duration-300 ease-out shadow-xs"
+                                        style={{ width: `${wizardProgress}%` }}
+                                      />
+                                    </div>
+                                    <div className="flex items-center justify-between text-[10px] text-slate-500 mt-1.5">
+                                      <span>6-Säulen-Matrix: Causa, Lokalisation, Sensation, Modalitäten, Begleitsymptome, Gemüt</span>
+                                      <span className="font-medium text-teal-700">Organon §§ 83–104</span>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -3872,9 +3980,11 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
         onClose={() => {
           closeModal();
           setIsComplaintWizardModalOpen(false);
+          setWizardPreloadedAnalysis(null);
         }}
         chiefComplaint={currentCase.hauptbeschwerde || ''}
         patientName={currentCase.patientName}
+        preloadedAnalysis={wizardPreloadedAnalysis}
         onTransferToAnamnese={(data) => {
           const matrix = data.matrix;
           const updatedQuestions: AnamnesisQuestion[] = [

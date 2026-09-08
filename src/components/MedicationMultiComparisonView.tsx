@@ -234,9 +234,10 @@ export const MedicationMultiComparisonView: React.FC<Props> = ({
       meds.map(m => ({ name: m.name, substance: m.wirkstoff, dosierung: m.dosierung })),
       currentWeight,
       currentHeight,
-      bmiDetails?.value
+      bmiDetails?.value,
+      language as LanguageCode
     );
-  }, [meds, currentWeight, currentHeight, bmiDetails?.value]);
+  }, [meds, currentWeight, currentHeight, bmiDetails?.value, language]);
 
   // Binary lifestyle interactions evaluation (alcohol, smoking, pregnancy)
   const lifestyleEvaluation = useMemo(() => {
@@ -247,9 +248,10 @@ export const MedicationMultiComparisonView: React.FC<Props> = ({
       isSmk,
       hasAlc,
       Boolean(lifestyle.isPregnant),
-      lifestyle.pregnancyMonth || 1
+      lifestyle.pregnancyMonth || 1,
+      language as LanguageCode
     );
-  }, [meds, lifestyle.isSmoker, lifestyle.smokingStatus, lifestyle.alcoholDaily, lifestyle.alcoholFrequency, lifestyle.isPregnant, lifestyle.pregnancyMonth]);
+  }, [meds, lifestyle.isSmoker, lifestyle.smokingStatus, lifestyle.alcoholDaily, lifestyle.alcoholFrequency, lifestyle.isPregnant, lifestyle.pregnancyMonth, language]);
 
   // Detect external changes to medications list
   const prevMedsRef = useRef(JSON.stringify(meds));
@@ -264,37 +266,33 @@ export const MedicationMultiComparisonView: React.FC<Props> = ({
   // Active result displayed
   const activeResult: MedicationRiskAnalysisResult = analysisResult || baselineTriage;
 
-  // Asynchronously translate report if UI is not German
+  // Ensure report matches the active UI language
   useEffect(() => {
-    if (!activeResult?.markdownContent) return;
-    if (language === 'de') return;
+    const text = activeResult?.markdownContent;
+    if (!text) return;
 
-    // Check if the current report already seems translated or is base German
-    const text = activeResult.markdownContent;
-    const hasGermanHeaders = text.includes('Evidenzbasierte') || text.includes('Risikobewertung') || text.includes('Klinische');
-    if (hasGermanHeaders) {
-      let isCancelled = false;
-      setIsTranslating(true);
-      fetchTranslatedComparison(text, language as LanguageCode)
-        .then((translated) => {
-          if (!isCancelled && translated && translated !== text) {
-            setAnalysisResult(prev => prev ? { ...prev, markdownContent: translated } : null);
-          }
-        })
-        .catch((err) => {
-          console.warn('[MedicationMultiComparisonView] Translation error:', err);
-        })
-        .finally(() => {
-          if (!isCancelled) {
-            setIsTranslating(false);
-          }
-        });
-
-      return () => {
-        isCancelled = true;
-      };
+    if (language === 'de') {
+      const isForeign = text.includes('⚠️ ΣΗΜΑΝΤΙΚΗ') || text.includes('⚠️ IMPORTANT') || text.includes('1. ΚΛΙΝΙΚΗ') || text.includes('1. CLINICAL');
+      if (isForeign) {
+        const localized = generateDeterministicClinicalComparison(currentCase, lifestyle, 'de');
+        setAnalysisResult(localized);
+      }
+      return;
     }
-  }, [language, activeResult?.analyzedAt]);
+
+    // Check if the current report contains German headers while non-German UI is active
+    const hasGermanHeaders = text.includes('Evidenzbasierte') || 
+                             text.includes('Risikobewertung') || 
+                             text.includes('Klinische') ||
+                             text.includes('WICHTIGER MEDIZINISCHER WARNHINWEIS') ||
+                             text.includes('ARZNEIMITTEL-WECHSELWIRKUNGEN') ||
+                             text.includes('DIAGNOSTISCHE CHECKLISTE');
+    if (hasGermanHeaders) {
+      // Instantly generate localized clinical comparison in the active language
+      const localized = generateDeterministicClinicalComparison(currentCase, lifestyle, language as LanguageCode);
+      setAnalysisResult(localized);
+    }
+  }, [language, activeResult?.analyzedAt, currentCase, lifestyle]);
 
   // Trigger deep clinical analysis
   const handleStartAnalysis = async () => {
@@ -1071,7 +1069,7 @@ export const MedicationMultiComparisonView: React.FC<Props> = ({
             </div>
 
             <div className="flex items-center gap-2 text-xs text-slate-500 bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-2xs font-mono shrink-0">
-              <span>{t('medComparisonDateAsOf' as TranslationKey) || 'Stand'}: {new Date(activeResult.analyzedAt || Date.now()).toLocaleDateString(language === 'de' ? 'de-DE' : 'en-US', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
+              <span>{t('medComparisonDateAsOf' as TranslationKey) || 'Stand'}: {new Date(activeResult.analyzedAt || Date.now()).toLocaleDateString(language === 'el' ? 'el-GR' : language === 'de' ? 'de-DE' : language === 'es' ? 'es-ES' : language === 'fr' ? 'fr-FR' : language === 'it' ? 'it-IT' : language === 'ru' ? 'ru-RU' : 'en-US', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
             </div>
           </div>
 
@@ -1133,7 +1131,7 @@ export const MedicationMultiComparisonView: React.FC<Props> = ({
                   ),
                   td: ({ children }) => {
                     const text = String(children || '');
-                    const isCriticalCell = text.includes('SOFORTIGE') || text.includes('Lebensgefahr') || text.includes('Extrem hohes Risiko') || text.includes('DRINGEND');
+                    const isCriticalCell = text.includes('SOFORTIGE') || text.includes('Lebensgefahr') || text.includes('Extrem hohes Risiko') || text.includes('DRINGEND') || text.includes('ΑΜΕΣΗ') || text.includes('Κίνδυνος') || text.includes('Κρίσιμος') || text.includes('IMMEDIATE') || text.includes('CRITICAL');
                     return (
                       <td className={`py-3 px-3.5 border-r border-b border-slate-100 last:border-r-0 align-top ${isCriticalCell ? 'bg-rose-50/40 text-slate-900 font-medium' : ''}`}>
                         {children}

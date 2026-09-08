@@ -2,6 +2,14 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { LanguageCode, LanguageOption } from '../types';
 import { LANGUAGES, translations, TranslationKey } from './translations';
 import { getActiveTherapist, updateTherapist } from '../services/storage';
+import {
+  DetectedCountryInfo,
+  getInstantDetectedLanguage,
+  detectUserCountryAndLanguage,
+  isUserManualLanguageSelected,
+  setUserManualLanguageSelected,
+  getCachedDetectedCountry,
+} from '../services/countryLanguageDetector';
 
 const STORAGE_LANG_KEY = 'homoeo_saas_language_v1';
 
@@ -11,32 +19,39 @@ interface LanguageContextType {
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
   languages: LanguageOption[];
   currentLanguageOption: LanguageOption;
+  detectedCountry: DetectedCountryInfo | null;
+  isAutoDetected: boolean;
+  resetToAutoLanguage: () => void;
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const getInitialLanguage = (): LanguageCode => {
+  const [detectedCountry, setDetectedCountry] = useState<DetectedCountryInfo | null>(() => {
+    return getCachedDetectedCountry() || getInstantDetectedLanguage();
+  });
+
+  const getInitialLanguage = (): LanguageCode => {
     try {
       const activeTh = getActiveTherapist();
       if (activeTh?.preferredLanguage && LANGUAGES.some(l => l.code === activeTh.preferredLanguage)) {
         return activeTh.preferredLanguage;
       }
       
+      const isManual = isUserManualLanguageSelected();
       const stored = localStorage.getItem(STORAGE_LANG_KEY) as LanguageCode | null;
-      if (stored && LANGUAGES.some(l => l.code === stored)) {
+      if (isManual && stored && LANGUAGES.some(l => l.code === stored)) {
         return stored;
       }
 
-      // Check browser language
-      if (typeof navigator !== 'undefined' && navigator.language) {
-        const browserLangs = navigator.languages || [navigator.language];
-        for (const bLang of browserLangs) {
-          const shortCode = bLang.split('-')[0].toLowerCase() as LanguageCode;
-          if (LANGUAGES.some(l => l.code === shortCode)) {
-            return shortCode;
-          }
-        }
+      // Automatic country/location detection
+      const instant = getInstantDetectedLanguage();
+      if (instant && LANGUAGES.some(l => l.code === instant.language)) {
+        return instant.language;
+      }
+
+      if (stored && LANGUAGES.some(l => l.code === stored)) {
+        return stored;
       }
     } catch {
       // fallback
@@ -45,6 +60,28 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const [language, setLanguageState] = useState<LanguageCode>(getInitialLanguage);
+  const [isAutoDetected, setIsAutoDetected] = useState<boolean>(!isUserManualLanguageSelected());
+
+  // Detect country asynchronously and apply if not manually overridden
+  useEffect(() => {
+    let isCancelled = false;
+    detectUserCountryAndLanguage().then((info) => {
+      if (!isCancelled && info) {
+        setDetectedCountry(info);
+        if (!isUserManualLanguageSelected()) {
+          setLanguageState(info.language);
+          setIsAutoDetected(true);
+          try {
+            localStorage.setItem(STORAGE_LANG_KEY, info.language);
+          } catch {}
+        }
+      }
+    });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
 
   // Sync with active therapist preference on therapist change
   useEffect(() => {
@@ -52,6 +89,8 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const activeTh = getActiveTherapist();
       if (activeTh?.preferredLanguage && LANGUAGES.some(l => l.code === activeTh.preferredLanguage)) {
         setLanguageState(activeTh.preferredLanguage);
+        setUserManualLanguageSelected(true);
+        setIsAutoDetected(false);
         localStorage.setItem(STORAGE_LANG_KEY, activeTh.preferredLanguage);
       }
     };
@@ -64,6 +103,8 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const setLanguage = useCallback((newLang: LanguageCode, persistForUser = true) => {
     setLanguageState(newLang);
+    setUserManualLanguageSelected(true);
+    setIsAutoDetected(false);
     try {
       localStorage.setItem(STORAGE_LANG_KEY, newLang);
       if (persistForUser) {
@@ -75,6 +116,17 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     } catch {
       // storage error safe
     }
+  }, []);
+
+  const resetToAutoLanguage = useCallback(() => {
+    setUserManualLanguageSelected(false);
+    setIsAutoDetected(true);
+    const instant = getInstantDetectedLanguage();
+    setDetectedCountry(instant);
+    setLanguageState(instant.language);
+    try {
+      localStorage.setItem(STORAGE_LANG_KEY, instant.language);
+    } catch {}
   }, []);
 
   const t = useCallback((key: TranslationKey, params?: Record<string, string | number>): string => {
@@ -100,6 +152,9 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         t,
         languages: LANGUAGES,
         currentLanguageOption,
+        detectedCountry,
+        isAutoDetected,
+        resetToAutoLanguage,
       }}
     >
       {children}

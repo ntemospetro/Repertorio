@@ -17,6 +17,26 @@ interface PDFContext {
   lang: LanguageCode;
 }
 
+const LOCALE_DATE_MAP: Record<LanguageCode, string> = {
+  de: 'de-DE',
+  en: 'en-US',
+  el: 'el-GR',
+  es: 'es-ES',
+  fr: 'fr-FR',
+  it: 'it-IT',
+  ru: 'ru-RU',
+};
+
+const MED_COMPARISON_DOC_TITLES: Record<LanguageCode, string> = {
+  de: 'Mehrfachmedikations-Vergleich & Kumulative Risikoanalyse',
+  en: 'Polypharmacy Comparison & Cumulative Risk Assessment',
+  el: 'Σύγκριση πολυφαρμακίας & Σωρευτική εκτίμηση κινδύνου',
+  es: 'Comparación de polifarmacia y evaluación acumulativa de riesgos',
+  fr: 'Comparaison de polymédication & Évaluation cumulative des risques',
+  it: 'Confronto di polifarmacoterapia e valutazione cumulativa del rischio',
+  ru: 'Сравнение полипрагмазии и совокупная оценка рисков',
+};
+
 const SECTION_TITLES: Record<LanguageCode, {
   falldaten: string;
   falldatenSub: string;
@@ -164,6 +184,80 @@ const COLORS = {
   emeraldBg: [209, 250, 229] as [number, number, number], // Emerald 100
 };
 
+const PDF_LABELS: Record<LanguageCode, {
+  patient: string;
+  date: string;
+  urgencyLevel: string;
+  pro: string;
+  contra: string;
+  openQuestions: string;
+  diagSteps: string;
+}> = {
+  de: {
+    patient: 'Patient',
+    date: 'Datum',
+    urgencyLevel: 'Dringlichkeitsstufe',
+    pro: '✓ Dafür spricht:',
+    contra: '⚠ Dagegen spricht:',
+    openQuestions: '💡 Offene Fragen / Diagnostik:',
+    diagSteps: 'Empfohlene diagnostische Schritte',
+  },
+  en: {
+    patient: 'Patient',
+    date: 'Date',
+    urgencyLevel: 'Urgency Level',
+    pro: '✓ In favor:',
+    contra: '⚠ Against:',
+    openQuestions: '💡 Open Questions / Diagnostics:',
+    diagSteps: 'Recommended diagnostic steps',
+  },
+  el: {
+    patient: 'Ασθενής',
+    date: 'Ημερομηνία',
+    urgencyLevel: 'Επίπεδο επείγοντος',
+    pro: '✓ Συνηγορούν υπέρ:',
+    contra: '⚠ Συνηγορούν κατά:',
+    openQuestions: '💡 Ανοικτά ερωτήματα / Διαγνωστικά:',
+    diagSteps: 'Προτεινόμενα διαγνωστικά βήματα',
+  },
+  es: {
+    patient: 'Paciente',
+    date: 'Fecha',
+    urgencyLevel: 'Nivel de urgencia',
+    pro: '✓ Argumentos a favor:',
+    contra: '⚠ Argumentos en contra:',
+    openQuestions: '💡 Preguntas abiertas / Diagnóstico:',
+    diagSteps: 'Pasos diagnósticos recomendados',
+  },
+  fr: {
+    patient: 'Patient',
+    date: 'Date',
+    urgencyLevel: 'Niveau d\'urgence',
+    pro: '✓ En faveur :',
+    contra: '⚠ Contre :',
+    openQuestions: '💡 Questions en suspens / Diagnostic :',
+    diagSteps: 'Étapes diagnostiques recommandées',
+  },
+  it: {
+    patient: 'Paziente',
+    date: 'Data',
+    urgencyLevel: 'Livello di urgenza',
+    pro: '✓ A favore:',
+    contra: '⚠ Contro:',
+    openQuestions: '💡 Domande aperte / Diagnostica:',
+    diagSteps: 'Passaggi diagnostici raccomandati',
+  },
+  ru: {
+    patient: 'Пациент',
+    date: 'Дата',
+    urgencyLevel: 'Степень срочности',
+    pro: '✓ В пользу диагноза:',
+    contra: '⚠ Против диагноза:',
+    openQuestions: '💡 Открытые вопросы / Диагностика:',
+    diagSteps: 'Рекомендуемые диагностические шаги',
+  },
+};
+
 // Helper: Ensure room on page or add page
 function checkPageBreak(ctx: PDFContext, neededHeight: number, categoryHeader?: string): void {
   if (ctx.currentY + neededHeight > ctx.pageHeight - 20) {
@@ -185,9 +279,8 @@ function drawPageHeader(ctx: PDFContext, sectionName: string) {
   doc.setFont('Roboto', 'normal');
   doc.setFontSize(8);
   doc.setTextColor(...COLORS.textMuted);
-  const patientLabel = lang === 'el' ? 'Ασθενής' : lang === 'en' ? 'Patient' : lang === 'es' ? 'Paciente' : lang === 'fr' ? 'Patient' : lang === 'it' ? 'Paziente' : lang === 'ru' ? 'Пациент' : 'Patient';
-  const datumLabel = lang === 'el' ? 'Ημερομηνία' : lang === 'en' ? 'Date' : lang === 'es' ? 'Fecha' : lang === 'fr' ? 'Date' : lang === 'it' ? 'Data' : lang === 'ru' ? 'Дата' : 'Datum';
-  const infoText = `${patientLabel}: ${ctx.patientName} | ${datumLabel}: ${ctx.anamneseDatum}`;
+  const labels = PDF_LABELS[lang] || PDF_LABELS.de;
+  const infoText = `${labels.patient}: ${ctx.patientName} | ${labels.date}: ${ctx.anamneseDatum}`;
   const infoWidth = doc.getTextWidth(infoText);
   doc.text(infoText, pageWidth - margin - infoWidth, 12);
 
@@ -533,15 +626,15 @@ function renderDifferentialSection(ctx: PDFContext, analysis: FullClinicalAnalys
   const t = SECTION_TITLES[ctx.lang] || SECTION_TITLES.de;
   drawSectionHeader(ctx, t.differential, t.differentialSub, COLORS.primary);
 
+  const labels = PDF_LABELS[ctx.lang] || PDF_LABELS.de;
   if (analysis.differentialdiagnostik?.dringlichkeitHeader) {
-    const urgencyLabel = ctx.lang === 'el' ? 'Επίπεδο επείγοντος' : ctx.lang === 'en' ? 'Urgency Level' : ctx.lang === 'es' ? 'Nivel de urgencia' : ctx.lang === 'fr' ? 'Niveau d\'urgence' : ctx.lang === 'it' ? 'Livello di urgenza' : ctx.lang === 'ru' ? 'Степень срочности' : 'Dringlichkeitsstufe';
-    drawCardBox(ctx, urgencyLabel, analysis.differentialdiagnostik.dringlichkeitHeader, COLORS.amber, COLORS.amberBg);
+    drawCardBox(ctx, labels.urgencyLevel, analysis.differentialdiagnostik.dringlichkeitHeader, COLORS.amber, COLORS.amberBg);
   }
 
-  const proLabel = ctx.lang === 'el' ? '✓ Συνηγορούν υπέρ:' : ctx.lang === 'en' ? '✓ In favor:' : ctx.lang === 'es' ? '✓ Argumentos a favor:' : ctx.lang === 'fr' ? '✓ En faveur :' : ctx.lang === 'it' ? '✓ A favore:' : ctx.lang === 'ru' ? '✓ В пользу диагноза:' : '✓ Dafür spricht:';
-  const contraLabel = ctx.lang === 'el' ? '⚠ Συνηγορούν κατά:' : ctx.lang === 'en' ? '⚠ Against:' : ctx.lang === 'es' ? '⚠ Argumentos en contra:' : ctx.lang === 'fr' ? '⚠ Contre :' : ctx.lang === 'it' ? '⚠ Contro:' : ctx.lang === 'ru' ? '⚠ Против диагноза:' : '⚠ Dagegen spricht:';
-  const qLabel = ctx.lang === 'el' ? '💡 Ανοικτά ερωτήματα / Διαγνωστικά:' : ctx.lang === 'en' ? '💡 Open Questions / Diagnostics:' : ctx.lang === 'es' ? '💡 Preguntas abiertas / Diagnóstico:' : ctx.lang === 'fr' ? '💡 Questions en suspens / Diagnostic :' : ctx.lang === 'it' ? '💡 Domande aperte / Diagnostica:' : ctx.lang === 'ru' ? '💡 Открытые вопросы / Диагностика:' : '💡 Offene Fragen / Diagnostik:';
-  const diagLabel = ctx.lang === 'el' ? 'Προτεινόμενα διαγνωστικά βήματα' : ctx.lang === 'en' ? 'Recommended diagnostic steps' : ctx.lang === 'es' ? 'Pasos diagnósticos recomendados' : ctx.lang === 'fr' ? 'Étapes diagnostiques recommandées' : ctx.lang === 'it' ? 'Passaggi diagnostici raccomandati' : ctx.lang === 'ru' ? 'Рекомендуемые диагностические шаги' : 'Empfohlene diagnostische Schritte';
+  const proLabel = labels.pro;
+  const contraLabel = labels.contra;
+  const qLabel = labels.openQuestions;
+  const diagLabel = labels.diagSteps;
 
   const items = analysis.differentialdiagnostik?.items || [];
   items.forEach((dd, idx) => {
@@ -727,7 +820,7 @@ export function exportCategoryPDF(
   const contentWidth = pageWidth - margin * 2;
 
   const patientName = patientCase.patientName || 'Patient';
-  const anamneseDatum = patientCase.anamneseDatum || new Date().toLocaleDateString(lang === 'de' ? 'de-DE' : lang === 'el' ? 'el-GR' : 'en-US');
+  const anamneseDatum = patientCase.anamneseDatum || new Date().toLocaleDateString(LOCALE_DATE_MAP[lang] || 'de-DE');
 
   const t = SECTION_TITLES[lang] || SECTION_TITLES.de;
   let title = t.overallTitle;
@@ -1189,7 +1282,7 @@ export async function exportMedicationRiskComparisonPDF(
   const meds = options.patientCase.medikamenteList || [];
   const lifestyle = options.lifestyle || {};
   const result = options.result;
-  const dateStr = new Date(result.analyzedAt || Date.now()).toLocaleDateString(lang === 'de' ? 'de-DE' : 'en-US', {
+  const dateStr = new Date(result.analyzedAt || Date.now()).toLocaleDateString(LOCALE_DATE_MAP[lang] || 'de-DE', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric'
@@ -1204,7 +1297,7 @@ export async function exportMedicationRiskComparisonPDF(
     currentY: 20,
     patientName,
     anamneseDatum: dateStr,
-    documentTitle: lang === 'el' ? 'Σύγκριση πολυφαρμακίας & Σωρευτική εκτίμηση κινδύνου' : lang === 'en' ? 'Polypharmacy Comparison & Cumulative Risk Assessment' : 'Mehrfachmedikations-Vergleich & Kumulative Risikoanalyse',
+    documentTitle: MED_COMPARISON_DOC_TITLES[lang] || MED_COMPARISON_DOC_TITLES.de,
     lang,
   };
 

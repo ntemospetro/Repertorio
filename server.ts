@@ -26,6 +26,41 @@ async function startServer() {
     res.json({ status: "ok" });
   });
 
+  // Country & Language Detection Endpoint
+  app.get("/api/detect-country", (req, res) => {
+    const cfCountry = req.headers["cf-ipcountry"] || req.headers["x-country-code"] || req.headers["x-appengine-country"];
+    let detectedCountry = typeof cfCountry === "string" ? cfCountry.toUpperCase() : "";
+
+    if (!detectedCountry) {
+      const acceptLang = req.headers["accept-language"] || "";
+      if (acceptLang.includes("el") || acceptLang.includes("gr")) detectedCountry = "GR";
+      else if (acceptLang.includes("de")) detectedCountry = "DE";
+      else if (acceptLang.includes("fr")) detectedCountry = "FR";
+      else if (acceptLang.includes("es")) detectedCountry = "ES";
+      else if (acceptLang.includes("it")) detectedCountry = "IT";
+      else if (acceptLang.includes("ru")) detectedCountry = "RU";
+      else if (acceptLang.includes("en")) detectedCountry = "GB";
+    }
+
+    const COUNTRY_LANG_MAP: Record<string, string> = {
+      GR: "el", CY: "el",
+      DE: "de", AT: "de", CH: "de", LI: "de",
+      FR: "fr", BE: "fr", MC: "fr", LU: "fr",
+      ES: "es", MX: "es", AR: "es", CO: "es", CL: "es", PE: "es",
+      IT: "it", SM: "it", VA: "it",
+      RU: "ru", BY: "ru", KZ: "ru",
+      GB: "en", US: "en", CA: "en", AU: "en", IE: "en",
+    };
+
+    const finalCountry = detectedCountry || "DE";
+    const finalLanguage = COUNTRY_LANG_MAP[finalCountry] || "de";
+
+    res.json({
+      countryCode: finalCountry,
+      language: finalLanguage,
+    });
+  });
+
   // Persistent Data Directory & File Paths
   const DATA_DIR = path.join(process.cwd(), 'data');
   const ADMIN_CONFIG_FILE = path.join(DATA_DIR, 'admin_config.json');

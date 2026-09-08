@@ -1,5 +1,11 @@
 import { PatientCase, PatientLifestyleData, MedicationRiskAnalysisResult, LanguageCode } from '../types';
 import { TOP_MEDICATIONS_CATALOG } from '../data/topMedicationsCatalog';
+import {
+  getLocalizedConstitution,
+  getLocalizedLifestyleInteractions,
+  getLocalizedDrugPairingRow,
+  LOCALIZED_REPORT_TEMPLATES,
+} from './clinicalPharmacologyLocalization';
 
 export interface PharmacokineticConstitutionResult {
   hasDosageRelevance: boolean;
@@ -33,7 +39,8 @@ export function evaluatePharmacokineticsAndConstitution(
   drugs: Array<{ name: string; substance?: string; dosierung?: string; dose?: string }>,
   weightKg: number,
   heightCm: number,
-  bmi?: number
+  bmi?: number,
+  targetLang: LanguageCode = 'de'
 ): PharmacokineticConstitutionResult {
   const isLowMass = weightKg <= 55 || (bmi !== undefined && bmi < 18.5);
   const isHighMass = weightKg >= 100 || (bmi !== undefined && bmi >= 30);
@@ -82,6 +89,7 @@ export function evaluatePharmacokineticsAndConstitution(
   const allAffected = Array.from(new Set([...lipophilicFound, ...hydrophilicFound, ...doacFound, ...narrowTherapeuticFound, ...nsaidFound]));
 
   if (isLowMass && allAffected.length > 0) {
+    const localized = getLocalizedConstitution('low_mass', weightKg, heightCm, bmi, targetLang);
     const pkDetails: string[] = [];
     const recDetails: string[] = [];
 
@@ -105,17 +113,18 @@ export function evaluatePharmacokineticsAndConstitution(
     return {
       hasDosageRelevance: true,
       constitutionType: 'low_mass',
-      constitutionLabel: `Niedriges Körpergewicht (${weightKg} kg / ${heightCm} cm)`,
+      constitutionLabel: localized.constitutionLabel,
       affectedDrugs: allAffected,
-      pharmacokineticMechanism: pkDetails.join('; ') + '.',
-      clinicalImpact: `Erhöhtes Risiko für relative Überdosierung, beschleunigte Toxizität und Blutungs- bzw. Sedierungskomplikationen durch geringes Verteilungsvolumen bei ${weightKg} kg.`,
-      dosageRecommendation: recDetails.join('; ') + '.',
-      badgeText: 'Dosisreduktion prüfen',
+      pharmacokineticMechanism: targetLang === 'de' && pkDetails.length > 0 ? pkDetails.join('; ') + '.' : localized.pharmacokineticMechanism,
+      clinicalImpact: localized.clinicalImpact,
+      dosageRecommendation: targetLang === 'de' && recDetails.length > 0 ? recDetails.join('; ') + '.' : localized.dosageRecommendation,
+      badgeText: localized.badgeText,
       badgeType: 'warning',
     };
   }
 
   if (isHighMass && allAffected.length > 0) {
+    const localizedHigh = getLocalizedConstitution('high_mass', weightKg, heightCm, bmi, targetLang);
     const pkDetails: string[] = [];
     const recDetails: string[] = [];
 
@@ -135,25 +144,26 @@ export function evaluatePharmacokineticsAndConstitution(
     return {
       hasDosageRelevance: true,
       constitutionType: 'high_mass',
-      constitutionLabel: `Hohes Körpergewicht / Adipositas (${weightKg} kg / ${heightCm} cm${bmi ? `, BMI ${bmi}` : ''})`,
+      constitutionLabel: localizedHigh.constitutionLabel,
       affectedDrugs: allAffected,
-      pharmacokineticMechanism: pkDetails.join('; ') + '.',
-      clinicalImpact: `Verändertes Verteilungsvolumen (Vd) und Clearance: Gefahr der Kumulation lipophiler Arzneistoffe bzw. Überdosierung hydrophiler Arzneistoffe bei Dosierung nach Gesamtkörpergewicht.`,
-      dosageRecommendation: recDetails.join('; ') + '.',
-      badgeText: 'Dosierungsanpassung indiziert',
+      pharmacokineticMechanism: targetLang === 'de' && pkDetails.length > 0 ? pkDetails.join('; ') + '.' : localizedHigh.pharmacokineticMechanism,
+      clinicalImpact: localizedHigh.clinicalImpact,
+      dosageRecommendation: targetLang === 'de' && recDetails.length > 0 ? recDetails.join('; ') + '.' : localizedHigh.dosageRecommendation,
+      badgeText: localizedHigh.badgeText,
       badgeType: 'warning',
     };
   }
 
+  const localizedNormal = getLocalizedConstitution('normal', weightKg, heightCm, bmi, targetLang);
   return {
     hasDosageRelevance: false,
     constitutionType: 'normal',
-    constitutionLabel: `Standard-Konstitution (${weightKg} kg / ${heightCm} cm${bmi ? `, BMI ${bmi}` : ''})`,
+    constitutionLabel: localizedNormal.constitutionLabel,
     affectedDrugs: [],
-    pharmacokineticMechanism: `Physiologisches Verteilungsvolumen und renale Clearance im Normbereich für ${weightKg} kg / ${heightCm} cm.`,
-    clinicalImpact: `Kein Hinweis auf veränderte Pharmakokinetik oder substanzspezifische Dosisfehlanpassung bei der aktuellen Medikation.`,
-    dosageRecommendation: `Standarddosierung gemäß Fachinformation ohne gewichtsbedingte Korrektur vertretbar.`,
-    badgeText: 'Standard-Dosierung adäquat',
+    pharmacokineticMechanism: localizedNormal.pharmacokineticMechanism,
+    clinicalImpact: localizedNormal.clinicalImpact,
+    dosageRecommendation: localizedNormal.dosageRecommendation,
+    badgeText: localizedNormal.badgeText,
     badgeType: 'neutral',
   };
 }
@@ -167,103 +177,10 @@ export function evaluateLifestyleInteractions(
   isSmoker: boolean,
   hasAlcohol: boolean,
   isPregnant: boolean,
-  pregnancyMonth: number = 1
+  pregnancyMonth: number = 1,
+  targetLang: LanguageCode = 'de'
 ): LifestyleInteractionResult {
-  const alcoholRisks: string[] = [];
-  const smokingRisks: string[] = [];
-  const pregnancyRisks: string[] = [];
-
-  // 1. Pregnancy elevated priority risks
-  if (isPregnant) {
-    if (hasAlcohol) {
-      pregnancyRisks.push(
-        `🚨 ALKOHOL IN DER SCHWANGERSCHAFT (${pregnancyMonth}. Monat): Höchste Teratogenität! Es gibt keine sichere Konsummenge. Akute Gefahr des Fetalen Alkoholsyndroms (FASD), irreversibler ZNS-Fehlbildungen, Mikrozephalie und Fruchttod.`
-      );
-    }
-    if (isSmoker) {
-      pregnancyRisks.push(
-        `🚨 RAUCHEN IN DER SCHWANGERSCHAFT (${pregnancyMonth}. Monat): Fetale Hypoxie durch Kohlenmonoxid und Nikotin-Vasokonstriktion; massiv erhöhtes Risiko für Plazentainsuffizienz, intrauterine Wachstumsretardierung (IUGR), Frühgeburtlichkeit und SIDS.`
-      );
-    }
-  }
-
-  // 2. Direct Medication Interactions with Alcohol
-  if (hasAlcohol) {
-    for (const d of drugs) {
-      const s = (d.substance || d.name).toLowerCase();
-      if (s.includes('diazepam') || s.includes('lorazepam') || s.includes('zolpidem') || s.includes('oxazepam')) {
-        alcoholRisks.push(`Synergistische ZNS-Dämpfung mit ${d.name}: Potenzierte GABA-A-Modulation mit Gefahr von Atemdepression, Koma und schwerer Gangataxie.`);
-      } else if (s.includes('ibuprofen') || s.includes('diclofenac') || s.includes('naproxen') || s.includes('acetylsalicyl') || s.includes('ass')) {
-        alcoholRisks.push(`Additive Magenschleimhautschädigung mit ${d.name}: Stark erhöhtes Risiko für akute Magen-Darm-Ulcera und gastrointestinale Blutungen.`);
-      } else if (s.includes('marcumar') || s.includes('phenprocoumon') || s.includes('rivaroxaban') || s.includes('apixaban') || s.includes('clopidogrel')) {
-        alcoholRisks.push(`Verändertes Blutungs- und Clearance-Profil mit ${d.name}: Gesteigerte Gefahr unkontrollierter Hämorrhagien.`);
-      } else if (s.includes('metformin')) {
-        alcoholRisks.push(`Kritische Interaktion mit ${d.name}: Akute Gefahr einer lebensbedrohlichen Laktatazidose.`);
-      } else if (s.includes('atorvastatin') || s.includes('simvastatin') || s.includes('rosuvastatin')) {
-        alcoholRisks.push(`Additive hepatotoxische Belastung mit ${d.name}: Erhöhtes Risiko für Transaminasenanstieg und Leberschädigung.`);
-      } else if (s.includes('citalopram') || s.includes('sertralin') || s.includes('fluoxetin') || s.includes('escitalopram') || s.includes('venlafaxin')) {
-        alcoholRisks.push(`ZNS-Interaktion mit ${d.name}: Gesteigerte Sedierung, orthostatische Dysregulation und Beeinträchtigung der Vigilanz.`);
-      } else if (s.includes('ramipril') || s.includes('enalapril') || s.includes('candesartan') || s.includes('valsartan') || s.includes('metoprolol')) {
-        alcoholRisks.push(`Blutdruck-Interaktion mit ${d.name}: Unvorhersehbare orthostatische Hypotonie und reflektorische Tachykardie.`);
-      }
-    }
-  }
-
-  // 3. Direct Medication Interactions with Smoking
-  if (isSmoker) {
-    for (const d of drugs) {
-      const s = (d.substance || d.name).toLowerCase();
-      if (s.includes('theophyllin') || s.includes('olanzapin') || s.includes('clozapin') || s.includes('fluvoxamin') || s.includes('duloxetin') || s.includes('propranolol')) {
-        smokingRisks.push(`Pharmakokinetische Interaktion mit ${d.name}: Polyzyklische aromatische Kohlenwasserstoffe im Tabakrauch induzieren CYP1A2 und senken die Wirkspiegel um bis zu 40–50% (Gefahr des Therapieversagens).`);
-      } else if (s.includes('ethinylestradiol') || s.includes('dienogest') || s.includes('pill') || s.includes('estro')) {
-        smokingRisks.push(`Schwere Kontraindikation mit ${d.name}: Massiv erhöhtes Risiko für Thromboembolien, Myokardinfarkt und Schlaganfall.`);
-      } else if (s.includes('ramipril') || s.includes('enalapril') || s.includes('candesartan') || s.includes('valsartan') || s.includes('metoprolol') || s.includes('amlodipin')) {
-        smokingRisks.push(`Antihypertensive Abschwächung mit ${d.name}: Nikotinbedingte Vasokonstriktion und erhöhter Gefäßwiderstand wirken der Blutdrucksenkung entgegen.`);
-      }
-    }
-  }
-
-  const hasAlcoholInteraction = alcoholRisks.length > 0;
-  const hasSmokingInteraction = smokingRisks.length > 0;
-  const hasPregnancyRisk = pregnancyRisks.length > 0;
-
-  const summaryParts: string[] = [];
-  if (hasPregnancyRisk) {
-    summaryParts.push(...pregnancyRisks);
-  }
-  if (hasAlcoholInteraction) {
-    summaryParts.push(...alcoholRisks);
-  } else if (hasAlcohol && !isPregnant) {
-    summaryParts.push(`Alkoholkonsum angegeben: Keine direkte pharmakodynamische Wechselwirkung mit den aktuellen Wirkstoffen festgestellt.`);
-  }
-
-  if (hasSmokingInteraction) {
-    summaryParts.push(...smokingRisks);
-  } else if (isSmoker && !isPregnant) {
-    summaryParts.push(`Rauchen angegeben: Keine direkte pharmakokinetische Wechselwirkung mit den aktuellen Wirkstoffen festgestellt.`);
-  }
-
-  if (!hasAlcohol && !isSmoker && !isPregnant) {
-    summaryParts.push(`Kein Konsum von Alkohol oder Nikotin angegeben (keine substanzassoziierten Risikofaktoren).`);
-  }
-
-  let clinicalAction = 'Keine lebensstilbezogenen Medikationskonflikte.';
-  if (hasPregnancyRisk) {
-    clinicalAction = 'SOFORTIGE INTERVENTION: Umgehende Nikotin- und Alkoholabstinenz zum Schutz vor schweren Fötalschäden (FASD, Wachstumsretardierung).';
-  } else if (hasAlcoholInteraction || hasSmokingInteraction) {
-    clinicalAction = 'Ärztliche Beratung zur Einhaltung strenger Karenzzeiten bzw. Dosisanpassung aufgrund substanzspezifischer Wechselwirkungen erforderlich.';
-  }
-
-  return {
-    hasAlcoholInteraction,
-    hasSmokingInteraction,
-    hasPregnancyRisk,
-    alcoholRisks,
-    smokingRisks,
-    pregnancyRisks,
-    summaryText: summaryParts.join(' '),
-    clinicalAction,
-  };
+  return getLocalizedLifestyleInteractions(drugs, isSmoker, hasAlcohol, isPregnant, pregnancyMonth, targetLang);
 }
 
 /**
@@ -300,7 +217,7 @@ export async function runClinicalMedicationComparison(
   }
 
   // Fallback to high-precision local clinical pharmacology engine
-  return generateDeterministicClinicalComparison(patientCase, lifestyle);
+  return generateDeterministicClinicalComparison(patientCase, lifestyle, (language as LanguageCode) || 'de');
 }
 
 /**
@@ -413,16 +330,16 @@ export function generateDeterministicClinicalComparison(
   const isPregnant = Boolean(lifestyle.isPregnant ?? patientCase.isPregnant);
   const pregnancyMonth = lifestyle.pregnancyMonth || patientCase.pregnancyMonth || 1;
 
+  const tpl = LOCALIZED_REPORT_TEMPLATES[language] || LOCALIZED_REPORT_TEMPLATES.de;
+
   // Determine Trimester
   let trimester = 1;
-  let trimesterName = '1. Trimenon (Monat 1–3, SSW 1–12)';
   if (pregnancyMonth >= 4 && pregnancyMonth <= 6) {
     trimester = 2;
-    trimesterName = '2. Trimenon (Monat 4–6, SSW 13–24)';
   } else if (pregnancyMonth >= 7) {
     trimester = 3;
-    trimesterName = '3. Trimenon (Monat 7–9, SSW 25–40)';
   }
+  const trimesterName = tpl.getTrimesterName(trimester);
 
   // Purely binary alcohol & smoking (no mg, no cigarettes/day count)
   const hasAlcohol = Boolean(
@@ -436,8 +353,8 @@ export function generateDeterministicClinicalComparison(
     lifestyle.smokingStatus === 'smoker'
   );
 
-  const smokingText = isSmoking ? 'Raucher (Ja)' : 'Nichtraucher (Nein)';
-  const alcoholText = hasAlcohol ? 'Alkoholkonsum (Ja)' : 'Kein Alkoholkonsum (Nein)';
+  const smokingText = tpl.smokingText(isSmoking);
+  const alcoholText = tpl.alcoholText(hasAlcohol);
 
   // Check known pharmacological classes
   const identifiedDrugs = meds.map(m => {
@@ -467,10 +384,10 @@ export function generateDeterministicClinicalComparison(
   });
 
   // Evaluate body constitution & pharmacokinetics (weight / height / lipophilic / hydrophilic / DOACs)
-  const pkResult = evaluatePharmacokineticsAndConstitution(identifiedDrugs, weightKg, heightCm, bmi);
+  const pkResult = evaluatePharmacokineticsAndConstitution(identifiedDrugs, weightKg, heightCm, bmi, language);
 
   // Evaluate lifestyle interactions (alcohol / smoking directly with meds or elevated pregnancy risks)
-  const lifestyleResult = evaluateLifestyleInteractions(identifiedDrugs, isSmoking, hasAlcohol, isPregnant, pregnancyMonth);
+  const lifestyleResult = evaluateLifestyleInteractions(identifiedDrugs, isSmoking, hasAlcohol, isPregnant, pregnancyMonth, language);
 
   // Drug pairing analysis
   const medSummaries = meds.map(m => `${m.name} (${m.dosierung || 'keine Dosisangabe'}, ${m.einnahmeart || 'oral'})`);
@@ -507,23 +424,116 @@ export function generateDeterministicClinicalComparison(
   const medNamesStr = identifiedDrugs.map(d => `${d.name} (${d.dose})`).join(', ');
   
   // 1. Medication Summary
-  let medEvalText = `${identifiedDrugs.length} Präparate verordnet: ${medNamesStr}. `;
-  if (hasNsaid && hasAnticoagulant) {
-    medEvalText += 'Kombination aus NSAR und Antikoagulans birgt massives Ulkus- und Blutungsrisiko. ';
-  } else if (hasNsaid && hasAceOrArb) {
-    medEvalText += 'NSAR + ACE-Hemmer stören die renale Autoregulation (Triple-Whammy-Gefahr). ';
-  } else if (hasSedative) {
-    medEvalText += 'Sedierende Komponente mit zentral dämpfendem Potenzial. ';
-  } else if (identifiedDrugs.length >= 3) {
-    medEvalText += 'Erhöhte hepatische und renale Metabolisierungslast durch Polypharmazie. ';
-  } else {
-    medEvalText += 'Pharmakodynamische Wechselwirkungen im klinischen Normbereich. ';
+  let medEvalText = '';
+  switch (language) {
+    case 'el':
+      medEvalText = `${identifiedDrugs.length} συνταγογραφημένα σκευάσματα: ${medNamesStr}. `;
+      if (hasNsaid && hasAnticoagulant) {
+        medEvalText += 'Ο συνδυασμός ΜΣΑΦ και αντιπηκτικού ενέχει μαζικό κίνδυνο έλκους και αιμορραγίας. ';
+      } else if (hasNsaid && hasAceOrArb) {
+        medEvalText += 'Τα ΜΣΑΦ + αναστολείς ΜΕΑ διαταράσσουν τη νεφρική αυτορρύθμιση (κίνδυνος Triple Whammy). ';
+      } else if (hasSedative) {
+        medEvalText += 'Κατασταλτικό στοιχείο με δυνητική κεντρική αναστολή. ';
+      } else if (identifiedDrugs.length >= 3) {
+        medEvalText += 'Αυξημένο ηπατικό και νεφρικό φορτίο μεταβολισμού λόγω πολυφαρμακίας. ';
+      } else {
+        medEvalText += 'Φαρμακοδυναμικές αλληλεπιδράσεις εντός κλινικών φυσιολογικών ορίων. ';
+      }
+      break;
+    case 'en':
+      medEvalText = `${identifiedDrugs.length} prescribed drugs: ${medNamesStr}. `;
+      if (hasNsaid && hasAnticoagulant) {
+        medEvalText += 'Combination of NSAID and anticoagulant carries massive ulcer and bleeding risk. ';
+      } else if (hasNsaid && hasAceOrArb) {
+        medEvalText += 'NSAID + ACE inhibitors impair renal autoregulation (Triple Whammy danger). ';
+      } else if (hasSedative) {
+        medEvalText += 'Sedative component with central depressant potential. ';
+      } else if (identifiedDrugs.length >= 3) {
+        medEvalText += 'Elevated hepatic and renal metabolic load due to polypharmacy. ';
+      } else {
+        medEvalText += 'Pharmacodynamic interactions within normal clinical range. ';
+      }
+      break;
+    case 'es':
+      medEvalText = `${identifiedDrugs.length} fármacos prescritos: ${medNamesStr}. `;
+      if (hasNsaid && hasAnticoagulant) {
+        medEvalText += 'La combinación de AINE y anticoagulante conlleva un riesgo masivo de úlcera y hemorragia. ';
+      } else if (hasNsaid && hasAceOrArb) {
+        medEvalText += 'AINE + inhibidores de la ECA alteran la autorregulación renal (riesgo de Triple Whammy). ';
+      } else if (hasSedative) {
+        medEvalText += 'Componente sedante con potencial depresor central. ';
+      } else if (identifiedDrugs.length >= 3) {
+        medEvalText += 'Carga metabólica hepática y renal aumentada por polifarmacia. ';
+      } else {
+        medEvalText += 'Interacciones farmacodinámicas en rango clínico normal. ';
+      }
+      break;
+    case 'fr':
+      medEvalText = `${identifiedDrugs.length} médicaments prescrits : ${medNamesStr}. `;
+      if (hasNsaid && hasAnticoagulant) {
+        medEvalText += 'L\'association AINS et anticoagulant comporte un risque majeur d\'ulcère et d\'hémorragie. ';
+      } else if (hasNsaid && hasAceOrArb) {
+        medEvalText += 'AINS + inhibiteurs de l\'ECA altèrent l\'autorégulation rénale (danger de Triple Whammy). ';
+      } else if (hasSedative) {
+        medEvalText += 'Composant sédatif avec potentiel dépresseur central. ';
+      } else if (identifiedDrugs.length >= 3) {
+        medEvalText += 'Charge métabolique hépatique et rénale accrue due à la polymédication. ';
+      } else {
+        medEvalText += 'Interactions pharmacodynamiques dans les limites cliniques normales. ';
+      }
+      break;
+    case 'it':
+      medEvalText = `${identifiedDrugs.length} farmaci prescritti: ${medNamesStr}. `;
+      if (hasNsaid && hasAnticoagulant) {
+        medEvalText += 'La combinazione di FANS e anticoagulante comporta un rischio elevato di ulcera ed emorragia. ';
+      } else if (hasNsaid && hasAceOrArb) {
+        medEvalText += 'FANS + ACE-inibitori alterano l\'autoregolazione renale (rischio Triple Whammy). ';
+      } else if (hasSedative) {
+        medEvalText += 'Componente sedativo con potenziale deprimente centrale. ';
+      } else if (identifiedDrugs.length >= 3) {
+        medEvalText += 'Carico metabolico epatico e renale aumentato per politerapia. ';
+      } else {
+        medEvalText += 'Interazioni farmacodinamiche nell\'intervallo clinico standard. ';
+      }
+      break;
+    case 'ru':
+      medEvalText = `${identifiedDrugs.length} назначенных препаратов: ${medNamesStr}. `;
+      if (hasNsaid && hasAnticoagulant) {
+        medEvalText += 'Комбинация НПВП и антикоагулянта несет массивный риск язв и кровотечений. ';
+      } else if (hasNsaid && hasAceOrArb) {
+        medEvalText += 'НПВП + ингибиторы АПФ нарушают почечную авторегуляцию (синдром Triple Whammy). ';
+      } else if (hasSedative) {
+        medEvalText += 'Седативный компонент с угнетающим действием на ЦНС. ';
+      } else if (identifiedDrugs.length >= 3) {
+        medEvalText += 'Повышенная печеночная и почечная метаболическая нагрузка при полипрагмазии. ';
+      } else {
+        medEvalText += 'Фармакодинамические взаимодействия в пределах клинической нормы. ';
+      }
+      break;
+    case 'de':
+    default:
+      medEvalText = `${identifiedDrugs.length} Präparate verordnet: ${medNamesStr}. `;
+      if (hasNsaid && hasAnticoagulant) {
+        medEvalText += 'Kombination aus NSAR und Antikoagulans birgt massives Ulkus- und Blutungsrisiko. ';
+      } else if (hasNsaid && hasAceOrArb) {
+        medEvalText += 'NSAR + ACE-Hemmer stören die renale Autoregulation (Triple-Whammy-Gefahr). ';
+      } else if (hasSedative) {
+        medEvalText += 'Sedierende Komponente mit zentral dämpfendem Potenzial. ';
+      } else if (identifiedDrugs.length >= 3) {
+        medEvalText += 'Erhöhte hepatische und renale Metabolisierungslast durch Polypharmazie. ';
+      } else {
+        medEvalText += 'Pharmakodynamische Wechselwirkungen im klinischen Normbereich. ';
+      }
+      break;
   }
 
   // 2. Constitution / BMI Summary - Incorporating pharmacokinetic impact
-  let constitutionEvalText = `Körpergewicht ${weightKg} kg, Größe ${heightCm} cm`;
+  const weightLabel = language === 'el' ? 'Σωματικό βάρος' : language === 'en' ? 'Body weight' : language === 'es' ? 'Peso corporal' : language === 'fr' ? 'Poids corporel' : language === 'it' ? 'Peso corporeo' : language === 'ru' ? 'Масса тела' : 'Körpergewicht';
+  const heightLabel = language === 'el' ? 'ύψος' : language === 'en' ? 'height' : language === 'es' ? 'talla' : language === 'fr' ? 'taille' : language === 'it' ? 'altezza' : language === 'ru' ? 'рост' : 'Größe';
+  let constitutionEvalText = `${weightLabel} ${weightKg} kg, ${heightLabel} ${heightCm} cm`;
   if (bmi) {
-    constitutionEvalText += `, BMI ${bmi} kg/m²`;
+    const bmiPrefix = language === 'el' ? 'ΔΜΣ' : language === 'es' ? 'IMC' : language === 'fr' ? 'IMC' : language === 'ru' ? 'ИМТ' : 'BMI';
+    constitutionEvalText += `, ${bmiPrefix} ${bmi} kg/m²`;
   }
   if (pkResult.hasDosageRelevance) {
     constitutionEvalText += ` [${pkResult.badgeText}]: ${pkResult.clinicalImpact} ${pkResult.dosageRecommendation}`;
@@ -534,16 +544,81 @@ export function generateDeterministicClinicalComparison(
   // 3. Pregnancy / Teratogenicity Summary
   let pregEvalText = '';
   if (isPregnant) {
-    pregEvalText = `Patientin im ${pregnancyMonth}. Schwangerschaftsmonat (${trimesterName}). `;
-    if (trimester === 1) {
-      pregEvalText += 'Höchste Vulnerabilität in der embryonalen Organogenese (Phase der Fehlbildungsentstehung).';
-    } else if (trimester === 2) {
-      pregEvalText += 'Fetale Reifungsphase (Gefahr von Nierenfunktions- und Wachstumsstörungen).';
-    } else {
-      pregEvalText += 'Perinatale Vulnerabilität (Gefahr vorzeitigen Ductus-Botalli-Verschlusses durch NSAR, persistierende pulmonale Hypertonie).';
+    switch (language) {
+      case 'el':
+        pregEvalText = `Ασθενής στον ${pregnancyMonth}ο μήνα κύησης (${trimesterName}). `;
+        if (trimester === 1) {
+          pregEvalText += 'Μέγιστη ευπάθεια στην εμβρυϊκή οργανογένεση (φάση πρόκλησης δυσπλασιών).';
+        } else if (trimester === 2) {
+          pregEvalText += 'Φάση εμβρυϊκής ωρίμανσης (κίνδυνος νεφρικών διαταραχών και αναστολής ανάπτυξης).';
+        } else {
+          pregEvalText += 'Περιγεννητική ευπάθεια (κίνδυνος πρόωρης σύγκλεισης βοτάλλειου πόρου από ΜΣΑΦ, εμμένουσα πνευμονική υπέρταση).';
+        }
+        break;
+      case 'en':
+        pregEvalText = `Patient in gestational month ${pregnancyMonth} (${trimesterName}). `;
+        if (trimester === 1) {
+          pregEvalText += 'Highest vulnerability in embryonic organogenesis (structural malformation phase).';
+        } else if (trimester === 2) {
+          pregEvalText += 'Fetal maturation phase (risk of renal and growth impairment).';
+        } else {
+          pregEvalText += 'Perinatal vulnerability (risk of premature closure of ductus arteriosus from NSAIDs, persistent pulmonary hypertension).';
+        }
+        break;
+      case 'es':
+        pregEvalText = `Paciente en el mes ${pregnancyMonth} de gestación (${trimesterName}). `;
+        if (trimester === 1) {
+          pregEvalText += 'Máxima vulnerabilidad en la organogénesis embrionaria (fase de malformaciones).';
+        } else if (trimester === 2) {
+          pregEvalText += 'Fase de maduración fetal (riesgo de alteración renal y retraso del crecimiento).';
+        } else {
+          pregEvalText += 'Vulnerabilidad perinatal (riesgo de cierre prematuro del ductus por AINE, hipertensión pulmonar persistente).';
+        }
+        break;
+      case 'fr':
+        pregEvalText = `Patiente au ${pregnancyMonth}e mois de grossesse (${trimesterName}). `;
+        if (trimester === 1) {
+          pregEvalText += 'Vulnérabilité maximale lors de l\'organogenèse embryonnaire (phase des malformations).';
+        } else if (trimester === 2) {
+          pregEvalText += 'Phase de maturation fœtale (risque d\'atteinte rénale et de retard de croissance).';
+        } else {
+          pregEvalText += 'Vulnérabilité périnatale (fermeture prématurée du canal artériel par les AINS, hypertension pulmonaire persistante).';
+        }
+        break;
+      case 'it':
+        pregEvalText = `Paziente al ${pregnancyMonth}° mese di gravidanza (${trimesterName}). `;
+        if (trimester === 1) {
+          pregEvalText += 'Massima vulnerabilità nell\'organogenesi embrionale (fase delle malformazioni).';
+        } else if (trimester === 2) {
+          pregEvalText += 'Fase di maturazione fetale (rischio di disfunzione renale e ritardo di crescita).';
+        } else {
+          pregEvalText += 'Vulnerabilità perinatale (rischio di chiusura prematura del dotto di Botallo da FANS, ipertensione polmonare persistente).';
+        }
+        break;
+      case 'ru':
+        pregEvalText = `Пациентка на ${pregnancyMonth}-м месяце беременности (${trimesterName}). `;
+        if (trimester === 1) {
+          pregEvalText += 'Наивысшая уязвимость в период органогенеза (фаза формирования пороков развития).';
+        } else if (trimester === 2) {
+          pregEvalText += 'Фаза созревания плода (риск поражения почек и задержки внутриутробного развития).';
+        } else {
+          pregEvalText += 'Перинатальная уязвимость (риск преждевременного закрытия Баталлова протока из-за НПВП, легочная гипертензия).';
+        }
+        break;
+      case 'de':
+      default:
+        pregEvalText = `Patientin im ${pregnancyMonth}. Schwangerschaftsmonat (${trimesterName}). `;
+        if (trimester === 1) {
+          pregEvalText += 'Höchste Vulnerabilität in der embryonalen Organogenese (Phase der Fehlbildungsentstehung).';
+        } else if (trimester === 2) {
+          pregEvalText += 'Fetale Reifungsphase (Gefahr von Nierenfunktions- und Wachstumsstörungen).';
+        } else {
+          pregEvalText += 'Perinatale Vulnerabilität (Gefahr vorzeitigen Ductus-Botalli-Verschlusses durch NSAR, persistierende pulmonale Hypertonie).';
+        }
+        break;
     }
   } else {
-    pregEvalText = 'Patient/in nicht schwanger; keine embryofetalen Teratogenitätsrisiken vorliegend.';
+    pregEvalText = tpl.notPregnantText;
   }
 
   // 4. Lifestyle (Smoking & Alcohol) Summary - Binary & Interaction focused
@@ -560,14 +635,11 @@ export function generateDeterministicClinicalComparison(
     bmi,
     language
   );
-  let coreActionText = '';
-
+  let coreActionText = tpl.coreActionLow;
   if (triageLevel === 'critical') {
-    coreActionText = 'Aufgrund kumulativer toxischer Synergien ist die Eigenmedikation unverzüglich zu stoppen und eine umgehende fachärztliche Abklärung einzuleiten.';
+    coreActionText = tpl.coreActionCritical;
   } else if (triageLevel === 'high') {
-    coreActionText = 'Zeitnahe ärztliche Konsultation zur Dosisanpassung, Überprüfung von Kontraindikationen und Optimierung des Lebensstils zwingend angeraten.';
-  } else {
-    coreActionText = 'Kombination unter Einhaltung der empfohlenen Einnahmeabstände und regelmäßiger Routinekontrolle vertretbar.';
+    coreActionText = tpl.coreActionHigh;
   }
 
   // Construct Markdown Table Rows
@@ -578,132 +650,333 @@ export function generateDeterministicClinicalComparison(
     for (let j = i + 1; j < identifiedDrugs.length; j++) {
       const d1 = identifiedDrugs[i];
       const d2 = identifiedDrugs[j];
-      
-      let mechanism = `Pharmakodynamische Interaktion und hepatische Elimination (CYP-Enzyme) von ${d1.name} und ${d2.name}.`;
-      let maternalRisk = `Potenzierte Belastung von Leber, Magenmucosa und Nierenfiltration bei ${weightKg} kg Körpergewicht.`;
-      let fetalRisk = isPregnant ? `Plazentagängigkeit beider Arzneistoffe; potenzierte Schadwirkung auf embryonale Gewebe.` : `Nicht zutreffend (keine Schwangerschaft vorliegend).`;
-      let warning = `Regelmäßige Kontrolle von Blutdruck, Leberenzymen (GOT, GPT) und Serum-Kreatinin.`;
-
-      if (d1.isNsaid && d2.isAnticoagulant) {
-        mechanism = `Synergistische Hemmung der Thrombozytenaggregation (COX-1) gepaart mit systemischer Antikoagulation; additive Magenmucosaschädigung.`;
-        maternalRisk = `Extrem hohes Risiko für lebensbedrohliche gastrointestinale Blutungen, Magenperforation und renale Dekompensation.`;
-        fetalRisk = isPregnant ? `Massives fetales Blutungsrisiko, Retroplazentares Hämatom und vorzeitige Plazentalösung.` : `Nicht zutreffend.`;
-        warning = `SOFORTIGE ÄRZTLICHE INTERVENTION: Thrombozytenfunktion, Hb-Wert, Hämatokrit, Teerstuhl-Screening.`;
-      } else if (d1.isNsaid && d2.isAceOrArb) {
-        mechanism = `Kombinierte Störung der renalen Autoregulation (NSAR verengen Vas afferens via Prostaglandin-Hemmung, ACE-Hemmer erweitern Vas efferens).`;
-        maternalRisk = `Akutes Nierenversagen (Triple Whammy Risiko) und unkontrollierter Blutdruckanstieg trotz Antihypertensivum.`;
-        fetalRisk = isPregnant ? `Oligohydramnie (Mangel an Fruchtwasser) durch Nierenagenesie/-insuffizienz des Fötus.` : `Nicht zutreffend.`;
-        warning = `Engmaschige Überwachung von Serum-Kreatinin, GFR, Kaliumspiegel und tägliche Blutdruckmessung.`;
-      } else if (d1.isSedative && (d2.isSedative || hasAlcohol)) {
-        mechanism = `Synergistische allosterische GABA-A-Rezeptormodulation und ZNS-Dämpfung.`;
-        maternalRisk = `Schwere Atemdepression, Bradykardie, Bewusstseinsverlust und gefährliche Gangataxie.`;
-        fetalRisk = isPregnant ? `Floppy-Infant-Syndrom, neonatale Ateminsuffizienz und Entzugssyndrom.` : `Nicht zutreffend.`;
-        warning = `Atemfrequenz und Sauerstoffsättigung (SpO2) überwachen; kein Führen von Fahrzeugen.`;
-      }
-
-      tableRows.push(`| **${d1.name} (${d1.dose}) + ${d2.name} (${d2.dose})** | ${mechanism} | ${maternalRisk} | ${fetalRisk} | ${warning} |`);
+      const row = getLocalizedDrugPairingRow(d1, d2, isPregnant, weightKg, hasAlcohol, language);
+      tableRows.push(`| ${row.title} | ${row.mechanism} | ${row.maternalRisk} | ${row.fetalRisk} | ${row.warning} |`);
     }
   }
 
-  // 2. Synergy with Pregnancy
+  // 2. Synergy with Pregnancy or Constitution
   if (isPregnant) {
+    let pregTitle = `| **Gesamt-Synergie mit Schwangerschaft** <br>*(fokussiert auf den ${pregnancyMonth}. Monat)* |`;
     let pregMech = `Im ${pregnancyMonth}. Monat (${trimesterName}) besteht ein verändertes Verteilungsvolumen (+40–50% Plasmavolumen), gesteigerte GFR und veränderte hepatische Clearance.`;
     let pregMaternal = `Erhöhte Thrombosegefahr, verändertes Ansprechen auf blutdrucksenkende Mittel und Neigung zu Gestationshypertonie oder Reflux.`;
     let pregFetal = `Risiko variiert je nach Entwicklungsphase. Im ${trimester}. Trimenon besteht `;
     let pregWarn = `Regelmäßiger Pränatal-Ultraschall, Doppler-Sonographie der Arteriae uterinae.`;
 
-    if (trimester === 1) {
-      pregFetal += `höchstes Teratogenitätsrisiko (Phase der Organogenese: Herz, Neuralrohr, Extremitäten).`;
-      pregWarn = `Feindiagnostischer Ultraschall, Ausschluss von Struktur- und Herzfehlbildungen.`;
-    } else if (trimester === 2) {
-      pregFetal += `Risiko für fetale Wachstumsretardierung (IUGR), ZNS-Reifungsstörungen und Nierenfunktionsstörungen.`;
-      pregWarn = `Biometrie-Ultraschall, Fruchtwasserindex (AFI) und Doppler-Vaskularisation.`;
-    } else {
-      pregFetal += `akute Gefahr des vorzeitigen Verschlusses des Ductus arteriosus Botalli (insb. durch NSAR wie Ibuprofen/ASS), persistierende pulmonale Hypertonie des Neugeborenen sowie Oligohydramnie.`;
-      pregWarn = `DRINGEND: Fruchtwassermenge und fetale Echokardiographie zur Kontrolle des Ductus arteriosus Botalli.`;
+    switch (language) {
+      case 'el':
+        pregTitle = `| **Συνολική συνέργεια με την εγκυμοσύνη** <br>*(εστίαση στον ${pregnancyMonth}ο μήνα)* |`;
+        pregMech = `Στον ${pregnancyMonth}ο μήνα (${trimesterName}) παρατηρείται μεταβεβλημένος όγκος κατανομής (+40–50% όγκος πλάσματος), αυξημένος GFR και τροποποιημένη ηπατική κάθαρση.`;
+        pregMaternal = `Αυξημένος κίνδυνος θρόμβωσης, διαφοροποιημένη ανταπόκριση στα αντιυπερτασικά και τάση για υπέρταση κύησης ή παλινδρόμηση.`;
+        pregFetal = `Στο ${trimester}ο Τρίμηνο: ` + (trimester === 1 ? 'μέγιστος τερατογόνος κίνδυνος (οργανογένεση: καρδιά, νευρικός σωλήνας).' : trimester === 2 ? 'κίνδυνος ενδομήτριας καθυστέρησης ανάπτυξης (IUGR) και νεφρικής δυσλειτουργίας.' : 'άμεσος κίνδυνος πρόωρης σύγκλεισης βοτάλλειου πόρου από ΜΣΑΦ, εμμένουσα πνευμονική υπέρταση νεογνού και ολιγοϋδράμνιο.');
+        pregWarn = trimester === 1 ? 'Αναλυτικό υπερηχογράφημα, αποκλεισμός δομικών ανωμαλιών.' : trimester === 2 ? 'Υπερηχογράφημα βιομετρίας, δείκτης αμνιακού υγρού (AFI) και Doppler.' : 'ΕΠΕΙΓΟΝ: Μέτρηση αμνιακού υγρού και εμβρυϊκή υπερηχοκαρδιογραφία για έλεγχο του βοτάλλειου πόρου.';
+        break;
+      case 'en':
+        pregTitle = `| **Overall Synergy with Pregnancy** <br>*(focused on Month ${pregnancyMonth})* |`;
+        pregMech = `In month ${pregnancyMonth} (${trimesterName}), altered volume of distribution (+40–50% plasma volume), increased GFR, and modified hepatic clearance occur.`;
+        pregMaternal = `Elevated thrombosis risk, altered response to antihypertensives, and tendency toward gestational hypertension or reflux.`;
+        pregFetal = `Risk varies by phase. In trimester ${trimester}: ` + (trimester === 1 ? 'highest teratogenicity risk (organogenesis: heart, neural tube).' : trimester === 2 ? 'risk of intrauterine growth restriction (IUGR) and fetal renal dysfunction.' : 'acute danger of premature closure of ductus arteriosus from NSAIDs, persistent pulmonary hypertension, and oligohydramnios.');
+        pregWarn = trimester === 1 ? 'Detailed anatomy ultrasound, exclusion of structural anomalies.' : trimester === 2 ? 'Biometry ultrasound, amniotic fluid index (AFI), and Doppler.' : 'URGENT: Amniotic fluid assessment and fetal echocardiography for ductus arteriosus control.';
+        break;
+      case 'es':
+        pregTitle = `| **Sinergia global con el embarazo** <br>*(enfocada en el mes ${pregnancyMonth})* |`;
+        pregMech = `En el mes ${pregnancyMonth} (${trimesterName}) existe alteración del volumen de distribución (+40-50% volumen plasmático), FG aumentado y aclaramiento hepático modificado.`;
+        pregMaternal = `Mayor riesgo de trombosis, respuesta alterada a hipotensores y tendencia a hipertensión gestacional o reflujo.`;
+        pregFetal = `En el ${trimester}er trimestre: ` + (trimester === 1 ? 'máximo riesgo teratogénico (organogénesis: corazón, tubo neural).' : trimester === 2 ? 'riesgo de CIR y disfunción renal fetal.' : 'peligro agudo de cierre prematuro del ductus por AINE, hipertensión pulmonar persistente y oligohidramnios.');
+        pregWarn = trimester === 1 ? 'Ecografía morfológica de alta resolución.' : trimester === 2 ? 'Biometría fetal, índice de líquido amniótico (ILA) y Doppler.' : 'URGENTE: Valoración de líquido amniótico y ecocardiografía fetal para control del ductus arterioso.';
+        break;
+      case 'fr':
+        pregTitle = `| **Synergie globale avec la grossesse** <br>*(ciblée sur le ${pregnancyMonth}e mois)* |`;
+        pregMech = `Au ${pregnancyMonth}e mois (${trimesterName}), volume de distribution modifié (+40–50% de volume plasmatique), DFG augmentée et clairance hépatique modifiée.`;
+        pregMaternal = `Risque thromboembolique accru, réponse modifiée aux antihypertenseurs et tendance à l'hypertension gravidique ou au reflux.`;
+        pregFetal = `Au ${trimester}e trimestre : ` + (trimester === 1 ? 'risque tératogène maximal (organogenèse : cœur, tube neural).' : trimester === 2 ? 'risque de RCIU et d\'atteinte rénale fœtale.' : 'danger aigu de fermeture prématurée du canal artériel par les AINS, hypertension pulmonaire persistante et oligoamnios.');
+        pregWarn = trimester === 1 ? 'Échographie morphologique détaillée.' : trimester === 2 ? 'Biométrie fœtale, index de liquide amniotique (ILA) et Doppler.' : 'URGENT : Quantification du liquide amniotique et échographie fœtale pour surveillance du canal artériel.';
+        break;
+      case 'it':
+        pregTitle = `| **Sinergia globale con la gravidanza** <br>*(focalizzata sul ${pregnancyMonth}° mese)* |`;
+        pregMech = `Nel ${pregnancyMonth}° mese (${trimesterName}) si registra un volume di distribuzione alterato (+40–50% di volume plasmatico), GFR aumentata e clearance epatica modificata.`;
+        pregMaternal = `Aumentato rischio trombotico, alterata risposta agli antiipertensivi e tendenza a ipertensione gestazionale o reflusso.`;
+        pregFetal = `Nel ${trimester}° trimestre: ` + (trimester === 1 ? 'massimo rischio teratogeno (organogenesi: cuore, tubo neurale).' : trimester === 2 ? 'rischio di IUGR e compromissione renale fetale.' : 'pericolo acuto di chiusura prematura del dotto di Botallo da FANS, ipertensione polmonare persistente e oligo-idramnios.');
+        pregWarn = trimester === 1 ? 'Ecografia morfologica dettagliata.' : trimester === 2 ? 'Biometria fetale, indice del liquido amniotico (AFI) e Doppler.' : 'URGENTE: Valutazione liquido amniotico ed ecocardiografia fetale per controllo del dotto di Botallo.';
+        break;
+      case 'ru':
+        pregTitle = `| **Общая синергия с беременностью** <br>*(фокус на ${pregnancyMonth}-й месяц)* |`;
+        pregMech = `На ${pregnancyMonth}-м месяце (${trimesterName}) отмечается изменение объема распределения (+40–50% объема плазмы), ускорение СКФ и клиренса.`;
+        pregMaternal = `Повышенный риск тромбозов, измененный ответ на гипотензивные средства и риск гестационной гипертензии или рефлюкса.`;
+        pregFetal = `В ${trimester}-м триместре: ` + (trimester === 1 ? 'максимальный тератогенный риск (органогенез: сердце, нервная трубка).' : trimester === 2 ? 'риск ЗРП и почечной дисфункции плода.' : 'острая опасность преждевременного закрытия Баталлова протока из-за НПВП, легочная гипертензия и маловодие.');
+        pregWarn = trimester === 1 ? 'Экспертное УЗИ для исключения пороков развития.' : trimester === 2 ? 'Фетометрия, индекс амниотической жидкости (ИАЖ) и допплерометрия.' : 'СРОЧНО: Оценка объема околоплодных вод и эхокардиография плода для контроля Баталлова протока.';
+        break;
+      case 'de':
+      default:
+        if (trimester === 1) {
+          pregFetal += `höchstes Teratogenitätsrisiko (Phase der Organogenese: Herz, Neuralrohr, Extremitäten).`;
+          pregWarn = `Feindiagnostischer Ultraschall, Ausschluss von Struktur- und Herzfehlbildungen.`;
+        } else if (trimester === 2) {
+          pregFetal += `Risiko für fetale Wachstumsretardierung (IUGR), ZNS-Reifungsstörungen und Nierenfunktionsstörungen.`;
+          pregWarn = `Biometrie-Ultraschall, Fruchtwasserindex (AFI) und Doppler-Vaskularisation.`;
+        } else {
+          pregFetal += `akute Gefahr des vorzeitigen Verschlusses des Ductus arteriosus Botalli (insb. durch NSAR wie Ibuprofen/ASS), persistierende pulmonale Hypertonie des Neugeborenen sowie Oligohydramnie.`;
+          pregWarn = `DRINGEND: Fruchtwassermenge und fetale Echokardiographie zur Kontrolle des Ductus arteriosus Botalli.`;
+        }
+        break;
     }
 
-    tableRows.push(`| **Gesamt-Synergie mit Schwangerschaft** <br>*(fokussiert auf den ${pregnancyMonth}. Monat)* | ${pregMech} | ${pregMaternal} | ${pregFetal} | ${pregWarn} |`);
+    tableRows.push(`${pregTitle} ${pregMech} | ${pregMaternal} | ${pregFetal} | ${pregWarn} |`);
   } else {
     // Non-pregnant: Patient Profile & Constitution / Dosage relevance
-    const pkTableMech = pkResult.pharmacokineticMechanism;
-    const pkTableRisk = pkResult.clinicalImpact;
-    const pkTableWarn = pkResult.dosageRecommendation;
+    const constitutionRowTitle = language === 'el' ? `| **Σωματική διάπλαση & Φαρμακοκινητική** <br>*(${weightKg} kg / ${heightCm} cm${bmi ? `, ΔΜΣ ${bmi}` : ''})* |` :
+      language === 'en' ? `| **Body Composition & Pharmacokinetics** <br>*(${weightKg} kg / ${heightCm} cm${bmi ? `, BMI ${bmi}` : ''})* |` :
+      language === 'es' ? `| **Constitución corporal y farmacocinética** <br>*(${weightKg} kg / ${heightCm} cm${bmi ? `, IMC ${bmi}` : ''})* |` :
+      language === 'fr' ? `| **Morphologie & Pharmacocinétique** <br>*(${weightKg} kg / ${heightCm} cm${bmi ? `, IMC ${bmi}` : ''})* |` :
+      language === 'it' ? `| **Costituzione corporea & Farmacocinetica** <br>*(${weightKg} kg / ${heightCm} cm${bmi ? `, BMI ${bmi}` : ''})* |` :
+      language === 'ru' ? `| **Телосложение и фармакокинетика** <br>*(${weightKg} кг / ${heightCm} см${bmi ? `, ИМТ ${bmi}` : ''})* |` :
+      `| **Körperbau & Pharmakokinetik** <br>*(${weightKg} kg / ${heightCm} cm${bmi ? `, BMI ${bmi}` : ''})* |`;
 
-    tableRows.push(`| **Körperbau & Pharmakokinetik** <br>*(${weightKg} kg / ${heightCm} cm${bmi ? `, BMI ${bmi}` : ''})* | ${pkTableMech} | ${pkTableRisk} | Nicht zutreffend (Patient ist nicht schwanger). | ${pkTableWarn} |`);
+    tableRows.push(`${constitutionRowTitle} ${pkResult.pharmacokineticMechanism} | ${pkResult.clinicalImpact} | ${tpl.notPregnantText} | ${pkResult.dosageRecommendation} |`);
   }
 
   // 3. Combination + Lifestyle (Alcohol & Smoking - purely binary, interaction focused)
+  const lifestyleRowTitle = language === 'el' ? `| **Τρόπος ζωής (Αλκοόλ & Κάπνισμα)** <br>*(${alcoholText}, ${smokingText})* |` :
+    language === 'en' ? `| **Lifestyle (Alcohol & Smoking)** <br>*(${alcoholText}, ${smokingText})* |` :
+    language === 'es' ? `| **Estilo de vida (Alcohol y tabaco)** <br>*(${alcoholText}, ${smokingText})* |` :
+    language === 'fr' ? `| **Mode de vie (Alcool & Tabac)** <br>*(${alcoholText}, ${smokingText})* |` :
+    language === 'it' ? `| **Stile di vita (Alcol e fumo)** <br>*(${alcoholText}, ${smokingText})* |` :
+    language === 'ru' ? `| **Образ жизни (Алкоголь и курение)** <br>*(${alcoholText}, ${smokingText})* |` :
+    `| **Lebensstil (Alkohol & Rauchen)** <br>*(${alcoholText}, ${smokingText})* |`;
+
   let lifeMech = '';
   let lifeMaternal = '';
   let lifeFetal = '';
   let lifeWarn = '';
 
   if (isPregnant && (hasAlcohol || isSmoking)) {
-    lifeMech = `Exogene Noxen in der Schwangerschaft: Ethanol und Nikotin/Kohlenmonoxid passieren ungehindert die Plazentaschranke.`;
-    lifeMaternal = `Plazentaperfusionsstörung, Gefäßspasmen und erhöhtes Präeklampsierisiko.`;
-    lifeFetal = lifestyleResult.pregnancyRisks.join(' ');
-    lifeWarn = `HÖCHSTE PRIORITÄT: Umgehende Nikotin- und Alkoholabstinenz zur Vermeidung irreversibler fetaler Schädigungen (FASD/Hypoxie).`;
+    switch (language) {
+      case 'el':
+        lifeMech = 'Εξωγενείς βλαπτικοί παράγοντες στην κύηση: Η αιθανόλη και η νικοτίνη/μονοξείδιο του άνθρακα διαπερνούν ανεμπόδιστα τον πλακούντα.';
+        lifeMaternal = 'Διαταραχή αιμάτωσης πλακούντα, αγγειόσπασμος και αυξημένος κίνδυνος προεκλαμψίας.';
+        lifeFetal = lifestyleResult.pregnancyRisks.join(' ');
+        lifeWarn = 'ΥΨΙΣΤΗ ΠΡΟΤΕΡΑΙΟΤΗΤΑ: Άμεση διακοπή νικοτίνης και αλκοόλ προς αποφυγή ανεπανόρθωτων εμβρυϊκών βλαβών (FASD/υποξία).';
+        break;
+      case 'en':
+        lifeMech = 'Exogenous toxins in pregnancy: Ethanol and nicotine/carbon monoxide cross the placental barrier unhindered.';
+        lifeMaternal = 'Placental perfusion impairment, vasospasm, and elevated preeclampsia risk.';
+        lifeFetal = lifestyleResult.pregnancyRisks.join(' ');
+        lifeWarn = 'HIGHEST PRIORITY: Immediate nicotine and alcohol cessation to prevent irreversible fetal damage (FASD/hypoxia).';
+        break;
+      case 'es':
+        lifeMech = 'Tóxicos exógenos en el embarazo: El etanol y la nicotina/monóxido de carbono cruzan libremente la barrera placentaria.';
+        lifeMaternal = 'Alteración de la perfusión placentaria, vasoespasmos y mayor riesgo de preeclampsia.';
+        lifeFetal = lifestyleResult.pregnancyRisks.join(' ');
+        lifeWarn = 'MÁXIMA PRIORIDAD: Cese inmediato de nicotina y alcohol para evitar daños fetales irreversibles (SAF/hipoxia).';
+        break;
+      case 'fr':
+        lifeMech = 'Toxiques exogènes pendant la grossesse : L\'éthanol et la nicotine/monoxyde de carbone traversent librement la barrière placentaire.';
+        lifeMaternal = 'Troubles de la perfusion placentaire, vasospasmes et risque accru de prééclampsie.';
+        lifeFetal = lifestyleResult.pregnancyRisks.join(' ');
+        lifeWarn = 'PRIORITÉ ABSOLUE : Arrêt immédiat de la nicotine et de l\'alcool pour éviter des lésions fœtales irréversibles (SAF/hypoxie).';
+        break;
+      case 'it':
+        lifeMech = 'Tossici esogeni in gravidanza: L\'etanolo e la nicotina/monossido di carbonio attraversano liberamente la barriera placentare.';
+        lifeMaternal = 'Alterazione della perfusione placentare, vasospasmi e aumentato rischio di preeclampsia.';
+        lifeFetal = lifestyleResult.pregnancyRisks.join(' ');
+        lifeWarn = 'MASSIMA PRIORITÀ: Immediata astensione da nicotina e alcol per prevenire danni fetali irreversibili (FASD/ipossia).';
+        break;
+      case 'ru':
+        lifeMech = 'Экзогенные токсины при беременности: Этанол и никотин/угарный газ беспрепятственно проникают через плаценту.';
+        lifeMaternal = 'Нарушение плацентарного кровотока, спазм сосудов и повышенный риск преэклампсии.';
+        lifeFetal = lifestyleResult.pregnancyRisks.join(' ');
+        lifeWarn = 'ВЫСШИЙ ПРИОРИТЕТ: Немедленный отказ от никотина и алкоголя для предотвращения необратимых поражений плода (ФАС/гипоксия).';
+        break;
+      case 'de':
+      default:
+        lifeMech = 'Exogene Noxen in der Schwangerschaft: Ethanol und Nikotin/Kohlenmonoxid passieren ungehindert die Plazentaschranke.';
+        lifeMaternal = 'Plazentaperfusionsstörung, Gefäßspasmen und erhöhtes Präeklampsierisiko.';
+        lifeFetal = lifestyleResult.pregnancyRisks.join(' ');
+        lifeWarn = 'HÖCHSTE PRIORITÄT: Umgehende Nikotin- und Alkoholabstinenz zur Vermeidung irreversibler fetaler Schädigungen (FASD/Hypoxie).';
+        break;
+    }
   } else if (lifestyleResult.hasAlcoholInteraction || lifestyleResult.hasSmokingInteraction) {
-    lifeMech = `Direkte pharmakodynamische/pharmakokinetische Interaktion: ` +
-      [...(hasAlcohol ? lifestyleResult.alcoholRisks : []), ...(isSmoking ? lifestyleResult.smokingRisks : [])].join('; ');
-    lifeMaternal = `Substanzspezifische Risikoverstärkung (z. B. ZNS-Depression, Magenmukosaschädigung oder CYP1A2-Induktion mit Wirkspiegelabfall).`;
-    lifeFetal = isPregnant ? `Gefahr fetaler Exposition und Wachstumsverzögerung.` : `Nicht zutreffend.`;
-    lifeWarn = lifestyleResult.clinicalAction;
+    const combinedRisks = [...(hasAlcohol ? lifestyleResult.alcoholRisks : []), ...(isSmoking ? lifestyleResult.smokingRisks : [])].join('; ');
+    switch (language) {
+      case 'el':
+        lifeMech = `Άμεση φαρμακοδυναμική/φαρμακοκινητική αλληλεπίδραση: ${combinedRisks}`;
+        lifeMaternal = 'Ειδική ενίσχυση κινδύνου (π.χ. καταστολή ΚΝΣ, βλάβη γαστρικού βλεννογόνου ή επαγωγή CYP1A2).';
+        lifeFetal = isPregnant ? 'Κίνδυνος εμβρυϊκής έκθεσης και καθυστέρησης ανάπτυξης.' : tpl.notPregnantText;
+        lifeWarn = lifestyleResult.clinicalAction;
+        break;
+      case 'en':
+        lifeMech = `Direct pharmacodynamic/pharmacokinetic interaction: ${combinedRisks}`;
+        lifeMaternal = 'Substance-specific risk potentiating (e.g. CNS depression, gastric mucosal damage, or CYP1A2 induction).';
+        lifeFetal = isPregnant ? 'Risk of fetal exposure and growth restriction.' : tpl.notPregnantText;
+        lifeWarn = lifestyleResult.clinicalAction;
+        break;
+      case 'es':
+        lifeMech = `Interacción directa farmacodinámica/farmacocinética: ${combinedRisks}`;
+        lifeMaternal = 'Potenciación de riesgos específica (ej. depresión del SNC, daño en mucosa gástrica o inducción de CYP1A2).';
+        lifeFetal = isPregnant ? 'Riesgo de exposición fetal y retraso del crecimiento.' : tpl.notPregnantText;
+        lifeWarn = lifestyleResult.clinicalAction;
+        break;
+      case 'fr':
+        lifeMech = `Interaction directe pharmacodynamique/pharmacocinétique : ${combinedRisks}`;
+        lifeMaternal = 'Amplification des risques spécifiques (ex. dépression du SNC, lésions gastriques ou induction du CYP1A2).';
+        lifeFetal = isPregnant ? 'Risque d\'exposition fœtale et retard de croissance.' : tpl.notPregnantText;
+        lifeWarn = lifestyleResult.clinicalAction;
+        break;
+      case 'it':
+        lifeMech = `Interazione diretta farmacodinamica/farmacocinetica: ${combinedRisks}`;
+        lifeMaternal = 'Potenziamento specifico del rischio (es. depressione del SNC, danno gastrico o induzione di CYP1A2).';
+        lifeFetal = isPregnant ? 'Rischio di esposizione fetale e ritardo di crescita.' : tpl.notPregnantText;
+        lifeWarn = lifestyleResult.clinicalAction;
+        break;
+      case 'ru':
+        lifeMech = `Прямое фармакодинамическое/фармакокинетическое взаимодействие: ${combinedRisks}`;
+        lifeMaternal = 'Усиление специфических рисков (угнетение ЦНС, поражение слизистой желудка или индукция CYP1A2).';
+        lifeFetal = isPregnant ? 'Риск токсического воздействия на плод и задержки развития.' : tpl.notPregnantText;
+        lifeWarn = lifestyleResult.clinicalAction;
+        break;
+      case 'de':
+      default:
+        lifeMech = `Direkte pharmakodynamische/pharmakokinetische Interaktion: ${combinedRisks}`;
+        lifeMaternal = `Substanzspezifische Risikoverstärkung (z. B. ZNS-Depression, Magenmukosaschädigung oder CYP1A2-Induktion mit Wirkspiegelabfall).`;
+        lifeFetal = isPregnant ? `Gefahr fetaler Exposition und Wachstumsverzögerung.` : `Nicht zutreffend.`;
+        lifeWarn = lifestyleResult.clinicalAction;
+        break;
+    }
   } else if (hasAlcohol || isSmoking) {
-    lifeMech = `Konsumstatus erfasst (${alcoholText}, ${smokingText}). Keine direkte pharmakokinetische oder toxikologische Interferenz mit den aktuell verordneten Wirkstoffen.`;
-    lifeMaternal = `Keine akute medikamentenbezogene Wirkungsverstärkung oder -abschwächung nachweisbar.`;
-    lifeFetal = isPregnant ? `Alkoholfreiheit und Rauchstopp zum Schutz des Fötus zwingend.` : `Nicht zutreffend.`;
-    lifeWarn = `Reguläre Kontrollen; keine akute medikationsspezifische Dosisanpassung aufgrund von Genussmitteln erforderlich.`;
+    switch (language) {
+      case 'el':
+        lifeMech = `Καταγραφή συνηθειών (${alcoholText}, ${smokingText}). Χωρίς άμεση φαρμακοκινητική ή τοξικολογική παρεμβολή με τα τρέχοντα φάρμακα.`;
+        lifeMaternal = 'Χωρίς οξεία ενίσχυση ή εξασθένηση της δράσης των φαρμάκων.';
+        lifeFetal = isPregnant ? 'Αποχή από αλκοόλ και κάπνισμα υποχρεωτική για την προστασία του εμβρύου.' : tpl.notPregnantText;
+        lifeWarn = 'Τακτικός επανέλεγχος· δεν απαιτείται άμεση προσαρμογή δοσολογίας λόγω των συνηθειών.';
+        break;
+      case 'en':
+        lifeMech = `Consumption status recorded (${alcoholText}, ${smokingText}). No direct pharmacokinetic or toxicological interference with prescribed medications.`;
+        lifeMaternal = 'No acute drug-related potentiation or diminution detectable.';
+        lifeFetal = isPregnant ? 'Abstinence from alcohol and smoking mandatory to protect the fetus.' : tpl.notPregnantText;
+        lifeWarn = 'Routine check-ups; no immediate lifestyle-induced dose adjustment required.';
+        break;
+      case 'es':
+        lifeMech = `Estado de consumo registrado (${alcoholText}, ${smokingText}). Sin interferencia directa con los medicamentos prescritos.`;
+        lifeMaternal = 'Sin alteración aguda demostrable de la acción de los fármacos.';
+        lifeFetal = isPregnant ? 'Abstinencia obligatoria para proteger al feto.' : tpl.notPregnantText;
+        lifeWarn = 'Controles habituales; no se requiere ajuste inmediato de dosis por hábitos.';
+        break;
+      case 'fr':
+        lifeMech = `Statut de consommation enregistré (${alcoholText}, ${smokingText}). Aucune interférence directe avec les médicaments prescrits.`;
+        lifeMaternal = 'Aucune modification aiguë décelable de l\'effet des médicaments.';
+        lifeFetal = isPregnant ? 'Abstinence indispensable pour la protection du fœtus.' : tpl.notPregnantText;
+        lifeWarn = 'Contrôles de routine ; aucune adaptation immédiate de posologie requise.';
+        break;
+      case 'it':
+        lifeMech = `Abitudini registrate (${alcoholText}, ${smokingText}). Nessuna interferenza diretta con i farmaci prescritti.`;
+        lifeMaternal = 'Nessun potenziamento o attenuazione acuta dimostrabile dell\'effetto dei farmaci.';
+        lifeFetal = isPregnant ? 'Astensione tassativa per proteggere il feto.' : tpl.notPregnantText;
+        lifeWarn = 'Controlli regolari; nessun aggiustamento acuto del dosaggio necessario per lo stile di vita.';
+        break;
+      case 'ru':
+        lifeMech = `Статус привычек (${alcoholText}, ${smokingText}). Прямого фармакокинетического или токсикологического вмешательства в действие препаратов нет.`;
+        lifeMaternal = 'Острого изменения фармакологического действия не выявлено.';
+        lifeFetal = isPregnant ? 'Отказ от алкоголя и курения обязателен для защиты плода.' : tpl.notPregnantText;
+        lifeWarn = 'Регулярный контроль; экстренной коррекции доз из-за привычек не требуется.';
+        break;
+      case 'de':
+      default:
+        lifeMech = `Konsumstatus erfasst (${alcoholText}, ${smokingText}). Keine direkte pharmakokinetische oder toxikologische Interferenz mit den aktuell verordneten Wirkstoffen.`;
+        lifeMaternal = `Keine akute medikamentenbezogene Wirkungsverstärkung oder -abschwächung nachweisbar.`;
+        lifeFetal = isPregnant ? `Alkoholfreiheit und Rauchstopp zum Schutz des Fötus zwingend.` : `Nicht zutreffend.`;
+        lifeWarn = `Reguläre Kontrollen; keine akute medikationsspezifische Dosisanpassung aufgrund von Genussmitteln erforderlich.`;
+        break;
+    }
   } else {
-    lifeMech = `Günstiges toxikologisches Profil: Kein Alkoholkonsum, Nichtraucher. Keine exogene metabolische Interferenz.`;
-    lifeMaternal = `Keine zusätzlichen organspezifischen Risiken durch Genussmittel.`;
-    lifeFetal = isPregnant ? `Optimaler Schutz vor exogenen Lebensmittelnoxen.` : `Nicht zutreffend.`;
-    lifeWarn = `Abstinenten Lebensstil konsequent beibehalten.`;
+    switch (language) {
+      case 'el':
+        lifeMech = 'Ευνοϊκό τοξικολογικό προφίλ: Χωρίς κατανάλωση αλκοόλ, μη καπνιστής. Καμία εξωγενής μεταβολική παρεμβολή.';
+        lifeMaternal = 'Κανένας πρόσθετος κίνδυνος για τα όργανα από συνήθειες ζωής.';
+        lifeFetal = isPregnant ? 'Βέλτιστη προστασία από εξωγενείς τοξικές ουσίες.' : tpl.notPregnantText;
+        lifeWarn = 'Διατήρηση του υγιεινού τρόπου ζωής.';
+        break;
+      case 'en':
+        lifeMech = 'Favorable toxicological profile: No alcohol consumption, non-smoker. No exogenous metabolic interference.';
+        lifeMaternal = 'No additional organ-specific risks from lifestyle factors.';
+        lifeFetal = isPregnant ? 'Optimal protection against exogenous lifestyle toxins.' : tpl.notPregnantText;
+        lifeWarn = 'Maintain strictly abstinent, healthy lifestyle.';
+        break;
+      case 'es':
+        lifeMech = 'Perfil toxicológico favorable: Sin consumo de alcohol, no fumador. Sin interferencia metabólica exógena.';
+        lifeMaternal = 'Sin riesgos adicionales para los órganos derivados del estilo de vida.';
+        lifeFetal = isPregnant ? 'Protección óptima frente a tóxicos exógenos.' : tpl.notPregnantText;
+        lifeWarn = 'Mantener de forma constante un estilo de vida saludable y abstinente.';
+        break;
+      case 'fr':
+        lifeMech = 'Profil toxicologique favorable : Pas d\'alcool, non-fumeur. Aucune interférence métabolique exogène.';
+        lifeMaternal = 'Aucun risque organique supplémentaire lié au mode de vie.';
+        lifeFetal = isPregnant ? 'Protection optimale contre les toxiques exogènes.' : tpl.notPregnantText;
+        lifeWarn = 'Maintenir rigoureusement un mode de vie sain et sobre.';
+        break;
+      case 'it':
+        lifeMech = 'Profilo tossicologico favorevole: Nessun consumo di alcol, non fumatore. Nessuna interferenza metabolica esogena.';
+        lifeMaternal = 'Nessun rischio organico supplementare da fattori legati allo stile di vita.';
+        lifeFetal = isPregnant ? 'Protezione ottimale contro tossici esogeni.' : tpl.notPregnantText;
+        lifeWarn = 'Mantenere con costanza uno stile di vita sano e astinente.';
+        break;
+      case 'ru':
+        lifeMech = 'Благоприятный токсикологический профиль: Без алкоголя, не курит. Экзогенное метаболическое вмешательство отсутствует.';
+        lifeMaternal = 'Дополнительных рисков для органов со стороны образа жизни нет.';
+        lifeFetal = isPregnant ? 'Оптимальная защита от экзогенных токсических факторов.' : tpl.notPregnantText;
+        lifeWarn = 'Последовательно придерживаться здорового образа жизни.';
+        break;
+      case 'de':
+      default:
+        lifeMech = `Günstiges toxikologisches Profil: Kein Alkoholkonsum, Nichtraucher. Keine exogene metabolische Interferenz.`;
+        lifeMaternal = `Keine zusätzlichen organspezifischen Risiken durch Genussmittel.`;
+        lifeFetal = isPregnant ? `Optimaler Schutz vor exogenen Lebensmittelnoxen.` : `Nicht zutreffend.`;
+        lifeWarn = `Abstinenten Lebensstil konsequent beibehalten.`;
+        break;
+    }
   }
 
-  tableRows.push(`| **Lebensstil (Alkohol & Rauchen)** <br>*(${alcoholText}, ${smokingText})* | ${lifeMech} | ${lifeMaternal} | ${lifeFetal} | ${lifeWarn} |`);
+  tableRows.push(`${lifestyleRowTitle} ${lifeMech} | ${lifeMaternal} | ${lifeFetal} | ${lifeWarn} |`);
 
   // Construct Markdown Content
-  const markdown = `### ⚠️ WICHTIGER MEDIZINISCHER WARNHINWEIS
-"Diese KI-Analyse dient ausschließlich der Risiko-Früherkennung und Information. Sie stellt KEINE medizinische Beratung dar und ersetzt keinesfalls den Besuch bei einem Arzt oder Apotheker. Verändern oder setzen Sie Medikamente niemals eigenmächtig ab. Bei akuten Beschwerden ist sofort ein Arzt oder der Notruf zu kontaktieren."
+  const markdown = `### ${tpl.warningHeader}
+"${tpl.warningNotice}"
 
-### 1. KLINISCHE DRINGLICHKEIT (Triage)
+### ${tpl.triageSectionTitle}
 ${triageLabel}
 
-**Ganzheitliche klinische Beurteilung aller erfassten Dimensionen:**
-- **Medikamente & Interaktionspotenzial:** ${medEvalText}
-- **Konstitution & Dosierungsrelevanz:** ${constitutionEvalText}
-- **Schwangerschafts- & Fötusstatus:** ${pregEvalText}
-- **Lebensstil & Interaktionsfaktoren:** ${lifestyleEvalText}
+**${tpl.holisticNotice}:**
+- **${tpl.factorMedsTitle}:** ${medEvalText}
+- **${tpl.factorConstitutionTitle}:** ${constitutionEvalText}
+- **${tpl.factorPregnancyTitle}:** ${pregEvalText}
+- **${tpl.factorLifestyleTitle}:** ${lifestyleEvalText}
 
-**Klinische Handlungsdringlichkeit:**
+**${tpl.actionTitle}:**
 ${coreActionText}
 
-### 2. INTEGRATIVE RISIKO-MATRIX (Kombinations-Tabelle)
+### ${tpl.matrixSectionTitle}
 
-| Analysierte Konstellation (Die Kombination) | Biologischer Wirkmechanismus (Was passiert im Körper?) | Spezifisches Risiko für die Mutter / den Patienten | Spezifisches Risiko für den Fötus (Schwangerschaft) | Priorisierte Warnung & Überwachungs-Parameter |
-| :--- | :--- | :--- | :--- | :--- |
+${tpl.tableHeader}
 ${tableRows.join('\n')}
 
-### 3. DIAGNOSTISCHER LEITFADEN FÜR DEN ARZTBESUCH
-Formuliere eine präzise, professionelle Checkliste für den Patienten, die er direkt zum Arzt mitnehmen kann:
+### ${tpl.diagnosticSectionTitle}
+${tpl.diagnosticChecklistIntro}
 
-- **Konkrete Fragen an den Arzt:**
-  - "Besteht bei meiner aktuellen Kombination aus ${meds.map(m => m.name).join(', ')} ein erhöhtes Risiko für Wechselwirkungen, Magenblutungen oder Dosisfehlanpassungen?"
-  ${pkResult.hasDosageRelevance ? `- "Ist bei meinem Körpergewicht von ${weightKg} kg eine Dosisanpassung für ${pkResult.affectedDrugs.join(', ')} erforderlich?"` : ''}
-  ${isPregnant ? `- "Welche der aktuell eingenommenen Medikamente sind im ${pregnancyMonth}. Monat (${trimesterName}) uneingeschränkt sicher und welche müssen sofort umgestellt werden?"` : ''}
-  - "Gibt es für meine Symptome magenschonendere oder wirkstoffärmere Alternativen?"
+- **${tpl.diagnosticQuestionsTitle}:**
+  - "${tpl.questionComboRisk(meds.map(m => m.name).join(', '))}"
+  ${pkResult.hasDosageRelevance ? `- "${tpl.questionDoseAdjust(pkResult.affectedDrugs.join(', '), weightKg)}"` : ''}
+  ${isPregnant ? `- "${tpl.questionPregnancySafety(pregnancyMonth, trimesterName)}"` : ''}
+  - "${tpl.questionStomachProtection}"
 
-- **Dringende Labor-/Untersuchungs-Anforderungen:**
-  - Kontrolle des großen Blutbildes, Gerinnungsparameter (INR, PTT) und Serum-Kreatinin / eGFR zur Nierenfunktionsprüfung.
-  - Leberfunktionsdiagnostik (GOT, GPT, Gamma-GT, Bilirubin) zur Erfassung der enzymatischen Gesamtbelastung.
-  ${isPregnant ? `- Gezielte Pränatal-Sonographie mit Fruchtwassermengen-Bestimmung (AFI) und Doppler-Sonographie zur Überprüfung der plazentaren Perfusion.` : ''}
+- **${tpl.diagnosticLabTitle}:**
+  - ${tpl.labCbcCoagulation}
+  - ${tpl.labLiverFunction}
+  ${isPregnant ? `- ${tpl.labPrenatalDoppler}` : ''}
 
-- **Symptome, bei denen sofort der Notruf gewählt werden muss:**
-  - Teerstuhl (dunkel gefärbter Stuhl), kaffeesatzartiges Erbrechen oder plötzliche starke Bauch-/Magenschmerzen (Verdacht auf gastrointestinale Blutung/Ulkus).
-  - Plötzliche Atemnot, akuter Schwindel, Ohnmacht oder Bewusstseinstrübung.
-  ${isPregnant ? `- Vaginale Blutungen, vorzeitige Wehentätigkeit oder plötzliches Nachlassen der Kindsbewegungen.` : ''}`;
+- **${tpl.diagnosticEmergencyTitle}:**
+  - ${tpl.emergencyGiBleeding}
+  - ${tpl.emergencyDyspneaSyncope}
+  ${isPregnant ? `- ${tpl.emergencyPregnancyVaginalBleeding}` : ''}`;
 
   return {
     analyzedAt: new Date().toISOString(),
