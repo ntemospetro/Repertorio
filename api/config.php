@@ -19,7 +19,23 @@ $GEMINI_API_KEY = ''; // <-- HIER DEINEN GEMINI API SCHLÜSSEL EINTRAGEN
 
 // Automatische Erkennung aus Umgebungsvariablen oder .env, falls oben leer gelassen
 if (empty($GEMINI_API_KEY)) {
-    $GEMINI_API_KEY = getenv('GEMINI_API_KEY') ?: ($_ENV['GEMINI_API_KEY'] ?? ($_SERVER['GEMINI_API_KEY'] ?? ''));
+    $candidates = [
+        getenv('GEMINI_API_KEY'),
+        $_ENV['GEMINI_API_KEY'] ?? null,
+        $_SERVER['GEMINI_API_KEY'] ?? null,
+        getenv('GOOGLE_API_KEY'),
+        $_ENV['GOOGLE_API_KEY'] ?? null,
+        $_SERVER['GOOGLE_API_KEY'] ?? null,
+        getenv('API_KEY'),
+        $_ENV['API_KEY'] ?? null,
+        $_SERVER['API_KEY'] ?? null,
+    ];
+    foreach ($candidates as $cand) {
+        if (!empty($cand) && is_string($cand) && strlen(trim($cand)) > 10) {
+            $GEMINI_API_KEY = trim($cand);
+            break;
+        }
+    }
 }
 
 if (empty($GEMINI_API_KEY)) {
@@ -34,10 +50,15 @@ if (empty($GEMINI_API_KEY)) {
             if (is_array($lines)) {
                 foreach ($lines as $line) {
                     $trimmed = trim($line);
-                    if (strpos($trimmed, 'GEMINI_API_KEY=') === 0) {
-                        $GEMINI_API_KEY = trim(substr($trimmed, strlen('GEMINI_API_KEY=')));
-                        $GEMINI_API_KEY = trim($GEMINI_API_KEY, '"\'');
-                        break 2;
+                    foreach (['GEMINI_API_KEY=', 'GOOGLE_API_KEY=', 'API_KEY='] as $prefix) {
+                        if (strpos($trimmed, $prefix) === 0) {
+                            $val = trim(substr($trimmed, strlen($prefix)));
+                            $val = trim($val, '"\'');
+                            if (!empty($val)) {
+                                $GEMINI_API_KEY = $val;
+                                break 3;
+                            }
+                        }
                     }
                 }
             }
