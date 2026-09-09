@@ -5,9 +5,10 @@ export interface ClassicalAuthorInfo {
   hahnemann: boolean;
   kent: boolean;
   hering: boolean;
+  boericke?: boolean;
 }
 
-export type ClassicalAuthorFilterKey = 'all' | 'hahnemann' | 'kent' | 'hering';
+export type ClassicalAuthorFilterKey = 'all' | 'hahnemann' | 'kent' | 'hering' | 'boericke';
 
 export const CLASSICAL_AUTHORS_MAP: Record<string, ClassicalAuthorInfo> = {
   "abies-canadensis": {
@@ -2669,16 +2670,864 @@ export const CLASSICAL_AUTHORS_MAP: Record<string, ClassicalAuthorInfo> = {
     "hahnemann": false,
     "kent": false,
     "hering": true
+  },
+  "acalypha-indica": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "aletris-farinosa": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "alfalfa": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "alstonia-constricta": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "ammoniacum-dorema": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "amyl-nitrosum": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "arbutus-andrachne": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "areca-catechu": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "argemone-mexicana": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "azadirachta-indica": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "baccharis-cordifolia": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "boletus-laricis": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "bovista-gigantea": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "cahinca": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "canna-angustifolia": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "capsella-bursa-pastoris": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "condurango": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "corydalis-formosa": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "cotyledon-umbilicus": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "crataegus-oxyacantha": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "cynodon-dactylon": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "cypripedium-pubescens": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "ephedra-vulgaris": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "epigea-repens": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "euonymus-europaeus": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "fagopyrum-esculentum": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "ficus-religiosa": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "galium-aparine": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "guatteria-gaumeri": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "hecla-lava": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "heliotropium-peruvianum": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "hyoscyaminum": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "ichthyolum": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "ilicium-anisatum": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "jonosia-asoca": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "lathyrus-sativus": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "lemna-minor": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "linaria-vulgaris": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "medusa": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "melilotus-officinalis": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "myosotis-arvensis": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "oxydendrum-arboreum": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "psoralea-corylifolia": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "scutellaria-lateriflora": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "abroma-augusta": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "adoxa-moschatellina": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "agave-americana": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "ailanthus-glandulosa": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "alchemilla-vulgaris": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "alnus-serrulata": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "althaea-officinalis": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "ambrosia-artemisiaefolia": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "ampelopsis-quinquefolia": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "anthoxanthum-odoratum": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "aralia-hispida": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "arbutus-unedo": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "arctium-lappa": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "aristolochia-milhomens": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "asclepias-incarnata": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "asperula-odorata": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "aspidium-filix-mas": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "aspidosperma-quebracho": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "balsamum-tolutanum": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "barosma-crenata": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "beta-vulgaris": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "betonica-aquatica": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "borago-officinalis": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "botulinum": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "buxus-sempervirens": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "cajuputum": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "calluna-vulgaris": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "caltha-palustris": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "canchalagua": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "carica-papaya": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "cascara-sagrada": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "cascarilla": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "cassia-sophera": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "centaurea-cyanus": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "centaurium-erythraea": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "cephalandra-indica": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "cetraria-islandica": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "chaparro-amargoso": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "cheiranthus-cheiri": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "chelone-glabra": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "chloralum-hydratum": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "cholesterinum": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "cineraria-maritima": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "cochlearia-armoracia": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "codeinum-purum": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "commelina-communis": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "dictamnus-albus": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "duboisia-myoporoides": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "echinacea-purpurea": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "erodios-cicutarium": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "eschscholtzia-californica": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "eugenia-jambosa": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "galega-officinalis": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "gentiana-quinqueflora": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "ginkgo-biloba": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "humulus-lupulus": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "justicia-adhatoda": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "lecithinum": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "leonurus-cardiaca": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "liatris-spicata": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "lycopus-europaeus": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "marrubium-vulgare": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "melissa-officinalis": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "mentha-piperita": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "mentha-pulegium": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "myrrha": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "nasturtium-officinale": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "nyctanthes-arbor-tristis": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "oenothera-biennis": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "olea-europaea": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "ornithogalum-umbellatum": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "orthosiphon-stamineus": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "paullinia-cupana": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "phaseolus-nanus": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "pichi-pichi": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "piscidia-erythrina": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "populus-candicans": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "primula-obconica": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "prunus-virginiana": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "quercus-glandium-spiritus": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "rhamnus-californica": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "sabal-serrulata": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "salvia-officinalis": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "sarcolacticum-acidum": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "scilla-maritima": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "scrophularia-nodosa": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "sedum-acre": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "silphium-laciniatum": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "spartium-scoparium": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "allium-sativum": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "aquilegia-vulgaris": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "amygdalus-persica": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "abelmoschus": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "aconitum-lycoctonum": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "adlumia-fungosa": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
+  },
+  "agrostemma-githago": {
+    "hahnemann": false,
+    "kent": false,
+    "hering": false,
+    "boericke": true
   }
 };
 
-export function getRemedyClassicalAuthors(remedyId: string): ClassicalAuthorInfo {
-  return CLASSICAL_AUTHORS_MAP[remedyId] || { hahnemann: false, kent: false, hering: false };
+export function getRemedyClassicalAuthors(remedyId: string): { hahnemann: boolean; kent: boolean; hering: boolean; boericke: boolean } {
+  const info = CLASSICAL_AUTHORS_MAP[remedyId];
+  if (!info) {
+    return { hahnemann: false, kent: false, hering: false, boericke: true };
+  }
+  return {
+    hahnemann: Boolean(info.hahnemann),
+    kent: Boolean(info.kent),
+    hering: Boolean(info.hering),
+    boericke: info.boericke !== undefined ? Boolean(info.boericke) : true,
+  };
 }
 
 export function matchesAuthorFilter(remedyId: string, filter: ClassicalAuthorFilterKey): boolean {
   if (filter === 'all') return true;
-  const info = CLASSICAL_AUTHORS_MAP[remedyId];
-  if (!info) return false;
-  return Boolean(info[filter]);
+  const authors = getRemedyClassicalAuthors(remedyId);
+  return Boolean(authors[filter]);
 }

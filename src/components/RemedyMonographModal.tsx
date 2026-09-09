@@ -160,7 +160,7 @@ export const RemedyMonographModal: React.FC<RemedyMonographModalProps> = ({
 
   const remediesList = allRemedies || getLocalizedRemedies(language);
   const authorsInfo = getRemedyClassicalAuthors(remedy.id);
-  const hasAnyAuthors = authorsInfo.hahnemann || authorsInfo.kent || authorsInfo.hering;
+  const hasAnyAuthors = authorsInfo.hahnemann || authorsInfo.kent || authorsInfo.hering || authorsInfo.boericke;
 
   const handleSelectDifferentialRemedy = (diffString: string) => {
     const targetRemedy = resolveDifferentialRemedy(diffString, remediesList);
@@ -213,6 +213,11 @@ export const RemedyMonographModal: React.FC<RemedyMonographModalProps> = ({
                 {authorsInfo.hering && (
                   <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/30">
                     Constantine Hering
+                  </span>
+                )}
+                {authorsInfo.boericke && (
+                  <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                    William Boericke
                   </span>
                 )}
               </div>

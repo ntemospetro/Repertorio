@@ -1710,10 +1710,10 @@ export function setStoredActiveView(view: ActiveView): void {
   } catch (e) {}
 }
 
-export function getStoredTherapistTab(): 'cases' | 'patients' | 'materiamedica' | 'quickintake' | 'medications' | 'documentation' | 'profile' | 'tariff' {
+export function getStoredTherapistTab(): 'cases' | 'patients' | 'materiamedica' | 'quickintake' | 'medications' | 'documentation' | 'profile' | 'tariff' | 'repertorium' {
   try {
     const saved = localStorage.getItem(STORAGE_KEYS.THERAPIST_TAB) || sessionStorage.getItem(STORAGE_KEYS.THERAPIST_TAB);
-    if (saved && ['cases', 'patients', 'materiamedica', 'quickintake', 'medications', 'documentation', 'profile', 'tariff'].includes(saved)) {
+    if (saved && ['cases', 'patients', 'materiamedica', 'quickintake', 'medications', 'documentation', 'profile', 'tariff', 'repertorium'].includes(saved)) {
       return saved as any;
     }
   } catch (e) {}

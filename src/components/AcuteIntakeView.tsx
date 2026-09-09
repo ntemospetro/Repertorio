@@ -333,6 +333,42 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
     });
   };
 
+  // Build complete Hahnemann 6-Pillars matrix from all recognized symptoms and structured variables
+  const buildCurrentMatrix = (): Hahnemann6Pillars => {
+    const causaItems = recognizedSymptoms.filter(s => s.category === 'causa').map(s => s.label);
+    const modItems = recognizedSymptoms.filter(s => s.category === 'modalitaet').map(s => s.label);
+    const empfItems = recognizedSymptoms.filter(s => s.category === 'empfindung').map(s => s.label);
+    const gemuetItems = recognizedSymptoms.filter(s => s.category === 'gemuet').map(s => s.label);
+    const leitItems = recognizedSymptoms.filter(s => s.category === 'leit').map(s => s.label);
+    const begleitItems = recognizedSymptoms.filter(s => s.category === 'begleit').map(s => s.label);
+
+    const baseLokal = activeHauptbeschwerde && !isVarMissing(activeHauptbeschwerde) ? activeHauptbeschwerde : (symptomText.trim() || null);
+    const allLokal = Array.from(new Set([baseLokal, ...leitItems].filter(Boolean))).join(', ');
+
+    const baseCausa = activeCausa && !isVarMissing(activeCausa) ? activeCausa : null;
+    const allCausa = Array.from(new Set([baseCausa, ...causaItems].filter(Boolean))).join(', ');
+
+    const baseMod = activeModalitaeten && !isVarMissing(activeModalitaeten) ? activeModalitaeten : null;
+    const allMod = Array.from(new Set([baseMod, ...modItems].filter(Boolean))).join(', ');
+
+    const allBegleit = Array.from(new Set([
+      ...(activeBegleitsymptome && !isVarMissing(activeBegleitsymptome) ? [activeBegleitsymptome] : []),
+      ...begleitItems
+    ].filter(Boolean))) as string[];
+
+    return {
+      lokalisierung: allLokal || null,
+      causa: allCausa || null,
+      modalitaeten: allMod || null,
+      begleitsymptome: allBegleit,
+      empfindung: empfItems.join(', ') || null,
+      gemuet: gemuetItems.join(', ') || null,
+      strahlungsoptionen: null,
+      ursaechlicher_zusammenhang: null,
+      fruehere_behandlungen_und_historie: null,
+    };
+  };
+
   // Preload Hahnemann Organon §§ 83-104 analysis before opening modal
   const handleStartHahnemannAnalysis = async () => {
     if (isPreloadingHahnemann) return;
@@ -342,17 +378,7 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
       ? symptomText.trim()
       : (activeHauptbeschwerde || 'Akute Beschwerden');
 
-    const seedMatrix: Hahnemann6Pillars = {
-      lokalisierung: activeHauptbeschwerde && !isVarMissing(activeHauptbeschwerde) ? activeHauptbeschwerde : (symptomText.trim() || null),
-      causa: activeCausa && !isVarMissing(activeCausa) ? activeCausa : null,
-      modalitaeten: activeModalitaeten && !isVarMissing(activeModalitaeten) ? activeModalitaeten : null,
-      begleitsymptome: activeBegleitsymptome && !isVarMissing(activeBegleitsymptome) ? [activeBegleitsymptome] : [],
-      empfindung: null,
-      gemuet: null,
-      strahlungsoptionen: null,
-      ursaechlicher_zusammenhang: null,
-      fruehere_behandlungen_und_historie: null,
-    };
+    const seedMatrix = buildCurrentMatrix();
 
     try {
       const res = await runHahnemannAnalysis(
@@ -1499,12 +1525,7 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
         chiefComplaint={symptomText || activeHauptbeschwerde || ''}
         initialCaseType="akut"
         preloadedAnalysis={preloadedHahnemannAnalysis}
-        initialMatrix={{
-          lokalisierung: activeHauptbeschwerde && !isVarMissing(activeHauptbeschwerde) ? activeHauptbeschwerde : (symptomText.trim() || null),
-          causa: activeCausa && !isVarMissing(activeCausa) ? activeCausa : null,
-          modalitaeten: activeModalitaeten && !isVarMissing(activeModalitaeten) ? activeModalitaeten : null,
-          begleitsymptome: activeBegleitsymptome && !isVarMissing(activeBegleitsymptome) ? [activeBegleitsymptome] : [],
-        }}
+        initialMatrix={buildCurrentMatrix()}
         onTransferToAnamnese={(data) => {
           setHahnemannData(data);
           setPreloadedHahnemannAnalysis(null);

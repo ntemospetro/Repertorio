@@ -42,6 +42,7 @@ import { ComprehensiveAnalysisView } from './ComprehensiveAnalysisView';
 import { TherapyRecommendationsView } from './TherapyRecommendationsView';
 import { PatientDirectoryView } from './PatientDirectoryView';
 import { MateriaMedicaView } from './MateriaMedicaView';
+import { RepertoriumView } from './RepertoriumView';
 import { AcuteIntakeView } from './AcuteIntakeView';
 import { MedicationResearchView } from './MedicationResearchView';
 import { UserManualView } from './UserManualView';
@@ -172,11 +173,11 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
 }) => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const { t, language } = useTranslation();
-  const [panelTab, setPanelTab] = useState<'cases' | 'patients' | 'materiamedica' | 'quickintake' | 'medications' | 'documentation' | 'profile' | 'tariff'>(() => getStoredTherapistTab());
+  const [panelTab, setPanelTab] = useState<'cases' | 'patients' | 'materiamedica' | 'repertorium' | 'quickintake' | 'medications' | 'documentation' | 'profile' | 'tariff'>(() => getStoredTherapistTab());
   const [patientDirectoryAction, setPatientDirectoryAction] = useState<'new_patient' | 'select_patient' | null>(null);
   const [currentStep, setCurrentStep] = useState<number>(1);
 
-  const handleSelectTab = (tab: 'cases' | 'patients' | 'materiamedica' | 'quickintake' | 'medications' | 'documentation' | 'profile' | 'tariff') => {
+  const handleSelectTab = (tab: 'cases' | 'patients' | 'materiamedica' | 'repertorium' | 'quickintake' | 'medications' | 'documentation' | 'profile' | 'tariff') => {
     setPanelTab(tab);
     navigateTo('therapist', { therapistTab: tab });
   };
@@ -1859,6 +1860,21 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
               <BookOpen className="w-4 h-4 text-teal-600" />
               <span>{t('tabMateriaMedica')}</span>
             </button>
+
+            {/* 6. Repertorium */}
+            <button
+              type="button"
+              id="sidebar-nav-tab-repertorium"
+              onClick={() => handleSelectTab('repertorium')}
+              className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-3 transition-colors cursor-pointer ${
+                panelTab === 'repertorium'
+                  ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/50'
+                  : 'text-slate-600 hover:bg-slate-200/50 hover:text-slate-900'
+              }`}
+            >
+              <Layers className="w-4 h-4 text-teal-600" />
+              <span>{t('tabRepertorium')}</span>
+            </button>
           </div>
         </div>
         
@@ -2020,6 +2036,22 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
             }));
           }}
           onGoToAcuteIntake={() => handleSelectTab('quickintake')}
+        />
+      )}
+
+      {/* TAB CONTENT: REPERTORIUM (BOERICKE & KENT) */}
+      {panelTab === 'repertorium' && (
+        <RepertoriumView
+          therapist={therapist}
+          onSelectRemedyForCase={(remedyName, potency) => {
+            handleSelectTab('cases');
+            setCurrentCase(prev => ({
+              ...prev,
+              repertorisationErgebnis: remedyName,
+              verordnungPotenz: potency,
+            }));
+          }}
+          onGoToMateriaMedica={() => handleSelectTab('materiamedica')}
         />
       )}
 

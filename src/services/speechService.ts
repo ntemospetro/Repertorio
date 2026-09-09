@@ -173,86 +173,124 @@ export function startSpeechRecognition(
   recognition.maxAlternatives = 1;
 
   let isManualStop = false;
+  let restartTimeout: any = null;
 
-  recognition.onstart = () => {
-    if (options.onStart) options.onStart();
-  };
-
-  recognition.onresult = (event: any) => {
-    let sessionFinal = '';
-    let sessionInterim = '';
-
-    const results = event.results;
-    if (!results) return;
-
-    for (let i = 0; i < results.length; ++i) {
-      const item = results[i];
-      const transcript = item[0]?.transcript || '';
-      const trimmed = transcript.trim();
-      if (!trimmed) continue;
-
-      if (item.isFinal) {
-        sessionFinal += (sessionFinal ? ' ' : '') + trimmed;
-      } else {
-        sessionInterim += (sessionInterim ? ' ' : '') + trimmed;
+  const initAndStart = () => {
+    try {
+      recognition = new SpeechRecognitionClass();
+    } catch (err: any) {
+      if (options.onError) {
+        options.onError(err?.message || 'init_failed');
       }
-    }
-
-    let combined = sessionFinal;
-    if (sessionInterim) {
-      if (!combined) {
-        combined = sessionInterim;
-      } else {
-        combined = mergeWithOverlap(combined, sessionInterim);
-      }
-    }
-
-    const cleaned = deduplicateRepeatedPhrases(combined);
-    if (cleaned.trim()) {
-      options.onResult(cleaned.trim(), sessionInterim.length === 0);
-    }
-  };
-
-  recognition.onerror = (event: any) => {
-    if (event.error === 'no-speech' || event.error === 'aborted') {
-      // Ignorable non-fatal errors
       return;
     }
-    if (options.onError) {
-      options.onError(event.error || 'speech_error');
+
+    recognition.lang = locale;
+    recognition.continuous = options.continuous !== false;
+    recognition.interimResults = options.interimResults !== false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onstart = () => {
+      if (options.onStart) options.onStart();
+    };
+
+    recognition.onresult = (event: any) => {
+      let sessionFinal = '';
+      let sessionInterim = '';
+
+      const results = event.results;
+      if (!results) return;
+
+      for (let i = 0; i < results.length; ++i) {
+        const item = results[i];
+        const transcript = item[0]?.transcript || '';
+        const trimmed = transcript.trim();
+        if (!trimmed) continue;
+
+        if (item.isFinal) {
+          sessionFinal += (sessionFinal ? ' ' : '') + trimmed;
+        } else {
+          sessionInterim += (sessionInterim ? ' ' : '') + trimmed;
+        }
+      }
+
+      let combined = sessionFinal;
+      if (sessionInterim) {
+        if (!combined) {
+          combined = sessionInterim;
+        } else {
+          combined = mergeWithOverlap(combined, sessionInterim);
+        }
+      }
+
+      const cleaned = deduplicateRepeatedPhrases(combined);
+      if (cleaned.trim()) {
+        options.onResult(cleaned.trim(), sessionInterim.length === 0);
+      }
+    };
+
+    recognition.onerror = (event: any) => {
+      if (event.error === 'no-speech' || event.error === 'aborted') {
+        // Ignorable non-fatal events when user takes a natural pause
+        return;
+      }
+      if (options.onError) {
+        options.onError(event.error || 'speech_error');
+      }
+    };
+
+    recognition.onend = () => {
+      if (!isManualStop) {
+        // Natural speech pause: auto-restart immediately to keep dictation fluid
+        clearTimeout(restartTimeout);
+        restartTimeout = setTimeout(() => {
+          if (!isManualStop) {
+            initAndStart();
+          }
+        }, 80);
+        return;
+      }
+
+      if (options.onEnd) {
+        options.onEnd();
+      }
+    };
+
+    try {
+      recognition.start();
+    } catch (err: any) {
+      // If already started or browser blocked, wait briefly and retry if still active
+      if (!isManualStop) {
+        clearTimeout(restartTimeout);
+        restartTimeout = setTimeout(() => {
+          if (!isManualStop) initAndStart();
+        }, 200);
+      }
     }
   };
 
-  recognition.onend = () => {
-    if (options.onEnd) {
-      options.onEnd();
-    }
-  };
-
-  try {
-    recognition.start();
-  } catch (err: any) {
-    if (options.onError) {
-      options.onError(err?.message || 'start_failed');
-    }
-  }
+  initAndStart();
 
   return {
     stop: () => {
       isManualStop = true;
+      clearTimeout(restartTimeout);
       try {
         recognition.stop();
       } catch (e) {
         // ignore
       }
+      if (options.onEnd) options.onEnd();
     },
     abort: () => {
       isManualStop = true;
+      clearTimeout(restartTimeout);
       try {
         recognition.abort();
       } catch (e) {
         // ignore
       }
+      if (options.onEnd) options.onEnd();
     },
   };
 }

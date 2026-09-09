@@ -463,7 +463,8 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = ({
     { key: 'all' as ClassicalAuthorFilterKey, label: t('filterAuthorAll') },
     { key: 'hahnemann' as ClassicalAuthorFilterKey, label: t('filterAuthorHahnemann') },
     { key: 'kent' as ClassicalAuthorFilterKey, label: t('filterAuthorKent') },
-    { key: 'hering' as ClassicalAuthorFilterKey, label: t('filterAuthorHering') }
+    { key: 'hering' as ClassicalAuthorFilterKey, label: t('filterAuthorHering') },
+    { key: 'boericke' as ClassicalAuthorFilterKey, label: t('filterAuthorBoericke') }
   ];
 
   const categories = [
@@ -764,7 +765,7 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = ({
                       </div>
                       {(() => {
                         const authorsInfo = getRemedyClassicalAuthors(remedy.id);
-                        const hasAny = authorsInfo.hahnemann || authorsInfo.kent || authorsInfo.hering;
+                        const hasAny = authorsInfo.hahnemann || authorsInfo.kent || authorsInfo.hering || authorsInfo.boericke;
                         if (!hasAny) return null;
                         return (
                           <div className="flex flex-wrap items-center gap-1 mt-1.5">
@@ -781,6 +782,11 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = ({
                             {authorsInfo.hering && (
                               <span className="text-[10px] font-medium px-1.5 py-0.2 rounded bg-teal-50 text-teal-800 border border-teal-200/60" title="Constantine Hering">
                                 Hering
+                              </span>
+                            )}
+                            {authorsInfo.boericke && (
+                              <span className="text-[10px] font-medium px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-800 border border-emerald-200/60" title="William Boericke">
+                                Boericke
                               </span>
                             )}
                           </div>
@@ -1243,7 +1249,7 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = ({
                 </p>
                 {(() => {
                   const authorsInfo = getRemedyClassicalAuthors(selectedRemedyForModal.id);
-                  const hasAny = authorsInfo.hahnemann || authorsInfo.kent || authorsInfo.hering;
+                  const hasAny = authorsInfo.hahnemann || authorsInfo.kent || authorsInfo.hering || authorsInfo.boericke;
                   if (!hasAny) return null;
                   return (
                     <div className="flex flex-wrap items-center gap-1.5 pt-1">
@@ -1261,6 +1267,11 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = ({
                       {authorsInfo.hering && (
                         <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/30">
                           Constantine Hering
+                        </span>
+                      )}
+                      {authorsInfo.boericke && (
+                        <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                          William Boericke
                         </span>
                       )}
                     </div>

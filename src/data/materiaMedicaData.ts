@@ -20,6 +20,11 @@ import { MATERIA_MEDICA_PART18 } from './materiaMedicaPart18';
 import { MATERIA_MEDICA_PART19 } from './materiaMedicaPart19';
 import { MATERIA_MEDICA_PART20 } from './materiaMedicaPart20';
 import { MATERIA_MEDICA_PART21 } from './materiaMedicaPart21';
+import { MATERIA_MEDICA_PART22 } from './materiaMedicaPart22';
+import { MATERIA_MEDICA_PART23 } from './materiaMedicaPart23';
+import { MATERIA_MEDICA_PART24 } from './materiaMedicaPart24';
+import { MATERIA_MEDICA_PART25 } from './materiaMedicaPart25';
+import { MATERIA_MEDICA_PART26 } from './materiaMedicaPart26';
 
 
 export type RemedyCategoryKey = 'plant' | 'mineral' | 'animal' | 'nosode' | 'acid' | 'other';
@@ -79,7 +84,12 @@ export const MATERIA_MEDICA_ENTRIES: MateriaMedicaEntry[] = [
   ...MATERIA_MEDICA_PART18,
   ...MATERIA_MEDICA_PART19,
   ...MATERIA_MEDICA_PART20,
-  ...MATERIA_MEDICA_PART21
+  ...MATERIA_MEDICA_PART21,
+  ...MATERIA_MEDICA_PART22,
+  ...MATERIA_MEDICA_PART23,
+  ...MATERIA_MEDICA_PART24,
+  ...MATERIA_MEDICA_PART25,
+  ...MATERIA_MEDICA_PART26
 ].sort((a, b) => a.latinName.localeCompare(b.latinName));
 
 export const ALL_REMEDIES_DATABASE = MATERIA_MEDICA_ENTRIES;

@@ -106,7 +106,32 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
           setAnalysisResult(res);
         })
         .catch((err) => {
-          console.error('Error initializing Hahnemann analysis:', err);
+          console.error('Error initializing Hahnemann analysis, using local fallback matrix:', err);
+          // Resilient fallback with initialMatrix preserved
+          const fallbackRes: HahnemannAnalysisResult = {
+            analyse_status: 'in_progress',
+            naechste_frage: activeType === 'akut'
+              ? 'Beschreiben Sie bitte die genauen Empfindungen und was die Beschwerden bessert oder verschlimmert.'
+              : 'Seit wann bestehen diese Beschwerden und wie verlaufen sie über die Zeit?',
+            kontroll_und_nachfrage_logik: 'Erfassung der vollständigen Symptomgesamtheit gemäß Organon §§ 83–104.',
+            wichtige_symptom_fragmente: seedMatrix || {
+              causa: null,
+              lokalisierung: textToAnalyze,
+              empfindung: null,
+              modalitaeten: null,
+              begleitsymptome: [],
+              gemuet: null,
+              strahlungsoptionen: null,
+              ursaechlicher_zusammenhang: null,
+              fruehere_behandlungen_und_historie: null,
+            },
+            falltyp: activeType,
+            ignorierte_daten: [],
+            aktuelle_mittel_differenzierung: [],
+            end_analyse_zusammenfassung: null,
+          };
+          initialAnalysisRef.current = JSON.parse(JSON.stringify(fallbackRes));
+          setAnalysisResult(fallbackRes);
         })
         .finally(() => {
           setIsProcessing(false);
@@ -121,16 +146,18 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
 
   if (!isOpen) return null;
 
-  const matrix: Hahnemann6Pillars = analysisResult?.wichtige_symptom_fragmente || {
-    causa: null,
-    lokalisierung: null,
-    empfindung: null,
-    modalitaeten: null,
-    begleitsymptome: [],
-    gemuet: null,
-    strahlungsoptionen: null,
-    ursaechlicher_zusammenhang: null,
-    fruehere_behandlungen_und_historie: null,
+  const matrix: Hahnemann6Pillars = {
+    causa: analysisResult?.wichtige_symptom_fragmente?.causa || initialMatrix?.causa || null,
+    lokalisierung: analysisResult?.wichtige_symptom_fragmente?.lokalisierung || initialMatrix?.lokalisierung || null,
+    empfindung: analysisResult?.wichtige_symptom_fragmente?.empfindung || initialMatrix?.empfindung || null,
+    modalitaeten: analysisResult?.wichtige_symptom_fragmente?.modalitaeten || initialMatrix?.modalitaeten || null,
+    begleitsymptome: (analysisResult?.wichtige_symptom_fragmente?.begleitsymptome && analysisResult.wichtige_symptom_fragmente.begleitsymptome.length > 0)
+      ? analysisResult.wichtige_symptom_fragmente.begleitsymptome
+      : (initialMatrix?.begleitsymptome || []),
+    gemuet: analysisResult?.wichtige_symptom_fragmente?.gemuet || initialMatrix?.gemuet || null,
+    strahlungsoptionen: analysisResult?.wichtige_symptom_fragmente?.strahlungsoptionen || initialMatrix?.strahlungsoptionen || null,
+    ursaechlicher_zusammenhang: analysisResult?.wichtige_symptom_fragmente?.ursaechlicher_zusammenhang || initialMatrix?.ursaechlicher_zusammenhang || null,
+    fruehere_behandlungen_und_historie: analysisResult?.wichtige_symptom_fragmente?.fruehere_behandlungen_und_historie || initialMatrix?.fruehere_behandlungen_und_historie || null,
   };
 
   const hasCausa = Boolean(matrix.causa && matrix.causa !== 'Noch nicht genannt' && matrix.causa.trim().length > 0);
