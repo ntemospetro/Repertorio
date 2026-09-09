@@ -2516,4 +2516,7 @@ export const en = {
   repertoriumApplyToCase: "Add to case",
   repertoriumScopeAll: "Complete Repertory (All Authors)",
   repertoriumScopeAuthor: "Repertory by",
+  repertoriumWeightHeading: "Symptom Weight (Grade 1–4, optional):",
+  repertoriumClearWeight: "Deselect rating",
+  repertoriumMatchesLabel: "Repertory hits:",
 };

@@ -44,7 +44,7 @@ export const RepertoriumView: React.FC<RepertoriumViewProps> = ({
 
   // Symptoms list for repertorisation
   const [symptoms, setSymptoms] = useState<RepertoriumSymptomInput[]>([
-    { id: 'sym-1', text: '', weight: 2 },
+    { id: 'sym-1', text: '', weight: null },
   ]);
 
   // Filter mode: strict intersection vs weighted
@@ -91,7 +91,7 @@ export const RepertoriumView: React.FC<RepertoriumViewProps> = ({
     const nextId = `sym-${Date.now()}`;
     setSymptoms(prev => [
       ...prev,
-      { id: nextId, text: '', weight: 2 }
+      { id: nextId, text: '', weight: null }
     ]);
   };
 
@@ -101,7 +101,7 @@ export const RepertoriumView: React.FC<RepertoriumViewProps> = ({
 
   const handleRemoveSymptom = (id: string) => {
     if (symptoms.length <= 1) {
-      setSymptoms([{ id: `sym-${Date.now()}`, text: '', weight: 2 }]);
+      setSymptoms([{ id: `sym-${Date.now()}`, text: '', weight: null }]);
       return;
     }
     setSymptoms(prev => prev.filter(s => s.id !== id));
@@ -109,7 +109,7 @@ export const RepertoriumView: React.FC<RepertoriumViewProps> = ({
 
   const handleReset = () => {
     setSymptoms([
-      { id: `sym-${Date.now()}-1`, text: '', weight: 2 },
+      { id: `sym-${Date.now()}-1`, text: '', weight: null },
     ]);
   };
 
@@ -120,9 +120,9 @@ export const RepertoriumView: React.FC<RepertoriumViewProps> = ({
   const fullMatchCount = results.filter(r => r.isFullMatch).length;
 
   return (
-    <div id="repertorium-view-root" className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 max-w-7xl mx-auto w-full">
+    <div id="repertorium-view-root" className="w-full space-y-6">
       {/* Header Banner */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-5 md:p-6 shadow-xs">
+      <div className="w-full bg-white rounded-2xl border border-slate-200/80 p-5 md:p-6 shadow-xs">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-start gap-4">
             <div className="w-12 h-12 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center shrink-0 shadow-2xs">
@@ -272,13 +272,29 @@ export const RepertoriumView: React.FC<RepertoriumViewProps> = ({
                       className="w-full px-3 py-2 text-sm bg-white rounded-lg border border-slate-200 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 text-slate-900 placeholder:text-slate-400 outline-none transition-all shadow-2xs"
                     />
 
-                    {/* Weight Grade Buttons (1 to 4 Stars) & Coverage Pill */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1.5">
-                      <div className="grid grid-cols-4 gap-1.5 w-full sm:w-auto">
+                    {/* Weight Grade Buttons (1 to 4 Stars) - Positioned ABOVE coverage info */}
+                    <div className="pt-2 space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[11px] font-semibold text-slate-600">
+                          {t('repertoriumWeightHeading')}
+                        </span>
+                        {symptom.weight && (
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateSymptom(symptom.id, { weight: null })}
+                            className="text-[11px] text-teal-700 hover:text-teal-900 font-medium underline cursor-pointer"
+                          >
+                            {t('repertoriumClearWeight')}
+                          </button>
+                        )}
+                      </div>
+
+                      {/* 4 Ratings Buttons Grid across full width */}
+                      <div className="grid grid-cols-4 gap-1.5 w-full">
                         <button
                           type="button"
-                          onClick={() => handleUpdateSymptom(symptom.id, { weight: 4 })}
-                          className={`py-1.5 px-2 md:py-2 md:px-2.5 text-xs font-semibold rounded-lg cursor-pointer transition-all text-center ${
+                          onClick={() => handleUpdateSymptom(symptom.id, { weight: symptom.weight === 4 ? null : 4 })}
+                          className={`py-2 px-1 text-xs font-semibold rounded-lg cursor-pointer transition-all text-center ${
                             symptom.weight === 4
                               ? 'bg-purple-100 text-purple-950 border border-purple-400 font-bold shadow-2xs'
                               : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
@@ -289,8 +305,8 @@ export const RepertoriumView: React.FC<RepertoriumViewProps> = ({
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleUpdateSymptom(symptom.id, { weight: 3 })}
-                          className={`py-1.5 px-2 md:py-2 md:px-2.5 text-xs font-semibold rounded-lg cursor-pointer transition-all text-center ${
+                          onClick={() => handleUpdateSymptom(symptom.id, { weight: symptom.weight === 3 ? null : 3 })}
+                          className={`py-2 px-1 text-xs font-semibold rounded-lg cursor-pointer transition-all text-center ${
                             symptom.weight === 3
                               ? 'bg-amber-100 text-amber-900 border border-amber-300 font-bold shadow-2xs'
                               : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
@@ -301,8 +317,8 @@ export const RepertoriumView: React.FC<RepertoriumViewProps> = ({
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleUpdateSymptom(symptom.id, { weight: 2 })}
-                          className={`py-1.5 px-2 md:py-2 md:px-2.5 text-xs font-semibold rounded-lg cursor-pointer transition-all text-center ${
+                          onClick={() => handleUpdateSymptom(symptom.id, { weight: symptom.weight === 2 ? null : 2 })}
+                          className={`py-2 px-1 text-xs font-semibold rounded-lg cursor-pointer transition-all text-center ${
                             symptom.weight === 2
                               ? 'bg-teal-100 text-teal-900 border border-teal-300 font-bold shadow-2xs'
                               : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
@@ -313,8 +329,8 @@ export const RepertoriumView: React.FC<RepertoriumViewProps> = ({
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleUpdateSymptom(symptom.id, { weight: 1 })}
-                          className={`py-1.5 px-2 md:py-2 md:px-2.5 text-xs font-semibold rounded-lg cursor-pointer transition-all text-center ${
+                          onClick={() => handleUpdateSymptom(symptom.id, { weight: symptom.weight === 1 ? null : 1 })}
+                          className={`py-2 px-1 text-xs font-semibold rounded-lg cursor-pointer transition-all text-center ${
                             symptom.weight === 1
                               ? 'bg-slate-200 text-slate-900 border border-slate-300 font-bold shadow-2xs'
                               : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
@@ -325,10 +341,16 @@ export const RepertoriumView: React.FC<RepertoriumViewProps> = ({
                         </button>
                       </div>
 
+                      {/* Coverage Pill - Positioned UNDERNEATH the ratings */}
                       {symptom.text.trim().length > 0 && (
-                        <span className="text-xs font-medium text-slate-600 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shrink-0 text-center sm:text-right">
-                          {hitsCount} {t('repertoriumMatchesCount')}
-                        </span>
+                        <div className="pt-1">
+                          <div className="w-full text-xs font-medium text-slate-700 bg-white px-3 py-2 rounded-lg border border-slate-200 flex items-center justify-between shadow-2xs">
+                            <span className="text-slate-500">{t('repertoriumMatchesLabel')}</span>
+                            <span className="font-bold text-teal-800">
+                              {hitsCount} {t('repertoriumMatchesCount')}
+                            </span>
+                          </div>
+                        </div>
                       )}
                     </div>
                   </div>

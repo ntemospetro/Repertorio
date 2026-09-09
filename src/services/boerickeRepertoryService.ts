@@ -15,7 +15,7 @@ export interface BoerickeRubric {
 export interface RepertoriumSymptomInput {
   id: string;
   text: string;
-  weight: SymptomWeightGrade;
+  weight?: SymptomWeightGrade | null;
 }
 
 export interface RemedySymptomHit {
@@ -657,12 +657,14 @@ export function performBoerickeRepertorisation(
 
       if (matchedGrade > 0) {
         // Point formula: Symptom weight (1..4) * Remedy grade (1..4) = up to 16 points per symptom
-        const points = symptom.weight * matchedGrade;
+        // If no weight is explicitly chosen by user, default to 1 (neutral standard)
+        const effectiveWeight = (symptom.weight && symptom.weight >= 1) ? symptom.weight : 1;
+        const points = effectiveWeight * matchedGrade;
         totalScore += points;
         hits.push({
           symptomIndex: i + 1,
           symptomText: symptom.text,
-          weight: symptom.weight,
+          weight: effectiveWeight,
           remedyGrade: matchedGrade as SymptomWeightGrade,
           points,
           matchedBoerickeExcerpt: matchedExcerpt,

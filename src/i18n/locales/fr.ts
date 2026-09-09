@@ -2510,4 +2510,7 @@ export const fr = {
   repertoriumApplyToCase: "Ajouter au cas",
   repertoriumScopeAll: "Répertoire complet (Tous les auteurs)",
   repertoriumScopeAuthor: "Répertoire selon",
+  repertoriumWeightHeading: "Valorisation du symptôme (Degré 1–4, optionnel) :",
+  repertoriumClearWeight: "Désélectionner l'évaluation",
+  repertoriumMatchesLabel: "Résultats du répertoire :",
 };

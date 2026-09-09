@@ -2516,4 +2516,7 @@ export const de = {
   repertoriumApplyToCase: "In Fall übernehmen",
   repertoriumScopeAll: "Gesamtes Repertorium (Alle Autoren)",
   repertoriumScopeAuthor: "Repertorium nach",
+  repertoriumWeightHeading: "Symptom-Wertigkeit (Grad 1–4, optional):",
+  repertoriumClearWeight: "Wertung abwählen",
+  repertoriumMatchesLabel: "Repertorium-Treffer:",
 };

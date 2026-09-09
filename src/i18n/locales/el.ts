@@ -2510,4 +2510,7 @@ export const el = {
   repertoriumApplyToCase: "Εισαγωγή στο ιστορικό",
   repertoriumScopeAll: "Πλήρες ρεπερτόριο (Όλοι οι συγγραφείς)",
   repertoriumScopeAuthor: "Ρεπερτόριο κατά",
+  repertoriumWeightHeading: "Βαθμολόγηση συμπτώματος (Βαθμός 1–4, προαιρετικό):",
+  repertoriumClearWeight: "Αποεπιλογή βαθμολόγησης",
+  repertoriumMatchesLabel: "Αποτελέσματα ρεπερτορίου:",
 };

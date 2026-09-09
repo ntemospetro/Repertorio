@@ -2510,4 +2510,7 @@ export const ru = {
   repertoriumApplyToCase: "Добавить в карту",
   repertoriumScopeAll: "Полный реперторий (Все авторы)",
   repertoriumScopeAuthor: "Реперторий по",
+  repertoriumWeightHeading: "Оценка симптома (Степень 1–4, опционально):",
+  repertoriumClearWeight: "Снять оценку",
+  repertoriumMatchesLabel: "Совпадений в репертории:",
 };
