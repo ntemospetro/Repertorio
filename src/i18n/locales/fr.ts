@@ -2241,5 +2241,17 @@ export const fr = {
   paymentMethodModalTitle: "Mode de paiement et coordonnées bancaires",
   paymentCardExpiryPlaceholder: "MM/AA",
   paymentCardCvcPlaceholder: "CVC",
-  paymentInstantActivation: "Activation immédiate après autorisation réussie."
+  paymentInstantActivation: "Activation immédiate après autorisation réussie.",
+  paymentGatewayNotLiveMsg: "La fonction de paiement en ligne est actuellement indisponible ou en mode de maintenance. Aucun montant n'a été débité. Veuillez contacter l'administration du cabinet.",
+  adminStripeSimulationTitle: "Console de test administrateur : Simulateur de transactions",
+  adminStripeSimulationDesc: "Exclusivement pour les administrateurs : Simulez en toute sécurité des recharges de solde ou des changements de forfait pour les thérapeutes sans donner accès aux fonctions de test aux clients.",
+  adminStripeSimSelectTherapist: "Thérapeute cible",
+  adminStripeSimActionType: "Type d'action",
+  adminStripeSimTopUp: "Recharger le solde (Test)",
+  adminStripeSimUpgrade: "Attribuer une mise à niveau de forfait (Test)",
+  adminStripeSimAmount: "Montant (€)",
+  adminStripeSimTargetPlan: "Forfait cible",
+  adminStripeSimulateBtn: "Simuler la transaction de test maintenant",
+  adminStripeSimSuccess: "Transaction de test exécutée avec succès et enregistrée.",
+  adminStripeSimNotice: "Remarque : Les clients ne peuvent pas effectuer de réservations en mode test. Tous les tests sont réservés à cette console d'administration."
 };

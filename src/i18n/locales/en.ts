@@ -2247,5 +2247,17 @@ export const en = {
   paymentMethodModalTitle: "Payment Method & Bank Details",
   paymentCardExpiryPlaceholder: "MM/YY",
   paymentCardCvcPlaceholder: "CVC",
-  paymentInstantActivation: "Instant activation following successful authorization."
+  paymentInstantActivation: "Instant activation following successful authorization.",
+  paymentGatewayNotLiveMsg: "The online payment feature is currently unavailable or in maintenance mode. No amount has been charged. Please contact the practice administration.",
+  adminStripeSimulationTitle: "Admin Test Console: Transaction Simulator",
+  adminStripeSimulationDesc: "Exclusively for administrators: Safely and securely simulate balance top-ups or tariff upgrades for therapists without giving clients access to test functions.",
+  adminStripeSimSelectTherapist: "Target Therapist",
+  adminStripeSimActionType: "Action Type",
+  adminStripeSimTopUp: "Top Up Balance (Test)",
+  adminStripeSimUpgrade: "Assign Tariff Upgrade (Test)",
+  adminStripeSimAmount: "Amount (€)",
+  adminStripeSimTargetPlan: "Target Tariff",
+  adminStripeSimulateBtn: "Simulate Test Transaction Now",
+  adminStripeSimSuccess: "Test transaction executed successfully and logged in records.",
+  adminStripeSimNotice: "Notice: Client users cannot make bookings in test mode. All test runs are restricted to this Admin Console."
 };

@@ -2241,5 +2241,17 @@ export const ru = {
   paymentMethodModalTitle: "Способ оплаты и банковские реквизиты",
   paymentCardExpiryPlaceholder: "ММ/ГГ",
   paymentCardCvcPlaceholder: "CVC",
-  paymentInstantActivation: "Мгновенная активация после успешной авторизации."
+  paymentInstantActivation: "Мгновенная активация после успешной авторизации.",
+  paymentGatewayNotLiveMsg: "Функция онлайн-оплаты в настоящее время недоступна или находится в режиме обслуживания. Списание средств не производилось. Пожалуйста, обратитесь к администрации практики.",
+  adminStripeSimulationTitle: "Консоль тестирования администратора: Симулятор транзакций",
+  adminStripeSimulationDesc: "Исключительно для администраторов: Безопасно моделируйте пополнение баланса или смену тарифа для терапевтов, не предоставляя клиентам доступ к тестовым функциям.",
+  adminStripeSimSelectTherapist: "Целевой терапевт",
+  adminStripeSimActionType: "Тип действия",
+  adminStripeSimTopUp: "Пополнение баланса (Тест)",
+  adminStripeSimUpgrade: "Назначить обновление тарифа (Тест)",
+  adminStripeSimAmount: "Сумма (€)",
+  adminStripeSimTargetPlan: "Целевой тариф",
+  adminStripeSimulateBtn: "Смоделировать тестовую транзакцию сейчас",
+  adminStripeSimSuccess: "Тестовая транзакция успешно выполнена и записана в журнал.",
+  adminStripeSimNotice: "Примечание: Обычные пользователи не могут совершать транзакции в тестовом режиме. Все тесты ограничены этой панелью администратора."
 };

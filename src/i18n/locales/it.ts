@@ -2241,5 +2241,17 @@ export const it = {
   paymentMethodModalTitle: "Metodo di pagamento e coordinate bancarie",
   paymentCardExpiryPlaceholder: "MM/AA",
   paymentCardCvcPlaceholder: "CVC",
-  paymentInstantActivation: "Attivazione immediata a seguito dell'autorizzazione."
+  paymentInstantActivation: "Attivazione immediata a seguito dell'autorizzazione.",
+  paymentGatewayNotLiveMsg: "La funzione di pagamento online non è attualmente disponibile o è in modalità di manutenzione. Nessun importo è stato addebitato. Si prega di contattare l'amministrazione dello studio.",
+  adminStripeSimulationTitle: "Console di test amministratore: Simulatore di transazioni",
+  adminStripeSimulationDesc: "Esclusivo per amministratori: Simula in modo sicuro ricariche di credito o cambi di piano per i terapeuti senza concedere ai clienti l'accesso a funzioni di prova.",
+  adminStripeSimSelectTherapist: "Terapeuta di destinazione",
+  adminStripeSimActionType: "Tipo di azione",
+  adminStripeSimTopUp: "Ricarica credito (Test)",
+  adminStripeSimUpgrade: "Assegna upgrade tariffa (Test)",
+  adminStripeSimAmount: "Importo (€)",
+  adminStripeSimTargetPlan: "Tariffa di destinazione",
+  adminStripeSimulateBtn: "Simula subito la transazione di test",
+  adminStripeSimSuccess: "Transazione di test eseguita con successo e registrata.",
+  adminStripeSimNotice: "Nota: Gli utenti clienti non possono effettuare pagamenti in modalità test. Tutti i test sono limitati a questa console di amministrazione."
 };

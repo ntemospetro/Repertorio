@@ -20,7 +20,6 @@ import {
   ShieldCheck,
   X,
   Lock,
-  Building2,
   LockKeyhole
 } from 'lucide-react';
 import {
@@ -60,19 +59,12 @@ export const TherapistTariffManager: React.FC<TherapistTariffManagerProps> = ({
   const [topUpModalAmount, setTopUpModalAmount] = useState<number | null>(null);
   const [upgradeLoading, setUpgradeLoading] = useState<boolean>(false);
   const [modalStep, setModalStep] = useState<'overview' | 'payment_details'>('overview');
-  const [paymentMethod, setPaymentMethod] = useState<'card' | 'sepa'>('card');
   const [cardHolder, setCardHolder] = useState<string>(
     `${therapist.vorname || ''} ${therapist.nachname || ''}`.trim() || 'Dr. Med. Therapeut'
   );
   const [cardNumber, setCardNumber] = useState<string>('4242 4242 4242 4242');
   const [cardExpiry, setCardExpiry] = useState<string>('12/28');
   const [cardCvc, setCardCvc] = useState<string>('888');
-  const [sepaAccountHolder, setSepaAccountHolder] = useState<string>(
-    `${therapist.vorname || ''} ${therapist.nachname || ''}`.trim() || 'Dr. Med. Therapeut'
-  );
-  const [sepaIban, setSepaIban] = useState<string>('DE89 3704 0044 0532 0130 00');
-  const [sepaBic, setSepaBic] = useState<string>('BYLADEM1001');
-  const [sepaMandateAccepted, setSepaMandateAccepted] = useState<boolean>(true);
   const [paymentFormError, setPaymentFormError] = useState<string | null>(null);
 
   // Determine if therapist is on a free plan
@@ -254,23 +246,11 @@ export const TherapistTariffManager: React.FC<TherapistTariffManagerProps> = ({
   const handleExecutePayment = async () => {
     setPaymentFormError(null);
 
-    // Form validation
-    if (paymentMethod === 'card') {
-      const cleanNum = cardNumber.replace(/\D/g, '');
-      if (!cardHolder.trim() || cleanNum.length < 12) {
-        setPaymentFormError(t('paymentCardValidationErr'));
-        return;
-      }
-    } else {
-      const cleanIban = sepaIban.replace(/\s+/g, '');
-      if (!sepaAccountHolder.trim() || cleanIban.length < 15) {
-        setPaymentFormError(t('paymentIbanValidationErr'));
-        return;
-      }
-      if (!sepaMandateAccepted) {
-        setPaymentFormError('Bitte akzeptieren Sie das SEPA-Lastschriftmandat.');
-        return;
-      }
+    // Form validation (Kredit- / Debitkarte)
+    const cleanNum = cardNumber.replace(/\D/g, '');
+    if (!cardHolder.trim() || cleanNum.length < 12) {
+      setPaymentFormError(t('paymentCardValidationErr'));
+      return;
     }
 
     setUpgradeLoading(true);
@@ -297,42 +277,12 @@ export const TherapistTariffManager: React.FC<TherapistTariffManagerProps> = ({
         return;
       }
 
-      // Direct verification (Sandbox/Internal Mode)
-      const verifyRes = await verifyStripeCheckoutSession(
-        session?.sessionId || ('cs_sandbox_' + Date.now()),
-        therapist.id,
-        {
-          targetTariffId,
-          type: paymentType,
-          amountEur: amountToPay,
-          paymentMethod
-        }
-      );
-
-      if (verifyRes.success) {
-        if (isUpgrade && upgradeTargetPlan) {
-          const updated = assignPackageToTherapist(therapist.id, upgradeTargetPlan.id, resetUsageOnSwitch);
-          if (updated && onTariffChanged) {
-            onTariffChanged(updated);
-          }
-          setSuccessMessage(t('tariffUpgradeSuccessMsg', { 
-            planName: upgradeTargetPlan.name, 
-            amount: amountToPay.toFixed(2) 
-          }));
-        } else {
-          setSuccessMessage(t('paymentTopUpSuccessMsg', { 
-            amount: amountToPay.toFixed(2) 
-          }));
-        }
-        await loadBillingData();
-        setUpgradeTargetPlan(null);
-        setTopUpModalAmount(null);
-      } else {
-        setPaymentFormError(verifyRes.message || t('therapistPaymentErrorDesc'));
-      }
+      // Online payment is currently unavailable, in maintenance, or test mode without Live Stripe
+      const errorMsg = session?.message || t('paymentGatewayNotLiveMsg');
+      setPaymentFormError(errorMsg);
     } catch (err: any) {
       console.error('Payment execution failed:', err);
-      setPaymentFormError(t('therapistPaymentErrorDesc'));
+      setPaymentFormError(t('paymentGatewayNotLiveMsg'));
     } finally {
       setUpgradeLoading(false);
     }
@@ -909,158 +859,79 @@ export const TherapistTariffManager: React.FC<TherapistTariffManagerProps> = ({
                   </div>
                 )}
 
-                {/* STEP 2: Bank / Card Details */}
+                {/* STEP 2: Card Payment Details */}
                 {(modalStep === 'payment_details' || !isUpgrade) && (
                   <div className="space-y-4">
-                    {/* Method Selector Tabs */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <button
-                        type="button"
-                        onClick={() => setPaymentMethod('card')}
-                        className={`p-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                          paymentMethod === 'card'
-                            ? 'bg-teal-50/80 border-teal-600 text-teal-900 shadow-xs'
-                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                        }`}
-                      >
+                    <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200/80 text-xs">
+                      <div className="flex items-center gap-2 font-bold text-slate-800">
                         <CreditCard className="w-4 h-4 text-teal-600" />
                         <span>{t('paymentMethodCreditCard')}</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setPaymentMethod('sepa')}
-                        className={`p-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                          paymentMethod === 'sepa'
-                            ? 'bg-teal-50/80 border-teal-600 text-teal-900 shadow-xs'
-                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                        }`}
-                      >
-                        <Building2 className="w-4 h-4 text-teal-600" />
-                        <span>{t('paymentMethodSepa')}</span>
-                      </button>
+                      </div>
+                      <span className="text-[11px] font-mono text-slate-500 font-medium">Visa • Mastercard • Amex</span>
                     </div>
 
-                    {/* Method 1: Credit Card Form */}
-                    {paymentMethod === 'card' && (
-                      <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-3">
-                        <div>
-                          <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                            {t('cardHolderLabel')}
-                          </label>
-                          <input
-                            type="text"
-                            value={cardHolder}
-                            onChange={(e) => setCardHolder(e.target.value)}
-                            placeholder={t('paymentCardHolderPlaceholder')}
-                            className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-teal-600 font-medium"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                            {t('cardNumberLabel')}
-                          </label>
-                          <div className="relative">
-                            <input
-                              type="text"
-                              value={cardNumber}
-                              onChange={(e) => setCardNumber(e.target.value)}
-                              placeholder={t('paymentCardNumberPlaceholder')}
-                              maxLength={19}
-                              className="w-full pl-9 pr-3 py-2 text-xs font-mono font-bold bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-teal-600"
-                            />
-                            <CreditCard className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                              {t('cardExpiryLabel')}
-                            </label>
-                            <input
-                              type="text"
-                              value={cardExpiry}
-                              onChange={(e) => setCardExpiry(e.target.value)}
-                              placeholder={t('paymentCardExpiryPlaceholder')}
-                              maxLength={5}
-                              className="w-full px-3 py-2 text-xs font-mono font-bold bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-teal-600"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                              {t('cardCvcLabel')}
-                            </label>
-                            <input
-                              type="password"
-                              value={cardCvc}
-                              onChange={(e) => setCardCvc(e.target.value)}
-                              placeholder={t('paymentCardCvcPlaceholder')}
-                              maxLength={4}
-                              className="w-full px-3 py-2 text-xs font-mono font-bold bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-teal-600"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Method 2: SEPA Form */}
-                    {paymentMethod === 'sepa' && (
-                      <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-3">
-                        <div>
-                          <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                            {t('sepaAccountHolderLabel')}
-                          </label>
-                          <input
-                            type="text"
-                            value={sepaAccountHolder}
-                            onChange={(e) => setSepaAccountHolder(e.target.value)}
-                            placeholder={t('paymentCardHolderPlaceholder')}
-                            className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-teal-600 font-medium"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                            {t('sepaIbanLabel')}
-                          </label>
-                          <input
-                            type="text"
-                            value={sepaIban}
-                            onChange={(e) => setSepaIban(e.target.value.toUpperCase())}
-                            placeholder={t('paymentIbanPlaceholder')}
-                            className="w-full px-3 py-2 text-xs font-mono font-bold bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-teal-600 uppercase"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                            {t('sepaBicLabel')}
-                          </label>
-                          <input
-                            type="text"
-                            value={sepaBic}
-                            onChange={(e) => setSepaBic(e.target.value.toUpperCase())}
-                            placeholder={t('paymentBicPlaceholder')}
-                            className="w-full px-3 py-2 text-xs font-mono font-bold bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-teal-600 uppercase"
-                          />
-                        </div>
-
-                        <label className="flex items-start gap-2 pt-2 border-t border-slate-200 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={sepaMandateAccepted}
-                            onChange={(e) => setSepaMandateAccepted(e.target.checked)}
-                            className="mt-0.5 rounded text-teal-600 focus:ring-teal-500"
-                          />
-                          <span className="text-[11px] text-slate-600 leading-snug">
-                            {t('sepaMandateNotice')}
-                          </span>
+                    {/* Credit Card Form */}
+                    <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-3">
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                          {t('cardHolderLabel')}
                         </label>
+                        <input
+                          type="text"
+                          value={cardHolder}
+                          onChange={(e) => setCardHolder(e.target.value)}
+                          placeholder={t('paymentCardHolderPlaceholder')}
+                          className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-teal-600 font-medium"
+                        />
                       </div>
-                    )}
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                          {t('cardNumberLabel')}
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={cardNumber}
+                            onChange={(e) => setCardNumber(e.target.value)}
+                            placeholder={t('paymentCardNumberPlaceholder')}
+                            maxLength={19}
+                            className="w-full pl-9 pr-3 py-2 text-xs font-mono font-bold bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-teal-600"
+                          />
+                          <CreditCard className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                            {t('cardExpiryLabel')}
+                          </label>
+                          <input
+                            type="text"
+                            value={cardExpiry}
+                            onChange={(e) => setCardExpiry(e.target.value)}
+                            placeholder={t('paymentCardExpiryPlaceholder')}
+                            maxLength={5}
+                            className="w-full px-3 py-2 text-xs font-mono font-bold bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-teal-600"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                            {t('cardCvcLabel')}
+                          </label>
+                          <input
+                            type="password"
+                            value={cardCvc}
+                            onChange={(e) => setCardCvc(e.target.value)}
+                            placeholder={t('paymentCardCvcPlaceholder')}
+                            maxLength={4}
+                            className="w-full px-3 py-2 text-xs font-mono font-bold bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-teal-600"
+                          />
+                        </div>
+                      </div>
+                    </div>
 
                     {/* Security & Instant Guarantee */}
                     <div className="p-3 bg-teal-50/70 border border-teal-200 rounded-xl space-y-1 text-xs text-teal-900">

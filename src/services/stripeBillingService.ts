@@ -376,42 +376,40 @@ export async function createCheckoutSession(params: {
   successUrl?: string;
   cancelUrl?: string;
 }): Promise<{
-  sessionId: string;
-  url: string;
-  mode: 'stripe' | 'sandbox';
+  sessionId?: string;
+  url?: string;
+  mode?: 'stripe';
   amountEur?: number;
-  fallback?: boolean;
+  success?: boolean;
+  liveModeRequired?: boolean;
+  error?: string;
   message?: string;
 } | null> {
-  const amount = Math.max(1, Number(params.amountEur) || 20);
-
   try {
     const res = await fetch('/api/billing/create-checkout-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(params)
     });
-    if (res.ok) {
-      const data = await res.json();
+    const data = await res.json();
+    if (res.ok && data.sessionId && data.url) {
       return data;
     }
+    return {
+      success: false,
+      liveModeRequired: data.liveModeRequired || false,
+      error: data.error || 'Payment gateway not available',
+      message: data.message
+    };
   } catch (err) {
     console.warn('[Stripe Billing] Backend unreachable for checkout session:', err);
+    return {
+      success: false,
+      liveModeRequired: true,
+      error: 'network_error',
+      message: undefined
+    };
   }
-
-  // Graceful local fallback if backend endpoint returned 404 or network is unavailable
-  const mockSessionId = 'cs_sandbox_' + Date.now();
-  const origin = typeof window !== 'undefined' ? window.location.origin : '';
-  const successUrl = params.successUrl || `${origin}/?payment=success&session_id=${mockSessionId}&therapistId=${params.therapistId}&amount=${amount}&type=${params.type || 'manual_reload'}${params.targetTariffId ? `&targetTariffId=${encodeURIComponent(params.targetTariffId)}` : ''}`;
-
-  return {
-    sessionId: mockSessionId,
-    url: successUrl,
-    mode: 'sandbox',
-    amountEur: amount,
-    fallback: true,
-    message: `Testmodus / Sandbox: Weiterleitung zur Bestätigung.`
-  };
 }
 
 export async function verifyStripeCheckoutSession(
@@ -422,6 +420,7 @@ export async function verifyStripeCheckoutSession(
     type?: string;
     amountEur?: number;
     paymentMethod?: string;
+    isAdminSimulation?: boolean;
   }
 ): Promise<{
   success: boolean;
@@ -446,40 +445,65 @@ export async function verifyStripeCheckoutSession(
   if (options?.type) queryParams.set('type', options.type);
   if (options?.amountEur !== undefined) queryParams.set('amount', String(options.amountEur));
   if (options?.paymentMethod) queryParams.set('paymentMethod', options.paymentMethod);
+  if (options?.isAdminSimulation) queryParams.set('admin_sim', 'true');
 
   try {
     const res = await fetch(`/api/billing/verify-session?${queryParams.toString()}`);
-    if (res.ok) {
-      const data = await res.json();
-      if (data.success && data.credited && typeof window !== 'undefined') {
+    const data = await res.json();
+    if (res.ok && data.success) {
+      if (data.credited && typeof window !== 'undefined') {
         window.dispatchEvent(new Event('homoeo_billing_balance_changed'));
       }
       return data;
     }
+    return {
+      success: false,
+      message: data.message || 'Zahlungsüberprüfung fehlgeschlagen. Bitte überprüfen Sie Ihre Daten.'
+    };
   } catch (err) {
     console.warn('[Stripe Billing] Failed to verify checkout session with server:', err);
-  }
-
-  // If in sandbox mode or test mode
-  if (sessionId.startsWith('cs_sandbox_') || sessionId.startsWith('cs_offline_')) {
-    const isUpgrade = options?.type === 'package_purchase' || Boolean(options?.targetTariffId);
     return {
-      success: true,
-      status: 'paid',
-      credited: !isUpgrade,
-      upgraded: isUpgrade,
-      amountEur: options?.amountEur || 20,
-      therapistId: therapistId || 'th-101',
-      targetTariffId: options?.targetTariffId,
-      type: options?.type || (isUpgrade ? 'package_purchase' : 'manual_reload'),
-      message: isUpgrade ? 'Tarif-Upgrade erfolgreich bestätigt' : 'Sandbox-Zahlung bestätigt'
+      success: false,
+      message: 'Verbindung zum Zahlungsdienst fehlgeschlagen.'
     };
   }
+}
 
-  return {
-    success: false,
-    message: 'Zahlungsüberprüfung fehlgeschlagen. Bitte überprüfen Sie Ihre Daten.'
-  };
+export async function simulateAdminTransaction(params: {
+  therapistId: string;
+  type: 'manual_reload' | 'package_purchase';
+  amountEur: number;
+  targetTariffId?: string;
+  note?: string;
+}): Promise<{
+  success: boolean;
+  message?: string;
+  error?: string;
+  newBalanceEur?: number;
+}> {
+  try {
+    const res = await fetch('/api/admin/billing/simulate-transaction', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params)
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('homoeo_billing_balance_changed'));
+      }
+      return data;
+    }
+    return {
+      success: false,
+      error: data.error || data.message || 'Simulation fehlgeschlagen'
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      error: err.message || 'Verbindung zum Server fehlgeschlagen'
+    };
+  }
 }
 
 export async function fetchTherapistBillingStatus(therapistId: string): Promise<TherapistBillingStatus> {

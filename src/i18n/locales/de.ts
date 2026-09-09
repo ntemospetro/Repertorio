@@ -2247,5 +2247,17 @@ export const de = {
   paymentMethodModalTitle: "Zahlungsmethode & Bankdaten",
   paymentCardExpiryPlaceholder: "MM/JJ",
   paymentCardCvcPlaceholder: "CVC",
-  paymentInstantActivation: "Sofortige Freischaltung nach erfolgreicher Autorisierung."
+  paymentInstantActivation: "Sofortige Freischaltung nach erfolgreicher Autorisierung.",
+  paymentGatewayNotLiveMsg: "Die Online-Zahlungsfunktion steht momentan nicht zur Verfügung oder befindet sich im Wartungsmodus. Es wurde kein Betrag abgebucht. Bitte wenden Sie sich an die Praxis-Administration.",
+  adminStripeSimulationTitle: "Admin-Testkonsole: Transaktions-Simulator",
+  adminStripeSimulationDesc: "Exklusiv für Administratoren: Simulieren Sie hier sicher und isoliert Guthaben-Aufladungen oder Tarifwechsel für Therapeuten, ohne Kunden Zugriff auf unautorisierte Testfunktionen zu geben.",
+  adminStripeSimSelectTherapist: "Ziel-Therapeut",
+  adminStripeSimActionType: "Aktionstyp",
+  adminStripeSimTopUp: "Guthaben aufladen (Test)",
+  adminStripeSimUpgrade: "Tarif-Upgrade zuweisen (Test)",
+  adminStripeSimAmount: "Betrag (€)",
+  adminStripeSimTargetPlan: "Ziel-Tarif",
+  adminStripeSimulateBtn: "Test-Transaktion jetzt simulieren",
+  adminStripeSimSuccess: "Test-Transaktion erfolgreich durchgeführt und im Protokoll verbucht.",
+  adminStripeSimNotice: "Hinweis: Kunden-Benutzer können im Testmodus keine Buchungen vornehmen. Alle Testläufe sind auf diese Admin-Konsole beschränkt."
 };

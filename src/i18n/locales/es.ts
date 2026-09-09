@@ -2241,5 +2241,17 @@ export const es = {
   paymentMethodModalTitle: "Método de pago y datos bancarios",
   paymentCardExpiryPlaceholder: "MM/AA",
   paymentCardCvcPlaceholder: "CVC",
-  paymentInstantActivation: "Activación inmediata tras la autorización correcta."
+  paymentInstantActivation: "Activación inmediata tras la autorización correcta.",
+  paymentGatewayNotLiveMsg: "La función de pago en línea no está disponible actualmente o está en modo de mantenimiento. No se ha realizado ningún cargo. Por favor, póngase en contacto con la administración de la consulta.",
+  adminStripeSimulationTitle: "Consola de prueba de administrador: Simulador de transacciones",
+  adminStripeSimulationDesc: "Exclusivo para administradores: Simule de forma segura recargas de saldo o cambios de tarifa para terapeutas sin dar a los clientes acceso a funciones de prueba.",
+  adminStripeSimSelectTherapist: "Terapeuta de destino",
+  adminStripeSimActionType: "Tipo de acción",
+  adminStripeSimTopUp: "Recargar saldo (Prueba)",
+  adminStripeSimUpgrade: "Asignar actualización de tarifa (Prueba)",
+  adminStripeSimAmount: "Importe (€)",
+  adminStripeSimTargetPlan: "Tarifa de destino",
+  adminStripeSimulateBtn: "Simular transacción de prueba ahora",
+  adminStripeSimSuccess: "Transacción de prueba ejecutada con éxito y registrada.",
+  adminStripeSimNotice: "Nota: Los usuarios clientes no pueden realizar reservas en modo de prueba. Todas las pruebas están restringidas a esta consola de administración."
 };

@@ -15,16 +15,21 @@ import {
   ExternalLink,
   History,
   TrendingUp,
-  Receipt
+  Receipt,
+  FlaskConical,
+  Sparkles,
+  Info
 } from 'lucide-react';
 import {
   fetchAdminStripeConfig,
   saveAdminStripeConfig,
   testStripeConnection,
   fetchBillingPayments,
+  simulateAdminTransaction,
   AdminStripeConfigResponse
 } from '../services/stripeBillingService';
 import { BillingDepositRecord } from '../types';
+import { getTherapists, getPackagePlans, assignPackageToTherapist } from '../services/storage';
 
 export const AdminStripeSettings: React.FC = () => {
   const { t } = useTranslation();
@@ -47,6 +52,22 @@ export const AdminStripeSettings: React.FC = () => {
 
   const [payments, setPayments] = useState<BillingDepositRecord[]>([]);
   const [loadingPayments, setLoadingPayments] = useState(false);
+
+  // Admin Simulation Console state
+  const [therapistsList, setTherapistsList] = useState(() => getTherapists());
+  const [plansList, setPlansList] = useState(() => getPackagePlans());
+  const [simTherapistId, setSimTherapistId] = useState<string>(() => {
+    const list = getTherapists();
+    return list[0]?.id || 'th-101';
+  });
+  const [simActionType, setSimActionType] = useState<'manual_reload' | 'package_purchase'>('manual_reload');
+  const [simAmount, setSimAmount] = useState<number>(20);
+  const [simTargetPlanId, setSimTargetPlanId] = useState<string>(() => {
+    const plans = getPackagePlans();
+    return plans.find(p => p.id !== 'free')?.id || plans[0]?.id || 'standard';
+  });
+  const [simLoading, setSimLoading] = useState(false);
+  const [simResult, setSimResult] = useState<{ success: boolean; message?: string; error?: string } | null>(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -111,6 +132,53 @@ export const AdminStripeSettings: React.FC = () => {
     navigator.clipboard.writeText(config.webhookUrl);
     setCopiedWebhook(true);
     setTimeout(() => setCopiedWebhook(false), 2500);
+  };
+
+  const handleRunSimulation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!simTherapistId) return;
+    setSimLoading(true);
+    setSimResult(null);
+
+    const isUpgrade = simActionType === 'package_purchase';
+    const chosenPlan = plansList.find(p => p.id === simTargetPlanId);
+    const amount = isUpgrade ? (chosenPlan?.price || 0) : Math.max(1, simAmount);
+
+    try {
+      const res = await simulateAdminTransaction({
+        therapistId: simTherapistId,
+        type: simActionType,
+        amountEur: amount,
+        targetTariffId: isUpgrade ? simTargetPlanId : undefined,
+        note: isUpgrade 
+          ? `Admin-Simulation: Tarif "${chosenPlan?.name || simTargetPlanId}" (${amount.toFixed(2)} €)`
+          : `Admin-Simulation: Guthaben-Test (+${amount.toFixed(2)} €)`
+      });
+
+      if (res.success) {
+        if (isUpgrade && chosenPlan) {
+          assignPackageToTherapist(simTherapistId, chosenPlan.id);
+        }
+        setSimResult({
+          success: true,
+          message: res.message || t('adminStripeSimSuccess')
+        });
+        const payList = await fetchBillingPayments();
+        setPayments(payList);
+      } else {
+        setSimResult({
+          success: false,
+          error: res.error || 'Simulation fehlgeschlagen'
+        });
+      }
+    } catch (err: any) {
+      setSimResult({
+        success: false,
+        error: err.message || 'Simulation fehlgeschlagen'
+      });
+    } finally {
+      setSimLoading(false);
+    }
   };
 
   const totalCollectedEur = payments.reduce((sum, p) => sum + (p.amountEur || 0), 0);
@@ -388,6 +456,169 @@ export const AdminStripeSettings: React.FC = () => {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Admin Test-Konsole / Transaktions-Simulator (Exklusiv für Administratoren) */}
+      <div className="bg-white rounded-xl shadow-xs border border-amber-200 overflow-hidden" id="admin-stripe-simulator-card">
+        <div className="p-6 bg-gradient-to-r from-amber-50/60 to-orange-50/30 border-b border-amber-200/80 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-700 flex items-center justify-center shrink-0 border border-amber-300/40">
+              <FlaskConical className="w-5 h-5 text-amber-600" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                <span>{t('adminStripeSimulationTitle')}</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full border border-amber-200">
+                  Admin-Only
+                </span>
+              </h3>
+              <p className="text-xs text-gray-600 mt-0.5">
+                {t('adminStripeSimulationDesc')}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <form onSubmit={handleRunSimulation} className="p-6 space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {/* 1. Ziel-Therapeut auswählen */}
+            <div>
+              <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">
+                {t('adminStripeSimSelectTherapist')}
+              </label>
+              <select
+                id="select-sim-therapist"
+                value={simTherapistId}
+                onChange={(e) => setSimTherapistId(e.target.value)}
+                className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+              >
+                {therapistsList.map((th) => (
+                  <option key={th.id} value={th.id}>
+                    {th.vorname} {th.nachname} ({th.email || th.id})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* 2. Aktionstyp auswählen */}
+            <div>
+              <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">
+                {t('adminStripeSimActionType')}
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  id="btn-sim-type-reload"
+                  onClick={() => setSimActionType('manual_reload')}
+                  className={`py-2 px-3 text-xs font-bold rounded-lg border transition-all cursor-pointer text-center ${
+                    simActionType === 'manual_reload'
+                      ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
+                      : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                  }`}
+                >
+                  {t('adminStripeSimTopUp')}
+                </button>
+                <button
+                  type="button"
+                  id="btn-sim-type-upgrade"
+                  onClick={() => setSimActionType('package_purchase')}
+                  className={`py-2 px-3 text-xs font-bold rounded-lg border transition-all cursor-pointer text-center ${
+                    simActionType === 'package_purchase'
+                      ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
+                      : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                  }`}
+                >
+                  {t('adminStripeSimUpgrade')}
+                </button>
+              </div>
+            </div>
+
+            {/* 3. Betrag oder Zieltarif */}
+            <div>
+              {simActionType === 'manual_reload' ? (
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">
+                    {t('adminStripeSimAmount')}
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="input-sim-amount"
+                      type="number"
+                      min="1"
+                      step="5"
+                      value={simAmount}
+                      onChange={(e) => setSimAmount(Math.max(1, Number(e.target.value)))}
+                      className="w-full px-3.5 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm text-gray-900 font-mono font-bold focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                    />
+                    <span className="text-sm font-bold text-gray-600">€</span>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">
+                    {t('adminStripeSimTargetPlan')}
+                  </label>
+                  <select
+                    id="select-sim-plan"
+                    value={simTargetPlanId}
+                    onChange={(e) => setSimTargetPlanId(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                  >
+                    {plansList.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} ({p.price > 0 ? `${p.price.toFixed(2)} €/Monat` : 'Kostenlos'})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pt-4 border-t border-gray-100">
+            <div className="flex items-center gap-2 text-xs text-amber-800 bg-amber-50/70 border border-amber-200/60 px-3.5 py-2 rounded-lg max-w-xl">
+              <Info className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>{t('adminStripeSimNotice')}</span>
+            </div>
+
+            <button
+              id="btn-run-simulation"
+              type="submit"
+              disabled={simLoading}
+              className="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer shrink-0"
+            >
+              {simLoading ? (
+                <RefreshCw className="w-4 h-4 animate-spin" />
+              ) : (
+                <Sparkles className="w-4 h-4" />
+              )}
+              <span>{t('adminStripeSimulateBtn')}</span>
+            </button>
+          </div>
+
+          {/* Result Box */}
+          {simResult && (
+            <div
+              className={`p-4 rounded-xl text-sm border flex items-start gap-3 animate-fadeIn ${
+                simResult.success
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                  : 'bg-red-50 border-red-200 text-red-800'
+              }`}
+            >
+              {simResult.success ? (
+                <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+              ) : (
+                <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+              )}
+              <div>
+                <p className="font-semibold">
+                  {simResult.success ? t('adminStripeSimSuccess') : 'Simulation fehlgeschlagen'}
+                </p>
+                <p className="text-xs mt-0.5 opacity-90">{simResult.message || simResult.error}</p>
+              </div>
+            </div>
+          )}
+        </form>
       </div>
 
       {/* Transaction History Table */}

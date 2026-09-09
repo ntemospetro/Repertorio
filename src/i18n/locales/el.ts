@@ -2241,5 +2241,17 @@ export const el = {
   paymentMethodModalTitle: "Μέθοδος πληρωμής & τραπεζικά στοιχεία",
   paymentCardExpiryPlaceholder: "ΜΜ/ΕΕ",
   paymentCardCvcPlaceholder: "CVC",
-  paymentInstantActivation: "Άμεση ενεργοποίηση μετά την επιτυχή έγκριση."
+  paymentInstantActivation: "Άμεση ενεργοποίηση μετά την επιτυχή έγκριση.",
+  paymentGatewayNotLiveMsg: "Η λειτουργία ηλεκτρονικής πληρωμής δεν είναι διαθέσιμη αυτή τη στιγμή ή βρίσκεται σε κατάσταση συντήρησης. Δεν έχει χρεωθεί κανένα ποσό. Παρακαλούμε επικοινωνήστε με τη διαχείριση του ιατρείου.",
+  adminStripeSimulationTitle: "Κονσόλα δοκιμών διαχειριστή: Προσομοιωτής συναλλαγών",
+  adminStripeSimulationDesc: "Αποκλειστικά για διαχειριστές: Προσομοιώστε με ασφάλεια ανανεώσεις υπολοίπου ή αλλαγές πακέτων για θεραπευτές, χωρίς να δίνετε πρόσβαση σε δοκιμαστικές λειτουργίες σε πελάτες.",
+  adminStripeSimSelectTherapist: "Στοχευμένος θεραπευτής",
+  adminStripeSimActionType: "Τύπος ενέργειας",
+  adminStripeSimTopUp: "Ανανέωση υπολοίπου (Δοκιμή)",
+  adminStripeSimUpgrade: "Ανάθεση αναβάθμισης πακέτου (Δοκιμή)",
+  adminStripeSimAmount: "Ποσό (€)",
+  adminStripeSimTargetPlan: "Στοχευμένο πακέτο",
+  adminStripeSimulateBtn: "Προσομοίωση δοκιμαστικής συναλλαγής τώρα",
+  adminStripeSimSuccess: "Η δοκιμαστική συναλλαγή εκτελέστηκε με επιτυχία και καταγράφηκε.",
+  adminStripeSimNotice: "Σημείωση: Οι απλοί χρήστες δεν μπορούν να πραγματοποιήσουν συναλλαγές σε δοκιμαστική λειτουργία. Όλες οι δοκιμές περιορίζονται σε αυτήν την κονσόλα διαχειριστή."
 };
