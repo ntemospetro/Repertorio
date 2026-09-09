@@ -1894,6 +1894,588 @@ if ($route === 'email/send' || $route === 'email/test') {
 }
 
 // =========================================================================
+// STRIPE & BILLING HELPERS
+// =========================================================================
+function maskStripeKey($key) {
+    if (empty($key)) return '';
+    if (strlen($key) <= 8) return '••••••••';
+    return substr($key, 0, 7) . '••••••••' . substr($key, -4);
+}
+
+function getStoredStripeConfig() {
+    $file = getDataFilePath('stripe_config.json');
+    if (file_exists($file)) {
+        $raw = @file_get_contents($file);
+        $parsed = @json_decode($raw, true);
+        if (is_array($parsed)) {
+            return array_merge([
+                'mode' => 'test',
+                'publishableKey' => '',
+                'secretKey' => '',
+                'webhookSecret' => '',
+                'updatedAt' => date('c')
+            ], $parsed);
+        }
+    }
+    return [
+        'mode' => 'test',
+        'publishableKey' => '',
+        'secretKey' => '',
+        'webhookSecret' => '',
+        'updatedAt' => date('c')
+    ];
+}
+
+function saveStoredStripeConfig($updates) {
+    $file = getDataFilePath('stripe_config.json');
+    $current = getStoredStripeConfig();
+    $updated = array_merge($current, $updates);
+    $updated['updatedAt'] = date('c');
+    $json = json_encode($updated, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    if ($json) {
+        @file_put_contents($file, $json, LOCK_EX);
+    }
+    return $updated;
+}
+
+function getStoredBillingPayments() {
+    $file = getDataFilePath('billing_payments.json');
+    if (file_exists($file)) {
+        $raw = @file_get_contents($file);
+        $parsed = @json_decode($raw, true);
+        if (is_array($parsed)) {
+            return $parsed;
+        }
+    }
+    return [
+        [
+            'id' => 'pay-seed-1',
+            'therapistId' => 'th-101',
+            'therapistName' => 'Katharina Lindemann',
+            'therapistEmail' => 'k.lindemann@naturheilpraxis-berlin.de',
+            'amountEur' => 50.0,
+            'type' => 'initial_deposit',
+            'status' => 'succeeded',
+            'stripeSessionId' => 'cs_test_initial_th101',
+            'createdAt' => '2026-09-01T10:00:00Z',
+            'month' => '2026-09',
+            'note' => 'Initiales Token-Guthaben Praxis-Paket'
+        ],
+        [
+            'id' => 'pay-seed-2',
+            'therapistId' => 'th-102',
+            'therapistName' => 'Dr. med. Markus Vogel',
+            'therapistEmail' => 'praxis@dr-vogel-muenchen.de',
+            'amountEur' => 20.0,
+            'type' => 'initial_deposit',
+            'status' => 'succeeded',
+            'stripeSessionId' => 'cs_test_initial_th102',
+            'createdAt' => '2026-08-15T14:30:00Z',
+            'month' => '2026-08',
+            'note' => 'Startguthaben-Einzahlung'
+        ],
+        [
+            'id' => 'pay-seed-3',
+            'therapistId' => 'th-103',
+            'therapistName' => 'Elena Rostova',
+            'therapistEmail' => 'elena@homoeopathie-wien.at',
+            'amountEur' => 100.0,
+            'type' => 'package_purchase',
+            'status' => 'succeeded',
+            'stripeSessionId' => 'cs_test_initial_th103',
+            'createdAt' => '2026-09-02T08:15:00Z',
+            'month' => '2026-09',
+            'note' => 'Jahreskontingent Aufladung'
+        ]
+    ];
+}
+
+function saveStoredBillingPayments($payments) {
+    $file = getDataFilePath('billing_payments.json');
+    $json = json_encode($payments, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    if ($json) {
+        @file_put_contents($file, $json, LOCK_EX);
+    }
+}
+
+function getStoredTherapistBalances() {
+    $file = getDataFilePath('therapist_balances.json');
+    if (file_exists($file)) {
+        $raw = @file_get_contents($file);
+        $parsed = @json_decode($raw, true);
+        if (is_array($parsed)) {
+            $map = [];
+            foreach ($parsed as $item) {
+                if (isset($item['therapistId'])) {
+                    $map[$item['therapistId']] = $item;
+                }
+            }
+            if (!empty($map)) return $map;
+        }
+    }
+    return [
+        'th-101' => [
+            'therapistId' => 'th-101',
+            'balanceEur' => 47.85,
+            'totalDepositedEur' => 50.00,
+            'lowBalanceThreshold' => 5.00,
+            'autoReloadEnabled' => false,
+            'autoReloadAmount' => 20.00,
+            'lastDepositAt' => '2026-09-01T10:00:00Z',
+            'updatedAt' => date('c')
+        ],
+        'th-102' => [
+            'therapistId' => 'th-102',
+            'balanceEur' => 18.20,
+            'totalDepositedEur' => 20.00,
+            'lowBalanceThreshold' => 5.00,
+            'autoReloadEnabled' => true,
+            'autoReloadAmount' => 20.00,
+            'lastDepositAt' => '2026-08-15T14:30:00Z',
+            'updatedAt' => date('c')
+        ],
+        'th-103' => [
+            'therapistId' => 'th-103',
+            'balanceEur' => 98.40,
+            'totalDepositedEur' => 100.00,
+            'lowBalanceThreshold' => 10.00,
+            'autoReloadEnabled' => true,
+            'autoReloadAmount' => 50.00,
+            'lastDepositAt' => '2026-09-02T08:15:00Z',
+            'updatedAt' => date('c')
+        ]
+    ];
+}
+
+function saveStoredTherapistBalances($map) {
+    $file = getDataFilePath('therapist_balances.json');
+    $arr = array_values($map);
+    $json = json_encode($arr, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    if ($json) {
+        @file_put_contents($file, $json, LOCK_EX);
+    }
+}
+
+function creditDepositPhp($params) {
+    $therapistId = $params['therapistId'] ?? 'th-101';
+    $amountEur = max(0.0, (float)($params['amountEur'] ?? 0));
+    $type = $params['type'] ?? 'manual_reload';
+    $stripeSessionId = $params['stripeSessionId'] ?? null;
+    $stripePaymentIntentId = $params['stripePaymentIntentId'] ?? null;
+    $note = $params['note'] ?? ("Guthaben-Aufladung: +" . number_format($amountEur, 2, '.', '') . " €");
+
+    $balances = getStoredTherapistBalances();
+    if (!isset($balances[$therapistId])) {
+        $balances[$therapistId] = [
+            'therapistId' => $therapistId,
+            'balanceEur' => 20.00,
+            'totalDepositedEur' => 20.00,
+            'lowBalanceThreshold' => 5.00,
+            'autoReloadEnabled' => false,
+            'autoReloadAmount' => 20.00,
+            'lastDepositAt' => date('c'),
+            'updatedAt' => date('c')
+        ];
+    }
+
+    $balances[$therapistId]['balanceEur'] = round($balances[$therapistId]['balanceEur'] + $amountEur, 2);
+    $balances[$therapistId]['totalDepositedEur'] = round($balances[$therapistId]['totalDepositedEur'] + $amountEur, 2);
+    $balances[$therapistId]['lastDepositAt'] = date('c');
+    $balances[$therapistId]['updatedAt'] = date('c');
+    saveStoredTherapistBalances($balances);
+
+    // Record payment log
+    $payments = getStoredBillingPayments();
+    $newPayment = [
+        'id' => 'pay-' . round(microtime(true) * 1000) . '-' . substr(md5(uniqid()), 0, 5),
+        'therapistId' => $therapistId,
+        'therapistName' => $params['therapistName'] ?? $therapistId,
+        'therapistEmail' => $params['therapistEmail'] ?? '',
+        'amountEur' => $amountEur,
+        'type' => $type,
+        'status' => 'succeeded',
+        'stripeSessionId' => $stripeSessionId,
+        'stripePaymentIntentId' => $stripePaymentIntentId,
+        'createdAt' => date('c'),
+        'month' => date('Y-m'),
+        'note' => $note
+    ];
+    array_unshift($payments, $newPayment);
+    saveStoredBillingPayments(array_slice($payments, 0, 100));
+
+    return $balances[$therapistId];
+}
+
+// =========================================================================
+// ROUTE 16: STRIPE CONFIGURATION (/api/admin/stripe/config)
+// =========================================================================
+if ($route === 'admin/stripe/config') {
+    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    $host = $_SERVER['HTTP_HOST'] ?? 'homeopilot360.com';
+    $webhookUrl = "{$protocol}://{$host}/api/billing/webhook";
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $updates = [];
+        if (!empty($body['mode'])) $updates['mode'] = $body['mode'];
+        if (isset($body['publishableKey'])) $updates['publishableKey'] = trim($body['publishableKey']);
+        if (!empty($body['secretKey']) && strpos($body['secretKey'], '••••') === false) {
+            $updates['secretKey'] = trim($body['secretKey']);
+        }
+        if (!empty($body['webhookSecret']) && strpos($body['webhookSecret'], '••••') === false) {
+            $updates['webhookSecret'] = trim($body['webhookSecret']);
+        }
+        $saved = saveStoredStripeConfig($updates);
+
+        echo json_encode([
+            'success' => true,
+            'mode' => $saved['mode'] ?? 'test',
+            'publishableKey' => $saved['publishableKey'] ?? '',
+            'secretKeyMasked' => maskStripeKey($saved['secretKey'] ?? ''),
+            'secretKeyConfigured' => !empty($saved['secretKey']),
+            'webhookSecretMasked' => maskStripeKey($saved['webhookSecret'] ?? ''),
+            'webhookSecretConfigured' => !empty($saved['webhookSecret']),
+            'isConfigured' => (!empty($saved['publishableKey']) && !empty($saved['secretKey'])),
+            'webhookUrl' => $webhookUrl,
+            'updatedAt' => $saved['updatedAt'] ?? date('c')
+        ]);
+        exit;
+    }
+
+    $cfg = getStoredStripeConfig();
+    echo json_encode([
+        'mode' => $cfg['mode'] ?? 'test',
+        'publishableKey' => $cfg['publishableKey'] ?? '',
+        'secretKeyMasked' => maskStripeKey($cfg['secretKey'] ?? ''),
+        'secretKeyConfigured' => !empty($cfg['secretKey']),
+        'webhookSecretMasked' => maskStripeKey($cfg['webhookSecret'] ?? ''),
+        'webhookSecretConfigured' => !empty($cfg['webhookSecret']),
+        'isConfigured' => (!empty($cfg['publishableKey']) && !empty($cfg['secretKey'])),
+        'webhookUrl' => $webhookUrl,
+        'updatedAt' => $cfg['updatedAt'] ?? date('c')
+    ]);
+    exit;
+}
+
+// =========================================================================
+// ROUTE 17: STRIPE TEST CONNECTION (/api/admin/stripe/test)
+// =========================================================================
+if ($route === 'admin/stripe/test') {
+    $cfg = getStoredStripeConfig();
+    $secretKey = $cfg['secretKey'] ?? '';
+    if (empty($secretKey)) {
+        http_response_code(400);
+        echo json_encode([
+            'success' => false,
+            'error' => 'Kein Stripe Secret Key (sk_...) hinterlegt. Bitte tragen Sie diesen zuerst ein.'
+        ]);
+        exit;
+    }
+
+    $ch = curl_init('https://api.stripe.com/v1/balance');
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Authorization: Bearer ' . $secretKey,
+        'User-Agent: HomeoPilot360/1.0'
+    ]);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlErr = curl_error($ch);
+    curl_close($ch);
+
+    if ($httpCode === 200 && !empty($response)) {
+        $balData = @json_decode($response, true);
+        echo json_encode([
+            'success' => true,
+            'message' => 'Verbindung zu Stripe erfolgreich hergestellt! API-Schlüssel ist aktiv.',
+            'livemode' => $balData['livemode'] ?? false,
+            'currency' => strtoupper($balData['available'][0]['currency'] ?? 'EUR')
+        ]);
+        exit;
+    }
+
+    $errJson = @json_decode($response, true);
+    $msg = $errJson['error']['message'] ?? (!empty($curlErr) ? $curlErr : 'Verbindung zu Stripe fehlgeschlagen.');
+    http_response_code(400);
+    echo json_encode(['success' => false, 'error' => $msg]);
+    exit;
+}
+
+// =========================================================================
+// ROUTE 18: BILLING PAYMENTS LOG (/api/admin/billing/payments)
+// =========================================================================
+if ($route === 'admin/billing/payments') {
+    $therapistId = $_GET['therapistId'] ?? null;
+    $payments = getStoredBillingPayments();
+    if (!empty($therapistId) && $therapistId !== 'all') {
+        $payments = array_values(array_filter($payments, function($p) use ($therapistId) {
+            return isset($p['therapistId']) && $p['therapistId'] === $therapistId;
+        }));
+    }
+    echo json_encode(['payments' => $payments]);
+    exit;
+}
+
+// =========================================================================
+// ROUTE 19: CREATE CHECKOUT SESSION (/api/billing/create-checkout-session)
+// =========================================================================
+if ($route === 'billing/create-checkout-session') {
+    $therapistId = $body['therapistId'] ?? 'th-101';
+    $therapistName = $body['therapistName'] ?? 'Therapeut';
+    $therapistEmail = $body['therapistEmail'] ?? '';
+    $amountEur = max(1.0, (float)($body['amountEur'] ?? 20));
+    $type = $body['type'] ?? 'manual_reload';
+
+    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    $host = $_SERVER['HTTP_HOST'] ?? 'homeopilot360.com';
+    $origin = "{$protocol}://{$host}";
+    $successUrl = $body['successUrl'] ?? "{$origin}/?payment=success&session_id={CHECKOUT_SESSION_ID}&therapistId={$therapistId}";
+    $cancelUrl = $body['cancelUrl'] ?? "{$origin}/?payment=cancelled&therapistId={$therapistId}";
+
+    $cfg = getStoredStripeConfig();
+    $secretKey = $cfg['secretKey'] ?? '';
+
+    // If Stripe Live or Test Key is set, create real checkout session via Stripe API
+    if (!empty($secretKey) && (strpos($secretKey, 'sk_') === 0 || strpos($secretKey, 'rk_') === 0)) {
+        $postParams = [
+            'payment_method_types[0]' => 'card',
+            'line_items[0][price_data][currency]' => 'eur',
+            'line_items[0][price_data][product_data][name]' => "HomöoPraxis Token-Guthaben (+" . number_format($amountEur, 2, '.', '') . " €)",
+            'line_items[0][price_data][product_data][description]' => "Token-Aufladung für: " . ($therapistName ?: $therapistId),
+            'line_items[0][price_data][unit_amount]' => (int)round($amountEur * 100),
+            'line_items[0][quantity]' => 1,
+            'mode' => 'payment',
+            'client_reference_id' => $therapistId,
+            'metadata[therapistId]' => $therapistId,
+            'metadata[therapistName]' => $therapistName,
+            'metadata[amountEur]' => (string)$amountEur,
+            'metadata[type]' => $type,
+            'success_url' => $successUrl,
+            'cancel_url' => $cancelUrl
+        ];
+        if (!empty($therapistEmail)) {
+            $postParams['customer_email'] = $therapistEmail;
+        }
+
+        $ch = curl_init('https://api.stripe.com/v1/checkout/sessions');
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postParams));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Authorization: Bearer ' . $secretKey,
+            'Content-Type: application/x-www-form-urlencoded'
+        ]);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 20);
+        $stripeRaw = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        $stripeData = @json_decode($stripeRaw, true);
+        if ($httpCode === 200 && !empty($stripeData['id']) && !empty($stripeData['url'])) {
+            echo json_encode([
+                'sessionId' => $stripeData['id'],
+                'url' => $stripeData['url'],
+                'mode' => 'stripe'
+            ]);
+            exit;
+        }
+    }
+
+    // Safe Sandbox Fallback
+    $mockSessionId = 'cs_sandbox_' . round(microtime(true) * 1000);
+    creditDepositPhp([
+        'therapistId' => $therapistId,
+        'therapistName' => $therapistName,
+        'therapistEmail' => $therapistEmail,
+        'amountEur' => $amountEur,
+        'type' => $type,
+        'stripeSessionId' => $mockSessionId,
+        'note' => 'Sandbox-Testbuchung: +' . number_format($amountEur, 2, '.', '') . ' €'
+    ]);
+
+    $returnUrl = $successUrl;
+    $delim = (strpos($returnUrl, '?') !== false) ? '&' : '?';
+    $returnUrl .= "{$delim}session_id={$mockSessionId}&amount={$amountEur}&sandbox=true";
+
+    echo json_encode([
+        'sessionId' => $mockSessionId,
+        'url' => $returnUrl,
+        'mode' => 'sandbox',
+        'amountEur' => $amountEur,
+        'message' => 'Sandbox-Modus: Guthaben wurde sofort gutgeschrieben (keine Live-Kreditkartendaten hinterlegt).'
+    ]);
+    exit;
+}
+
+// =========================================================================
+// ROUTE 20: STRIPE WEBHOOK (/api/billing/webhook)
+// =========================================================================
+if ($route === 'billing/webhook') {
+    $event = $body;
+    if ($event && isset($event['type']) && $event['type'] === 'checkout.session.completed') {
+        $session = $event['data']['object'] ?? [];
+        $therapistId = $session['metadata']['therapistId'] ?? ($session['client_reference_id'] ?? null);
+        $amountEur = isset($session['metadata']['amountEur'])
+            ? (float)$session['metadata']['amountEur']
+            : (((float)($session['amount_total'] ?? 0)) / 100);
+        $type = $session['metadata']['type'] ?? 'manual_reload';
+
+        if ($therapistId && $amountEur > 0) {
+            creditDepositPhp([
+                'therapistId' => $therapistId,
+                'therapistName' => $session['metadata']['therapistName'] ?? 'Therapeut',
+                'therapistEmail' => $session['customer_details']['email'] ?? ($session['customer_email'] ?? ''),
+                'amountEur' => $amountEur,
+                'type' => $type,
+                'stripeSessionId' => $session['id'] ?? '',
+                'stripePaymentIntentId' => $session['payment_intent'] ?? null,
+                'note' => 'Stripe Webhook: checkout.session.completed'
+            ]);
+        }
+    }
+    echo json_encode(['received' => true]);
+    exit;
+}
+
+// =========================================================================
+// ROUTE 21: THERAPIST TOP-UP DIRECT (/api/therapist/billing/top-up)
+// =========================================================================
+if ($route === 'therapist/billing/top-up') {
+    $therapistId = $body['therapistId'] ?? 'th-101';
+    $amountEur = max(1.0, (float)($body['amountEur'] ?? 20));
+    $type = $body['type'] ?? 'manual_reload';
+    $note = $body['note'] ?? ("Guthaben-Aufladung (+" . number_format($amountEur, 2, '.', '') . " €)");
+
+    $updated = creditDepositPhp([
+        'therapistId' => $therapistId,
+        'therapistName' => $body['therapistName'] ?? 'Therapeut',
+        'therapistEmail' => $body['therapistEmail'] ?? '',
+        'amountEur' => $amountEur,
+        'type' => $type,
+        'note' => $note
+    ]);
+
+    echo json_encode(['success' => true, 'balance' => $updated]);
+    exit;
+}
+
+// =========================================================================
+// ROUTE 22: THERAPIST BILLING SETTINGS (/api/therapist/billing/settings)
+// =========================================================================
+if ($route === 'therapist/billing/settings') {
+    $therapistId = $body['therapistId'] ?? 'th-101';
+    $balances = getStoredTherapistBalances();
+    if (!isset($balances[$therapistId])) {
+        $balances[$therapistId] = [
+            'therapistId' => $therapistId,
+            'balanceEur' => 20.00,
+            'totalDepositedEur' => 20.00,
+            'lowBalanceThreshold' => 5.00,
+            'autoReloadEnabled' => false,
+            'autoReloadAmount' => 20.00,
+            'lastDepositAt' => date('c'),
+            'updatedAt' => date('c')
+        ];
+    }
+    if (isset($body['lowBalanceThreshold'])) {
+        $balances[$therapistId]['lowBalanceThreshold'] = max(0.0, (float)$body['lowBalanceThreshold']);
+    }
+    if (isset($body['autoReloadEnabled'])) {
+        $balances[$therapistId]['autoReloadEnabled'] = (bool)$body['autoReloadEnabled'];
+    }
+    if (isset($body['autoReloadAmount'])) {
+        $balances[$therapistId]['autoReloadAmount'] = max(5.0, (float)$body['autoReloadAmount']);
+    }
+    $balances[$therapistId]['updatedAt'] = date('c');
+    saveStoredTherapistBalances($balances);
+
+    echo json_encode(['success' => true, 'balance' => $balances[$therapistId]]);
+    exit;
+}
+
+// =========================================================================
+// ROUTE 23: ADMIN BALANCE ADJUST (/api/admin/billing/balance/adjust)
+// =========================================================================
+if ($route === 'admin/billing/balance/adjust') {
+    $therapistId = $body['therapistId'] ?? 'th-101';
+    $amountEur = (float)($body['amountEur'] ?? 0);
+    $note = $body['note'] ?? ('Admin-Anpassung: ' . ($amountEur >= 0 ? '+' : '') . number_format($amountEur, 2, '.', '') . ' €');
+
+    $balances = getStoredTherapistBalances();
+    if (!isset($balances[$therapistId])) {
+        $balances[$therapistId] = [
+            'therapistId' => $therapistId,
+            'balanceEur' => 20.00,
+            'totalDepositedEur' => 20.00,
+            'lowBalanceThreshold' => 5.00,
+            'autoReloadEnabled' => false,
+            'autoReloadAmount' => 20.00,
+            'lastDepositAt' => date('c'),
+            'updatedAt' => date('c')
+        ];
+    }
+
+    $balances[$therapistId]['balanceEur'] = round(max(0.0, $balances[$therapistId]['balanceEur'] + $amountEur), 2);
+    if ($amountEur > 0) {
+        $balances[$therapistId]['totalDepositedEur'] = round($balances[$therapistId]['totalDepositedEur'] + $amountEur, 2);
+        $balances[$therapistId]['lastDepositAt'] = date('c');
+    }
+    $balances[$therapistId]['updatedAt'] = date('c');
+    saveStoredTherapistBalances($balances);
+
+    // Record adjustment payment log
+    $payments = getStoredBillingPayments();
+    array_unshift($payments, [
+        'id' => 'pay-' . round(microtime(true) * 1000) . '-' . substr(md5(uniqid()), 0, 5),
+        'therapistId' => $therapistId,
+        'therapistName' => $body['therapistName'] ?? $therapistId,
+        'therapistEmail' => $body['therapistEmail'] ?? '',
+        'amountEur' => $amountEur,
+        'type' => 'manual_reload',
+        'status' => 'succeeded',
+        'createdAt' => date('c'),
+        'month' => date('Y-m'),
+        'note' => $note
+    ]);
+    saveStoredBillingPayments(array_slice($payments, 0, 100));
+
+    echo json_encode(['success' => true, 'balance' => $balances[$therapistId]['balanceEur']]);
+    exit;
+}
+
+// =========================================================================
+// ROUTE 24: THERAPIST BILLING STATUS (/api/therapist/billing/:id)
+// =========================================================================
+if (preg_match('#^therapist/billing/([^/]+)$#', $route, $matches)) {
+    $thId = $matches[1];
+    $balances = getStoredTherapistBalances();
+    if (!isset($balances[$thId])) {
+        $balances[$thId] = [
+            'therapistId' => $thId,
+            'balanceEur' => 20.00,
+            'totalDepositedEur' => 20.00,
+            'lowBalanceThreshold' => 5.00,
+            'autoReloadEnabled' => false,
+            'autoReloadAmount' => 20.00,
+            'lastDepositAt' => date('c'),
+            'updatedAt' => date('c')
+        ];
+        saveStoredTherapistBalances($balances);
+    }
+    $bal = $balances[$thId];
+    $bal['isLowBalance'] = ($bal['balanceEur'] <= $bal['lowBalanceThreshold']);
+
+    $allPayments = getStoredBillingPayments();
+    $thPayments = array_values(array_filter($allPayments, function($p) use ($thId) {
+        return isset($p['therapistId']) && $p['therapistId'] === $thId;
+    }));
+    $bal['recentPayments'] = array_slice($thPayments, 0, 10);
+
+    echo json_encode($bal);
+    exit;
+}
+
+// =========================================================================
 // DEFAULT: Route nicht gefunden
 // =========================================================================
 http_response_code(404);
