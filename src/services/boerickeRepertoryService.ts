@@ -1,5 +1,6 @@
 import { getLocalizedRemedies, LocalizedRemedy } from '../data/materiaMedicaData';
 import { LanguageCode } from '../types';
+import { matchesAuthorFilter, ClassicalAuthorFilterKey } from '../data/classicalAuthorsMap';
 
 export type SymptomWeightGrade = 1 | 2 | 3 | 4;
 
@@ -535,7 +536,8 @@ function tokenMatches(token: string, targetNorm: string, targetWords: string[]):
 export function performBoerickeRepertorisation(
   symptoms: RepertoriumSymptomInput[],
   language: LanguageCode,
-  strictIntersectionOnly: boolean = false
+  strictIntersectionOnly: boolean = false,
+  authorFilter: ClassicalAuthorFilterKey = 'all'
 ): BoerickeRepertorisationResult[] {
   const allRemedies = getLocalizedRemedies(language);
   const activeSymptoms = symptoms.filter(s => s.text && s.text.trim().length > 0);
@@ -547,6 +549,10 @@ export function performBoerickeRepertorisation(
   const results: BoerickeRepertorisationResult[] = [];
 
   for (const remedy of allRemedies) {
+    if (authorFilter !== 'all' && !matchesAuthorFilter(remedy.id, authorFilter)) {
+      continue;
+    }
+
     const hits: RemedySymptomHit[] = [];
     let totalScore = 0;
 
@@ -600,7 +606,7 @@ export function performBoerickeRepertorisation(
             ) {
               if (grade > matchedGrade) {
                 matchedGrade = grade;
-                matchedExcerpt = `${rubric.rubricName} (Boericke Grad ${grade})`;
+                matchedExcerpt = `${rubric.rubricName} (Grad ${grade})`;
               }
             }
           }
@@ -645,7 +651,7 @@ export function performBoerickeRepertorisation(
           matchedGrade = calculatedGrade;
           matchedExcerpt = matchedSnippet 
             ? `Materia Medica: "${matchedSnippet}"` 
-            : `Boericke Leitsymptom für "${symptom.text}"`;
+            : `Leitsymptom für "${symptom.text}"`;
         }
       }
 

@@ -59,11 +59,6 @@ export const RepertoriumView: React.FC<RepertoriumViewProps> = ({
   // All remedies for monograph navigation
   const allRemedies = useMemo(() => getLocalizedRemedies(language), [language]);
 
-  // Compute live repertorisation using Boericke & Kent engine
-  const rawResults = useMemo(() => {
-    return performBoerickeRepertorisation(symptoms, language, strictOnly);
-  }, [symptoms, language, strictOnly]);
-
   // Authors filter definition
   const authors = [
     { key: 'all' as ClassicalAuthorFilterKey, label: t('filterAuthorAll') },
@@ -73,11 +68,10 @@ export const RepertoriumView: React.FC<RepertoriumViewProps> = ({
     { key: 'boericke' as ClassicalAuthorFilterKey, label: t('filterAuthorBoericke') }
   ];
 
-  // Filter results by selected author
+  // Compute live repertorisation using Classical Repertory Engine (Hahnemann, Kent, Hering, Boericke)
   const results = useMemo(() => {
-    if (selectedAuthor === 'all') return rawResults;
-    return rawResults.filter(res => matchesAuthorFilter(res.remedy.id, selectedAuthor));
-  }, [rawResults, selectedAuthor]);
+    return performBoerickeRepertorisation(symptoms, language, strictOnly, selectedAuthor);
+  }, [symptoms, language, strictOnly, selectedAuthor]);
 
   // Individual symptom coverage counts
   const symptomHitCounts = useMemo(() => {
@@ -87,11 +81,11 @@ export const RepertoriumView: React.FC<RepertoriumViewProps> = ({
         counts[sym.id] = 0;
         continue;
       }
-      const singleRes = performBoerickeRepertorisation([sym], language, false);
+      const singleRes = performBoerickeRepertorisation([sym], language, false, selectedAuthor);
       counts[sym.id] = singleRes.length;
     }
     return counts;
-  }, [symptoms, language]);
+  }, [symptoms, language, selectedAuthor]);
 
   const handleAddSymptom = () => {
     const nextId = `sym-${Date.now()}`;
@@ -128,7 +122,7 @@ export const RepertoriumView: React.FC<RepertoriumViewProps> = ({
   return (
     <div id="repertorium-view-root" className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 max-w-7xl mx-auto w-full">
       {/* Header Banner */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs">
+      <div className="bg-white rounded-2xl border border-slate-200/80 p-5 md:p-6 shadow-xs">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-start gap-4">
             <div className="w-12 h-12 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center shrink-0 shadow-2xs">
@@ -140,23 +134,25 @@ export const RepertoriumView: React.FC<RepertoriumViewProps> = ({
                   {t('repertoriumTitle')}
                 </h1>
                 <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-50 text-teal-800 border border-teal-200">
-                  Boericke & Kent
+                  {selectedAuthor === 'all' 
+                    ? 'Hahnemann • Kent • Hering • Boericke' 
+                    : authors.find(a => a.key === selectedAuthor)?.label}
                 </span>
               </div>
-              <p className="text-sm text-slate-600 mt-1">
+              <p className="text-xs md:text-sm text-slate-600 mt-1">
                 {t('repertoriumSubtitle')}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
             <button
               type="button"
               id="repertorium-reset-btn"
               onClick={handleReset}
-              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-200/80 transition-colors cursor-pointer"
+              className="flex-1 sm:flex-none justify-center inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs md:text-sm font-semibold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-200/80 transition-colors cursor-pointer shadow-2xs"
             >
-              <RotateCcw className="w-3.5 h-3.5" />
+              <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
               <span>{t('repertoriumReset')}</span>
             </button>
             {onGoToMateriaMedica && (
@@ -164,13 +160,52 @@ export const RepertoriumView: React.FC<RepertoriumViewProps> = ({
                 type="button"
                 id="repertorium-to-materiamedica-btn"
                 onClick={onGoToMateriaMedica}
-                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold text-teal-800 bg-teal-50 hover:bg-teal-100 border border-teal-200 transition-colors cursor-pointer"
+                className="flex-1 sm:flex-none justify-center inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs md:text-sm font-semibold text-teal-900 bg-teal-50 hover:bg-teal-100 border border-teal-200 transition-colors cursor-pointer shadow-2xs"
               >
-                <BookOpen className="w-3.5 h-3.5" />
+                <BookOpen className="w-3.5 h-3.5 text-teal-700" />
                 <span>{t('tabMateriaMedica')}</span>
               </button>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* Classical Authors Selector Bar (Responsive Grid for Mobile, Tablet & Desktop) */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 p-4 md:p-5 shadow-xs space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <BookOpen className="w-4 h-4 text-teal-700" />
+            <span className="text-xs md:text-sm font-bold text-slate-900">
+              {t('filterAuthorLabel')}
+            </span>
+            <span className="text-xs text-slate-500 hidden sm:inline">
+              — {selectedAuthor === 'all' 
+                ? t('repertoriumScopeAll') 
+                : `${t('repertoriumScopeAuthor')} ${authors.find(a => a.key === selectedAuthor)?.label}`}
+            </span>
+          </div>
+          <span className="text-xs text-slate-500 font-medium sm:hidden">
+            {selectedAuthor === 'all' 
+              ? t('repertoriumScopeAll') 
+              : `${t('repertoriumScopeAuthor')} ${authors.find(a => a.key === selectedAuthor)?.label}`}
+          </span>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 w-full">
+          {authors.map((auth) => (
+            <button
+              key={auth.key}
+              type="button"
+              id={`repertorium-filter-author-${auth.key}`}
+              onClick={() => setSelectedAuthor(auth.key)}
+              className={`py-2 px-2 md:py-2.5 md:px-3 rounded-xl text-xs md:text-sm font-semibold transition-all cursor-pointer text-center truncate shadow-2xs ${
+                selectedAuthor === auth.key
+                  ? 'bg-teal-700 text-white font-bold shadow-xs ring-1 ring-teal-800'
+                  : 'bg-slate-100 hover:bg-slate-200/90 text-slate-700 border border-slate-200/80'
+              }`}
+            >
+              {auth.label}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -238,12 +273,12 @@ export const RepertoriumView: React.FC<RepertoriumViewProps> = ({
                     />
 
                     {/* Weight Grade Buttons (1 to 4 Stars) & Coverage Pill */}
-                    <div className="flex items-center justify-between gap-2 pt-1 flex-wrap">
-                      <div className="flex items-center gap-1">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1.5">
+                      <div className="grid grid-cols-4 gap-1.5 w-full sm:w-auto">
                         <button
                           type="button"
                           onClick={() => handleUpdateSymptom(symptom.id, { weight: 4 })}
-                          className={`px-2 py-0.5 text-[11px] font-semibold rounded cursor-pointer transition-colors ${
+                          className={`py-1.5 px-2 md:py-2 md:px-2.5 text-xs font-semibold rounded-lg cursor-pointer transition-all text-center ${
                             symptom.weight === 4
                               ? 'bg-purple-100 text-purple-950 border border-purple-400 font-bold shadow-2xs'
                               : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
@@ -255,9 +290,9 @@ export const RepertoriumView: React.FC<RepertoriumViewProps> = ({
                         <button
                           type="button"
                           onClick={() => handleUpdateSymptom(symptom.id, { weight: 3 })}
-                          className={`px-2 py-0.5 text-[11px] font-semibold rounded cursor-pointer transition-colors ${
+                          className={`py-1.5 px-2 md:py-2 md:px-2.5 text-xs font-semibold rounded-lg cursor-pointer transition-all text-center ${
                             symptom.weight === 3
-                              ? 'bg-amber-100 text-amber-900 border border-amber-300 font-bold'
+                              ? 'bg-amber-100 text-amber-900 border border-amber-300 font-bold shadow-2xs'
                               : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
                           }`}
                           title={t('repertoriumWeightGrade3')}
@@ -267,9 +302,9 @@ export const RepertoriumView: React.FC<RepertoriumViewProps> = ({
                         <button
                           type="button"
                           onClick={() => handleUpdateSymptom(symptom.id, { weight: 2 })}
-                          className={`px-2 py-0.5 text-[11px] font-semibold rounded cursor-pointer transition-colors ${
+                          className={`py-1.5 px-2 md:py-2 md:px-2.5 text-xs font-semibold rounded-lg cursor-pointer transition-all text-center ${
                             symptom.weight === 2
-                              ? 'bg-teal-100 text-teal-900 border border-teal-300 font-bold'
+                              ? 'bg-teal-100 text-teal-900 border border-teal-300 font-bold shadow-2xs'
                               : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
                           }`}
                           title={t('repertoriumWeightGrade2')}
@@ -279,9 +314,9 @@ export const RepertoriumView: React.FC<RepertoriumViewProps> = ({
                         <button
                           type="button"
                           onClick={() => handleUpdateSymptom(symptom.id, { weight: 1 })}
-                          className={`px-2 py-0.5 text-[11px] font-semibold rounded cursor-pointer transition-colors ${
+                          className={`py-1.5 px-2 md:py-2 md:px-2.5 text-xs font-semibold rounded-lg cursor-pointer transition-all text-center ${
                             symptom.weight === 1
-                              ? 'bg-slate-200 text-slate-800 border border-slate-300 font-bold'
+                              ? 'bg-slate-200 text-slate-900 border border-slate-300 font-bold shadow-2xs'
                               : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
                           }`}
                           title={t('repertoriumWeightGrade1')}
@@ -291,7 +326,7 @@ export const RepertoriumView: React.FC<RepertoriumViewProps> = ({
                       </div>
 
                       {symptom.text.trim().length > 0 && (
-                        <span className="text-[11px] font-medium text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200 shrink-0">
+                        <span className="text-xs font-medium text-slate-600 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shrink-0 text-center sm:text-right">
                           {hitsCount} {t('repertoriumMatchesCount')}
                         </span>
                       )}
@@ -306,7 +341,7 @@ export const RepertoriumView: React.FC<RepertoriumViewProps> = ({
               type="button"
               id="repertorium-add-symptom-btn"
               onClick={handleAddSymptom}
-              className="mt-4 w-full py-2.5 px-4 rounded-xl border-2 border-dashed border-teal-300/80 hover:border-teal-500 bg-teal-50/40 hover:bg-teal-50 text-teal-800 text-xs font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-2xs"
+              className="mt-4 w-full py-3 px-4 rounded-xl border-2 border-dashed border-teal-300 hover:border-teal-500 bg-teal-50/50 hover:bg-teal-50 text-teal-900 text-xs md:text-sm font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-2xs"
             >
               <Plus className="w-4 h-4" />
               <span>{t('repertoriumAddSymptom')}</span>
@@ -334,11 +369,15 @@ export const RepertoriumView: React.FC<RepertoriumViewProps> = ({
             </div>
           </div>
 
-          {/* Clinical Boericke Guidance Card */}
+          {/* Classical Authors Guidance Card */}
           <div className="bg-gradient-to-br from-teal-50/80 to-slate-50 rounded-2xl border border-teal-200/70 p-4 text-xs text-slate-600 space-y-1.5 shadow-2xs">
             <div className="flex items-center gap-2 font-bold text-teal-900">
               <Award className="w-4 h-4 text-teal-700" />
-              <span>{t('repertoriumBoerickeNotice')}</span>
+              <span>
+                {selectedAuthor === 'all' 
+                  ? t('repertoriumBoerickeNotice') 
+                  : `${t('repertoriumScopeAuthor')} ${authors.find(a => a.key === selectedAuthor)?.label}`}
+              </span>
             </div>
             <p className="text-slate-600 leading-relaxed">
               {t('repertoriumBoerickeGuidance')}
@@ -348,8 +387,8 @@ export const RepertoriumView: React.FC<RepertoriumViewProps> = ({
 
         {/* Right Column: Narrowed Results List (7 cols on lg) */}
         <div className="lg:col-span-7 space-y-4">
-          {/* Results Summary Bar & Classical Authors Filter */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs space-y-3">
+          {/* Results Summary Bar */}
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs">
             <div className="flex items-center justify-between gap-4 flex-wrap">
               <div className="flex items-center gap-3 flex-wrap">
                 <div className="text-xs">
@@ -366,30 +405,6 @@ export const RepertoriumView: React.FC<RepertoriumViewProps> = ({
               <div className="text-xs text-slate-500 flex items-center gap-1.5">
                 <SlidersHorizontal className="w-3.5 h-3.5 text-slate-400" />
                 <span>{t('repertoriumSortLabel')}</span>
-              </div>
-            </div>
-
-            {/* Classical Authors Filter */}
-            <div className="pt-2.5 border-t border-slate-100 flex items-center gap-2 flex-wrap">
-              <span className="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
-                <BookOpen className="w-3.5 h-3.5 text-teal-600" />
-                <span>{t('filterAuthorLabel')}:</span>
-              </span>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {authors.map((auth) => (
-                  <button
-                    key={auth.key}
-                    type="button"
-                    onClick={() => setSelectedAuthor(auth.key)}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                      selectedAuthor === auth.key
-                        ? 'bg-teal-700 text-white shadow-2xs ring-1 ring-teal-800'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200/80'
-                    }`}
-                  >
-                    {auth.label}
-                  </button>
-                ))}
               </div>
             </div>
           </div>
@@ -587,21 +602,21 @@ export const RepertoriumView: React.FC<RepertoriumViewProps> = ({
                         )}
                       </div>
 
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex items-center gap-2 w-full sm:w-auto">
                         {onSelectRemedyForCase && (
                           <button
                             type="button"
                             onClick={() => onSelectRemedyForCase(res.remedy.latinName, 'C30')}
-                            className="px-3 py-1.5 rounded-lg text-xs font-semibold text-teal-900 bg-teal-50 hover:bg-teal-100 border border-teal-200 transition-colors cursor-pointer"
+                            className="flex-1 sm:flex-none justify-center px-3.5 py-2 rounded-xl text-xs md:text-sm font-semibold text-teal-900 bg-teal-50 hover:bg-teal-100 border border-teal-200 transition-colors cursor-pointer shadow-2xs"
                           >
-                            In Fall übernehmen
+                            {t('repertoriumApplyToCase')}
                           </button>
                         )}
                         <button
                           type="button"
                           id={`repertorium-open-monograph-${res.remedy.id}`}
                           onClick={() => setSelectedRemedy(res.remedy)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-teal-700 hover:bg-teal-800 transition-colors cursor-pointer shadow-2xs"
+                          className="flex-1 sm:flex-none justify-center inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs md:text-sm font-semibold text-white bg-teal-700 hover:bg-teal-800 transition-colors cursor-pointer shadow-2xs"
                         >
                           <BookOpen className="w-3.5 h-3.5" />
                           <span>{t('repertoriumOpenMonograph')}</span>
