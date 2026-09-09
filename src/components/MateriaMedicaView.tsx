@@ -19,7 +19,6 @@ import {
   HeartHandshake,
   ArrowLeft,
   SlidersHorizontal,
-  ChevronDown,
   ShieldAlert,
   Ban,
   Eye,
@@ -198,7 +197,6 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedAuthor, setSelectedAuthor] = useState<ClassicalAuthorFilterKey>('all');
   const [selectedLetter, setSelectedLetter] = useState<string>('all');
-  const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [selectedRemedyForModal, setSelectedRemedyForModal] = useState<LocalizedRemedy | null>(null);
   const [modalHistory, setModalHistory] = useState<LocalizedRemedy[]>([]);
 
@@ -550,141 +548,104 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = ({
           {/* Search, Filter & Alphabet Toolbar */}
           <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs space-y-4">
             <div className="flex flex-col gap-3">
-              <div className="flex items-center gap-2 w-full">
-                {/* Search Bar */}
-                <div className="relative flex-1">
-                  <Search className="w-4 h-4 md:w-5 md:h-5 text-slate-400 absolute left-3.5 md:left-4 top-1/2 -translate-y-1/2 pointer-events-none transition-all" />
-                  <input
-                    type="text"
-                    id="materia-medica-search-input"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder={t('materiaSearchPlaceholder')}
-                    className="w-full pl-9 sm:pl-10 md:pl-12 pr-8 sm:pr-9 md:pr-11 py-2.5 sm:py-3 md:py-3.5 bg-white border border-slate-300 md:border-slate-300/90 rounded-xl md:rounded-2xl text-sm md:text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/25 focus:border-teal-600 transition-all shadow-2xs md:shadow-xs"
-                  />
-                  {searchQuery && (
-                    <button
-                      type="button"
-                      id="materia-medica-clear-search-btn"
-                      onClick={() => setSearchQuery('')}
-                      className="absolute right-2.5 md:right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 md:p-1.5 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
-                      title={t('clearBtn') || 'Löschen'}
-                    >
-                      <X className="w-3.5 h-3.5 md:w-4.5 md:h-4.5" />
-                    </button>
-                  )}
-                </div>
+              {/* Search Bar Row */}
+              <div className="relative w-full">
+                <Search className="w-4 h-4 md:w-5 md:h-5 text-slate-400 absolute left-3.5 md:left-4 top-1/2 -translate-y-1/2 pointer-events-none transition-all" />
+                <input
+                  type="text"
+                  id="materia-medica-search-input"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder={t('materiaSearchPlaceholder')}
+                  className="w-full pl-9 sm:pl-10 md:pl-12 pr-8 sm:pr-9 md:pr-11 py-2.5 sm:py-3 md:py-3.5 bg-white border border-slate-300 md:border-slate-300/90 rounded-xl md:rounded-2xl text-sm md:text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/25 focus:border-teal-600 transition-all shadow-2xs md:shadow-xs"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    id="materia-medica-clear-search-btn"
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2.5 md:right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 md:p-1.5 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                    title={t('clearBtn') || 'Löschen'}
+                  >
+                    <X className="w-3.5 h-3.5 md:w-4.5 md:h-4.5" />
+                  </button>
+                )}
+              </div>
 
-                {/* Filter Toggle Button on Responsive (< lg) */}
-                <button
-                  id="btn-toggle-materia-filters"
-                  type="button"
-                  onClick={() => setShowMobileFilters(!showMobileFilters)}
-                  className={`lg:hidden flex items-center gap-1.5 md:gap-2 px-3 py-2.5 md:px-4 md:py-3.5 rounded-xl md:rounded-2xl border text-xs md:text-sm font-semibold shrink-0 cursor-pointer transition-all shadow-2xs md:shadow-xs ${
-                    showMobileFilters || selectedAuthor !== 'all' || selectedCategory !== 'all' || selectedLetter !== 'all'
-                      ? 'bg-teal-50 text-teal-800 border-teal-200'
-                      : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border-slate-200'
-                  }`}
-                  aria-expanded={showMobileFilters}
-                  title={showMobileFilters ? t('filterToggleHide') : t('filterToggleShow')}
-                >
-                  <SlidersHorizontal className="w-4 h-4 md:w-4.5 md:h-4.5 text-teal-700 shrink-0" />
-                  <span className="hidden sm:inline">{t('filterToggle')}</span>
-                  {(selectedAuthor !== 'all' || selectedCategory !== 'all' || selectedLetter !== 'all') && (
-                    <span className="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full bg-teal-600 shrink-0" />
-                  )}
-                  <ChevronDown
-                    className={`w-3.5 h-3.5 md:w-4 md:h-4 text-slate-500 shrink-0 transition-transform duration-200 ${
-                      showMobileFilters ? 'rotate-180' : ''
-                    }`}
-                  />
-                </button>
-
-                {/* Author & Category Filters on Desktop */}
-                <div className="hidden lg:flex items-center gap-2.5 shrink-0">
-                  {/* Author Filter */}
-                  <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-xl border border-slate-200/80">
-                    <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider px-2 shrink-0">
+              {/* Filter Grid for Authors and Remedies (Categories) */}
+              <div className="grid grid-cols-1 xl:grid-cols-12 gap-3.5 pt-1">
+                {/* Autoren Grid (5 items) */}
+                <div className="xl:col-span-7 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] md:text-xs font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
+                      <SlidersHorizontal className="w-3.5 h-3.5 text-teal-700" />
                       {t('filterAuthorLabel')}:
                     </span>
+                    {selectedAuthor !== 'all' && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedAuthor('all')}
+                        className="text-[11px] text-teal-700 hover:text-teal-900 font-semibold cursor-pointer"
+                      >
+                        {t('resetFilters')}
+                      </button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
                     {authors.map((auth) => (
                       <button
                         key={auth.key}
                         type="button"
                         onClick={() => setSelectedAuthor(auth.key)}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                        className={`w-full py-2 px-2 md:py-2.5 md:px-2.5 rounded-xl text-xs md:text-sm font-semibold transition-all cursor-pointer text-center truncate shadow-2xs ${
                           selectedAuthor === auth.key
-                            ? 'bg-teal-600 text-white shadow-2xs'
-                            : 'text-slate-600 hover:bg-slate-200/60'
+                            ? 'bg-teal-700 text-white shadow-xs font-bold'
+                            : 'bg-slate-100/90 text-slate-700 hover:bg-slate-200/90 border border-slate-200/70'
                         }`}
+                        title={auth.label}
                       >
-                        {auth.label}
+                        <span className="truncate">{auth.label}</span>
                       </button>
                     ))}
                   </div>
+                </div>
 
-                  {/* Category Filter */}
-                  <div className="flex items-center gap-1">
+                {/* Mittel / Herkunft Grid (4 items) */}
+                <div className="xl:col-span-5 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] md:text-xs font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
+                      <Pill className="w-3.5 h-3.5 text-teal-700" />
+                      {t('filterToggle')}:
+                    </span>
+                    {selectedCategory !== 'all' && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedCategory('all')}
+                        className="text-[11px] text-teal-700 hover:text-teal-900 font-semibold cursor-pointer"
+                      >
+                        {t('resetFilters')}
+                      </button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     {categories.map((cat) => (
                       <button
                         key={cat.key}
                         type="button"
                         onClick={() => setSelectedCategory(cat.key)}
-                        className={`flex items-center justify-center text-center px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                        className={`w-full py-2 px-2.5 md:py-2.5 md:px-3 rounded-xl text-xs md:text-sm font-semibold transition-all cursor-pointer text-center truncate shadow-2xs ${
                           selectedCategory === cat.key
-                            ? 'bg-teal-600 text-white shadow-2xs'
-                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                            ? 'bg-teal-700 text-white shadow-xs font-bold'
+                            : 'bg-slate-100/90 text-slate-700 hover:bg-slate-200/90 border border-slate-200/70'
                         }`}
+                        title={cat.label}
                       >
-                        {cat.label}
+                        <span className="truncate">{cat.label}</span>
                       </button>
                     ))}
                   </div>
                 </div>
               </div>
-
-              {/* Collapsible section on responsive (< lg), always visible on desktop (lg:block) */}
-              <div className={`${showMobileFilters ? 'block' : 'hidden'} lg:block space-y-3`}>
-                {/* Author Filter on Mobile / Tablet */}
-                <div className="lg:hidden pt-2 border-t border-slate-100 space-y-1.5">
-                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
-                    {t('filterAuthorLabel')}:
-                  </span>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-                    {authors.map((auth) => (
-                      <button
-                        key={auth.key}
-                        type="button"
-                        onClick={() => setSelectedAuthor(auth.key)}
-                        className={`flex items-center justify-center text-center px-2.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-                          selectedAuthor === auth.key
-                            ? 'bg-teal-600 text-white shadow-2xs'
-                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                        }`}
-                      >
-                        {auth.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Category Filter on Mobile / Tablet (2x2 grid) */}
-                <div className="grid grid-cols-2 gap-2 w-full lg:hidden pt-2 border-t border-slate-100">
-                  {categories.map((cat) => (
-                    <button
-                      key={cat.key}
-                      type="button"
-                      onClick={() => setSelectedCategory(cat.key)}
-                      className={`flex items-center justify-center text-center px-3 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-                        selectedCategory === cat.key
-                          ? 'bg-teal-600 text-white shadow-2xs'
-                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                      }`}
-                    >
-                      {cat.label}
-                    </button>
-                  ))}
-                </div>
 
                 {/* Alphabet Quick Jump */}
                 <div className="flex items-center gap-1 overflow-x-auto pt-2 border-t border-slate-100 pb-1">
@@ -724,7 +685,6 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = ({
                 </div>
               </div>
             </div>
-          </div>
 
           {/* Results Summary */}
           <div className="flex items-center justify-between text-xs text-slate-500 px-1">
