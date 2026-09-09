@@ -347,11 +347,13 @@ export async function syncAdminCredentialsFromServer(): Promise<AdminCredentials
   return getAdminCredentials();
 }
 
-// Auto-trigger sync on module load in browser
+// Auto-trigger sync on module load in browser (staggered to prevent HTTP/2 frame contention)
 if (typeof window !== 'undefined') {
-  syncAdminCredentialsFromServer();
-  syncSiteConfigFromServer();
-  syncEmailConfigFromServer();
+  setTimeout(() => {
+    syncAdminCredentialsFromServer();
+    syncSiteConfigFromServer();
+    syncEmailConfigFromServer();
+  }, 150);
 }
 
 // Email Config Management
@@ -394,7 +396,10 @@ export function getEmailConfig(): EmailConfig {
 
 export async function syncEmailConfigFromServer(): Promise<EmailConfig> {
   try {
-    const res = await fetch('/api/email/config');
+    const res = await fetch('/api/email/config', {
+      headers: { 'Accept': 'application/json' },
+      cache: 'no-store'
+    });
     if (res.ok) {
       const data = await res.json();
       if (data && data.smtpHost) {

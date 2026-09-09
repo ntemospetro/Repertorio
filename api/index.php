@@ -5,26 +5,70 @@
  * =========================================================================
  */
 
+// Output Buffering starten, um HTTP/2 Stream-Abbrüche und Protocol Errors zu verhindern
+ob_start();
+
 // Fehler abfangen & sauberes JSON statt Apache 500 HTML-Fehlerseite ausgeben
 register_shutdown_function(function() {
     $error = error_get_last();
     if ($error && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
         if (!headers_sent()) {
+            http_response_code(500);
             header('Content-Type: application/json; charset=utf-8');
             header('Access-Control-Allow-Origin: *');
+            header('Cache-Control: no-cache, no-store, must-revalidate');
         }
-        echo json_encode([
+        $errJson = json_encode([
             'status' => 'error',
             'error' => $error['message'],
             'file' => basename($error['file']),
             'line' => $error['line']
-        ]);
+        ], JSON_UNESCAPED_UNICODE);
+        if (!headers_sent()) {
+            header('Content-Length: ' . strlen($errJson));
+        }
+        echo $errJson;
+        if (function_exists('fastcgi_finish_request')) {
+            fastcgi_finish_request();
+        }
         exit;
     }
 });
 
 ini_set('display_errors', '0');
 error_reporting(0);
+
+// Globaler Helper für sichere HTTP/2-konforme JSON-Antworten mit Content-Length
+if (!function_exists('sendJsonResponse')) {
+    function sendJsonResponse($data, $statusCode = 200) {
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+        if (!headers_sent()) {
+            http_response_code($statusCode);
+            header('Content-Type: application/json; charset=utf-8');
+            header('Access-Control-Allow-Origin: *');
+            header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+            header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
+            header('Cache-Control: no-cache, no-store, must-revalidate');
+        }
+        $json = json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        if ($json === false) {
+            $json = json_encode(['error' => 'JSON encoding failed']);
+        }
+        if (!headers_sent()) {
+            header('Content-Length: ' . strlen($json));
+        }
+        echo $json;
+        if (function_exists('fastcgi_finish_request')) {
+            fastcgi_finish_request();
+        }
+        exit;
+    }
+}
 
 // Header für JSON & CORS setzen
 header('Content-Type: application/json; charset=utf-8');
@@ -34,7 +78,14 @@ header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-W
 
 // Preflight OPTIONS Request direkt beantworten
 if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
     http_response_code(204);
+    header('Content-Length: 0');
+    if (function_exists('fastcgi_finish_request')) {
+        fastcgi_finish_request();
+    }
     exit;
 }
 
@@ -1031,24 +1082,6 @@ if ($route === 'medications/translate' || $route === 'translate') {
     exit;
 }
 
-if (!function_exists('getDataFilePath')) {
-    function getDataFilePath($filename) {
-        $candidates = [
-            __DIR__ . '/../data/' . $filename,
-            __DIR__ . '/data/' . $filename,
-            __DIR__ . '/../../data/' . $filename
-        ];
-        foreach ($candidates as $c) {
-            if (file_exists($c)) return $c;
-        }
-        $defaultDir = __DIR__ . '/../data';
-        if (!is_dir($defaultDir)) {
-            @mkdir($defaultDir, 0755, true);
-        }
-        return $defaultDir . '/' . $filename;
-    }
-}
-
 // =========================================================================
 // ROUTE 5: SITE CONFIG (/api/site/config & /api/site-config)
 // =========================================================================
@@ -1061,20 +1094,17 @@ if ($route === 'site/config' || $route === 'site-config') {
             $current = @json_decode($raw, true) ?: [];
         }
         $updated = array_merge(is_array($current) ? $current : [], is_array($body) ? $body : []);
-        @file_put_contents($siteConfigFile, json_encode($updated, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-        echo json_encode($updated);
-        exit;
+        @file_put_contents($siteConfigFile, json_encode($updated, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE), LOCK_EX);
+        sendJsonResponse($updated);
     }
     if (file_exists($siteConfigFile)) {
         $raw = @file_get_contents($siteConfigFile);
         $data = @json_decode($raw, true);
         if (is_array($data)) {
-            echo json_encode($data);
-            exit;
+            sendJsonResponse($data);
         }
     }
-    echo json_encode(new stdClass());
-    exit;
+    sendJsonResponse(new stdClass());
 }
 
 // =========================================================================
@@ -1094,9 +1124,8 @@ if ($route === 'email/config' || $route === 'email-config' || $route === 'email/
     ];
 
     if (strpos($route, 'reset') !== false && $_SERVER['REQUEST_METHOD'] === 'POST') {
-        @file_put_contents($emailConfigFile, json_encode($defaultEmailSettings, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-        echo json_encode($defaultEmailSettings);
-        exit;
+        @file_put_contents($emailConfigFile, json_encode($defaultEmailSettings, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE), LOCK_EX);
+        sendJsonResponse($defaultEmailSettings);
     }
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -1108,21 +1137,18 @@ if ($route === 'email/config' || $route === 'email-config' || $route === 'email/
         }
         $updated = array_merge($current, is_array($body) ? $body : []);
         $updated['updatedAt'] = date('c');
-        @file_put_contents($emailConfigFile, json_encode($updated, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-        echo json_encode($updated);
-        exit;
+        @file_put_contents($emailConfigFile, json_encode($updated, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE), LOCK_EX);
+        sendJsonResponse($updated);
     }
 
     if (file_exists($emailConfigFile)) {
         $raw = @file_get_contents($emailConfigFile);
         $data = @json_decode($raw, true);
-        if (is_array($data)) {
-            echo json_encode($data);
-            exit;
+        if (is_array($data) && !empty($data)) {
+            sendJsonResponse($data);
         }
     }
-    echo json_encode($defaultEmailSettings);
-    exit;
+    sendJsonResponse($defaultEmailSettings);
 }
 
 // =========================================================================
@@ -2478,6 +2504,6 @@ if (preg_match('#^therapist/billing/([^/]+)$#', $route, $matches)) {
 // =========================================================================
 // DEFAULT: Route nicht gefunden
 // =========================================================================
-http_response_code(404);
-echo json_encode(['error' => 'Endpoint not found', 'requestedRoute' => $route]);
+sendJsonResponse(['error' => 'Endpoint not found', 'requestedRoute' => $route], 404);
+
 
