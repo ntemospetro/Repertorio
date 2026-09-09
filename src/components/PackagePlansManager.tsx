@@ -24,7 +24,9 @@ import {
   Sliders,
   X,
   Star,
-  AlertCircle
+  AlertCircle,
+  CreditCard,
+  Coins
 } from 'lucide-react';
 
 interface PackagePlansManagerProps {
@@ -53,6 +55,8 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
     featuresText: '',
     isDefault: false,
     isActive: true,
+    initialBookingAmount: 20,
+    lowBalanceThreshold: 5,
   });
 
   const refreshData = () => {
@@ -89,6 +93,8 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
       featuresText: '25 Vollanalysen inklusive\nPrioritäre Repertorisation\nPDF-Fallexport',
       isDefault: false,
       isActive: true,
+      initialBookingAmount: 20,
+      lowBalanceThreshold: 5,
     });
     setIsModalOpen(true);
   };
@@ -107,6 +113,8 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
       featuresText: (plan.features || []).join('\n'),
       isDefault: plan.isDefault || false,
       isActive: plan.isActive,
+      initialBookingAmount: plan.initialBookingAmount !== undefined ? plan.initialBookingAmount : 20,
+      lowBalanceThreshold: plan.lowBalanceThreshold !== undefined ? plan.lowBalanceThreshold : 5,
     });
     setIsModalOpen(true);
   };
@@ -160,6 +168,8 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
 
     const priceNum = Math.max(0, Number(formData.price) || 0);
     const maxAnalysesNum = formData.isUnlimited ? 999999 : Math.max(1, Number(formData.maxAnalyses) || 1);
+    const initialBookingAmountNum = Math.max(0, Number(formData.initialBookingAmount) || 0);
+    const lowBalanceThresholdNum = Math.max(0, Number(formData.lowBalanceThreshold) || 0);
 
     if (editingPlan) {
       // Update
@@ -175,6 +185,8 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
         features,
         isDefault: formData.isDefault,
         isActive: formData.isActive,
+        initialBookingAmount: initialBookingAmountNum,
+        lowBalanceThreshold: lowBalanceThresholdNum,
       });
       showToast(`Paket "${formData.name}" erfolgreich aktualisiert`);
     } else {
@@ -191,6 +203,8 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
         features,
         isDefault: formData.isDefault,
         isActive: formData.isActive,
+        initialBookingAmount: initialBookingAmountNum,
+        lowBalanceThreshold: lowBalanceThresholdNum,
       });
       showToast(`Neues Paket "${formData.name}" erfolgreich erstellt`);
     }
@@ -433,6 +447,17 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
                   )}
                 </div>
 
+                {/* Token Balance & Threshold info */}
+                <div className="mt-2.5 flex items-center justify-between text-[11px] px-2.5 py-1.5 rounded-lg bg-violet-50/80 text-violet-900 border border-violet-200/70">
+                  <span className="flex items-center gap-1.5 font-medium">
+                    <Coins className="w-3.5 h-3.5 text-violet-600" />
+                    <span>Start: <strong className="font-mono font-bold">{plan.initialBookingAmount !== undefined ? plan.initialBookingAmount : 20} €</strong></span>
+                  </span>
+                  <span className="text-[10px] text-violet-700 font-medium">
+                    Alarm: &lt; <strong className="font-mono font-bold">{plan.lowBalanceThreshold !== undefined ? plan.lowBalanceThreshold : 5} €</strong>
+                  </span>
+                </div>
+
                 {/* Description */}
                 {plan.description && (
                   <p className="text-xs text-slate-600 mt-3 leading-relaxed">
@@ -617,6 +642,58 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
                     Therapeuten mit diesem Tarif können unbegrenzt viele Patienten aufnehmen und analysieren.
                   </p>
                 )}
+              </div>
+
+              {/* Stripe Initial Booking & Threshold Alarm */}
+              <div className="p-3.5 bg-violet-50/70 rounded-lg border border-violet-200/80 space-y-3">
+                <div className="flex items-center gap-2">
+                  <CreditCard className="w-4 h-4 text-violet-700" />
+                  <span className="text-[11px] font-bold text-violet-900 uppercase">
+                    Stripe & Token-Guthaben
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      {t('adminPackageInitialBooking')}
+                    </label>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={formData.initialBookingAmount ?? 20}
+                        onChange={(e) => setFormData({ ...formData, initialBookingAmount: Math.max(0, Number(e.target.value)) })}
+                        className="flex-1 px-3 py-2 border border-violet-200 rounded-md bg-white font-mono text-sm font-bold text-slate-900 focus:outline-none focus:border-violet-600 h-[38px]"
+                      />
+                      <span className="text-slate-500 font-bold px-1">€</span>
+                    </div>
+                    <p className="text-[10px] text-slate-500 mt-1 leading-normal">
+                      {t('adminPackageInitialBookingHelp')}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      {t('adminPackageThreshold')}
+                    </label>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={formData.lowBalanceThreshold ?? 5}
+                        onChange={(e) => setFormData({ ...formData, lowBalanceThreshold: Math.max(0, Number(e.target.value)) })}
+                        className="flex-1 px-3 py-2 border border-violet-200 rounded-md bg-white font-mono text-sm font-bold text-slate-900 focus:outline-none focus:border-violet-600 h-[38px]"
+                      />
+                      <span className="text-slate-500 font-bold px-1">€</span>
+                    </div>
+                    <p className="text-[10px] text-slate-500 mt-1 leading-normal">
+                      {t('adminPackageThresholdHelp')}
+                    </p>
+                  </div>
+                </div>
               </div>
 
               {/* Badge & Description */}

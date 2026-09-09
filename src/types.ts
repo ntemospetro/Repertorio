@@ -12,6 +12,8 @@ export interface PackagePlan {
   billingPeriod: TariffBillingPeriod;
   maxAnalyses: number; // e.g. 3, 10, 50, or 999999 for unlimited
   isUnlimited: boolean;
+  initialBookingAmount?: number; // Initial booking/deposit amount e.g. 20, 50, 70 EUR
+  lowBalanceThreshold?: number; // Low balance alert threshold e.g. 5, 10 EUR
   description?: string;
   features?: string[];
   badge?: string; // e.g. 'Test-Phase', 'Beliebt', 'Praxis-Tipp', 'Flatrate'
@@ -64,6 +66,13 @@ export interface Therapist {
   maxTokens?: number; // default 25000 for free_trial limit
   registeredAt: string; // ISO date string
   status: 'active' | 'limit_reached' | 'locked' | 'upgraded';
+  balanceEur?: number; // Current remaining token balance in EUR
+  totalDepositedEur?: number; // Total amount deposited in EUR
+  lowBalanceThreshold?: number; // Alert threshold in EUR (default from package, e.g. 5.00)
+  autoReloadEnabled?: boolean;
+  autoReloadAmount?: number;
+  stripeCustomerId?: string;
+  lastDepositAt?: string;
   praxisName?: string;
   notes?: string;
   preferredLanguage?: LanguageCode;
@@ -626,6 +635,40 @@ export interface TherapistTokenSummary {
   customerCostEur?: number;
   marginEur?: number;
   lastUsedAt: string;
+  // Financial Reporting & Balance Fields
+  balanceEur: number; // Remaining balance
+  totalDepositedEur: number; // Lifetime total deposited
+  currentMonthDepositedEur: number; // Deposited this calendar month
+  currentMonthCostEur: number; // Consumed this calendar month (customer price)
+  currentMonthTokens: number; // Tokens used this calendar month
+  lowBalanceThreshold: number; // Configured alert threshold (e.g. 5.00 EUR)
+  isLowBalance: boolean; // true if balanceEur <= lowBalanceThreshold
+  lastDepositAt?: string;
+}
+
+export interface StripeConfig {
+  mode: 'test' | 'live';
+  publishableKey: string;
+  secretKey: string;
+  webhookSecret: string;
+  isConfigured: boolean;
+  webhookUrl: string;
+  updatedAt?: string;
+}
+
+export interface BillingDepositRecord {
+  id: string;
+  therapistId: string;
+  therapistName: string;
+  therapistEmail?: string;
+  amountEur: number;
+  type: 'initial_deposit' | 'manual_reload' | 'auto_reload' | 'package_purchase';
+  status: 'succeeded' | 'pending' | 'failed';
+  stripeSessionId?: string;
+  stripePaymentIntentId?: string;
+  createdAt: string;
+  month: string; // YYYY-MM
+  note?: string;
 }
 
 export interface TokenPricingRates {

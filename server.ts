@@ -13,6 +13,19 @@ import {
   getDatabaseCount,
   ensureMedicationsDatabase
 } from "./serverMedications";
+import {
+  getRawStripeConfig,
+  saveStripeConfig,
+  maskKey,
+  getStripeClient,
+  getStoredBalances,
+  getTherapistBalanceRecord,
+  deductUsageFromBalance,
+  creditDepositToBalance,
+  updateTherapistBalanceConfig,
+  getPaymentLogs,
+  addPaymentLog,
+} from "./serverStripe";
 
 dotenv.config();
 
@@ -20,7 +33,12 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  app.use(express.json({ limit: "50mb" }));
+  app.use(express.json({
+    limit: "50mb",
+    verify: (req: any, res, buf) => {
+      req.rawBody = buf;
+    }
+  }));
 
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });
@@ -332,9 +350,30 @@ async function startServer() {
       const cachedCost = (cachedTokens / 1_000_000) * (rates.cachedPerMillionEur || 0.069);
       const costEur = Math.round((inputCost + outputCost + cachedCost) * 100000) / 100000;
 
+      // Calculate customer price based on admin configured pricing matrix
+      const matchingTier = (rates.modelTiers && Array.isArray(rates.modelTiers))
+        ? rates.modelTiers.find((t: any) => t.modelId === params.model) || rates.modelTiers[0]
+        : null;
+
+      const custInputRate = matchingTier ? (matchingTier.customerInputPerMillionEur ?? 1.50) : 1.50;
+      const custOutputRate = matchingTier ? (matchingTier.customerOutputPerMillionEur ?? 7.50) : 7.50;
+      const custCachedRate = matchingTier ? (matchingTier.customerCachedPerMillionEur ?? 0.20) : 0.20;
+
+      const custInput = (promptTokens / 1_000_000) * custInputRate;
+      const custOutput = (candidatesTokens / 1_000_000) * custOutputRate;
+      const custCached = (cachedTokens / 1_000_000) * custCachedRate;
+      const customerCostEur = Math.round((custInput + custOutput + custCached) * 100000) / 100000;
+
       const logs = getStoredTokenLogs();
       const resolvedTherapistId = params.therapistId || 'th-101';
       const meta = THERAPIST_LOOKUP[resolvedTherapistId] as { name?: string; email?: string; praxis?: string; tarif?: string } | undefined;
+
+      // Deduct from therapist's real balance
+      try {
+        deductUsageFromBalance(resolvedTherapistId, customerCostEur);
+      } catch (balErr) {
+        console.warn("[Stripe] Failed to deduct token usage from balance:", balErr);
+      }
 
       const newRecord = {
         id: 'tok-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
@@ -349,7 +388,8 @@ async function startServer() {
         candidatesTokens,
         cachedTokens,
         totalTokens,
-        costEur
+        costEur,
+        customerCostEur
       };
 
       logs.unshift(newRecord);
@@ -2077,6 +2117,11 @@ Checkliste für den Patienten:
       let totalCostEur = 0;
       const totalRequests = logs.length;
 
+      const now = new Date();
+      const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      const allBalances = getStoredBalances();
+      const allPayments = getPaymentLogs();
+
       const therapistMap: Record<string, {
         therapistId: string;
         therapistName: string;
@@ -2089,7 +2134,12 @@ Checkliste für den Patienten:
         cachedTokens: number;
         totalTokens: number;
         totalCostEur: number;
+        totalCustomerCostEur: number;
+        customerCostEur: number;
+        marginEur: number;
         lastUsedAt: string;
+        currentMonthTokens: number;
+        currentMonthCostEur: number;
       }> = {};
 
       // Seed lookup map
@@ -2106,7 +2156,12 @@ Checkliste für den Patienten:
           cachedTokens: 0,
           totalTokens: 0,
           totalCostEur: 0,
-          lastUsedAt: ''
+          totalCustomerCostEur: 0,
+          customerCostEur: 0,
+          marginEur: 0,
+          lastUsedAt: '',
+          currentMonthTokens: 0,
+          currentMonthCostEur: 0,
         };
       }
 
@@ -2131,7 +2186,12 @@ Checkliste für den Patienten:
             cachedTokens: 0,
             totalTokens: 0,
             totalCostEur: 0,
-            lastUsedAt: ''
+            totalCustomerCostEur: 0,
+            customerCostEur: 0,
+            marginEur: 0,
+            lastUsedAt: '',
+            currentMonthTokens: 0,
+            currentMonthCostEur: 0,
           };
         }
 
@@ -2142,15 +2202,48 @@ Checkliste für den Patienten:
         entry.cachedTokens = (entry.cachedTokens || 0) + (log.cachedTokens || 0);
         entry.totalTokens += log.totalTokens || 0;
         entry.totalCostEur += log.costEur || 0;
+
+        // Customer cost tracking
+        const logCustCost = Number((log as any).customerCostEur || 0);
+        entry.totalCustomerCostEur += logCustCost;
+        entry.customerCostEur = entry.totalCustomerCostEur;
+
+        const logDateStr = log.timestamp || '';
+        if (logDateStr.startsWith(currentMonth)) {
+          entry.currentMonthTokens += log.totalTokens || 0;
+          entry.currentMonthCostEur += logCustCost;
+        }
+
         if (!entry.lastUsedAt || new Date(log.timestamp) > new Date(entry.lastUsedAt)) {
           entry.lastUsedAt = log.timestamp;
         }
       }
 
-      const byTherapist = Object.values(therapistMap).map(t => ({
-        ...t,
-        totalCostEur: Math.round(t.totalCostEur * 100000) / 100000
-      })).sort((a, b) => b.totalTokens - a.totalTokens);
+      const byTherapist = Object.values(therapistMap).map(t => {
+        const balRecord = allBalances[t.therapistId] || getTherapistBalanceRecord(t.therapistId);
+        
+        // Sum deposits for this month
+        const currentMonthDeposited = allPayments
+          .filter(p => p.therapistId === t.therapistId && (p.month === currentMonth || (p.createdAt && p.createdAt.startsWith(currentMonth))))
+          .reduce((sum, p) => sum + (p.amountEur || 0), 0);
+
+        const marginEur = Math.round((t.totalCustomerCostEur - t.totalCostEur) * 10000) / 10000;
+
+        return {
+          ...t,
+          totalCostEur: Math.round(t.totalCostEur * 100000) / 100000,
+          totalCustomerCostEur: Math.round(t.totalCustomerCostEur * 10000) / 10000,
+          customerCostEur: Math.round(t.totalCustomerCostEur * 10000) / 10000,
+          marginEur,
+          currentMonthCostEur: Math.round(t.currentMonthCostEur * 10000) / 10000,
+          balanceEur: Math.round(balRecord.balanceEur * 100) / 100,
+          totalDepositedEur: Math.round(balRecord.totalDepositedEur * 100) / 100,
+          currentMonthDepositedEur: Math.round(currentMonthDeposited * 100) / 100,
+          lowBalanceThreshold: balRecord.lowBalanceThreshold || 5.00,
+          isLowBalance: balRecord.balanceEur <= (balRecord.lowBalanceThreshold || 5.00),
+          lastDepositAt: balRecord.lastDepositAt,
+        };
+      }).sort((a, b) => b.totalTokens - a.totalTokens);
 
       res.json({
         totalPromptTokens,
@@ -2215,6 +2308,310 @@ Checkliste für den Patienten:
     } catch (err) {
       console.error("Error resetting token logs:", err);
       res.status(500).json({ error: "Failed to reset token logs" });
+    }
+  });
+
+  // =============================================================
+  // STRIPE & BILLING API ROUTES
+  // =============================================================
+
+  // 1. Get Admin Stripe Config (Masked)
+  app.get("/api/admin/stripe/config", (req, res) => {
+    try {
+      const config = getRawStripeConfig();
+      const host = req.get('host') || 'localhost:3000';
+      const protocol = req.protocol || 'http';
+      const webhookUrl = `${protocol}://${host}/api/billing/webhook`;
+
+      res.json({
+        mode: config.mode,
+        publishableKey: config.publishableKey,
+        secretKeyMasked: maskKey(config.secretKey),
+        secretKeyConfigured: Boolean(config.secretKey),
+        webhookSecretMasked: maskKey(config.webhookSecret),
+        webhookSecretConfigured: Boolean(config.webhookSecret),
+        isConfigured: Boolean(config.publishableKey && config.secretKey),
+        webhookUrl,
+        updatedAt: config.updatedAt
+      });
+    } catch (err) {
+      console.error("Error fetching stripe config:", err);
+      res.status(500).json({ error: "Failed to fetch stripe config" });
+    }
+  });
+
+  // 2. Save Admin Stripe Config
+  app.post("/api/admin/stripe/config", (req, res) => {
+    try {
+      const { mode, publishableKey, secretKey, webhookSecret } = req.body;
+      const updates: any = {};
+      if (mode) updates.mode = mode;
+      if (publishableKey !== undefined) updates.publishableKey = publishableKey;
+      if (secretKey !== undefined && !secretKey.includes('••••')) {
+        updates.secretKey = secretKey;
+      }
+      if (webhookSecret !== undefined && !webhookSecret.includes('••••')) {
+        updates.webhookSecret = webhookSecret;
+      }
+
+      const saved = saveStripeConfig(updates);
+      const host = req.get('host') || 'localhost:3000';
+      const protocol = req.protocol || 'http';
+      const webhookUrl = `${protocol}://${host}/api/billing/webhook`;
+
+      res.json({
+        success: true,
+        mode: saved.mode,
+        publishableKey: saved.publishableKey,
+        secretKeyMasked: maskKey(saved.secretKey),
+        secretKeyConfigured: Boolean(saved.secretKey),
+        webhookSecretMasked: maskKey(saved.webhookSecret),
+        webhookSecretConfigured: Boolean(saved.webhookSecret),
+        isConfigured: Boolean(saved.publishableKey && saved.secretKey),
+        webhookUrl,
+        updatedAt: saved.updatedAt
+      });
+    } catch (err) {
+      console.error("Error saving stripe config:", err);
+      res.status(500).json({ error: "Failed to save stripe config" });
+    }
+  });
+
+  // 3. Test Stripe Connection
+  app.post("/api/admin/stripe/test", async (req, res) => {
+    try {
+      const client = getStripeClient();
+      if (!client) {
+        return res.status(400).json({
+          success: false,
+          error: "Kein Stripe Secret Key (sk_...) hinterlegt. Bitte tragen Sie diesen zuerst ein."
+        });
+      }
+
+      const balance = await client.balance.retrieve();
+      res.json({
+        success: true,
+        message: "Verbindung zu Stripe erfolgreich hergestellt! API-Schlüssel ist aktiv.",
+        livemode: balance.livemode,
+        currency: balance.available?.[0]?.currency?.toUpperCase() || 'EUR'
+      });
+    } catch (err: any) {
+      console.error("Stripe test connection failed:", err);
+      res.status(400).json({
+        success: false,
+        error: err.message || "Verbindung fehlgeschlagen. Bitte überprüfen Sie den Secret Key."
+      });
+    }
+  });
+
+  // 4. Get Billing Payments Log
+  app.get("/api/admin/billing/payments", (req, res) => {
+    try {
+      const therapistId = req.query.therapistId as string | undefined;
+      const payments = getPaymentLogs(therapistId);
+      res.json({ payments });
+    } catch (err) {
+      console.error("Error fetching payments:", err);
+      res.status(500).json({ error: "Failed to fetch payments" });
+    }
+  });
+
+  // 5. Create Stripe Checkout Session (for initial booking or top-up)
+  app.post("/api/billing/create-checkout-session", async (req, res) => {
+    try {
+      const {
+        therapistId,
+        therapistName,
+        therapistEmail,
+        amountEur,
+        type = 'manual_reload',
+        successUrl,
+        cancelUrl
+      } = req.body;
+
+      const amount = Math.max(1, Number(amountEur) || 20);
+      const host = req.get('host') || 'localhost:3000';
+      const protocol = req.protocol || 'http';
+      const origin = `${protocol}://${host}`;
+
+      const client = getStripeClient();
+      if (client) {
+        try {
+          const session = await client.checkout.sessions.create({
+            payment_method_types: ['card'],
+            line_items: [{
+              price_data: {
+                currency: 'eur',
+                product_data: {
+                  name: `HomöoPraxis Token-Guthaben (+${amount.toFixed(2)} €)`,
+                  description: `Token-Aufladung für Therapeut: ${therapistName || therapistId}`,
+                },
+                unit_amount: Math.round(amount * 100),
+              },
+              quantity: 1,
+            }],
+            mode: 'payment',
+            customer_email: therapistEmail || undefined,
+            client_reference_id: therapistId,
+            metadata: {
+              therapistId: therapistId || '',
+              therapistName: therapistName || '',
+              amountEur: amount.toString(),
+              type: type || 'manual_reload'
+            },
+            success_url: successUrl || `${origin}/?payment=success&session_id={CHECKOUT_SESSION_ID}&therapistId=${therapistId}`,
+            cancel_url: cancelUrl || `${origin}/?payment=cancelled&therapistId=${therapistId}`,
+          });
+
+          return res.json({
+            sessionId: session.id,
+            url: session.url,
+            mode: 'stripe'
+          });
+        } catch (stripeErr: any) {
+          console.error("Stripe checkout error:", stripeErr);
+          return res.status(500).json({ error: stripeErr.message || 'Stripe Checkout konnte nicht gestartet werden' });
+        }
+      }
+
+      // Safe Sandbox Fallback (if no Stripe keys entered yet)
+      const mockSessionId = 'cs_sandbox_' + Date.now();
+      creditDepositToBalance({
+        therapistId: therapistId || 'th-101',
+        therapistName: therapistName || 'Therapeut',
+        therapistEmail,
+        amountEur: amount,
+        type,
+        stripeSessionId: mockSessionId,
+        note: `Sandbox-Testbuchung: +${amount.toFixed(2)} €`
+      });
+
+      const returnUrl = (successUrl || `${origin}/?payment=success`)
+        + (successUrl?.includes('?') ? '&' : '?')
+        + `session_id=${mockSessionId}&amount=${amount}&sandbox=true`;
+
+      return res.json({
+        sessionId: mockSessionId,
+        url: returnUrl,
+        mode: 'sandbox',
+        amountEur: amount,
+        message: 'Sandbox-Modus: Guthaben wurde sofort gutgeschrieben (keine Live-Kreditkartendaten hinterlegt).'
+      });
+    } catch (err: any) {
+      console.error("Error creating checkout session:", err);
+      res.status(500).json({ error: "Failed to create checkout session" });
+    }
+  });
+
+  // 6. Stripe Webhook Endpoint (Credits Balance in Real-Time)
+  app.post("/api/billing/webhook", (req, res) => {
+    try {
+      const sig = req.headers['stripe-signature'];
+      const config = getRawStripeConfig();
+      let event: any = null;
+      const client = getStripeClient();
+
+      if (client && config.webhookSecret && sig && (req as any).rawBody) {
+        try {
+          event = client.webhooks.constructEvent((req as any).rawBody, sig as string, config.webhookSecret);
+        } catch (err: any) {
+          console.warn('[Stripe Webhook] Signature verification failed:', err.message);
+          return res.status(400).send(`Webhook Error: ${err.message}`);
+        }
+      } else {
+        event = req.body;
+      }
+
+      if (event && event.type === 'checkout.session.completed') {
+        const session = event.data?.object || {};
+        const therapistId = session.metadata?.therapistId || session.client_reference_id;
+        const amountEur = session.metadata?.amountEur
+          ? parseFloat(session.metadata.amountEur)
+          : ((session.amount_total || 0) / 100);
+        const type = session.metadata?.type || 'manual_reload';
+
+        if (therapistId && amountEur > 0) {
+          creditDepositToBalance({
+            therapistId,
+            therapistName: session.metadata?.therapistName,
+            therapistEmail: session.customer_details?.email || session.customer_email,
+            amountEur,
+            type,
+            stripeSessionId: session.id,
+            stripePaymentIntentId: typeof session.payment_intent === 'string' ? session.payment_intent : undefined,
+            note: 'Stripe Webhook: checkout.session.completed'
+          });
+          console.log(`[Stripe Webhook] Auto-credited ${amountEur} EUR to ${therapistId}`);
+        }
+      }
+
+      res.json({ received: true });
+    } catch (err) {
+      console.error("Error handling Stripe webhook:", err);
+      res.status(500).json({ error: "Webhook handling failed" });
+    }
+  });
+
+  // 7. Get Therapist Billing & Balance Status
+  app.get("/api/therapist/billing/:therapistId", (req, res) => {
+    try {
+      const { therapistId } = req.params;
+      const balRecord = getTherapistBalanceRecord(therapistId);
+      const payments = getPaymentLogs(therapistId);
+
+      res.json({
+        therapistId,
+        balanceEur: balRecord.balanceEur,
+        totalDepositedEur: balRecord.totalDepositedEur,
+        lowBalanceThreshold: balRecord.lowBalanceThreshold,
+        isLowBalance: balRecord.balanceEur <= balRecord.lowBalanceThreshold,
+        autoReloadEnabled: balRecord.autoReloadEnabled,
+        autoReloadAmount: balRecord.autoReloadAmount,
+        lastDepositAt: balRecord.lastDepositAt,
+        recentPayments: payments.slice(0, 10)
+      });
+    } catch (err) {
+      console.error("Error fetching therapist billing:", err);
+      res.status(500).json({ error: "Failed to fetch therapist billing" });
+    }
+  });
+
+  // 8. Direct Top-Up (Immediate balance recharge)
+  app.post("/api/therapist/billing/top-up", (req, res) => {
+    try {
+      const { therapistId, therapistName, therapistEmail, amountEur, type = 'manual_reload', note } = req.body;
+      const amount = Math.max(1, Number(amountEur) || 20);
+
+      const updated = creditDepositToBalance({
+        therapistId: therapistId || 'th-101',
+        therapistName,
+        therapistEmail,
+        amountEur: amount,
+        type,
+        note: note || `Guthaben-Aufladung (+${amount.toFixed(2)} €)`
+      });
+
+      res.json({ success: true, balance: updated });
+    } catch (err) {
+      console.error("Error topping up balance:", err);
+      res.status(500).json({ error: "Failed to top up balance" });
+    }
+  });
+
+  // 9. Update Therapist Billing Settings (Threshold & Auto-reload)
+  app.post("/api/therapist/billing/settings", (req, res) => {
+    try {
+      const { therapistId, lowBalanceThreshold, autoReloadEnabled, autoReloadAmount } = req.body;
+      const updated = updateTherapistBalanceConfig(therapistId, {
+        lowBalanceThreshold,
+        autoReloadEnabled,
+        autoReloadAmount
+      });
+
+      res.json({ success: true, balance: updated });
+    } catch (err) {
+      console.error("Error updating therapist billing settings:", err);
+      res.status(500).json({ error: "Failed to update settings" });
     }
   });
 

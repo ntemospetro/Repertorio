@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Therapist, PackagePlan } from '../types';
 import { getPackagePlans, assignPackageToTherapist } from '../services/storage';
 import { useTranslation } from '../i18n/LanguageContext';
@@ -10,8 +10,20 @@ import {
   Infinity as InfinityIcon, 
   Layers, 
   ArrowRight,
-  RotateCcw
+  RotateCcw,
+  CreditCard,
+  Coins,
+  AlertTriangle,
+  RefreshCw,
+  PlusCircle,
+  ShieldCheck
 } from 'lucide-react';
+import {
+  fetchTherapistBalance,
+  createCheckoutSession,
+  updateTherapistAutoReload,
+  TherapistBalanceResponse
+} from '../services/stripeBillingService';
 
 interface TherapistTariffManagerProps {
   therapist: Therapist;
@@ -27,6 +39,77 @@ export const TherapistTariffManager: React.FC<TherapistTariffManagerProps> = ({
 
   const [resetUsageOnSwitch, setResetUsageOnSwitch] = useState<boolean>(true);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Stripe Billing & Balance State
+  const [billingInfo, setBillingInfo] = useState<TherapistBalanceResponse | null>(null);
+  const [loadingBilling, setLoadingBilling] = useState<boolean>(true);
+  const [topUpLoading, setTopUpLoading] = useState<boolean>(false);
+  const [topUpAmount, setTopUpAmount] = useState<number>(20);
+  const [showCustomTopUp, setShowCustomTopUp] = useState<boolean>(false);
+  const [autoReloadActive, setAutoReloadActive] = useState<boolean>(false);
+
+  const loadBillingData = async () => {
+    setLoadingBilling(true);
+    try {
+      const data = await fetchTherapistBalance(therapist.id);
+      if (data) {
+        setBillingInfo(data);
+        setAutoReloadActive(!!data.autoReloadEnabled);
+      }
+    } catch (err) {
+      console.error('Failed to load therapist billing info:', err);
+    } finally {
+      setLoadingBilling(false);
+    }
+  };
+
+  useEffect(() => {
+    loadBillingData();
+
+    // Check if returning from Stripe checkout
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('stripe_status') === 'success') {
+      setSuccessMessage('Zahlung erfolgreich abgeschlossen! Ihr Token-Guthaben wurde verbucht.');
+      setTimeout(() => setSuccessMessage(null), 5000);
+      // Clean up URL parameter
+      window.history.replaceState({}, document.title, window.location.pathname);
+      loadBillingData();
+    }
+  }, [therapist.id]);
+
+  const handleTopUp = async (amount: number) => {
+    setTopUpLoading(true);
+    try {
+      const session = await createCheckoutSession({
+        therapistId: therapist.id,
+        amountEur: amount,
+        type: 'manual_reload',
+        therapistEmail: therapist.email,
+        therapistName: `${therapist.vorname || ''} ${therapist.nachname || ''}`.trim(),
+      });
+
+      if (session?.url && session.mode === 'stripe') {
+        window.location.href = session.url;
+      } else if (session?.mode === 'sandbox' || (session as any)?.fallback) {
+        setSuccessMessage(`Testmodus: ${amount} € wurden Ihrem Guthaben gutgeschrieben!`);
+        setTimeout(() => setSuccessMessage(null), 4000);
+        await loadBillingData();
+      }
+    } catch (err) {
+      console.error('Top-up error:', err);
+    } finally {
+      setTopUpLoading(false);
+    }
+  };
+
+  const handleToggleAutoReload = async () => {
+    const nextState = !autoReloadActive;
+    setAutoReloadActive(nextState);
+    const success = await updateTherapistAutoReload(therapist.id, nextState, topUpAmount);
+    if (success) {
+      await loadBillingData();
+    }
+  };
 
   const handleSwitchTariff = (plan: PackagePlan) => {
     if (plan.id === (therapist.tarifId || therapist.tarif)) {
@@ -122,7 +205,193 @@ export const TherapistTariffManager: React.FC<TherapistTariffManagerProps> = ({
         )}
       </div>
 
-      {/* 2. TARIF-WECHSEL BEREICH */}
+      {/* 2. STRIPE TOKEN-GUTHABEN & ABRECHNUNGS-KARTE */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 p-6 sm:p-8 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5 mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-violet-100 text-violet-700 flex items-center justify-center shrink-0">
+              <CreditCard className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                {t('therapistBalanceCardTitle')}
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Token-Guthaben für KI-Analysen und klinische Repertorisationen via Stripe
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={loadBillingData}
+              disabled={loadingBilling}
+              className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+              title="Aktualisieren"
+            >
+              <RefreshCw className={`w-4 h-4 ${loadingBilling ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
+        </div>
+
+        {/* Balance Status Banner if Low */}
+        {billingInfo?.isLowBalance && (
+          <div className="mb-6 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold">
+                {t('therapistLowBalanceAlert', {
+                  balance: (billingInfo.balanceEur || 0).toFixed(2),
+                  threshold: (billingInfo.lowBalanceThreshold || 5).toFixed(2)
+                })}
+              </p>
+              <p className="text-xs text-amber-700 mt-1">
+                Laden Sie Ihr Guthaben rechtzeitig auf, um Fallanalysen ohne Unterbrechung durchführen zu können.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Metrics & Top-Up Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Card 1: Live Restguthaben */}
+          <div className="bg-slate-50 p-5 rounded-xl border border-slate-200/80 flex flex-col justify-between">
+            <div>
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
+                {t('therapistCurrentBalance')}
+              </span>
+              <div className="text-3xl font-black text-slate-900 font-mono">
+                {(billingInfo?.balanceEur ?? 0).toFixed(2)} €
+              </div>
+              <div className="mt-2 flex items-center gap-2">
+                {billingInfo?.isLowBalance ? (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 bg-amber-100 px-2 py-0.5 rounded">
+                    <AlertTriangle className="w-3 h-3" />
+                    Niedriger Stand (&lt; {(billingInfo?.lowBalanceThreshold ?? 5).toFixed(2)} €)
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">
+                    <Check className="w-3 h-3" />
+                    Guthaben ausreichend
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-4 pt-3 border-t border-slate-200/80 text-[11px] text-slate-500 flex justify-between items-center">
+              <span>{t('therapistTotalDeposited')}:</span>
+              <span className="font-mono font-semibold text-slate-700">
+                {(billingInfo?.totalDepositedEur ?? 0).toFixed(2)} €
+              </span>
+            </div>
+          </div>
+
+          {/* Card 2: Stripe Top-Up Actions */}
+          <div className="bg-slate-50 p-5 rounded-xl border border-slate-200/80 flex flex-col justify-between md:col-span-2">
+            <div>
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-2">
+                Guthaben über Stripe aufladen
+              </span>
+              <p className="text-xs text-slate-600 mb-4">
+                Sichere Zahlung per Kreditkarte oder SEPA-Lastschrift über Stripe Checkout. Ihr Guthaben wird in Echtzeit gutgeschrieben.
+              </p>
+
+              {/* Quick Preset Buttons */}
+              <div className="flex flex-wrap items-center gap-2.5 mb-3">
+                {[10, 20, 50, 100].map((amt) => (
+                  <button
+                    key={amt}
+                    type="button"
+                    onClick={() => setTopUpAmount(amt)}
+                    className={`px-3.5 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                      topUpAmount === amt && !showCustomTopUp
+                        ? 'bg-violet-600 text-white border-violet-600 shadow-xs'
+                        : 'bg-white text-slate-700 border-slate-200 hover:border-violet-300 hover:bg-violet-50/50'
+                    }`}
+                  >
+                    +{amt} €
+                  </button>
+                ))}
+
+                <button
+                  type="button"
+                  onClick={() => setShowCustomTopUp(!showCustomTopUp)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors cursor-pointer ${
+                    showCustomTopUp
+                      ? 'bg-violet-50 text-violet-700 border-violet-300'
+                      : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  Anderer Betrag
+                </button>
+              </div>
+
+              {/* Custom Input if toggled */}
+              {showCustomTopUp && (
+                <div className="flex items-center gap-2 max-w-xs mb-3 animate-fadeIn">
+                  <input
+                    type="number"
+                    min="5"
+                    step="5"
+                    value={topUpAmount}
+                    onChange={(e) => setTopUpAmount(Math.max(1, Number(e.target.value)))}
+                    className="w-28 px-3 py-1.5 text-xs font-mono font-bold bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-violet-600"
+                  />
+                  <span className="text-xs text-slate-600 font-semibold">Euro (€)</span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-3 border-t border-slate-200/80">
+              <button
+                type="button"
+                onClick={() => handleTopUp(topUpAmount)}
+                disabled={topUpLoading}
+                className="px-5 py-2.5 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
+              >
+                {topUpLoading ? (
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                ) : (
+                  <CreditCard className="w-4 h-4" />
+                )}
+                <span>Jetzt {topUpAmount} € aufladen</span>
+              </button>
+
+              <div className="flex items-center gap-2 text-xs text-slate-500">
+                <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                <span>256-Bit SSL · Stripe Checkout</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Auto-Reload Toggle */}
+        <div className="mt-6 p-4 rounded-xl bg-violet-50/50 border border-violet-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="space-y-0.5">
+            <span className="text-xs font-bold text-violet-900 block">
+              {t('therapistAutoReloadTitle')}
+            </span>
+            <p className="text-xs text-violet-700">
+              {t('therapistAutoReloadDesc')}
+            </p>
+          </div>
+
+          <label className="inline-flex items-center gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={autoReloadActive}
+              onChange={handleToggleAutoReload}
+              className="rounded text-violet-600 focus:ring-violet-500 w-4 h-4 cursor-pointer"
+            />
+            <span className="text-xs font-semibold text-slate-700">
+              Automatische Nachbuchung aktiv
+            </span>
+          </label>
+        </div>
+      </div>
+
+      {/* 3. TARIF-WECHSEL BEREICH */}
       <div className="bg-white rounded-2xl border border-slate-200/80 p-6 sm:p-8 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-100 pb-5 mb-6">
           <div>
@@ -212,6 +481,17 @@ export const TherapistTariffManager: React.FC<TherapistTariffManagerProps> = ({
                     </div>
                   </div>
 
+                  {/* Token Balance & Threshold info */}
+                  <div className="p-2.5 rounded-lg bg-violet-50/70 border border-violet-100 text-violet-900 text-xs flex items-center justify-between">
+                    <span className="flex items-center gap-1.5 font-medium">
+                      <Coins className="w-3.5 h-3.5 text-violet-600" />
+                      Start-Guthaben: <strong className="font-mono">{plan.initialBookingAmount ?? 20} €</strong>
+                    </span>
+                    <span className="text-[11px] text-violet-600 font-medium">
+                      Alarm: &lt; {plan.lowBalanceThreshold ?? 5} €
+                    </span>
+                  </div>
+
                   {/* Features */}
                   <ul className="space-y-2 py-2 text-xs text-slate-600">
                     {(plan.features || []).map((feat, i) => (
@@ -253,3 +533,4 @@ export const TherapistTariffManager: React.FC<TherapistTariffManagerProps> = ({
     </div>
   );
 };
+
