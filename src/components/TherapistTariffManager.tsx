@@ -66,6 +66,11 @@ export const TherapistTariffManager: React.FC<TherapistTariffManagerProps> = ({
   useEffect(() => {
     loadBillingData();
 
+    const handleBalanceChanged = () => {
+      loadBillingData();
+    };
+    window.addEventListener('homoeo_billing_balance_changed', handleBalanceChanged);
+
     // Check if returning from Stripe checkout
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('stripe_status') === 'success') {
@@ -75,6 +80,10 @@ export const TherapistTariffManager: React.FC<TherapistTariffManagerProps> = ({
       window.history.replaceState({}, document.title, window.location.pathname);
       loadBillingData();
     }
+
+    return () => {
+      window.removeEventListener('homoeo_billing_balance_changed', handleBalanceChanged);
+    };
   }, [therapist.id]);
 
   const handleTopUp = async (amount: number) => {

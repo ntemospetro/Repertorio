@@ -1,0 +1,32 @@
+[
+  {
+    "therapistId": "th-101",
+    "balanceEur": 92.85,
+    "totalDepositedEur": 95,
+    "lowBalanceThreshold": 5,
+    "autoReloadEnabled": false,
+    "autoReloadAmount": 20,
+    "lastDepositAt": "2026-09-09T10:34:23.088Z",
+    "updatedAt": "2026-09-09T10:34:23.088Z"
+  },
+  {
+    "therapistId": "th-102",
+    "balanceEur": 3.2,
+    "totalDepositedEur": 20,
+    "lowBalanceThreshold": 5,
+    "autoReloadEnabled": false,
+    "autoReloadAmount": 20,
+    "lastDepositAt": "2026-08-15T14:30:00Z",
+    "updatedAt": "2026-09-09T10:06:24.213Z"
+  },
+  {
+    "therapistId": "th-103",
+    "balanceEur": 98.4,
+    "totalDepositedEur": 100,
+    "lowBalanceThreshold": 10,
+    "autoReloadEnabled": true,
+    "autoReloadAmount": 50,
+    "lastDepositAt": "2026-09-02T08:15:00Z",
+    "updatedAt": "2026-09-09T10:06:24.213Z"
+  }
+]

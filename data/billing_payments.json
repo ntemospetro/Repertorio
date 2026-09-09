@@ -1,5 +1,29 @@
 [
   {
+    "therapistId": "th-101",
+    "therapistName": "Therapeut",
+    "amountEur": 25,
+    "type": "manual_reload",
+    "status": "succeeded",
+    "stripeSessionId": "cs_sandbox_1788950063088",
+    "note": "Sandbox-Testbuchung: +25.00 €",
+    "id": "pay-1788950063088-glxba",
+    "createdAt": "2026-09-09T10:34:23.088Z",
+    "month": "2026-09"
+  },
+  {
+    "therapistId": "th-101",
+    "therapistName": "Therapeut",
+    "amountEur": 20,
+    "type": "manual_reload",
+    "status": "succeeded",
+    "stripeSessionId": "cs_sandbox_1788949889801",
+    "note": "Sandbox-Testbuchung: +20.00 €",
+    "id": "pay-1788949889801-hd2q5",
+    "createdAt": "2026-09-09T10:31:29.801Z",
+    "month": "2026-09"
+  },
+  {
     "id": "pay-seed-1",
     "therapistId": "th-101",
     "therapistName": "Katharina Lindemann",

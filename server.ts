@@ -2417,7 +2417,7 @@ Checkliste für den Patienten:
   });
 
   // 5. Create Stripe Checkout Session (for initial booking or top-up)
-  app.post(["/api/billing/create-checkout-session", "/api/billing/create-checkout-session/"], async (req, res) => {
+  app.post(["/api/billing/create-checkout-session", "/api/billing/create-checkout-session/", "/billing/create-checkout-session"], async (req, res) => {
     try {
       const {
         therapistId,
@@ -2504,7 +2504,7 @@ Checkliste für den Patienten:
   });
 
   // 6. Stripe Webhook Endpoint (Credits Balance in Real-Time)
-  app.post(["/api/billing/webhook", "/api/billing/webhook/"], (req, res) => {
+  app.post(["/api/billing/webhook", "/api/billing/webhook/", "/billing/webhook"], (req, res) => {
     try {
       const sig = req.headers['stripe-signature'];
       const config = getRawStripeConfig();
@@ -2553,7 +2553,7 @@ Checkliste für den Patienten:
   });
 
   // 7. Get Therapist Billing & Balance Status
-  app.get(["/api/therapist/billing/:therapistId", "/api/therapist/billing/:therapistId/"], (req, res) => {
+  app.get(["/api/therapist/billing/:therapistId", "/api/therapist/billing/:therapistId/", "/therapist/billing/:therapistId"], (req, res) => {
     try {
       const { therapistId } = req.params;
       const balRecord = getTherapistBalanceRecord(therapistId);
@@ -2577,7 +2577,7 @@ Checkliste für den Patienten:
   });
 
   // 8. Direct Top-Up (Immediate balance recharge)
-  app.post(["/api/therapist/billing/top-up", "/api/therapist/billing/top-up/"], (req, res) => {
+  app.post(["/api/therapist/billing/top-up", "/api/therapist/billing/top-up/", "/therapist/billing/top-up"], (req, res) => {
     try {
       const { therapistId, therapistName, therapistEmail, amountEur, type = 'manual_reload', note } = req.body;
       const amount = Math.max(1, Number(amountEur) || 20);
@@ -2599,7 +2599,7 @@ Checkliste für den Patienten:
   });
 
   // 9. Update Therapist Billing Settings (Threshold & Auto-reload)
-  app.post(["/api/therapist/billing/settings", "/api/therapist/billing/settings/"], (req, res) => {
+  app.post(["/api/therapist/billing/settings", "/api/therapist/billing/settings/", "/therapist/billing/settings"], (req, res) => {
     try {
       const { therapistId, lowBalanceThreshold, autoReloadEnabled, autoReloadAmount } = req.body;
       const updated = updateTherapistBalanceConfig(therapistId, {
