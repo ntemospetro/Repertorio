@@ -1,4 +1,5 @@
 import { LanguageCode } from '../types';
+import { getActiveTherapist } from './storage';
 
 // In-memory cache for translated monographs
 const translationCache = new Map<string, string>();
@@ -1022,13 +1023,17 @@ export async function fetchTranslatedMonograph(
 
   // 3. Request server-side AI translation
   try {
+    const activeTherapist = getActiveTherapist();
     const res = await fetch('/api/medications/translate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         text: rawMonograph,
         targetLang,
-        medName: normalizedName
+        medName: normalizedName,
+        therapistId: activeTherapist?.id || 'th-101',
+        therapistName: activeTherapist ? `${activeTherapist.vorname} ${activeTherapist.nachname}` : undefined,
+        therapistEmail: activeTherapist?.email
       })
     });
 
@@ -1065,6 +1070,7 @@ export async function fetchTranslatedComparison(
   }
 
   try {
+    const activeTherapist = getActiveTherapist();
     const res = await fetch('/api/medications/translate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1072,7 +1078,10 @@ export async function fetchTranslatedComparison(
         text,
         targetLang,
         type: 'comparison',
-        medName: 'comparison_' + targetLang
+        medName: 'comparison_' + targetLang,
+        therapistId: activeTherapist?.id || 'th-101',
+        therapistName: activeTherapist ? `${activeTherapist.vorname} ${activeTherapist.nachname}` : undefined,
+        therapistEmail: activeTherapist?.email
       })
     });
 

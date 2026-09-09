@@ -11,7 +11,18 @@ export async function fetchTokenBillingSummary(): Promise<TokenBillingSummary> {
     const res = await fetch('/api/admin/tokens/summary');
     if (res.ok) {
       const data = await res.json();
-      return data;
+      if (data) {
+        return {
+          totalPromptTokens: Number(data.totalPromptTokens ?? data.promptTokens ?? 0),
+          totalCandidatesTokens: Number(data.totalCandidatesTokens ?? data.candidatesTokens ?? 0),
+          totalTokens: Number(data.totalTokens ?? 0),
+          totalCostEur: Number(data.totalCostEur ?? data.totalSpentEur ?? 0),
+          totalRequests: Number(data.totalRequests ?? (Array.isArray(data.logs) ? data.logs.length : 0)),
+          byTherapist: Array.isArray(data.byTherapist) ? data.byTherapist : [],
+          rates: data.rates || DEFAULT_TOKEN_RATES,
+          lastUpdated: data.lastUpdated || new Date().toISOString()
+        };
+      }
     }
   } catch (err) {
     console.warn('Failed to fetch token billing summary from server:', err);
@@ -39,6 +50,7 @@ export async function fetchTokenLogs(therapistId?: string, limit: number = 100):
     const res = await fetch(`/api/admin/tokens/logs?${params.toString()}`);
     if (res.ok) {
       const data = await res.json();
+      if (Array.isArray(data)) return data;
       return data.logs || [];
     }
   } catch (err) {
@@ -56,7 +68,7 @@ export async function updateTokenPricingRates(rates: Partial<TokenPricingRates>)
     });
     if (res.ok) {
       const data = await res.json();
-      return data.rates;
+      return data.rates || data;
     }
   } catch (err) {
     console.warn('Failed to update token pricing rates:', err);

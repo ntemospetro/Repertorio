@@ -1,4 +1,5 @@
 import { PatientCase, PatientLifestyleData, MedicationRiskAnalysisResult, LanguageCode } from '../types';
+import { getActiveTherapist } from './storage';
 import { TOP_MEDICATIONS_CATALOG } from '../data/topMedicationsCatalog';
 import {
   getLocalizedConstitution,
@@ -196,6 +197,7 @@ export async function runClinicalMedicationComparison(
   
   // Attempt to call server Gemini endpoint first
   try {
+    const activeTherapist = getActiveTherapist();
     const res = await fetch('/api/medications/clinical-comparison', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -203,6 +205,9 @@ export async function runClinicalMedicationComparison(
         patientCase,
         lifestyle,
         language,
+        therapistId: patientCase.therapistId || activeTherapist?.id || 'th-101',
+        therapistName: activeTherapist ? `${activeTherapist.vorname} ${activeTherapist.nachname}` : undefined,
+        therapistEmail: activeTherapist?.email
       }),
     });
 

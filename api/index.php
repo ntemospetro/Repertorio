@@ -41,6 +41,24 @@ if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'OPTIONS
 // -------------------------------------------------------------------------
 // Pfad-Helfer für Datenbank- und Konfigurationsdateien
 // -------------------------------------------------------------------------
+if (!function_exists('getDataFilePath')) {
+    function getDataFilePath($filename) {
+        $candidates = [
+            __DIR__ . '/../data/' . $filename,
+            __DIR__ . '/data/' . $filename,
+            __DIR__ . '/../../data/' . $filename
+        ];
+        foreach ($candidates as $c) {
+            if (file_exists($c)) return $c;
+        }
+        $defaultDir = __DIR__ . '/../data';
+        if (!is_dir($defaultDir)) {
+            @mkdir($defaultDir, 0755, true);
+        }
+        return $defaultDir . '/' . $filename;
+    }
+}
+
 function getMedicationsDbPath() {
     $candidates = [
         __DIR__ . '/../data/medications_db.json',
@@ -236,6 +254,19 @@ function callGeminiApi($prompt, $withSearch = false) {
             if (isset($decoded['candidates'][0]['content']['parts'][0]['text'])) {
                 $text = trim($decoded['candidates'][0]['content']['parts'][0]['text']);
                 if (!empty($text)) {
+                    $promptTokens = isset($decoded['usageMetadata']['promptTokenCount'])
+                        ? (int)$decoded['usageMetadata']['promptTokenCount']
+                        : (int)ceil(strlen($prompt) / 4);
+                    $candidatesTokens = isset($decoded['usageMetadata']['candidatesTokenCount'])
+                        ? (int)$decoded['usageMetadata']['candidatesTokenCount']
+                        : (int)ceil(strlen($text) / 4);
+
+                    recordTokenUsageInternal([
+                        'model' => $model,
+                        'promptTokens' => $promptTokens,
+                        'candidatesTokens' => $candidatesTokens
+                    ]);
+
                     return $text;
                 }
             }
@@ -243,6 +274,234 @@ function callGeminiApi($prompt, $withSearch = false) {
     }
 
     return null;
+}
+
+// -------------------------------------------------------------------------
+// Token-Tracking & Abrechnung Helfer
+// -------------------------------------------------------------------------
+function getTherapistLookup() {
+    return [
+        'th-101' => [
+            'name' => 'Katharina Lindemann',
+            'email' => 'k.lindemann@naturheilpraxis-berlin.de',
+            'praxis' => 'Naturheilpraxis Lindemann',
+            'tarif' => 'Kostenloser Test-Tarif'
+        ],
+        'th-102' => [
+            'name' => 'Dr. med. Markus Vogel',
+            'email' => 'praxis@dr-vogel-muenchen.de',
+            'praxis' => 'Ganzheitliche Medizin Vogel',
+            'tarif' => 'Kostenloser Test-Tarif'
+        ],
+        'th-103' => [
+            'name' => 'Sophie Brunner',
+            'email' => 'sophie.brunner@homoeopathie-zuerich.ch',
+            'praxis' => 'Klassische Homöopathie Zürich',
+            'tarif' => 'Pro Unbegrenzt (Praxis-Flatrate)'
+        ]
+    ];
+}
+
+function getSeedTokenLogs() {
+    $now = time();
+    return [
+        [
+            'id' => 'tok-seed-101',
+            'timestamp' => date('c', $now - (35 * 60)),
+            'therapistId' => 'th-103',
+            'therapistName' => 'Sophie Brunner',
+            'therapistEmail' => 'sophie.brunner@homoeopathie-zuerich.ch',
+            'endpoint' => '/api/analyze',
+            'actionName' => 'Große klinische Fallanalyse',
+            'model' => 'gemini-3.8-flash',
+            'promptTokens' => 2540,
+            'candidatesTokens' => 1890,
+            'totalTokens' => 4430,
+            'costEur' => 0.00076
+        ],
+        [
+            'id' => 'tok-seed-102',
+            'timestamp' => date('c', $now - (120 * 60)),
+            'therapistId' => 'th-103',
+            'therapistName' => 'Sophie Brunner',
+            'therapistEmail' => 'sophie.brunner@homoeopathie-zuerich.ch',
+            'endpoint' => '/api/acute-repertorise',
+            'actionName' => '5-Schritte-Akut-Repertorisation',
+            'model' => 'gemini-3.8-flash',
+            'promptTokens' => 1210,
+            'candidatesTokens' => 840,
+            'totalTokens' => 2050,
+            'costEur' => 0.00034
+        ],
+        [
+            'id' => 'tok-seed-103',
+            'timestamp' => date('c', $now - (300 * 60)),
+            'therapistId' => 'th-103',
+            'therapistName' => 'Sophie Brunner',
+            'therapistEmail' => 'sophie.brunner@homoeopathie-zuerich.ch',
+            'endpoint' => '/api/check-medical-relevance',
+            'actionName' => 'Medizinischer Relevanz-Check',
+            'model' => 'gemini-3.8-flash',
+            'promptTokens' => 215,
+            'candidatesTokens' => 32,
+            'totalTokens' => 247,
+            'costEur' => 0.00003
+        ],
+        [
+            'id' => 'tok-seed-201',
+            'timestamp' => date('c', $now - (6 * 3600)),
+            'therapistId' => 'th-102',
+            'therapistName' => 'Dr. med. Markus Vogel',
+            'therapistEmail' => 'praxis@dr-vogel-muenchen.de',
+            'endpoint' => '/api/analyze',
+            'actionName' => 'Große klinische Fallanalyse',
+            'model' => 'gemini-3.8-flash',
+            'promptTokens' => 2610,
+            'candidatesTokens' => 1950,
+            'totalTokens' => 4560,
+            'costEur' => 0.00078
+        ],
+        [
+            'id' => 'tok-seed-202',
+            'timestamp' => date('c', $now - (18 * 3600)),
+            'therapistId' => 'th-102',
+            'therapistName' => 'Dr. med. Markus Vogel',
+            'therapistEmail' => 'praxis@dr-vogel-muenchen.de',
+            'endpoint' => '/api/acute-repertorise',
+            'actionName' => '5-Schritte-Akut-Repertorisation',
+            'model' => 'gemini-3.8-flash',
+            'promptTokens' => 1180,
+            'candidatesTokens' => 810,
+            'totalTokens' => 1990,
+            'costEur' => 0.00033
+        ],
+        [
+            'id' => 'tok-seed-301',
+            'timestamp' => date('c', $now - (24 * 3600)),
+            'therapistId' => 'th-101',
+            'therapistName' => 'Katharina Lindemann',
+            'therapistEmail' => 'k.lindemann@naturheilpraxis-berlin.de',
+            'endpoint' => '/api/analyze',
+            'actionName' => 'Große klinische Fallanalyse',
+            'model' => 'gemini-3.8-flash',
+            'promptTokens' => 2430,
+            'candidatesTokens' => 1810,
+            'totalTokens' => 4240,
+            'costEur' => 0.00073
+        ],
+        [
+            'id' => 'tok-seed-302',
+            'timestamp' => date('c', $now - (30 * 3600)),
+            'therapistId' => 'th-101',
+            'therapistName' => 'Katharina Lindemann',
+            'therapistEmail' => 'k.lindemann@naturheilpraxis-berlin.de',
+            'endpoint' => '/api/check-medical-relevance',
+            'actionName' => 'Medizinischer Relevanz-Check',
+            'model' => 'gemini-3.8-flash',
+            'promptTokens' => 195,
+            'candidatesTokens' => 28,
+            'totalTokens' => 223,
+            'costEur' => 0.00002
+        ]
+    ];
+}
+
+function getStoredTokenLogs() {
+    $file = getDataFilePath('token_usage_logs.json');
+    if (file_exists($file)) {
+        $raw = @file_get_contents($file);
+        $parsed = @json_decode($raw, true);
+        if (is_array($parsed) && count($parsed) > 0) {
+            return $parsed;
+        }
+    }
+    $seeds = getSeedTokenLogs();
+    @file_put_contents($file, json_encode($seeds, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    return $seeds;
+}
+
+function recordTokenUsageInternal($params) {
+    try {
+        $file = getDataFilePath('token_usage_logs.json');
+        $ratesFile = getDataFilePath('token_rates.json');
+
+        $rates = [
+            'inputPerMillionEur' => 0.075,
+            'outputPerMillionEur' => 0.30,
+            'currency' => '€'
+        ];
+        if (file_exists($ratesFile)) {
+            $rawRates = @file_get_contents($ratesFile);
+            $parsedRates = @json_decode($rawRates, true);
+            if (is_array($parsedRates)) {
+                $rates = array_merge($rates, $parsedRates);
+            }
+        }
+
+        $logs = getStoredTokenLogs();
+
+        $promptTokens = isset($params['promptTokens']) ? (int)$params['promptTokens'] : 0;
+        $candidatesTokens = isset($params['candidatesTokens']) ? (int)$params['candidatesTokens'] : 0;
+        $totalTokens = $promptTokens + $candidatesTokens;
+
+        $promptCost = ($promptTokens / 1000000.0) * (float)$rates['inputPerMillionEur'];
+        $candidatesCost = ($candidatesTokens / 1000000.0) * (float)$rates['outputPerMillionEur'];
+        $totalCost = round($promptCost + $candidatesCost, 5);
+
+        global $body, $route;
+        $therapistLookup = getTherapistLookup();
+
+        $thId = !empty($params['therapistId']) ? $params['therapistId'] : (!empty($body['therapistId']) ? $body['therapistId'] : 'th-101');
+        $thName = !empty($params['therapistName']) ? $params['therapistName'] : (!empty($body['therapistName']) ? $body['therapistName'] : '');
+        $thEmail = !empty($params['therapistEmail']) ? $params['therapistEmail'] : (!empty($body['therapistEmail']) ? $body['therapistEmail'] : '');
+
+        if (empty($thName) && isset($therapistLookup[$thId])) {
+            $thName = $therapistLookup[$thId]['name'];
+        }
+        if (empty($thEmail) && isset($therapistLookup[$thId])) {
+            $thEmail = $therapistLookup[$thId]['email'];
+        }
+
+        $actionMap = [
+            'analyze' => 'Große klinische Fallanalyse',
+            'acute-repertorise' => '5-Schritte-Akut-Repertorisation',
+            'check-medical-relevance' => 'Medizinischer Relevanz-Check',
+            'hahnemann-analysis' => 'Hahnemann 6-Säulen-Matrix Analyse',
+            'medications/search' => 'Medikamenten-Live-Recherche',
+            'medications/monograph' => 'Medikamenten-Monographie (Fachinfo)',
+            'medications/clinical-comparison' => 'Klinischer Multimedikations-Vergleich',
+            'medications/translate' => 'Medikamenten-Monographie Übersetzung'
+        ];
+
+        $curRoute = $route ?: 'gemini';
+        $endpoint = !empty($params['endpoint']) ? $params['endpoint'] : ('/api/' . $curRoute);
+        $actionName = !empty($params['actionName']) ? $params['actionName'] : ($actionMap[$curRoute] ?? 'KI-Generierung');
+
+        $entry = [
+            'id' => 'tok-' . round(microtime(true) * 1000) . '-' . substr(md5(uniqid(mt_rand(), true)), 0, 5),
+            'timestamp' => date('c'),
+            'therapistId' => $thId,
+            'therapistName' => $thName ?: 'Katharina Lindemann',
+            'therapistEmail' => $thEmail ?: 'k.lindemann@naturheilpraxis-berlin.de',
+            'endpoint' => $endpoint,
+            'actionName' => $actionName,
+            'model' => !empty($params['model']) ? $params['model'] : 'gemini-3.8-flash',
+            'promptTokens' => $promptTokens,
+            'candidatesTokens' => $candidatesTokens,
+            'totalTokens' => $totalTokens,
+            'costEur' => $totalCost
+        ];
+
+        array_unshift($logs, $entry);
+        if (count($logs) > 5000) {
+            $logs = array_slice($logs, 0, 5000);
+        }
+
+        @file_put_contents($file, json_encode($logs, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        return $entry;
+    } catch (\Throwable $e) {
+        return null;
+    }
 }
 
 // -------------------------------------------------------------------------
@@ -772,20 +1031,22 @@ if ($route === 'medications/translate' || $route === 'translate') {
     exit;
 }
 
-function getDataFilePath($filename) {
-    $candidates = [
-        __DIR__ . '/../data/' . $filename,
-        __DIR__ . '/data/' . $filename,
-        __DIR__ . '/../../data/' . $filename
-    ];
-    foreach ($candidates as $c) {
-        if (file_exists($c)) return $c;
+if (!function_exists('getDataFilePath')) {
+    function getDataFilePath($filename) {
+        $candidates = [
+            __DIR__ . '/../data/' . $filename,
+            __DIR__ . '/data/' . $filename,
+            __DIR__ . '/../../data/' . $filename
+        ];
+        foreach ($candidates as $c) {
+            if (file_exists($c)) return $c;
+        }
+        $defaultDir = __DIR__ . '/../data';
+        if (!is_dir($defaultDir)) {
+            @mkdir($defaultDir, 0755, true);
+        }
+        return $defaultDir . '/' . $filename;
     }
-    $defaultDir = __DIR__ . '/../data';
-    if (!is_dir($defaultDir)) {
-        @mkdir($defaultDir, 0755, true);
-    }
-    return $defaultDir . '/' . $filename;
 }
 
 // =========================================================================
@@ -1442,37 +1703,55 @@ if (strpos($route, 'admin/tokens') === 0) {
 
     if ($route === 'admin/tokens/rates') {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $updated = array_merge($defaultRates, is_array($body) ? $body : []);
+            $currentRates = $defaultRates;
+            if (file_exists($tokenRatesFile)) {
+                $raw = @file_get_contents($tokenRatesFile);
+                $parsed = @json_decode($raw, true);
+                if (is_array($parsed)) $currentRates = array_merge($currentRates, $parsed);
+            }
+            $updated = array_merge($currentRates, is_array($body) ? $body : []);
             @file_put_contents($tokenRatesFile, json_encode($updated, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-            echo json_encode($updated);
+            echo json_encode(['success' => true, 'rates' => $updated]);
             exit;
         }
+        $rates = $defaultRates;
         if (file_exists($tokenRatesFile)) {
             $raw = @file_get_contents($tokenRatesFile);
             $parsed = @json_decode($raw, true);
-            if (is_array($parsed)) {
-                echo json_encode(array_merge($defaultRates, $parsed));
-                exit;
-            }
+            if (is_array($parsed)) $rates = array_merge($defaultRates, $parsed);
         }
-        echo json_encode($defaultRates);
+        echo json_encode(['rates' => $rates]);
         exit;
     }
 
     if ($route === 'admin/tokens/reset') {
         @file_put_contents($tokenLogsFile, json_encode([], JSON_PRETTY_PRINT));
-        echo json_encode(['status' => 'ok', 'message' => 'Token-Logs erfolgreich zurückgesetzt']);
+        echo json_encode(['success' => true, 'status' => 'ok', 'message' => 'Token-Logs erfolgreich zurückgesetzt']);
         exit;
     }
 
-    if ($route === 'admin/tokens/logs' || $route === 'admin/tokens/summary') {
-        $logs = [];
-        if (file_exists($tokenLogsFile)) {
-            $raw = @file_get_contents($tokenLogsFile);
-            $parsed = @json_decode($raw, true);
-            if (is_array($parsed)) $logs = $parsed;
+    if ($route === 'admin/tokens/logs') {
+        $logs = getStoredTokenLogs();
+        $therapistId = $_GET['therapistId'] ?? null;
+        $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 200;
+        if ($limit <= 0) $limit = 200;
+
+        $filtered = $logs;
+        if (!empty($therapistId) && $therapistId !== 'all') {
+            $filtered = array_values(array_filter($logs, function($l) use ($therapistId) {
+                return isset($l['therapistId']) && $l['therapistId'] === $therapistId;
+            }));
         }
 
+        echo json_encode([
+            'logs' => array_slice($filtered, 0, $limit),
+            'total' => count($filtered)
+        ]);
+        exit;
+    }
+
+    if ($route === 'admin/tokens/summary') {
+        $logs = getStoredTokenLogs();
         $rates = $defaultRates;
         if (file_exists($tokenRatesFile)) {
             $raw = @file_get_contents($tokenRatesFile);
@@ -1480,23 +1759,91 @@ if (strpos($route, 'admin/tokens') === 0) {
             if (is_array($parsed)) $rates = array_merge($defaultRates, $parsed);
         }
 
-        $totalSpent = 0;
+        $totalPromptTokens = 0;
+        $totalCandidatesTokens = 0;
         $totalTokens = 0;
-        foreach ($logs as $l) {
-            $totalSpent += isset($l['costEur']) ? (float)$l['costEur'] : 0;
-            $totalTokens += isset($l['totalTokens']) ? (int)$l['totalTokens'] : 0;
+        $totalCostEur = 0;
+        $totalRequests = count($logs);
+
+        $therapistLookup = getTherapistLookup();
+        $therapistMap = [];
+
+        // Pre-populate with known therapists
+        foreach ($therapistLookup as $id => $info) {
+            $therapistMap[$id] = [
+                'therapistId' => $id,
+                'therapistName' => $info['name'],
+                'therapistEmail' => $info['email'],
+                'praxisName' => $info['praxis'],
+                'tarifLabel' => $info['tarif'],
+                'requestCount' => 0,
+                'promptTokens' => 0,
+                'candidatesTokens' => 0,
+                'totalTokens' => 0,
+                'totalCostEur' => 0.0,
+                'lastUsedAt' => ''
+            ];
         }
 
-        if ($route === 'admin/tokens/logs') {
-            echo json_encode($logs);
-            exit;
+        foreach ($logs as $l) {
+            $pTok = isset($l['promptTokens']) ? (int)$l['promptTokens'] : 0;
+            $cTok = isset($l['candidatesTokens']) ? (int)$l['candidatesTokens'] : 0;
+            $totTok = isset($l['totalTokens']) ? (int)$l['totalTokens'] : ($pTok + $cTok);
+            $cost = isset($l['costEur']) ? (float)$l['costEur'] : 0.0;
+            $ts = $l['timestamp'] ?? '';
+
+            $totalPromptTokens += $pTok;
+            $totalCandidatesTokens += $cTok;
+            $totalTokens += $totTok;
+            $totalCostEur += $cost;
+
+            $thId = $l['therapistId'] ?? 'th-101';
+            if (!isset($therapistMap[$thId])) {
+                $therapistMap[$thId] = [
+                    'therapistId' => $thId,
+                    'therapistName' => $l['therapistName'] ?? ('Therapeut ' . $thId),
+                    'therapistEmail' => $l['therapistEmail'] ?? '',
+                    'praxisName' => '',
+                    'tarifLabel' => 'Standard-Tarif',
+                    'requestCount' => 0,
+                    'promptTokens' => 0,
+                    'candidatesTokens' => 0,
+                    'totalTokens' => 0,
+                    'totalCostEur' => 0.0,
+                    'lastUsedAt' => ''
+                ];
+            }
+
+            $therapistMap[$thId]['requestCount'] += 1;
+            $therapistMap[$thId]['promptTokens'] += $pTok;
+            $therapistMap[$thId]['candidatesTokens'] += $cTok;
+            $therapistMap[$thId]['totalTokens'] += $totTok;
+            $therapistMap[$thId]['totalCostEur'] += $cost;
+
+            if (empty($therapistMap[$thId]['lastUsedAt']) || strcmp($ts, $therapistMap[$thId]['lastUsedAt']) > 0) {
+                $therapistMap[$thId]['lastUsedAt'] = $ts;
+            }
         }
+
+        // Format and sort therapists by total tokens descending
+        $byTherapist = array_values(array_map(function($t) {
+            $t['totalCostEur'] = round($t['totalCostEur'], 5);
+            return $t;
+        }, $therapistMap));
+
+        usort($byTherapist, function($a, $b) {
+            return $b['totalTokens'] - $a['totalTokens'];
+        });
 
         echo json_encode([
-            'logs' => $logs,
+            'totalPromptTokens' => $totalPromptTokens,
+            'totalCandidatesTokens' => $totalCandidatesTokens,
+            'totalTokens' => $totalTokens,
+            'totalCostEur' => round($totalCostEur, 5),
+            'totalRequests' => $totalRequests,
+            'byTherapist' => $byTherapist,
             'rates' => $rates,
-            'totalSpentEur' => round($totalSpent, 4),
-            'totalTokens' => $totalTokens
+            'lastUpdated' => date('c')
         ]);
         exit;
     }
