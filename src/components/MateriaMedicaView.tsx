@@ -553,21 +553,24 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = ({
               <div className="flex items-center gap-2 w-full">
                 {/* Search Bar */}
                 <div className="relative flex-1">
-                  <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <Search className="w-4 h-4 md:w-5 md:h-5 text-slate-400 absolute left-3.5 md:left-4 top-1/2 -translate-y-1/2 pointer-events-none transition-all" />
                   <input
                     type="text"
+                    id="materia-medica-search-input"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder={t('materiaSearchPlaceholder')}
-                    className="w-full pl-9 pr-8 py-2.5 bg-white border border-slate-300 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 transition-all shadow-2xs"
+                    className="w-full pl-9 sm:pl-10 md:pl-12 pr-8 sm:pr-9 md:pr-11 py-2.5 sm:py-3 md:py-3.5 bg-white border border-slate-300 md:border-slate-300/90 rounded-xl md:rounded-2xl text-sm md:text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/25 focus:border-teal-600 transition-all shadow-2xs md:shadow-xs"
                   />
                   {searchQuery && (
                     <button
                       type="button"
+                      id="materia-medica-clear-search-btn"
                       onClick={() => setSearchQuery('')}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                      className="absolute right-2.5 md:right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 md:p-1.5 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                      title={t('clearBtn') || 'Löschen'}
                     >
-                      <X className="w-3.5 h-3.5" />
+                      <X className="w-3.5 h-3.5 md:w-4.5 md:h-4.5" />
                     </button>
                   )}
                 </div>
@@ -577,7 +580,7 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = ({
                   id="btn-toggle-materia-filters"
                   type="button"
                   onClick={() => setShowMobileFilters(!showMobileFilters)}
-                  className={`lg:hidden flex items-center gap-1.5 px-3 py-2.5 rounded-xl border text-xs font-semibold shrink-0 cursor-pointer transition-all shadow-2xs ${
+                  className={`lg:hidden flex items-center gap-1.5 md:gap-2 px-3 py-2.5 md:px-4 md:py-3.5 rounded-xl md:rounded-2xl border text-xs md:text-sm font-semibold shrink-0 cursor-pointer transition-all shadow-2xs md:shadow-xs ${
                     showMobileFilters || selectedAuthor !== 'all' || selectedCategory !== 'all' || selectedLetter !== 'all'
                       ? 'bg-teal-50 text-teal-800 border-teal-200'
                       : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border-slate-200'
@@ -585,13 +588,13 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = ({
                   aria-expanded={showMobileFilters}
                   title={showMobileFilters ? t('filterToggleHide') : t('filterToggleShow')}
                 >
-                  <SlidersHorizontal className="w-4 h-4 text-teal-700 shrink-0" />
+                  <SlidersHorizontal className="w-4 h-4 md:w-4.5 md:h-4.5 text-teal-700 shrink-0" />
                   <span className="hidden sm:inline">{t('filterToggle')}</span>
                   {(selectedAuthor !== 'all' || selectedCategory !== 'all' || selectedLetter !== 'all') && (
-                    <span className="w-2 h-2 rounded-full bg-teal-600 shrink-0" />
+                    <span className="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full bg-teal-600 shrink-0" />
                   )}
                   <ChevronDown
-                    className={`w-3.5 h-3.5 text-slate-500 shrink-0 transition-transform duration-200 ${
+                    className={`w-3.5 h-3.5 md:w-4 md:h-4 text-slate-500 shrink-0 transition-transform duration-200 ${
                       showMobileFilters ? 'rotate-180' : ''
                     }`}
                   />
