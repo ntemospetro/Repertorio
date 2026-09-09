@@ -5,26 +5,31 @@ import {
   Languages, 
   ArrowRight, 
   ClipboardList,
-  Sparkles,
-  CheckCircle2,
-  Lock,
-  Infinity as InfinityIcon,
-  Check,
-  Activity,
-  FileText,
-  Layers,
-  Scale,
-  Search,
-  BookOpen,
-  HeartHandshake,
-  Clock,
-  ChevronRight,
-  Shield,
-  Stethoscope
+  Sparkles, 
+  CheckCircle2, 
+  Lock, 
+  Infinity as InfinityIcon, 
+  Check, 
+  Activity, 
+  FileText, 
+  Layers, 
+  Scale, 
+  Search, 
+  BookOpen, 
+  HeartHandshake, 
+  Clock, 
+  ChevronRight, 
+  Shield, 
+  Stethoscope,
+  Globe,
+  Laptop,
+  CheckCheck,
+  AlertCircle
 } from 'lucide-react';
 import { useTranslation } from '../i18n/LanguageContext';
 import { PackagePlan } from '../types';
 import { getPackagePlans, getLocalizedRegistrationTrial } from '../services/storage';
+import { SemanticEngineAnimation } from './SemanticEngineAnimation';
 
 interface LandingPageProps {
   onGetStarted: () => void;
@@ -89,51 +94,58 @@ export function LandingPage({ onGetStarted, onGoToLogin }: LandingPageProps) {
   return (
     <div id="landing-page-root" className="bg-[#FAFBFB] text-slate-800 antialiased font-sans selection:bg-teal-100 selection:text-teal-900">
       
-      {/* 1. HERO SECTION */}
+      {/* 1. HERO SECTION WITH SEMANTIC ENGINE ANIMATION */}
       <section id="landing-hero" className="relative overflow-hidden pt-12 pb-20 md:pt-20 md:pb-28 border-b border-slate-200/70">
         {/* Subtle decorative background pattern */}
         <div className="absolute inset-0 bg-[radial-gradient(#0f766e_0.75px,transparent_0.75px)] [background-size:24px_24px] opacity-[0.035] pointer-events-none" />
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[650px] h-[350px] bg-gradient-to-tr from-teal-100/40 via-slate-100/20 to-transparent blur-3xl rounded-full pointer-events-none -z-10" />
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[750px] h-[450px] bg-gradient-to-tr from-teal-100/40 via-slate-100/20 to-transparent blur-3xl rounded-full pointer-events-none -z-10" />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="max-w-3xl mx-auto text-center">
+          <div className="max-w-4xl mx-auto text-center">
             
-            {/* Professional Subtitle Pill */}
+            {/* Top Eyebrow Badge */}
             <div id="landing-hero-pill" className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900 text-white text-xs font-semibold tracking-wide mb-6 shadow-sm">
               <Sparkles className="w-3.5 h-3.5 text-teal-400" />
-              <span>{t('landingSubtitle')}</span>
+              <span>{t('landingHeroBadgeSemantic')}</span>
             </div>
 
             {/* Main Headline */}
             <h1 id="landing-hero-title" className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold text-slate-900 tracking-tight leading-[1.15] mb-6">
-              <span>{t('landingTitle1')}</span>
-              <span className="text-teal-700 block sm:inline">{t('landingTitle2')}</span>
+              <span>{t('landingHeroMainTitle1')}</span>
+              <span className="text-teal-700 block sm:inline">{t('landingHeroMainTitle2')}</span>
             </h1>
 
-            {/* Sub-headline & Description */}
-            <p id="landing-hero-sub" className="text-base sm:text-lg md:text-xl font-medium text-slate-700 mb-3">
-              {t('landingHeroSub')}
-            </p>
-            <p id="landing-hero-desc" className="text-sm sm:text-base text-slate-600 max-w-2xl mx-auto mb-8 leading-relaxed">
-              {t('landingDescription')}
+            {/* Subline */}
+            <p id="landing-hero-subline" className="text-lg sm:text-xl md:text-2xl font-bold text-slate-800 mb-4">
+              {t('landingHeroMainSubline')}
             </p>
 
-            {/* Call to Actions */}
+            {/* Lead Description */}
+            <p id="landing-hero-lead" className="text-sm sm:text-base text-slate-600 max-w-3xl mx-auto mb-6 leading-relaxed">
+              {t('landingHeroMainLead')}
+            </p>
+
+            {/* 3 Pillars Summary Bar */}
+            <div id="landing-hero-three-pillars" className="inline-flex flex-wrap items-center justify-center gap-2 sm:gap-3 px-4 py-2 rounded-xl bg-teal-50/80 border border-teal-200/80 text-xs sm:text-sm font-semibold text-teal-900 mb-8">
+              <span>{t('landingHeroThreePillars')}</span>
+            </div>
+
+            {/* Call to Action Buttons */}
             <div id="landing-hero-cta-group" className="flex flex-col sm:flex-row items-center justify-center gap-3.5 mb-8">
               <button 
                 id="landing-hero-btn-primary"
                 onClick={onGetStarted}
-                className="w-full sm:w-auto px-7 py-3.5 bg-teal-700 hover:bg-teal-800 text-white font-semibold text-base rounded-xl shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 group"
+                className="w-full sm:w-auto px-8 py-3.5 bg-teal-700 hover:bg-teal-800 text-white font-semibold text-base rounded-xl shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 group cursor-pointer"
               >
-                <span>{t('landingBtnTest')}</span>
+                <span>{t('landingHeroCtaTest')}</span>
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </button>
               <button 
                 id="landing-hero-btn-secondary"
                 onClick={onGoToLogin}
-                className="w-full sm:w-auto px-7 py-3.5 bg-white border border-slate-300 hover:border-slate-400 hover:bg-slate-50 text-slate-700 font-semibold text-base rounded-xl transition-all duration-200 shadow-sm"
+                className="w-full sm:w-auto px-8 py-3.5 bg-white border border-slate-300 hover:border-slate-400 hover:bg-slate-50 text-slate-700 font-semibold text-base rounded-xl transition-all duration-200 shadow-sm cursor-pointer"
               >
-                {t('landingBtnLogin')}
+                {t('landingHeroCtaLogin')}
               </button>
             </div>
 
@@ -141,381 +153,359 @@ export function LandingPage({ onGetStarted, onGoToLogin }: LandingPageProps) {
             <div id="landing-hero-trust-badges" className="flex flex-wrap items-center justify-center gap-y-2 gap-x-6 text-xs sm:text-sm text-slate-600 font-medium">
               <div className="flex items-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4 text-teal-600" />
-                <span>{t('landingBadgeGdpr')}</span>
+                <span>{t('landingHeroTrust1')}</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4 text-teal-600" />
-                <span>{t('landingBadgeNoCard')}</span>
+                <span>{t('landingHeroTrust2')}</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4 text-teal-600" />
-                <span>{t('landingBadgeHahnemann')}</span>
+                <span>{t('landingHeroTrust3')}</span>
               </div>
             </div>
           </div>
 
-          {/* 1.1 LIVE CLINICAL UI PREVIEW (Simulated Hahnemannian Case Workspace) */}
-          <div id="landing-hero-preview-window" className="mt-14 max-w-5xl mx-auto bg-white rounded-2xl border border-slate-300/80 shadow-2xl overflow-hidden">
-            {/* Mock Window Top Bar */}
-            <div className="bg-slate-900 px-4 py-3 flex items-center justify-between border-b border-slate-800">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-rose-500/80" />
-                <div className="w-3 h-3 rounded-full bg-amber-500/80" />
-                <div className="w-3 h-3 rounded-full bg-emerald-500/80" />
-                <span className="text-xs font-mono text-slate-400 ml-2 truncate">
-                  {t('landingPreviewHeader')}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-950 text-emerald-300 border border-emerald-800/80">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  {t('landingPreviewStatus')}
-                </span>
-              </div>
-            </div>
-
-            {/* Mock Workspace Content */}
-            <div className="p-6 md:p-8 bg-slate-50/50">
-              <div className="grid md:grid-cols-12 gap-6">
-                
-                {/* Left Column: Symptom Complex Profile */}
-                <div className="md:col-span-5 space-y-4">
-                  <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-sm">
-                    <div className="flex items-center gap-2 mb-3">
-                      <ClipboardList className="w-4 h-4 text-teal-700" />
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-slate-600">
-                        {t('landingPreviewSymptomTitle')}
-                      </h4>
-                    </div>
-                    <ul className="space-y-2.5 text-xs text-slate-700">
-                      <li className="flex items-start gap-2 bg-slate-50 p-2 rounded-lg border border-slate-100">
-                        <span className="w-1.5 h-1.5 rounded-full bg-teal-600 mt-1.5 shrink-0" />
-                        <span>{t('landingPreviewSymptom1')}</span>
-                      </li>
-                      <li className="flex items-start gap-2 bg-slate-50 p-2 rounded-lg border border-slate-100">
-                        <span className="w-1.5 h-1.5 rounded-full bg-teal-600 mt-1.5 shrink-0" />
-                        <span>{t('landingPreviewSymptom2')}</span>
-                      </li>
-                      <li className="flex items-start gap-2 bg-teal-50/60 p-2 rounded-lg border border-teal-100 text-teal-900 font-medium">
-                        <span className="w-1.5 h-1.5 rounded-full bg-teal-700 mt-1.5 shrink-0" />
-                        <span>{t('landingPreviewSymptom3')}</span>
-                      </li>
-                    </ul>
-                  </div>
-
-                  {/* Differential Diagnosis Mini Card */}
-                  <div className="bg-teal-900 text-white p-4 rounded-xl shadow-sm">
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <Scale className="w-4 h-4 text-teal-300" />
-                      <h4 className="text-xs font-bold tracking-wide uppercase text-teal-200">
-                        {t('landingPreviewDiffTitle')}
-                      </h4>
-                    </div>
-                    <p className="text-xs text-teal-100/90 leading-relaxed">
-                      {t('landingPreviewDiffText')}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Right Column: Ranked Remedies & Materia Medica Matching */}
-                <div className="md:col-span-7 bg-white p-5 rounded-xl border border-slate-200/80 shadow-sm flex flex-col justify-between">
-                  <div>
-                    <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-100">
-                      <div className="flex items-center gap-2">
-                        <BrainCircuit className="w-4 h-4 text-teal-700" />
-                        <h4 className="text-xs font-bold uppercase tracking-wider text-slate-600">
-                          {t('landingPreviewRepTitle')}
-                        </h4>
-                      </div>
-                      <span className="text-[11px] font-medium text-slate-500 font-mono">
-                        Hahnemannian Matching Engine
-                      </span>
-                    </div>
-
-                    <div className="space-y-3">
-                      {/* Remedy 1 (Top Match) */}
-                      <div className="p-3.5 bg-teal-50/70 border border-teal-200/90 rounded-xl relative">
-                        <div className="flex items-center justify-between mb-1.5">
-                          <div className="flex items-center gap-2">
-                            <span className="w-5 h-5 rounded-full bg-teal-700 text-white text-[11px] font-bold flex items-center justify-center">1</span>
-                            <span className="text-sm font-bold text-slate-900">{t('landingPreviewMed1')}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-mono font-bold text-teal-800 bg-teal-100/80 px-2 py-0.5 rounded">
-                              {t('landingPreviewMed1Score')}
-                            </span>
-                            <span className="text-[11px] font-semibold text-slate-600 bg-white px-2 py-0.5 rounded border border-slate-200">
-                              {t('landingPreviewMed1Potency')}
-                            </span>
-                          </div>
-                        </div>
-                        <p className="text-xs text-slate-600 pl-7 leading-relaxed">
-                          {t('landingPreviewMed1Note')}
-                        </p>
-                      </div>
-
-                      {/* Remedy 2 */}
-                      <div className="p-3 bg-white border border-slate-200/80 rounded-xl flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="w-5 h-5 rounded-full bg-slate-100 text-slate-600 text-[11px] font-bold flex items-center justify-center">2</span>
-                          <span className="text-sm font-medium text-slate-800">{t('landingPreviewMed2')}</span>
-                        </div>
-                        <span className="text-xs font-mono font-medium text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
-                          {t('landingPreviewMed2Score')}
-                        </span>
-                      </div>
-
-                      {/* Remedy 3 */}
-                      <div className="p-3 bg-white border border-slate-200/80 rounded-xl flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="w-5 h-5 rounded-full bg-slate-100 text-slate-600 text-[11px] font-bold flex items-center justify-center">3</span>
-                          <span className="text-sm font-medium text-slate-800">{t('landingPreviewMed3')}</span>
-                        </div>
-                        <span className="text-xs font-mono font-medium text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
-                          {t('landingPreviewMed3Score')}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-                    <span>Materia Medica Reference: Kent / Boericke / Phatak</span>
-                    <button 
-                      onClick={onGetStarted}
-                      className="text-teal-700 hover:text-teal-800 font-semibold flex items-center gap-1"
-                    >
-                      <span>{t('landingBtnTest')}</span>
-                      <ChevronRight className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-
-              </div>
-            </div>
+          {/* 1.1 INTERACTIVE LIVE SEMANTIC SIMULATION (Hostinger Hermes Agent Style) */}
+          <div id="landing-hero-animation-wrapper" className="mt-14 max-w-6xl mx-auto">
+            <SemanticEngineAnimation />
           </div>
 
         </div>
       </section>
 
-      {/* 2. TRUST PILLARS (4 Focus Areas for Classical Homeopaths) */}
-      <section id="landing-trust-pillars" className="py-16 bg-white border-b border-slate-200/70">
+      {/* 2. SECTION 2: DIE ZEITAUFWENDIGE SUCHE NEU GEDACHT */}
+      <section id="landing-rethink" className="py-20 bg-white border-b border-slate-200/70">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <span className="text-xs font-bold uppercase tracking-wider text-teal-700 bg-teal-50 px-3 py-1 rounded-full border border-teal-100">
+            {t('landingRethinkEyebrow')}
+          </span>
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 mt-4 mb-4">
+            {t('landingRethinkTitle')}
+          </h2>
+          <p className="text-base sm:text-lg font-semibold text-slate-800 mb-6">
+            {t('landingRethinkSubtitle')}
+          </p>
+          <div className="bg-slate-50/80 p-6 sm:p-8 rounded-2xl border border-slate-200/80 text-left text-sm sm:text-base text-slate-700 leading-relaxed shadow-sm">
+            <p>{t('landingRethinkText')}</p>
+          </div>
+        </div>
+      </section>
+
+      {/* 3. SECTION 3: DIE 5 KERNSÄULEN FÜR IHRE PRAXIS */}
+      <section id="landing-pillars" className="py-24 bg-slate-50/70 border-b border-slate-200/70">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-2xl mx-auto mb-12">
-            <h2 className="text-xl sm:text-2xl font-bold text-slate-900">
-              {t('landingTrustHeadline')}
+          
+          <div className="text-center max-w-3xl mx-auto mb-16">
+            <span className="text-xs font-bold uppercase tracking-wider text-teal-700 bg-teal-50 px-3 py-1 rounded-full border border-teal-100">
+              {t('landingPillarsEyebrow')}
+            </span>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 mt-4 mb-4">
+              {t('landingPillarsMainTitle')}
             </h2>
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="space-y-12 max-w-6xl mx-auto">
+            
             {/* Pillar 1 */}
-            <div id="landing-trust-card-1" className="p-6 bg-slate-50 rounded-xl border border-slate-200/70">
-              <div className="w-10 h-10 rounded-lg bg-teal-100/80 text-teal-800 flex items-center justify-center mb-4">
-                <ClipboardList className="w-5 h-5" />
+            <div id="landing-pillar-1" className="bg-white rounded-2xl border border-slate-200/90 p-7 sm:p-9 shadow-sm">
+              <div className="grid md:grid-cols-12 gap-8 items-center">
+                <div className="md:col-span-7 space-y-4">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-teal-50 text-teal-800 text-xs font-bold">
+                    <ClipboardList className="w-4 h-4" />
+                    <span>Säule 1</span>
+                  </div>
+                  <h3 className="text-xl sm:text-2xl font-bold text-slate-900">
+                    {t('landingPillar1Title')}
+                  </h3>
+                  <p className="text-sm sm:text-base font-semibold text-teal-800">
+                    {t('landingPillar1Subtitle')}
+                  </p>
+                  <p className="text-sm text-slate-600 leading-relaxed">
+                    {t('landingPillar1Text')}
+                  </p>
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs sm:text-sm font-medium text-slate-800 italic">
+                    «{t('landingPillar1Quote')}»
+                  </div>
+                </div>
+                <div className="md:col-span-5 bg-slate-50 p-6 rounded-xl border border-slate-200/80">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">
+                    Praxis-Vorteile
+                  </h4>
+                  <ul className="space-y-2.5 text-xs sm:text-sm text-slate-700">
+                    <li className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-teal-700 shrink-0 mt-0.5" />
+                      <span>{t('landingPillar1Point1')}</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-teal-700 shrink-0 mt-0.5" />
+                      <span>{t('landingPillar1Point2')}</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-teal-700 shrink-0 mt-0.5" />
+                      <span>{t('landingPillar1Point3')}</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-teal-700 shrink-0 mt-0.5" />
+                      <span>{t('landingPillar1Point4')}</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-teal-700 shrink-0 mt-0.5" />
+                      <span>{t('landingPillar1Point5')}</span>
+                    </li>
+                  </ul>
+                </div>
               </div>
-              <h3 className="text-base font-bold text-slate-900 mb-2">{t('landingTrust1Title')}</h3>
-              <p className="text-sm text-slate-600 leading-relaxed">{t('landingTrust1Desc')}</p>
             </div>
 
-            {/* Pillar 2 */}
-            <div id="landing-trust-card-2" className="p-6 bg-slate-50 rounded-xl border border-slate-200/70">
-              <div className="w-10 h-10 rounded-lg bg-teal-100/80 text-teal-800 flex items-center justify-center mb-4">
-                <BookOpen className="w-5 h-5" />
+            {/* Pillar 2 & 3 in Grid */}
+            <div className="grid md:grid-cols-2 gap-8">
+              
+              {/* Pillar 2 */}
+              <div id="landing-pillar-2" className="bg-white rounded-2xl border border-slate-200/90 p-7 sm:p-8 shadow-sm flex flex-col justify-between">
+                <div className="space-y-4">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-teal-50 text-teal-800 text-xs font-bold">
+                    <BrainCircuit className="w-4 h-4" />
+                    <span>Säule 2</span>
+                  </div>
+                  <h3 className="text-lg sm:text-xl font-bold text-slate-900">
+                    {t('landingPillar2Title')}
+                  </h3>
+                  <p className="text-xs sm:text-sm font-semibold text-teal-800">
+                    {t('landingPillar2Subtitle')}
+                  </p>
+                  <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                    {t('landingPillar2Text')}
+                  </p>
+                </div>
+                <div className="mt-6 pt-4 border-t border-slate-100 bg-teal-50/50 p-3.5 rounded-xl text-xs font-medium text-teal-900 italic">
+                  «{t('landingPillar2Quote')}»
+                </div>
               </div>
-              <h3 className="text-base font-bold text-slate-900 mb-2">{t('landingTrust2Title')}</h3>
-              <p className="text-sm text-slate-600 leading-relaxed">{t('landingTrust2Desc')}</p>
+
+              {/* Pillar 3 */}
+              <div id="landing-pillar-3" className="bg-white rounded-2xl border border-slate-200/90 p-7 sm:p-8 shadow-sm flex flex-col justify-between">
+                <div className="space-y-4">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-teal-50 text-teal-800 text-xs font-bold">
+                    <Scale className="w-4 h-4" />
+                    <span>Säule 3</span>
+                  </div>
+                  <h3 className="text-lg sm:text-xl font-bold text-slate-900">
+                    {t('landingPillar3Title')}
+                  </h3>
+                  <p className="text-xs sm:text-sm font-semibold text-teal-800">
+                    {t('landingPillar3Subtitle')}
+                  </p>
+                  <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                    {t('landingPillar3Text')}
+                  </p>
+                </div>
+                <div className="mt-6 pt-4 border-t border-slate-100 bg-teal-50/50 p-3.5 rounded-xl text-xs font-medium text-teal-900 italic">
+                  «{t('landingPillar3Quote')}»
+                </div>
+              </div>
+
             </div>
 
-            {/* Pillar 3 */}
-            <div id="landing-trust-card-3" className="p-6 bg-slate-50 rounded-xl border border-slate-200/70">
-              <div className="w-10 h-10 rounded-lg bg-teal-100/80 text-teal-800 flex items-center justify-center mb-4">
-                <ShieldCheck className="w-5 h-5" />
+            {/* Pillar 4 & 5 in Grid */}
+            <div className="grid md:grid-cols-2 gap-8">
+              
+              {/* Pillar 4: Flexible Environment */}
+              <div id="landing-pillar-4" className="bg-white rounded-2xl border border-slate-200/90 p-7 sm:p-8 shadow-sm flex flex-col justify-between">
+                <div className="space-y-4">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-teal-50 text-teal-800 text-xs font-bold">
+                    <Laptop className="w-4 h-4" />
+                    <span>Säule 4</span>
+                  </div>
+                  <h3 className="text-lg sm:text-xl font-bold text-slate-900">
+                    {t('landingPillar4Title')}
+                  </h3>
+                  <p className="text-xs sm:text-sm font-semibold text-teal-800">
+                    {t('landingPillar4Subtitle')}
+                  </p>
+                  <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                    {t('landingPillar4Text')}
+                  </p>
+                  <ul className="space-y-2 text-xs text-slate-700 pt-2">
+                    <li className="flex items-center gap-2">
+                      <Check className="w-3.5 h-3.5 text-teal-700" />
+                      <span>{t('landingPillar4Point1')}</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="w-3.5 h-3.5 text-teal-700" />
+                      <span>{t('landingPillar4Point2')}</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="w-3.5 h-3.5 text-teal-700" />
+                      <span>{t('landingPillar4Point3')}</span>
+                    </li>
+                  </ul>
+                </div>
+                <div className="mt-6 pt-4 border-t border-slate-100 bg-slate-50 p-3 rounded-xl text-xs font-medium text-slate-800 italic">
+                  «{t('landingPillar4Quote')}»
+                </div>
               </div>
-              <h3 className="text-base font-bold text-slate-900 mb-2">{t('landingTrust3Title')}</h3>
-              <p className="text-sm text-slate-600 leading-relaxed">{t('landingTrust3Desc')}</p>
+
+              {/* Pillar 5: Multilingual */}
+              <div id="landing-pillar-5" className="bg-white rounded-2xl border border-slate-200/90 p-7 sm:p-8 shadow-sm flex flex-col justify-between">
+                <div className="space-y-4">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-teal-50 text-teal-800 text-xs font-bold">
+                    <Globe className="w-4 h-4" />
+                    <span>Säule 5</span>
+                  </div>
+                  <h3 className="text-lg sm:text-xl font-bold text-slate-900">
+                    {t('landingPillar5Title')}
+                  </h3>
+                  <p className="text-xs sm:text-sm font-semibold text-teal-800">
+                    {t('landingPillar5Subtitle')}
+                  </p>
+                  <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                    {t('landingPillar5Text')}
+                  </p>
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs font-mono text-slate-700 flex flex-wrap gap-1.5">
+                    <span className="px-2 py-0.5 bg-white rounded border border-slate-200 font-semibold">DE (Deutsch)</span>
+                    <span className="px-2 py-0.5 bg-white rounded border border-slate-200 font-semibold">EN (English)</span>
+                    <span className="px-2 py-0.5 bg-white rounded border border-slate-200 font-semibold">ES (Español)</span>
+                    <span className="px-2 py-0.5 bg-white rounded border border-slate-200 font-semibold">FR (Français)</span>
+                    <span className="px-2 py-0.5 bg-white rounded border border-slate-200 font-semibold">IT (Italiano)</span>
+                    <span className="px-2 py-0.5 bg-white rounded border border-slate-200 font-semibold">EL (Ελληνικά)</span>
+                    <span className="px-2 py-0.5 bg-white rounded border border-slate-200 font-semibold">RU (Русский)</span>
+                  </div>
+                </div>
+                <div className="mt-6 pt-4 border-t border-slate-100 bg-teal-50/50 p-3.5 rounded-xl text-xs font-medium text-teal-900 italic">
+                  «{t('landingPillar5Quote')}»
+                </div>
+              </div>
+
             </div>
 
-            {/* Pillar 4 */}
-            <div id="landing-trust-card-4" className="p-6 bg-slate-50 rounded-xl border border-slate-200/70">
-              <div className="w-10 h-10 rounded-lg bg-teal-100/80 text-teal-800 flex items-center justify-center mb-4">
-                <Languages className="w-5 h-5" />
-              </div>
-              <h3 className="text-base font-bold text-slate-900 mb-2">{t('landingTrust4Title')}</h3>
-              <p className="text-sm text-slate-600 leading-relaxed">{t('landingTrust4Desc')}</p>
-            </div>
           </div>
+
         </div>
       </section>
 
-      {/* 3. PROBLEM VS SOLUTION (Structure instead of Information Chaos) */}
-      <section id="landing-problem-solution" className="py-20 bg-slate-50/70 border-b border-slate-200/70">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* 4. SECTION 4: DIREKTER VERGLEICH (MATRIX) */}
+      <section id="landing-compare" className="py-20 bg-white border-b border-slate-200/70">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           
-          <div className="max-w-3xl mx-auto text-center mb-14">
+          <div className="text-center max-w-2xl mx-auto mb-14">
             <span className="text-xs font-bold uppercase tracking-wider text-teal-700 bg-teal-50 px-3 py-1 rounded-full border border-teal-100">
-              {t('landingProblemEyebrow')}
+              {t('landingCompareEyebrow')}
             </span>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-4 mb-4">
-              {t('landingProblemTitle')}
+              {t('landingCompareTitle')}
             </h2>
-            <p className="text-slate-600 text-sm sm:text-base leading-relaxed">
-              {t('landingProblemDesc')}
-            </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-            
-            {/* Left: Classic Challenges */}
-            <div id="landing-problem-card" className="bg-white p-7 rounded-2xl border border-slate-200/90 shadow-sm">
-              <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
-                <div className="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center font-bold text-sm">
-                  ✕
-                </div>
-                <h3 className="text-lg font-bold text-slate-900">{t('landingProblemClassicTitle')}</h3>
+          <div className="overflow-hidden rounded-2xl border border-slate-200/90 shadow-sm">
+            <div className="grid grid-cols-12 bg-slate-900 text-white text-xs sm:text-sm font-bold p-4 sm:p-5">
+              <div className="col-span-6 text-slate-300">
+                {t('landingCompareClassicHeader')}
               </div>
-              <ul className="space-y-4">
-                <li className="flex items-start gap-3">
-                  <span className="w-5 h-5 rounded-full bg-rose-100 text-rose-700 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">!</span>
-                  <span className="text-sm text-slate-700 leading-relaxed">{t('landingProblemClassic1')}</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="w-5 h-5 rounded-full bg-rose-100 text-rose-700 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">!</span>
-                  <span className="text-sm text-slate-700 leading-relaxed">{t('landingProblemClassic2')}</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="w-5 h-5 rounded-full bg-rose-100 text-rose-700 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">!</span>
-                  <span className="text-sm text-slate-700 leading-relaxed">{t('landingProblemClassic3')}</span>
-                </li>
-              </ul>
+              <div className="col-span-6 text-teal-400 flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4" />
+                <span>{t('landingComparePlatformHeader')}</span>
+              </div>
             </div>
 
-            {/* Right: Digital Structured Solution */}
-            <div id="landing-solution-card" className="bg-slate-900 text-white p-7 rounded-2xl border border-slate-800 shadow-lg">
-              <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-800">
-                <div className="w-8 h-8 rounded-lg bg-teal-500/20 text-teal-300 flex items-center justify-center font-bold text-sm">
-                  ✓
+            <div className="divide-y divide-slate-100 text-xs sm:text-sm bg-white">
+              {[
+                { old: t('landingCompareRow1Old'), neu: t('landingCompareRow1New') },
+                { old: t('landingCompareRow2Old'), neu: t('landingCompareRow2New') },
+                { old: t('landingCompareRow3Old'), neu: t('landingCompareRow3New') },
+                { old: t('landingCompareRow4Old'), neu: t('landingCompareRow4New') },
+                { old: t('landingCompareRow5Old'), neu: t('landingCompareRow5New') },
+                { old: t('landingCompareRow6Old'), neu: t('landingCompareRow6New') }
+              ].map((row, idx) => (
+                <div key={idx} className="grid grid-cols-12 p-4 sm:p-5 items-center hover:bg-slate-50 transition-colors">
+                  <div className="col-span-6 text-slate-500 pr-4 flex items-start gap-2">
+                    <span className="text-rose-500 font-bold shrink-0 mt-0.5">✕</span>
+                    <span>{row.old}</span>
+                  </div>
+                  <div className="col-span-6 text-slate-900 font-semibold pl-4 flex items-start gap-2">
+                    <CheckCheck className="w-4 h-4 text-teal-700 shrink-0 mt-0.5" />
+                    <span>{row.neu}</span>
+                  </div>
                 </div>
-                <h3 className="text-lg font-bold text-white">{t('landingProblemSolutionTitle')}</h3>
-              </div>
-              <ul className="space-y-4">
-                <li className="flex items-start gap-3">
-                  <span className="w-5 h-5 rounded-full bg-teal-800 text-teal-200 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">✓</span>
-                  <span className="text-sm text-slate-200 leading-relaxed">{t('landingProblemSolution1')}</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="w-5 h-5 rounded-full bg-teal-800 text-teal-200 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">✓</span>
-                  <span className="text-sm text-slate-200 leading-relaxed">{t('landingProblemSolution2')}</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="w-5 h-5 rounded-full bg-teal-800 text-teal-200 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">✓</span>
-                  <span className="text-sm text-slate-200 leading-relaxed">{t('landingProblemSolution3')}</span>
-                </li>
-              </ul>
+              ))}
             </div>
-
           </div>
 
         </div>
       </section>
 
-      {/* 4. CORE FEATURES & CLINICAL MODULES */}
-      <section id="landing-features" className="py-20 bg-white border-b border-slate-200/70">
+      {/* 5. SECTION 5: FÜR DIE PRAXIS ENTWICKELT – MIT VERANTWORTUNG */}
+      <section id="landing-philosophy" className="py-24 bg-slate-50/70 border-b border-slate-200/70">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
-          <div className="max-w-3xl mx-auto text-center mb-16">
+          <div className="text-center max-w-3xl mx-auto mb-16">
             <span className="text-xs font-bold uppercase tracking-wider text-teal-700 bg-teal-50 px-3 py-1 rounded-full border border-teal-100">
-              {t('landingFeaturesEyebrow')}
+              {t('landingPhilosophyEyebrow')}
             </span>
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 mt-4 mb-4">
-              {t('landingFeaturesTitle')}
+              {t('landingPhilosophyTitle1')}
             </h2>
-            <p className="text-slate-600 text-sm sm:text-base leading-relaxed">
-              {t('landingFeaturesDesc')}
-            </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-7">
+          <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
             
-            {/* Module 1: Anamnesis */}
-            <div id="landing-feature-card-1" className="bg-slate-50/60 p-7 rounded-2xl border border-slate-200/80 hover:border-teal-300 hover:bg-white transition-all duration-200 shadow-sm flex flex-col justify-between">
+            {/* Card 1 */}
+            <div id="landing-philosophy-card-1" className="bg-white rounded-2xl border border-slate-200/80 p-7 shadow-sm flex flex-col justify-between">
               <div>
-                <div className="w-12 h-12 rounded-xl bg-teal-100/80 text-teal-800 flex items-center justify-center mb-5">
-                  <ClipboardList className="w-6 h-6" />
+                <div className="w-10 h-10 rounded-xl bg-teal-100/80 text-teal-800 flex items-center justify-center mb-5 font-bold">
+                  <ShieldCheck className="w-5 h-5" />
                 </div>
-                <h3 className="text-lg font-bold text-slate-900 mb-2">{t('landingFeature1Title')}</h3>
-                <p className="text-sm text-slate-600 leading-relaxed">{t('landingFeature1Desc')}</p>
+                <h3 className="text-base sm:text-lg font-bold text-slate-900 mb-2">
+                  {t('landingPhilosophySub1')}
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                  {t('landingPhilosophyText1')}
+                </p>
               </div>
-              <div className="mt-6 pt-4 border-t border-slate-200/60 text-xs font-semibold text-teal-700">
-                Organon §210–230 Ready
+              <div className="mt-6 pt-4 border-t border-slate-100 text-xs font-mono font-semibold text-teal-800">
+                100% Therapeuten-Souveränität
               </div>
             </div>
 
-            {/* Module 2: Repertorisation */}
-            <div id="landing-feature-card-2" className="bg-slate-50/60 p-7 rounded-2xl border border-slate-200/80 hover:border-teal-300 hover:bg-white transition-all duration-200 shadow-sm flex flex-col justify-between">
+            {/* Card 2 */}
+            <div id="landing-philosophy-card-2" className="bg-white rounded-2xl border border-slate-200/80 p-7 shadow-sm flex flex-col justify-between">
               <div>
-                <div className="w-12 h-12 rounded-xl bg-teal-100/80 text-teal-800 flex items-center justify-center mb-5">
-                  <BrainCircuit className="w-6 h-6" />
+                <div className="w-10 h-10 rounded-xl bg-teal-100/80 text-teal-800 flex items-center justify-center mb-5 font-bold">
+                  <BookOpen className="w-5 h-5" />
                 </div>
-                <h3 className="text-lg font-bold text-slate-900 mb-2">{t('landingFeature2Title')}</h3>
-                <p className="text-sm text-slate-600 leading-relaxed">{t('landingFeature2Desc')}</p>
+                <h3 className="text-base sm:text-lg font-bold text-slate-900 mb-2">
+                  {t('landingPhilosophyTitle2')}
+                </h3>
+                <p className="text-xs sm:text-sm font-semibold text-teal-800 mb-2">
+                  {t('landingPhilosophySub2')}
+                </p>
+                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                  {t('landingPhilosophyText2')}
+                </p>
               </div>
-              <div className="mt-6 pt-4 border-t border-slate-200/60 text-xs font-semibold text-teal-700">
-                Hahnemann Simile Weighting
+              <div className="mt-6 pt-4 border-t border-slate-100 text-xs font-mono font-semibold text-teal-800">
+                Prüfbare Literatur-Zitate
               </div>
             </div>
 
-            {/* Module 3: Clinical Workflow */}
-            <div id="landing-feature-card-3" className="bg-slate-50/60 p-7 rounded-2xl border border-slate-200/80 hover:border-teal-300 hover:bg-white transition-all duration-200 shadow-sm flex flex-col justify-between">
+            {/* Card 3 */}
+            <div id="landing-philosophy-card-3" className="bg-white rounded-2xl border border-slate-200/80 p-7 shadow-sm flex flex-col justify-between">
               <div>
-                <div className="w-12 h-12 rounded-xl bg-teal-100/80 text-teal-800 flex items-center justify-center mb-5">
-                  <Activity className="w-6 h-6" />
+                <div className="w-10 h-10 rounded-xl bg-teal-100/80 text-teal-800 flex items-center justify-center mb-5 font-bold">
+                  <Clock className="w-5 h-5" />
                 </div>
-                <h3 className="text-lg font-bold text-slate-900 mb-2">{t('landingFeature3Title')}</h3>
-                <p className="text-sm text-slate-600 leading-relaxed">{t('landingFeature3Desc')}</p>
+                <h3 className="text-base sm:text-lg font-bold text-slate-900 mb-2">
+                  {t('landingPhilosophyTitle3')}
+                </h3>
+                <p className="text-xs sm:text-sm font-semibold text-teal-800 mb-2">
+                  {t('landingPhilosophySub3')}
+                </p>
+                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                  {t('landingPhilosophyText3')}
+                </p>
               </div>
-              <div className="mt-6 pt-4 border-t border-slate-200/60 text-xs font-semibold text-teal-700">
-                Continuous Case Progress
-              </div>
-            </div>
-
-            {/* Module 4: Materia Medica & Differential */}
-            <div id="landing-feature-card-4" className="bg-slate-50/60 p-7 rounded-2xl border border-slate-200/80 hover:border-teal-300 hover:bg-white transition-all duration-200 shadow-sm flex flex-col justify-between">
-              <div>
-                <div className="w-12 h-12 rounded-xl bg-teal-100/80 text-teal-800 flex items-center justify-center mb-5">
-                  <BookOpen className="w-6 h-6" />
-                </div>
-                <h3 className="text-lg font-bold text-slate-900 mb-2">{t('landingFeature4Title')}</h3>
-                <p className="text-sm text-slate-600 leading-relaxed">{t('landingFeature4Desc')}</p>
-              </div>
-              <div className="mt-6 pt-4 border-t border-slate-200/60 text-xs font-semibold text-teal-700">
-                Keynotes & Modalities
-              </div>
-            </div>
-
-            {/* Module 5: Potencies & Dosage */}
-            <div id="landing-feature-card-5" className="bg-slate-50/60 p-7 rounded-2xl border border-slate-200/80 hover:border-teal-300 hover:bg-white transition-all duration-200 shadow-sm flex flex-col justify-between">
-              <div>
-                <div className="w-12 h-12 rounded-xl bg-teal-100/80 text-teal-800 flex items-center justify-center mb-5">
-                  <Scale className="w-6 h-6" />
-                </div>
-                <h3 className="text-lg font-bold text-slate-900 mb-2">{t('landingFeature5Title')}</h3>
-                <p className="text-sm text-slate-600 leading-relaxed">{t('landingFeature5Desc')}</p>
-              </div>
-              <div className="mt-6 pt-4 border-t border-slate-200/60 text-xs font-semibold text-teal-700">
-                D / C / LM / Q-Potencies
-              </div>
-            </div>
-
-            {/* Module 6: Multilingual 7 Languages */}
-            <div id="landing-feature-card-6" className="bg-slate-50/60 p-7 rounded-2xl border border-slate-200/80 hover:border-teal-300 hover:bg-white transition-all duration-200 shadow-sm flex flex-col justify-between">
-              <div>
-                <div className="w-12 h-12 rounded-xl bg-teal-100/80 text-teal-800 flex items-center justify-center mb-5">
-                  <Languages className="w-6 h-6" />
-                </div>
-                <h3 className="text-lg font-bold text-slate-900 mb-2">{t('landingFeature6Title')}</h3>
-                <p className="text-sm text-slate-600 leading-relaxed">{t('landingFeature6Desc')}</p>
-              </div>
-              <div className="mt-6 pt-4 border-t border-slate-200/60 text-xs font-semibold text-teal-700">
-                DE • EN • ES • FR • IT • EL • RU
+              <div className="mt-6 pt-4 border-t border-slate-100 text-xs font-mono font-semibold text-teal-800">
+                Fokus auf das Gespräch
               </div>
             </div>
 
@@ -524,123 +514,71 @@ export function LandingPage({ onGetStarted, onGoToLogin }: LandingPageProps) {
         </div>
       </section>
 
-      {/* 5. 3-STEP CLINICAL WORKFLOW */}
-      <section id="landing-steps" className="py-20 bg-slate-50/70 border-b border-slate-200/70">
+      {/* 6. SECTION 6: DER ABLAUF IN 5 EINFACHEN SCHRITTEN */}
+      <section id="landing-workflow" className="py-20 bg-white border-b border-slate-200/70">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
-          <div className="max-w-3xl mx-auto text-center mb-16">
+          <div className="text-center max-w-3xl mx-auto mb-16">
             <span className="text-xs font-bold uppercase tracking-wider text-teal-700 bg-teal-50 px-3 py-1 rounded-full border border-teal-100">
-              {t('landingStepsEyebrow')}
+              {t('landingWorkflowEyebrow')}
             </span>
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 mt-4 mb-4">
-              {t('landingStepsTitle')}
+              {t('landingWorkflowTitle')}
             </h2>
-            <p className="text-slate-600 text-sm sm:text-base leading-relaxed">
-              {t('landingStepsDesc')}
-            </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8 relative max-w-5xl mx-auto">
-            {/* Step 1 */}
-            <div id="landing-step-1" className="bg-white p-7 rounded-2xl border border-slate-200/80 shadow-sm relative">
-              <div className="w-10 h-10 rounded-full bg-teal-700 text-white font-bold text-base flex items-center justify-center mb-5 shadow-sm">
-                1
+          <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-6 max-w-6xl mx-auto">
+            {[
+              { num: t('landingWorkflowStep1Num'), title: t('landingWorkflowStep1Title'), desc: t('landingWorkflowStep1Desc') },
+              { num: t('landingWorkflowStep2Num'), title: t('landingWorkflowStep2Title'), desc: t('landingWorkflowStep2Desc') },
+              { num: t('landingWorkflowStep3Num'), title: t('landingWorkflowStep3Title'), desc: t('landingWorkflowStep3Desc') },
+              { num: t('landingWorkflowStep4Num'), title: t('landingWorkflowStep4Title'), desc: t('landingWorkflowStep4Desc') },
+              { num: t('landingWorkflowStep5Num'), title: t('landingWorkflowStep5Title'), desc: t('landingWorkflowStep5Desc') }
+            ].map((step, idx) => (
+              <div key={idx} className="bg-slate-50/70 p-6 rounded-2xl border border-slate-200/80 flex flex-col justify-between">
+                <div>
+                  <span className="text-2xl font-black text-teal-700 font-mono block mb-3">
+                    {step.num}
+                  </span>
+                  <h3 className="text-sm font-bold text-slate-900 mb-2">
+                    {step.title}
+                  </h3>
+                  <p className="text-xs text-slate-600 leading-relaxed">
+                    {step.desc}
+                  </p>
+                </div>
               </div>
-              <h3 className="text-base font-bold text-slate-900 mb-2">{t('landingStep1Title')}</h3>
-              <p className="text-sm text-slate-600 leading-relaxed">{t('landingStep1Desc')}</p>
-            </div>
-
-            {/* Step 2 */}
-            <div id="landing-step-2" className="bg-white p-7 rounded-2xl border border-slate-200/80 shadow-sm relative">
-              <div className="w-10 h-10 rounded-full bg-teal-700 text-white font-bold text-base flex items-center justify-center mb-5 shadow-sm">
-                2
-              </div>
-              <h3 className="text-base font-bold text-slate-900 mb-2">{t('landingStep2Title')}</h3>
-              <p className="text-sm text-slate-600 leading-relaxed">{t('landingStep2Desc')}</p>
-            </div>
-
-            {/* Step 3 */}
-            <div id="landing-step-3" className="bg-white p-7 rounded-2xl border border-slate-200/80 shadow-sm relative">
-              <div className="w-10 h-10 rounded-full bg-teal-700 text-white font-bold text-base flex items-center justify-center mb-5 shadow-sm">
-                3
-              </div>
-              <h3 className="text-base font-bold text-slate-900 mb-2">{t('landingStep3Title')}</h3>
-              <p className="text-sm text-slate-600 leading-relaxed">{t('landingStep3Desc')}</p>
-            </div>
+            ))}
           </div>
 
         </div>
       </section>
 
-      {/* 6. PRACTITIONER BENEFITS */}
-      <section id="landing-benefits" className="py-20 bg-white border-b border-slate-200/70">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          
-          <div className="max-w-3xl mx-auto text-center mb-16">
-            <span className="text-xs font-bold uppercase tracking-wider text-teal-700 bg-teal-50 px-3 py-1 rounded-full border border-teal-100">
-              {t('landingBenefitsEyebrow')}
-            </span>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 mt-4 mb-4">
-              {t('landingBenefitsTitle')}
-            </h2>
-            <p className="text-slate-600 text-sm sm:text-base leading-relaxed">
-              {t('landingBenefitsDesc')}
-            </p>
+      {/* 7. SECTION 7: EXPERTISE CALLOUT */}
+      <section id="landing-expertise" className="py-16 bg-slate-900 text-white border-b border-slate-800">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-4">
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight text-white">
+            {t('landingExpertiseTitle')}
+          </h2>
+          <p className="text-xs sm:text-sm md:text-base text-slate-300 max-w-2xl mx-auto leading-relaxed">
+            {t('landingExpertiseText')}
+          </p>
+          <div className="pt-2 text-sm sm:text-base font-bold text-teal-400 font-mono">
+            {t('landingExpertisePunchline')}
           </div>
-
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            
-            {/* Benefit 1 */}
-            <div id="landing-benefit-card-1" className="p-6 rounded-2xl border border-slate-200/80 bg-slate-50/50">
-              <div className="w-10 h-10 rounded-lg bg-teal-100 text-teal-800 flex items-center justify-center mb-4">
-                <Clock className="w-5 h-5" />
-              </div>
-              <h3 className="text-base font-bold text-slate-900 mb-2">{t('landingBenefit1Title')}</h3>
-              <p className="text-sm text-slate-600 leading-relaxed">{t('landingBenefit1Desc')}</p>
-            </div>
-
-            {/* Benefit 2 */}
-            <div id="landing-benefit-card-2" className="p-6 rounded-2xl border border-slate-200/80 bg-slate-50/50">
-              <div className="w-10 h-10 rounded-lg bg-teal-100 text-teal-800 flex items-center justify-center mb-4">
-                <Scale className="w-5 h-5" />
-              </div>
-              <h3 className="text-base font-bold text-slate-900 mb-2">{t('landingBenefit2Title')}</h3>
-              <p className="text-sm text-slate-600 leading-relaxed">{t('landingBenefit2Desc')}</p>
-            </div>
-
-            {/* Benefit 3 */}
-            <div id="landing-benefit-card-3" className="p-6 rounded-2xl border border-slate-200/80 bg-slate-50/50">
-              <div className="w-10 h-10 rounded-lg bg-teal-100 text-teal-800 flex items-center justify-center mb-4">
-                <Shield className="w-5 h-5" />
-              </div>
-              <h3 className="text-base font-bold text-slate-900 mb-2">{t('landingBenefit3Title')}</h3>
-              <p className="text-sm text-slate-600 leading-relaxed">{t('landingBenefit3Desc')}</p>
-            </div>
-
-            {/* Benefit 4 */}
-            <div id="landing-benefit-card-4" className="p-6 rounded-2xl border border-slate-200/80 bg-slate-50/50">
-              <div className="w-10 h-10 rounded-lg bg-teal-100 text-teal-800 flex items-center justify-center mb-4">
-                <HeartHandshake className="w-5 h-5" />
-              </div>
-              <h3 className="text-base font-bold text-slate-900 mb-2">{t('landingBenefit4Title')}</h3>
-              <p className="text-sm text-slate-600 leading-relaxed">{t('landingBenefit4Desc')}</p>
-            </div>
-
-          </div>
-
         </div>
       </section>
 
-      {/* 7. TRANSPARENT PRICING / TARIFF PACKAGES */}
+      {/* 8. SECTION 8: DYNAMIC PACKAGES & PRICING */}
       <section id="landing-pricing" className="py-24 bg-slate-50/70 border-b border-slate-200/70">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
           <div className="text-center max-w-3xl mx-auto mb-16">
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 mb-4">
-              {t('pricingTitle')}
+              {t('landingPricingMainHeadline')}
             </h2>
             <p className="text-slate-600 text-sm sm:text-base leading-relaxed">
-              {t('pricingSubtitle')}
+              {t('landingPricingMainSubline')}
             </p>
           </div>
 
@@ -673,16 +611,16 @@ export function LandingPage({ onGetStarted, onGoToLogin }: LandingPageProps) {
                   <button
                     id="landing-btn-trial-start"
                     onClick={onGetStarted}
-                    className="w-full py-3 px-4 bg-teal-700 hover:bg-teal-800 text-white font-semibold text-sm rounded-xl shadow-sm transition-colors"
+                    className="w-full py-3 px-4 bg-teal-700 hover:bg-teal-800 text-white font-semibold text-sm rounded-xl shadow-sm transition-colors cursor-pointer"
                   >
-                    {t('pricingStartFree')}
+                    {t('landingPricingCtaBtn')}
                   </button>
                 </div>
               </div>
             </div>
 
             {/* Paid Packages (Dynamic from Storage / Admin Configuration) */}
-            {plans.filter(plan => plan.id !== 'free_trial').map((plan, index) => {
+            {plans.filter(plan => plan.id !== 'free_trial').map((plan) => {
               const billingText = plan.billingPeriod === 'monthly' ? t('pricingMonthly')
                                 : plan.billingPeriod === 'yearly' ? t('pricingYearly')
                                 : plan.billingPeriod === 'one_time' ? t('pricingOneTime')
@@ -734,7 +672,7 @@ export function LandingPage({ onGetStarted, onGoToLogin }: LandingPageProps) {
                       <button
                         id={`landing-btn-select-plan-${plan.id}`}
                         onClick={onGetStarted}
-                        className={`w-full py-3 px-4 ${isPro ? 'bg-slate-900 hover:bg-slate-800 text-white' : 'bg-white border border-slate-300 hover:border-teal-600 hover:text-teal-700 text-slate-700'} font-semibold text-sm rounded-xl transition-colors shadow-sm`}
+                        className={`w-full py-3 px-4 ${isPro ? 'bg-slate-900 hover:bg-slate-800 text-white' : 'bg-white border border-slate-300 hover:border-teal-600 hover:text-teal-700 text-slate-700'} font-semibold text-sm rounded-xl transition-colors shadow-sm cursor-pointer`}
                       >
                         {t('pricingRegisterNow')}
                       </button>
@@ -748,28 +686,25 @@ export function LandingPage({ onGetStarted, onGoToLogin }: LandingPageProps) {
         </div>
       </section>
 
-      {/* 8. HIGH-CONVERTING FINAL CTA */}
-      <section id="landing-final-cta" className="py-20 bg-slate-900 relative overflow-hidden text-white">
-        <div className="absolute inset-0 bg-[radial-gradient(#2dd4bf_0.75px,transparent_0.75px)] [background-size:20px_20px] opacity-[0.04] pointer-events-none" />
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white mb-4 tracking-tight">
-            {t('landingCtaTitle')}
-          </h2>
-          <p className="text-slate-300 text-sm sm:text-base mb-8 max-w-2xl mx-auto leading-relaxed">
-            {t('landingCtaDesc')}
-          </p>
-          <button 
-            id="landing-final-cta-btn"
-            onClick={onGetStarted}
-            className="px-8 py-4 bg-teal-600 hover:bg-teal-500 text-white font-bold text-base rounded-xl shadow-lg hover:shadow-teal-500/20 transition-all flex items-center justify-center gap-2 mx-auto group"
-          >
-            <span>{t('landingCtaBtn')}</span>
-            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-          </button>
+      {/* 9. SECTION 9: RECHTLICHER HAFTUNGSAUSSCHLUSS (DISCLAIMER) */}
+      <section id="landing-disclaimer" className="py-12 bg-white border-b border-slate-200/70 text-xs text-slate-500">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
+            <div className="flex items-center gap-2 font-bold text-slate-800 text-xs uppercase tracking-wider">
+              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>{t('landingDisclaimerTitle')}</span>
+            </div>
+            <p className="leading-relaxed">
+              {t('landingDisclaimerText1')}
+            </p>
+            <p className="leading-relaxed">
+              {t('landingDisclaimerText2')}
+            </p>
+          </div>
         </div>
       </section>
 
-      {/* 9. REFINED FOOTER */}
+      {/* 10. REFINED FOOTER */}
       <footer id="landing-footer" className="bg-slate-950 text-slate-400 py-12 border-t border-slate-800 text-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid md:grid-cols-4 gap-8 mb-8 pb-8 border-b border-slate-900">
@@ -793,13 +728,13 @@ export function LandingPage({ onGetStarted, onGoToLogin }: LandingPageProps) {
               </h4>
               <ul className="space-y-2">
                 <li>
-                  <button onClick={onGetStarted} className="hover:text-teal-400 transition-colors">
-                    {t('landingBtnTest')}
+                  <button onClick={onGetStarted} className="hover:text-teal-400 transition-colors cursor-pointer">
+                    {t('landingHeroCtaTest')}
                   </button>
                 </li>
                 <li>
-                  <button onClick={onGoToLogin} className="hover:text-teal-400 transition-colors">
-                    {t('landingBtnLogin')}
+                  <button onClick={onGoToLogin} className="hover:text-teal-400 transition-colors cursor-pointer">
+                    {t('landingHeroCtaLogin')}
                   </button>
                 </li>
               </ul>
@@ -839,3 +774,4 @@ export function LandingPage({ onGetStarted, onGoToLogin }: LandingPageProps) {
     </div>
   );
 }
+
