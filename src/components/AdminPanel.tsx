@@ -20,6 +20,7 @@ import { AdminTermsEditor } from './AdminTermsEditor';
 import { AdminConfigEditor } from './AdminConfigEditor';
 import { AdminNameChangeRequests } from './AdminNameChangeRequests';
 import { AdminTokenUsage } from './AdminTokenUsage';
+import { AdminStripeSettings } from './AdminStripeSettings';
 import { COUNTRIES, getCountryFlag, formatCountryWithFlag } from '../data/countries';
 import { getNameChangeRequests } from '../services/storage';
 import { 
@@ -49,6 +50,7 @@ import {
   Settings,
   KeyRound,
   Coins,
+  CreditCard,
   X
 } from 'lucide-react';
 
@@ -62,9 +64,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onLogout,
 }) => {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState<'therapists' | 'packages' | 'tokens' | 'terms' | 'config' | 'requests'>(() => getStoredAdminTab());
+  const [activeTab, setActiveTab] = useState<'therapists' | 'packages' | 'tokens' | 'stripe' | 'terms' | 'config' | 'requests'>(() => getStoredAdminTab());
 
-  const handleSelectTab = (tab: 'therapists' | 'packages' | 'tokens' | 'terms' | 'config' | 'requests') => {
+  const handleSelectTab = (tab: 'therapists' | 'packages' | 'tokens' | 'stripe' | 'terms' | 'config' | 'requests') => {
     setActiveTab(tab);
     navigateTo('admin', { adminTab: tab });
   };
@@ -76,7 +78,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   useEffect(() => {
     const handleAdminTabChange = (e: Event) => {
       const tab = (e as CustomEvent).detail;
-      if (tab && ['therapists', 'packages', 'tokens', 'terms', 'config', 'requests'].includes(tab)) {
+      if (tab && ['therapists', 'packages', 'tokens', 'stripe', 'terms', 'config', 'requests'].includes(tab)) {
         setActiveTab(tab);
       }
     };
@@ -337,6 +339,26 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 Live
               </span>
             </button>
+
+            <button
+              id="admin-nav-stripe"
+              onClick={() => handleSelectTab('stripe')}
+              className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center justify-between transition-colors cursor-pointer ${
+                activeTab === 'stripe'
+                  ? 'bg-slate-900 text-white shadow-sm'
+                  : 'text-slate-600 hover:bg-white hover:text-slate-900 hover:shadow-sm border border-transparent'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <CreditCard className="w-4 h-4 text-violet-400" />
+                <span>{t('adminStripeTab')}</span>
+              </div>
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono font-semibold ${
+                activeTab === 'stripe' ? 'bg-violet-500 text-white' : 'bg-violet-100 text-violet-800'
+              }`}>
+                Stripe
+              </span>
+            </button>
             
             <button
               onClick={() => handleSelectTab('requests')}
@@ -498,6 +520,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       {/* Tab: Token Usage & Live Billing */}
       {activeTab === 'tokens' && (
         <AdminTokenUsage />
+      )}
+
+      {/* Tab: Stripe Payments & Webhook Config */}
+      {activeTab === 'stripe' && (
+        <AdminStripeSettings />
       )}
 
       {/* Tab 2: Packages & Tariffs Configurator */}
