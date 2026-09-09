@@ -6,6 +6,7 @@ import {
   savePatientCase, 
   deletePatientCase,
   incrementAnalysesUsed,
+  checkTherapistLimit,
   getStoredTherapistTab,
   setStoredTherapistTab,
   getRecentlyEditedPatientNames
@@ -916,9 +917,10 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
     );
   }
 
+  const limitStatus = checkTherapistLimit(therapist);
   const isUnlimited = !!therapist.isUnlimited || therapist.tarif === 'pro_unlimited' || therapist.maxAnalyses >= 900000;
-  const isLocked = !isUnlimited && therapist.usedAnalyses >= therapist.maxAnalyses;
-  const remainingCount = isUnlimited ? 999999 : Math.max(0, therapist.maxAnalyses - therapist.usedAnalyses);
+  const isLocked = !isUnlimited && limitStatus.isLocked;
+  const remainingCount = isUnlimited ? 999999 : limitStatus.remainingAnalyses;
 
   const hasPatientData = Boolean(currentCase.patientName && currentCase.patientName.trim());
 
@@ -4123,6 +4125,8 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
           setIsUpgradeModalOpen(false);
         }}
         onGoToAdmin={onGoToAdmin}
+        lockReason={limitStatus.reason}
+        therapist={therapist}
       />
 
       {/* Patient / Customer Selection Modal */}

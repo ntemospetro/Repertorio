@@ -1,9 +1,70 @@
-import { TokenBillingSummary, TokenPricingRates, TokenUsageRecord } from '../types';
+import { TokenBillingSummary, TokenPricingRates, TokenUsageRecord, ModelPricingTier, TherapistTokenSummary } from '../types';
+
+export const DEFAULT_MODEL_TIERS: ModelPricingTier[] = [
+  {
+    modelId: 'gemini-3.8-flash',
+    modelName: 'Gemini 3.8 Flash (Klinische Fallanalysen & Repertorisation)',
+    purpose: 'Hauptmodell: Vollständige Repertorisation, Miasmen & Toxikologie',
+    costInputPerMillionEur: 0.69,       // 0.75 $ bis 31.12.2026
+    costOutputPerMillionEur: 3.45,      // 3.75 $ bis 31.12.2026
+    costCachedPerMillionEur: 0.069,     // 0.075 $ (90% Rabatt)
+    costInput2027PerMillionEur: 1.38,   // 1.50 $ ab 01.01.2027
+    costOutput2027PerMillionEur: 6.90,  // 7.50 $ ab 01.01.2027
+    costCached2027PerMillionEur: 0.138, // 0.15 $ ab 01.01.2027
+    customerInputPerMillionEur: 1.50,
+    customerOutputPerMillionEur: 7.50,
+    customerCachedPerMillionEur: 0.20,
+  },
+  {
+    modelId: 'gemini-2.5-flash',
+    modelName: 'Gemini 2.5 Flash (Mehrsprachige Lokalisierung & Recherche)',
+    purpose: 'Standard-Recherche, Monographien & Übersetzungen in 7 Sprachen',
+    costInputPerMillionEur: 0.14,       // 0.15 $
+    costOutputPerMillionEur: 0.55,      // 0.60 $
+    costCachedPerMillionEur: 0.035,     // 0.0375 $
+    costInput2027PerMillionEur: 0.14,
+    costOutput2027PerMillionEur: 0.55,
+    costCached2027PerMillionEur: 0.035,
+    customerInputPerMillionEur: 0.50,
+    customerOutputPerMillionEur: 2.00,
+    customerCachedPerMillionEur: 0.10,
+  },
+  {
+    modelId: 'gemini-2.5-flash-lite',
+    modelName: 'Gemini 2.5 Flash-Lite (Sofort-Klassifizierung)',
+    purpose: 'Relevanz-Vorprüfung, Symptom-Extraktion & Schnell-Validierung',
+    costInputPerMillionEur: 0.09,       // 0.10 $
+    costOutputPerMillionEur: 0.37,      // 0.40 $
+    costCachedPerMillionEur: 0.023,     // 0.025 $
+    costInput2027PerMillionEur: 0.09,
+    costOutput2027PerMillionEur: 0.37,
+    costCached2027PerMillionEur: 0.023,
+    customerInputPerMillionEur: 0.25,
+    customerOutputPerMillionEur: 1.00,
+    customerCachedPerMillionEur: 0.05,
+  },
+  {
+    modelId: 'gemini-3.1-pro',
+    modelName: 'Gemini 3.1 Pro (Flagship Reasoning)',
+    purpose: 'Tiefen-Differentialdiagnostik & toxikologische Kreuzanalysen',
+    costInputPerMillionEur: 1.84,       // 2.00 $
+    costOutputPerMillionEur: 11.04,     // 12.00 $
+    costCachedPerMillionEur: 0.184,     // 0.20 $
+    costInput2027PerMillionEur: 1.84,
+    costOutput2027PerMillionEur: 11.04,
+    costCached2027PerMillionEur: 0.184,
+    customerInputPerMillionEur: 3.50,
+    customerOutputPerMillionEur: 20.00,
+    customerCachedPerMillionEur: 0.50,
+  },
+];
 
 export const DEFAULT_TOKEN_RATES: TokenPricingRates = {
-  inputPerMillionEur: 0.075,
-  outputPerMillionEur: 0.30,
-  currency: '€'
+  inputPerMillionEur: 0.69,
+  outputPerMillionEur: 3.45,
+  cachedPerMillionEur: 0.069,
+  currency: '€',
+  modelTiers: DEFAULT_MODEL_TIERS
 };
 
 export async function fetchTokenBillingSummary(): Promise<TokenBillingSummary> {
@@ -12,14 +73,59 @@ export async function fetchTokenBillingSummary(): Promise<TokenBillingSummary> {
     if (res.ok) {
       const data = await res.json();
       if (data) {
+        const rates: TokenPricingRates = {
+          ...DEFAULT_TOKEN_RATES,
+          ...(data.rates || {}),
+          modelTiers: (data.rates?.modelTiers && data.rates.modelTiers.length > 0)
+            ? data.rates.modelTiers
+            : DEFAULT_MODEL_TIERS
+        };
+
+        const byTherapist: TherapistTokenSummary[] = (Array.isArray(data.byTherapist) ? data.byTherapist : []).map((t: any) => {
+          const promptTokens = Number(t.promptTokens || 0);
+          const candidatesTokens = Number(t.candidatesTokens || 0);
+          const cachedTokens = Number(t.cachedTokens || 0);
+          const totalCostEur = Number(t.totalCostEur || 0);
+
+          // Calculate customer bill based on primary model tier (gemini-3.8-flash) or rates
+          const primaryTier = rates.modelTiers?.[0] || DEFAULT_MODEL_TIERS[0];
+          const customerPromptCost = (promptTokens / 1000000) * (primaryTier.customerInputPerMillionEur || 1.50);
+          const customerCandidatesCost = (candidatesTokens / 1000000) * (primaryTier.customerOutputPerMillionEur || 7.50);
+          const customerCachedCost = (cachedTokens / 1000000) * (primaryTier.customerCachedPerMillionEur || 0.20);
+          const totalCustomerCostEur = customerPromptCost + customerCandidatesCost + customerCachedCost;
+
+          return {
+            ...t,
+            promptTokens,
+            candidatesTokens,
+            cachedTokens,
+            totalTokens: Number(t.totalTokens || (promptTokens + candidatesTokens)),
+            totalCostEur,
+            totalCustomerCostEur: Math.round(totalCustomerCostEur * 10000) / 10000
+          };
+        });
+
+        const totalPrompt = Number(data.totalPromptTokens ?? data.promptTokens ?? 0);
+        const totalCandidates = Number(data.totalCandidatesTokens ?? data.candidatesTokens ?? 0);
+        const totalCached = Number(data.totalCachedTokens ?? 0);
+        const totalCost = Number(data.totalCostEur ?? data.totalSpentEur ?? 0);
+        
+        const primaryTier = rates.modelTiers?.[0] || DEFAULT_MODEL_TIERS[0];
+        const totalCustomerCostEur = 
+          (totalPrompt / 1000000) * (primaryTier.customerInputPerMillionEur || 1.50) +
+          (totalCandidates / 1000000) * (primaryTier.customerOutputPerMillionEur || 7.50) +
+          (totalCached / 1000000) * (primaryTier.customerCachedPerMillionEur || 0.20);
+
         return {
-          totalPromptTokens: Number(data.totalPromptTokens ?? data.promptTokens ?? 0),
-          totalCandidatesTokens: Number(data.totalCandidatesTokens ?? data.candidatesTokens ?? 0),
-          totalTokens: Number(data.totalTokens ?? 0),
-          totalCostEur: Number(data.totalCostEur ?? data.totalSpentEur ?? 0),
+          totalPromptTokens: totalPrompt,
+          totalCandidatesTokens: totalCandidates,
+          totalCachedTokens: totalCached,
+          totalTokens: Number(data.totalTokens ?? (totalPrompt + totalCandidates)),
+          totalCostEur: totalCost,
+          totalCustomerCostEur: Math.round(totalCustomerCostEur * 10000) / 10000,
           totalRequests: Number(data.totalRequests ?? (Array.isArray(data.logs) ? data.logs.length : 0)),
-          byTherapist: Array.isArray(data.byTherapist) ? data.byTherapist : [],
-          rates: data.rates || DEFAULT_TOKEN_RATES,
+          byTherapist,
+          rates,
           lastUpdated: data.lastUpdated || new Date().toISOString()
         };
       }
@@ -32,8 +138,10 @@ export async function fetchTokenBillingSummary(): Promise<TokenBillingSummary> {
   return {
     totalPromptTokens: 0,
     totalCandidatesTokens: 0,
+    totalCachedTokens: 0,
     totalTokens: 0,
     totalCostEur: 0,
+    totalCustomerCostEur: 0,
     totalRequests: 0,
     byTherapist: [],
     rates: DEFAULT_TOKEN_RATES,
@@ -149,6 +257,15 @@ export function exportTokenBillingCSV(summary: TokenBillingSummary): void {
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
+}
+
+/**
+ * Format single token cost with precision up to 8 decimal places (e.g. 0,00000069 €)
+ */
+export function formatSingleTokenCost(costEurPerMillion: number, currency: string = '€'): string {
+  const perToken = costEurPerMillion / 1000000;
+  if (perToken === 0) return `0,00000000 ${currency}`;
+  return `${perToken.toFixed(8).replace('.', ',')} ${currency}`;
 }
 
 // Aliases for convenience

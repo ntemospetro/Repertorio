@@ -60,6 +60,8 @@ export interface Therapist {
   isUnlimited?: boolean;
   usedAnalyses: number;
   maxAnalyses: number; // default 3 for free_trial
+  usedTokens?: number;
+  maxTokens?: number; // default 25000 for free_trial limit
   registeredAt: string; // ISO date string
   status: 'active' | 'limit_reached' | 'locked' | 'upgraded';
   praxisName?: string;
@@ -565,6 +567,32 @@ export interface HomeopathicExpertResult {
   formattedMarkdown?: string;
 }
 
+export type TrialLimitMode = 'analyses_only' | 'tokens_only' | 'both_whichever_first';
+
+export interface FreeTrialLimitConfig {
+  limitMode: TrialLimitMode;
+  maxAnalyses: number;
+  maxTokens: number;
+}
+
+export interface ModelPricingTier {
+  modelId: string;
+  modelName: string;
+  purpose: string;
+  // What I pay (Google API cost 2026)
+  costInputPerMillionEur: number;
+  costOutputPerMillionEur: number;
+  costCachedPerMillionEur: number;
+  // What I pay (Google API cost from 01.01.2027)
+  costInput2027PerMillionEur: number;
+  costOutput2027PerMillionEur: number;
+  costCached2027PerMillionEur: number;
+  // What customer pays
+  customerInputPerMillionEur: number;
+  customerOutputPerMillionEur: number;
+  customerCachedPerMillionEur: number;
+}
+
 export interface TokenUsageRecord {
   id: string;
   timestamp: string;
@@ -576,8 +604,10 @@ export interface TokenUsageRecord {
   model: string;
   promptTokens: number;
   candidatesTokens: number;
+  cachedTokens?: number;
   totalTokens: number;
   costEur: number;
+  customerCostEur?: number;
 }
 
 export interface TherapistTokenSummary {
@@ -589,22 +619,33 @@ export interface TherapistTokenSummary {
   requestCount: number;
   promptTokens: number;
   candidatesTokens: number;
+  cachedTokens?: number;
   totalTokens: number;
   totalCostEur: number;
+  totalCustomerCostEur?: number;
+  customerCostEur?: number;
+  marginEur?: number;
   lastUsedAt: string;
 }
 
 export interface TokenPricingRates {
   inputPerMillionEur: number;
   outputPerMillionEur: number;
+  cachedPerMillionEur?: number;
   currency: string;
+  modelTiers?: ModelPricingTier[];
+  freeTrialLimit?: FreeTrialLimitConfig;
 }
 
 export interface TokenBillingSummary {
   totalPromptTokens: number;
   totalCandidatesTokens: number;
+  totalCachedTokens?: number;
   totalTokens: number;
   totalCostEur: number;
+  totalCustomerCostEur?: number;
+  totalMarginEur?: number;
+  marginPercent?: number;
   totalRequests: number;
   byTherapist: TherapistTokenSummary[];
   rates: TokenPricingRates;

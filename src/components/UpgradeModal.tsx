@@ -1,18 +1,23 @@
 import React from 'react';
-import { Lock, Sparkles, CheckCircle2, Shield, X, Package, Infinity as InfinityIcon } from 'lucide-react';
+import { Lock, Sparkles, CheckCircle2, Shield, X, Package, Infinity as InfinityIcon, AlertCircle } from 'lucide-react';
 import { useTranslation } from '../i18n/LanguageContext';
 import { getPackagePlans } from '../services/storage';
+import { Therapist } from '../types';
 
 interface UpgradeModalProps {
   isOpen: boolean;
   onClose: () => void;
   onGoToAdmin: () => void;
+  lockReason?: 'analyses_reached' | 'tokens_reached' | 'none';
+  therapist?: Therapist | null;
 }
 
 export const UpgradeModal: React.FC<UpgradeModalProps> = ({
   isOpen,
   onClose,
   onGoToAdmin,
+  lockReason,
+  therapist,
 }) => {
   const { t } = useTranslation();
   const plans = getPackagePlans().filter(p => p.isActive !== false);
@@ -42,9 +47,25 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
         </div>
 
         <div className="p-6 space-y-4 text-slate-600">
-          <p className="text-slate-700 leading-relaxed">
-            {t('upgradeModalInfo')}
-          </p>
+          {lockReason === 'tokens_reached' ? (
+            <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-rose-900 flex items-start gap-2.5">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+              <div className="leading-relaxed font-medium">
+                {t('quotaLockedReasonTokens', { max: therapist?.maxTokens || 25000 })}
+              </div>
+            </div>
+          ) : lockReason === 'analyses_reached' ? (
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-900 flex items-start gap-2.5">
+              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <div className="leading-relaxed font-medium">
+                {t('quotaLockedReasonAnalyses', { max: therapist?.maxAnalyses || 3 })}
+              </div>
+            </div>
+          ) : (
+            <p className="text-slate-700 leading-relaxed">
+              {t('upgradeModalInfo')}
+            </p>
+          )}
 
           {/* Dynamic Available Packages Overview */}
           <div className="space-y-2">

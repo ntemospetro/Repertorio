@@ -16,9 +16,18 @@ import {
   Clock,
   Sparkles,
   AlertCircle,
-  Activity
+  Activity,
+  Layers,
+  ArrowRight,
+  ShieldAlert,
+  Percent,
+  Save,
+  HelpCircle,
+  Check
 } from 'lucide-react';
 import {
+  FreeTrialLimitConfig,
+  ModelPricingTier,
   TokenBillingSummary,
   TokenUsageRecord,
   TherapistTokenSummary,
@@ -31,8 +40,14 @@ import {
   resetTokenLogs,
   exportTokenBillingCsv,
   formatCostEur,
-  formatTokenCount
+  formatTokenCount,
+  formatSingleTokenCost,
+  DEFAULT_MODEL_TIERS
 } from '../services/tokenBillingService';
+import {
+  getFreeTrialLimitConfig,
+  saveFreeTrialLimitConfig
+} from '../services/storage';
 
 export const AdminTokenUsage: React.FC = () => {
   const { t } = useTranslation();
@@ -46,13 +61,23 @@ export const AdminTokenUsage: React.FC = () => {
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Rate Editing
+  // Rate & Model Tiers Editing
   const [editingRates, setEditingRates] = useState<TokenPricingRates>({
-    inputPerMillionEur: 0.075,
-    outputPerMillionEur: 0.30,
+    inputPerMillionEur: 0.69,
+    outputPerMillionEur: 3.45,
+    cachedPerMillionEur: 0.069,
     currency: '€'
   });
+  const [modelTiers, setModelTiers] = useState<ModelPricingTier[]>(DEFAULT_MODEL_TIERS);
   const [savingRates, setSavingRates] = useState<boolean>(false);
+
+  // Free Trial Quota Configuration State
+  const [trialLimitConfig, setTrialLimitConfig] = useState<FreeTrialLimitConfig>(() => getFreeTrialLimitConfig());
+  const [savingTrialLimit, setSavingTrialLimit] = useState<boolean>(false);
+
+  // Unit and Timeframe toggles for Rates & Margins table
+  const [priceUnit, setPriceUnit] = useState<'perMillion' | 'perSingleToken'>('perMillion');
+  const [ratesTimeframe, setRatesTimeframe] = useState<'current' | 'future2027'>('current');
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -67,6 +92,11 @@ export const AdminTokenUsage: React.FC = () => {
       const summaryData = await fetchTokenBillingSummary();
       setSummary(summaryData);
       setEditingRates(summaryData.rates);
+      if (summaryData.rates.modelTiers && summaryData.rates.modelTiers.length > 0) {
+        setModelTiers(summaryData.rates.modelTiers);
+      } else {
+        setModelTiers(DEFAULT_MODEL_TIERS);
+      }
 
       const logsData = await fetchTokenLogs(filterTherapistId, 250);
       setLogs(logsData);
@@ -82,39 +112,63 @@ export const AdminTokenUsage: React.FC = () => {
     loadData();
   }, [loadData]);
 
-  // Auto-refresh interval every 30 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      loadData(true);
-    }, 30000);
-    return () => clearInterval(interval);
-  }, [loadData]);
-
   const handleSaveRates = async (e: React.FormEvent) => {
     e.preventDefault();
     setSavingRates(true);
     try {
-      const updated = await updateTokenRates(editingRates);
-      if (updated) {
-        setEditingRates(updated);
-        showToast(t('adminTokensRatesSaved'));
-        loadData(true);
-      }
+      const updatedRatesPayload: TokenPricingRates = {
+        ...editingRates,
+        modelTiers
+      };
+      await updateTokenRates(updatedRatesPayload);
+      await loadData(true);
+      showToast(t('adminTokensSavedSuccess'));
     } catch (err) {
-      console.error('Failed to save token rates:', err);
+      console.error('Failed to update rates:', err);
+      showToast('Fehler beim Speichern der Tarife');
     } finally {
       setSavingRates(false);
     }
+  };
+
+  const handleSaveTrialLimits = (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingTrialLimit(true);
+    try {
+      saveFreeTrialLimitConfig(trialLimitConfig);
+      setTimeout(() => {
+        setSavingTrialLimit(false);
+        showToast(t('adminTokensSavedSuccess'));
+      }, 200);
+    } catch (err) {
+      console.error('Failed to save trial limits:', err);
+      setSavingTrialLimit(false);
+    }
+  };
+
+  const handleModelTierCustomerPriceChange = (
+    index: number,
+    field: 'customerInputPerMillionEur' | 'customerOutputPerMillionEur' | 'customerCachedPerMillionEur',
+    val: number
+  ) => {
+    setModelTiers(prev => {
+      const copy = [...prev];
+      copy[index] = {
+        ...copy[index],
+        [field]: val
+      };
+      return copy;
+    });
   };
 
   const handleResetLogs = async () => {
     try {
       await resetTokenLogs();
       setIsResetConfirmOpen(false);
-      showToast('Token-Verbrauchsprotokoll erfolgreich zurückgesetzt');
-      loadData();
+      await loadData();
+      showToast('Token-Protokoll wurde erfolgreich zurückgesetzt.');
     } catch (err) {
-      console.error('Failed to reset logs:', err);
+      console.error('Failed to reset token logs:', err);
     }
   };
 
@@ -206,35 +260,49 @@ export const AdminTokenUsage: React.FC = () => {
           </div>
         </div>
 
-        {/* 4 Summary Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 mt-6">
-          {/* Card 1: Total Cost */}
+        {/* 4 Summary Cards (Input, Output, Cached, Costs & Margins) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 mt-6">
+          {/* Card 1: Costs (Einkauf vs Kunde) */}
           <div className="bg-slate-950/70 p-4 rounded-xl border border-slate-800/80 relative overflow-hidden">
             <div className="text-[10px] text-slate-400 uppercase font-bold tracking-wider flex items-center gap-1.5">
               <Receipt className="w-3.5 h-3.5 text-teal-400" />
-              <span>{t('adminTokensTotalCost')}</span>
+              <span>{t('adminTokensCostWhatIPay')}</span>
             </div>
-            <div className="text-2xl sm:text-3xl font-bold text-teal-300 mt-2 font-mono">
+            <div className="text-2xl font-bold text-teal-300 mt-2 font-mono">
               {formatCostEur(summary?.totalCostEur || 0)}
             </div>
-            <div className="text-[11px] text-slate-400 mt-1">
-              Gesamtausgaben aller Modelle
+            <div className="text-[11px] text-slate-400 mt-1 flex items-center justify-between">
+              <span>{t('adminTokensCostWhatCustomerPays')}:</span>
+              <span className="font-mono text-emerald-300 font-semibold">{formatCostEur(summary?.totalCustomerCostEur || 0)}</span>
+            </div>
+            <div className="text-[10px] text-emerald-400 font-mono mt-0.5 flex items-center justify-between">
+              <span>{t('adminTokensMargin')}:</span>
+              <span>+{formatCostEur(summary?.totalMarginEur || 0)} ({summary?.marginPercent || 0}%)</span>
             </div>
           </div>
 
-          {/* Card 2: Total Tokens */}
+          {/* Card 2: Total Tokens (Input, Output, Cached) */}
           <div className="bg-slate-950/70 p-4 rounded-xl border border-slate-800/80 relative overflow-hidden">
             <div className="text-[10px] text-slate-400 uppercase font-bold tracking-wider flex items-center gap-1.5">
               <Database className="w-3.5 h-3.5 text-amber-400" />
               <span>{t('adminTokensTotalTokens')}</span>
             </div>
-            <div className="text-2xl sm:text-3xl font-bold text-white mt-2 font-mono">
+            <div className="text-2xl font-bold text-white mt-2 font-mono">
               {formatTokenCount(summary?.totalTokens || 0)}
             </div>
-            <div className="text-[11px] text-slate-400 mt-1 flex items-center gap-2">
-              <span className="text-slate-300">In: {formatTokenCount(summary?.totalPromptTokens || 0)}</span>
-              <span>•</span>
-              <span className="text-slate-300">Out: {formatTokenCount(summary?.totalCandidatesTokens || 0)}</span>
+            <div className="text-[11px] text-slate-300 mt-1 flex flex-col gap-0.5">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400">1. {t('adminTokensInputTokens')}:</span>
+                <span className="font-mono">{formatTokenCount(summary?.totalPromptTokens || 0)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400">2. {t('adminTokensOutputTokens')}:</span>
+                <span className="font-mono">{formatTokenCount(summary?.totalCandidatesTokens || 0)}</span>
+              </div>
+              <div className="flex items-center justify-between text-teal-300">
+                <span className="text-slate-400">3. {t('adminTokensCachedTokens')}:</span>
+                <span className="font-mono">{formatTokenCount(summary?.totalCachedTokens || 0)}</span>
+              </div>
             </div>
           </div>
 
@@ -244,11 +312,14 @@ export const AdminTokenUsage: React.FC = () => {
               <Activity className="w-3.5 h-3.5 text-sky-400" />
               <span>{t('adminTokensTotalRequests')}</span>
             </div>
-            <div className="text-2xl sm:text-3xl font-bold text-sky-300 mt-2 font-mono">
+            <div className="text-2xl font-bold text-sky-300 mt-2 font-mono">
               {summary?.totalRequests || 0}
             </div>
             <div className="text-[11px] text-slate-400 mt-1">
-              Erfasste API-Aufrufe
+              Erfasste API-Aufrufe aller Praxen
+            </div>
+            <div className="text-[10px] text-slate-500 mt-1">
+              Live aus /api/analyze & Repertorisation
             </div>
           </div>
 
@@ -258,11 +329,15 @@ export const AdminTokenUsage: React.FC = () => {
               <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
               <span>{t('adminTokensAvgCostPerReq')}</span>
             </div>
-            <div className="text-2xl sm:text-3xl font-bold text-emerald-300 mt-2 font-mono">
+            <div className="text-2xl font-bold text-emerald-300 mt-2 font-mono">
               {formatCostEur(avgCostPerRequest)}
             </div>
             <div className="text-[11px] text-slate-400 mt-1">
-              Google Gemini 3.8 Flash
+              Ø Einkaufspreis pro Fallanalyse
+            </div>
+            <div className="text-[10px] text-teal-400 mt-1 flex items-center gap-1">
+              <Sparkles className="w-3 h-3" />
+              <span>90% Ersparnis bei Kontext-Caching</span>
             </div>
           </div>
         </div>
@@ -312,11 +387,11 @@ export const AdminTokenUsage: React.FC = () => {
           }`}
         >
           <Sliders className="w-3.5 h-3.5" />
-          <span>{t('adminTokensTabRates')}</span>
+          <span>{t('adminTokensTabPricingMatrix')}</span>
         </button>
       </div>
 
-      {/* Sub-Tab 1: Therapists Breakdown Table (Users listed downwards with tokens & costs) */}
+      {/* Sub-Tab 1: Therapists Breakdown Table (Users listed downwards with input, output, cached, cost, customer price, margin) */}
       {activeSubTab === 'therapists' && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
           {/* Table Controls */}
@@ -347,8 +422,11 @@ export const AdminTokenUsage: React.FC = () => {
                   <th className="py-3.5 px-4 text-center">{t('adminTokensColRequests')}</th>
                   <th className="py-3.5 px-4 text-right">{t('adminTokensColPromptTokens')}</th>
                   <th className="py-3.5 px-4 text-right">{t('adminTokensColCandidatesTokens')}</th>
+                  <th className="py-3.5 px-4 text-right text-teal-700">{t('adminTokensColCachedTokens')}</th>
                   <th className="py-3.5 px-4 text-right font-bold text-slate-900">{t('adminTokensColTotalTokens')}</th>
-                  <th className="py-3.5 px-4 text-right font-bold text-teal-700 bg-teal-50/50">{t('adminTokensColCost')}</th>
+                  <th className="py-3.5 px-4 text-right font-bold text-teal-800 bg-teal-50/40">{t('adminTokensCostWhatIPay')}</th>
+                  <th className="py-3.5 px-4 text-right font-bold text-emerald-800 bg-emerald-50/40">{t('adminTokensCostWhatCustomerPays')}</th>
+                  <th className="py-3.5 px-4 text-right font-bold text-indigo-800 bg-indigo-50/40">{t('adminTokensMargin')}</th>
                   <th className="py-3.5 px-4">{t('adminTokensColLastUsed')}</th>
                 </tr>
               </thead>
@@ -356,14 +434,12 @@ export const AdminTokenUsage: React.FC = () => {
               <tbody className="divide-y divide-slate-100">
                 {filteredTherapists.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="py-12 text-center text-slate-400">
+                    <td colSpan={11} className="py-12 text-center text-slate-400">
                       {t('adminTokensNoTherapistsFound')}
                     </td>
                   </tr>
                 ) : (
                   filteredTherapists.map((th) => {
-                    const isZeroUsage = th.requestCount === 0;
-
                     return (
                       <tr
                         key={th.therapistId}
@@ -408,15 +484,34 @@ export const AdminTokenUsage: React.FC = () => {
                           {formatTokenCount(th.candidatesTokens)}
                         </td>
 
+                        {/* Cached Tokens */}
+                        <td className="py-3.5 px-4 text-right font-mono text-teal-600 font-medium">
+                          {formatTokenCount(th.cachedTokens || 0)}
+                        </td>
+
                         {/* Total Tokens */}
                         <td className="py-3.5 px-4 text-right font-mono font-bold text-slate-900">
                           {formatTokenCount(th.totalTokens)}
                         </td>
 
-                        {/* Cost to Me */}
-                        <td className="py-3.5 px-4 text-right font-mono font-bold text-teal-700 bg-teal-50/40 group-hover:bg-teal-50/80">
-                          <span className="inline-block px-2.5 py-1 rounded-lg bg-teal-100/70 text-teal-800 text-xs shadow-2xs">
+                        {/* Cost to Me (Einkaufspreis) */}
+                        <td className="py-3.5 px-4 text-right font-mono font-bold text-teal-800 bg-teal-50/30 group-hover:bg-teal-50/60">
+                          <span className="inline-block px-2 py-0.5 rounded-md bg-teal-100/70 text-teal-900 text-xs">
                             {formatCostEur(th.totalCostEur)}
+                          </span>
+                        </td>
+
+                        {/* What Customer Pays */}
+                        <td className="py-3.5 px-4 text-right font-mono font-bold text-emerald-800 bg-emerald-50/30 group-hover:bg-emerald-50/60">
+                          <span className="inline-block px-2 py-0.5 rounded-md bg-emerald-100/70 text-emerald-900 text-xs">
+                            {formatCostEur(th.customerCostEur || 0)}
+                          </span>
+                        </td>
+
+                        {/* Margin */}
+                        <td className="py-3.5 px-4 text-right font-mono font-bold text-indigo-800 bg-indigo-50/30 group-hover:bg-indigo-50/60">
+                          <span className="inline-block px-2 py-0.5 rounded-md bg-indigo-100/70 text-indigo-900 text-xs">
+                            +{formatCostEur(th.marginEur || 0)}
                           </span>
                         </td>
 
@@ -481,15 +576,16 @@ export const AdminTokenUsage: React.FC = () => {
                   <th className="py-3.5 px-4">{t('adminTokensColModel')}</th>
                   <th className="py-3.5 px-4 text-right">{t('adminTokensColPromptTokens')}</th>
                   <th className="py-3.5 px-4 text-right">{t('adminTokensColCandidatesTokens')}</th>
+                  <th className="py-3.5 px-4 text-right text-teal-700">{t('adminTokensColCachedTokens')}</th>
                   <th className="py-3.5 px-4 text-right font-bold text-slate-900">{t('adminTokensColTotalTokens')}</th>
-                  <th className="py-3.5 px-4 text-right font-bold text-teal-700 bg-teal-50/50">{t('adminTokensColCost')}</th>
+                  <th className="py-3.5 px-4 text-right font-bold text-teal-700 bg-teal-50/50">{t('adminTokensCostWhatIPay')}</th>
                 </tr>
               </thead>
 
               <tbody className="divide-y divide-slate-100">
                 {logs.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="py-12 text-center text-slate-400">
+                    <td colSpan={9} className="py-12 text-center text-slate-400">
                       {t('adminTokensNoLogs')}
                     </td>
                   </tr>
@@ -535,6 +631,11 @@ export const AdminTokenUsage: React.FC = () => {
                         {formatTokenCount(log.candidatesTokens)}
                       </td>
 
+                      {/* Cached Tokens */}
+                      <td className="py-3 px-4 text-right text-teal-600 font-medium">
+                        {formatTokenCount(log.cachedTokens || 0)}
+                      </td>
+
                       {/* Total Tokens */}
                       <td className="py-3 px-4 text-right font-bold text-slate-900">
                         {formatTokenCount(log.totalTokens)}
@@ -555,101 +656,410 @@ export const AdminTokenUsage: React.FC = () => {
         </div>
       )}
 
-      {/* Sub-Tab 3: Rate Configuration Card */}
+      {/* Sub-Tab 3: Tarife, Margen & Kontingente */}
       {activeSubTab === 'rates' && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-6 max-w-2xl">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-teal-50 border border-teal-200 text-teal-600 flex items-center justify-center">
-              <Sliders className="w-5 h-5" />
+        <div className="space-y-6">
+          {/* Card 1: Free Trial Quota Management (Begrenzung Analysen, Tokens oder Beides) */}
+          <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-6">
+            <div className="flex items-start justify-between gap-4 mb-5 border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center shrink-0">
+                  <ShieldAlert className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-base">
+                    {t('adminTokensFreeTierLimitTitle')}
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    {t('adminTokensFreeTierLimitDesc')}
+                  </p>
+                </div>
+              </div>
             </div>
-            <div>
-              <h3 className="font-bold text-slate-900 text-base">
-                {t('adminTokensTabRates')}
-              </h3>
-              <p className="text-xs text-slate-500">
-                {t('adminTokensRatesDesc')}
-              </p>
-            </div>
+
+            <form onSubmit={handleSaveTrialLimits} className="space-y-5">
+              {/* Radio options for 3 modes */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {/* Option 1: Analyses Only */}
+                <label
+                  onClick={() => setTrialLimitConfig({ ...trialLimitConfig, limitMode: 'analyses_only' })}
+                  className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex flex-col justify-between ${
+                    trialLimitConfig.limitMode === 'analyses_only'
+                      ? 'border-teal-500 bg-teal-50/30 text-teal-950 shadow-xs'
+                      : 'border-slate-200 hover:border-slate-300 bg-white text-slate-700'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-bold text-xs">1. {t('adminTokensLimitModeAnalysesOnly')}</span>
+                    <input
+                      type="radio"
+                      name="trial_limit_mode"
+                      checked={trialLimitConfig.limitMode === 'analyses_only'}
+                      onChange={() => setTrialLimitConfig({ ...trialLimitConfig, limitMode: 'analyses_only' })}
+                      className="text-teal-600 focus:ring-teal-500"
+                    />
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    Therapeut kann exakt {trialLimitConfig.maxAnalyses} Fallanalysen durchführen, Token-Verbrauch ist frei.
+                  </p>
+                </label>
+
+                {/* Option 2: Tokens Only */}
+                <label
+                  onClick={() => setTrialLimitConfig({ ...trialLimitConfig, limitMode: 'tokens_only' })}
+                  className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex flex-col justify-between ${
+                    trialLimitConfig.limitMode === 'tokens_only'
+                      ? 'border-teal-500 bg-teal-50/30 text-teal-950 shadow-xs'
+                      : 'border-slate-200 hover:border-slate-300 bg-white text-slate-700'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-bold text-xs">2. {t('adminTokensLimitModeTokensOnly')}</span>
+                    <input
+                      type="radio"
+                      name="trial_limit_mode"
+                      checked={trialLimitConfig.limitMode === 'tokens_only'}
+                      onChange={() => setTrialLimitConfig({ ...trialLimitConfig, limitMode: 'tokens_only' })}
+                      className="text-teal-600 focus:ring-teal-500"
+                    />
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    Begrenzt strikt nach verbrauchten Tokens ({formatTokenCount(trialLimitConfig.maxTokens)}). Beliebig viele kurze Anfragen.
+                  </p>
+                </label>
+
+                {/* Option 3: Both (Whichever first) */}
+                <label
+                  onClick={() => setTrialLimitConfig({ ...trialLimitConfig, limitMode: 'both_whichever_first' })}
+                  className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex flex-col justify-between ${
+                    trialLimitConfig.limitMode === 'both_whichever_first'
+                      ? 'border-teal-500 bg-teal-50/30 text-teal-950 shadow-xs'
+                      : 'border-slate-200 hover:border-slate-300 bg-white text-slate-700'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-bold text-xs">3. {t('adminTokensLimitModeBoth')}</span>
+                    <input
+                      type="radio"
+                      name="trial_limit_mode"
+                      checked={trialLimitConfig.limitMode === 'both_whichever_first'}
+                      onChange={() => setTrialLimitConfig({ ...trialLimitConfig, limitMode: 'both_whichever_first' })}
+                      className="text-teal-600 focus:ring-teal-500"
+                    />
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    Sperrt automatisch, sobald entweder {trialLimitConfig.maxAnalyses} Analysen ODER {formatTokenCount(trialLimitConfig.maxTokens)} Tokens erreicht sind.
+                  </p>
+                </label>
+              </div>
+
+              {/* Number Inputs */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                    {t('adminTokensMaxAnalysesLabel')}
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="1000"
+                    value={trialLimitConfig.maxAnalyses}
+                    onChange={(e) =>
+                      setTrialLimitConfig({
+                        ...trialLimitConfig,
+                        maxAnalyses: Math.max(1, parseInt(e.target.value, 10) || 1)
+                      })
+                    }
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 font-mono focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+                  />
+                  <p className="text-[11px] text-slate-400 mt-1">Standard: 3 Analysen</p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                    {t('adminTokensMaxTokensLabel')}
+                  </label>
+                  <input
+                    type="number"
+                    min="1000"
+                    step="5000"
+                    max="1000000"
+                    value={trialLimitConfig.maxTokens}
+                    onChange={(e) =>
+                      setTrialLimitConfig({
+                        ...trialLimitConfig,
+                        maxTokens: Math.max(1000, parseInt(e.target.value, 10) || 1000)
+                      })
+                    }
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 font-mono focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+                  />
+                  <p className="text-[11px] text-slate-400 mt-1">Standard: 25.000 Tokens (~ 3 bis 5 Fallanalysen)</p>
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end">
+                <button
+                  type="submit"
+                  disabled={savingTrialLimit}
+                  className="px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer disabled:opacity-50 flex items-center gap-2"
+                >
+                  {savingTrialLimit ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                  <span>Test-Tarif Kontingent speichern</span>
+                </button>
+              </div>
+            </form>
           </div>
 
-          <form onSubmit={handleSaveRates} className="space-y-4 pt-2">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                  {t('adminTokensRateInputLabel')}
-                </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    step="0.001"
-                    min="0"
-                    value={editingRates.inputPerMillionEur}
-                    onChange={(e) =>
-                      setEditingRates({
-                        ...editingRates,
-                        inputPerMillionEur: parseFloat(e.target.value) || 0
-                      })
-                    }
-                    className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 font-mono focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-mono">
-                    € / 1M
-                  </span>
+          {/* Card 2: Pricing & Margins Table for All Gemini Versions */}
+          <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-teal-50 border border-teal-200 text-teal-600 flex items-center justify-center shrink-0">
+                  <Sliders className="w-5 h-5" />
                 </div>
-                <p className="text-[11px] text-slate-400 mt-1">Standard: 0.075 € (Gemini 3.8 Flash)</p>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-base">
+                    {t('adminTokensTabPricingMatrix')}
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    {t('adminTokensPricingMatrixDesc')}
+                  </p>
+                </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                  {t('adminTokensRateOutputLabel')}
-                </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    step="0.001"
-                    min="0"
-                    value={editingRates.outputPerMillionEur}
-                    onChange={(e) =>
-                      setEditingRates({
-                        ...editingRates,
-                        outputPerMillionEur: parseFloat(e.target.value) || 0
-                      })
-                    }
-                    className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 font-mono focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-mono">
-                    € / 1M
-                  </span>
+              {/* Toggles: Unit (€/1M vs €/Token) & Timeframe (Current vs 2027) */}
+              <div className="flex items-center gap-2.5 flex-wrap">
+                {/* Timeframe Toggle */}
+                <div className="bg-slate-100 p-1 rounded-lg flex items-center text-[11px] font-semibold border border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => setRatesTimeframe('current')}
+                    className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
+                      ratesTimeframe === 'current'
+                        ? 'bg-white text-slate-900 shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    {t('adminTokensYear2026')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRatesTimeframe('future2027')}
+                    className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
+                      ratesTimeframe === 'future2027'
+                        ? 'bg-white text-slate-900 shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    {t('adminTokensYear2027')}
+                  </button>
                 </div>
-                <p className="text-[11px] text-slate-400 mt-1">Standard: 0.300 € (Gemini 3.8 Flash)</p>
+
+                {/* Price Unit Toggle */}
+                <div className="bg-slate-100 p-1 rounded-lg flex items-center text-[11px] font-semibold border border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => setPriceUnit('perMillion')}
+                    className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
+                      priceUnit === 'perMillion'
+                        ? 'bg-white text-slate-900 shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    € / 1.000.000
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPriceUnit('perSingleToken')}
+                    className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
+                      priceUnit === 'perSingleToken'
+                        ? 'bg-white text-slate-900 shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    € / 1 Token
+                  </button>
+                </div>
               </div>
             </div>
 
-            <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
-              <button
-                type="button"
-                onClick={() =>
-                  setEditingRates({
-                    inputPerMillionEur: 0.075,
-                    outputPerMillionEur: 0.30,
-                    currency: '€'
-                  })
-                }
-                className="text-xs text-slate-500 hover:text-slate-800 underline cursor-pointer"
-              >
-                Auf Google-Standard zurücksetzen
-              </button>
+            {/* Matrix Table */}
+            <form onSubmit={handleSaveRates} className="space-y-4">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs text-slate-600">
+                  <thead className="bg-slate-100 text-slate-700 font-bold uppercase text-[10px] tracking-wider border-b border-slate-200">
+                    <tr>
+                      <th className="py-3 px-3">{t('adminTokensModelVersion')}</th>
+                      <th className="py-3 px-3 text-center bg-teal-50/50 text-teal-900" colSpan={3}>
+                        {t('adminTokensCostWhatIPay')} ({ratesTimeframe === 'current' ? 'bis 31.12.2026' : 'ab 01.01.2027'})
+                      </th>
+                      <th className="py-3 px-3 text-center bg-emerald-50/50 text-emerald-900" colSpan={3}>
+                        {t('adminTokensCostWhatCustomerPays')} (Editierbar)
+                      </th>
+                      <th className="py-3 px-3 text-center bg-indigo-50/50 text-indigo-900">
+                        {t('adminTokensMargin')}
+                      </th>
+                    </tr>
+                    <tr className="bg-slate-50 text-slate-600 text-[10px] border-b border-slate-200">
+                      <th className="py-2 px-3">{t('adminTokensPurpose')}</th>
+                      <th className="py-2 px-2 text-right text-slate-600">Input</th>
+                      <th className="py-2 px-2 text-right text-slate-600">Output</th>
+                      <th className="py-2 px-2 text-right text-teal-700">Cached (-90%)</th>
+                      <th className="py-2 px-2 text-right text-slate-700 font-semibold">Input</th>
+                      <th className="py-2 px-2 text-right text-slate-700 font-semibold">Output</th>
+                      <th className="py-2 px-2 text-right text-teal-700 font-semibold">Cached</th>
+                      <th className="py-2 px-3 text-center text-indigo-800">% Aufschlag</th>
+                    </tr>
+                  </thead>
 
-              <button
-                type="submit"
-                disabled={savingRates}
-                className="px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer disabled:opacity-50 flex items-center gap-2"
-              >
-                {savingRates && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
-                <span>{t('adminTokensSaveRates')}</span>
-              </button>
-            </div>
-          </form>
+                  <tbody className="divide-y divide-slate-100 font-mono">
+                    {modelTiers.map((tier, idx) => {
+                      const costInput = ratesTimeframe === 'current' ? tier.costInputPerMillionEur : tier.costInput2027PerMillionEur;
+                      const costOutput = ratesTimeframe === 'current' ? tier.costOutputPerMillionEur : tier.costOutput2027PerMillionEur;
+                      const costCached = ratesTimeframe === 'current' ? tier.costCachedPerMillionEur : tier.costCached2027PerMillionEur;
+
+                      const custInput = tier.customerInputPerMillionEur;
+                      const custOutput = tier.customerOutputPerMillionEur;
+                      const custCached = tier.customerCachedPerMillionEur;
+
+                      const avgCost = (costInput + costOutput) / 2;
+                      const avgCust = (custInput + custOutput) / 2;
+                      const marginEur = Math.max(0, avgCust - avgCost);
+                      const marginPct = avgCost > 0 ? Math.round((marginEur / avgCost) * 100) : 0;
+
+                      return (
+                        <tr key={tier.modelId} className="hover:bg-slate-50/80 transition-colors">
+                          {/* Model & Purpose */}
+                          <td className="py-3 px-3 font-sans">
+                            <div className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+                              <span>{tier.modelName}</span>
+                            </div>
+                            <div className="text-[11px] text-slate-400 mt-0.5 max-w-xs font-normal">
+                              {tier.purpose}
+                            </div>
+                          </td>
+
+                          {/* What I pay: Input */}
+                          <td className="py-3 px-2 text-right text-slate-700">
+                            {priceUnit === 'perMillion'
+                              ? `${costInput.toFixed(3)} €`
+                              : formatSingleTokenCost(costInput)}
+                          </td>
+
+                          {/* What I pay: Output */}
+                          <td className="py-3 px-2 text-right text-slate-700">
+                            {priceUnit === 'perMillion'
+                              ? `${costOutput.toFixed(3)} €`
+                              : formatSingleTokenCost(costOutput)}
+                          </td>
+
+                          {/* What I pay: Cached */}
+                          <td className="py-3 px-2 text-right text-teal-700 font-semibold bg-teal-50/20">
+                            {priceUnit === 'perMillion'
+                              ? `${costCached.toFixed(3)} €`
+                              : formatSingleTokenCost(costCached)}
+                          </td>
+
+                          {/* What Customer Pays: Input (Editable) */}
+                          <td className="py-2 px-2 text-right bg-emerald-50/20">
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={tier.customerInputPerMillionEur}
+                              onChange={(e) =>
+                                handleModelTierCustomerPriceChange(
+                                  idx,
+                                  'customerInputPerMillionEur',
+                                  parseFloat(e.target.value) || 0
+                                )
+                              }
+                              className="w-20 px-2 py-1 text-xs text-right rounded border border-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white"
+                            />
+                            <div className="text-[9px] text-slate-400 text-right mt-0.5">
+                              {formatSingleTokenCost(tier.customerInputPerMillionEur)}
+                            </div>
+                          </td>
+
+                          {/* What Customer Pays: Output (Editable) */}
+                          <td className="py-2 px-2 text-right bg-emerald-50/20">
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={tier.customerOutputPerMillionEur}
+                              onChange={(e) =>
+                                handleModelTierCustomerPriceChange(
+                                  idx,
+                                  'customerOutputPerMillionEur',
+                                  parseFloat(e.target.value) || 0
+                                )
+                              }
+                              className="w-20 px-2 py-1 text-xs text-right rounded border border-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white"
+                            />
+                            <div className="text-[9px] text-slate-400 text-right mt-0.5">
+                              {formatSingleTokenCost(tier.customerOutputPerMillionEur)}
+                            </div>
+                          </td>
+
+                          {/* What Customer Pays: Cached (Editable) */}
+                          <td className="py-2 px-2 text-right bg-emerald-50/20">
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={tier.customerCachedPerMillionEur}
+                              onChange={(e) =>
+                                handleModelTierCustomerPriceChange(
+                                  idx,
+                                  'customerCachedPerMillionEur',
+                                  parseFloat(e.target.value) || 0
+                                )
+                              }
+                              className="w-20 px-2 py-1 text-xs text-right rounded border border-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white"
+                            />
+                            <div className="text-[9px] text-slate-400 text-right mt-0.5">
+                              {formatSingleTokenCost(tier.customerCachedPerMillionEur)}
+                            </div>
+                          </td>
+
+                          {/* Margin */}
+                          <td className="py-3 px-3 text-center bg-indigo-50/20 font-sans">
+                            <span className="inline-block px-2 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-900 font-mono">
+                              +{marginPct}%
+                            </span>
+                            <div className="text-[10px] text-slate-500 font-mono mt-0.5">
+                              +{marginEur.toFixed(2)} € / 1M
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Reset & Save Bar */}
+              <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => setModelTiers(DEFAULT_MODEL_TIERS)}
+                  className="text-xs text-slate-500 hover:text-slate-800 underline cursor-pointer"
+                >
+                  Auf Standard-Preise & Margen zurücksetzen
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={savingRates}
+                  className="px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer disabled:opacity-50 flex items-center gap-2"
+                >
+                  {savingRates ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                  <span>{t('adminTokensSaveRates')}</span>
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 

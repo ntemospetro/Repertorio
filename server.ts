@@ -92,9 +92,68 @@ async function startServer() {
   };
 
   const DEFAULT_TOKEN_RATES = {
-    inputPerMillionEur: 0.075,
-    outputPerMillionEur: 0.30,
-    currency: '€'
+    inputPerMillionEur: 0.69,
+    outputPerMillionEur: 3.45,
+    cachedPerMillionEur: 0.069,
+    currency: '€',
+    modelTiers: [
+      {
+        modelId: 'gemini-3.8-flash',
+        modelName: 'Gemini 3.8 Flash (Klinische Fallanalysen & Repertorisation)',
+        purpose: 'Hauptmodell: Vollständige Repertorisation, Miasmen & Toxikologie',
+        costInputPerMillionEur: 0.69,
+        costOutputPerMillionEur: 3.45,
+        costCachedPerMillionEur: 0.069,
+        costInput2027PerMillionEur: 1.38,
+        costOutput2027PerMillionEur: 6.90,
+        costCached2027PerMillionEur: 0.138,
+        customerInputPerMillionEur: 1.50,
+        customerOutputPerMillionEur: 7.50,
+        customerCachedPerMillionEur: 0.20,
+      },
+      {
+        modelId: 'gemini-2.5-flash',
+        modelName: 'Gemini 2.5 Flash (Mehrsprachige Lokalisierung & Recherche)',
+        purpose: 'Standard-Recherche, Monographien & Übersetzungen in 7 Sprachen',
+        costInputPerMillionEur: 0.14,
+        costOutputPerMillionEur: 0.55,
+        costCachedPerMillionEur: 0.035,
+        costInput2027PerMillionEur: 0.14,
+        costOutput2027PerMillionEur: 0.55,
+        costCached2027PerMillionEur: 0.035,
+        customerInputPerMillionEur: 0.50,
+        customerOutputPerMillionEur: 2.00,
+        customerCachedPerMillionEur: 0.10,
+      },
+      {
+        modelId: 'gemini-2.5-flash-lite',
+        modelName: 'Gemini 2.5 Flash-Lite (Sofort-Klassifizierung)',
+        purpose: 'Relevanz-Vorprüfung, Symptom-Extraktion & Schnell-Validierung',
+        costInputPerMillionEur: 0.09,
+        costOutputPerMillionEur: 0.37,
+        costCachedPerMillionEur: 0.023,
+        costInput2027PerMillionEur: 0.09,
+        costOutput2027PerMillionEur: 0.37,
+        costCached2027PerMillionEur: 0.023,
+        customerInputPerMillionEur: 0.25,
+        customerOutputPerMillionEur: 1.00,
+        customerCachedPerMillionEur: 0.05,
+      },
+      {
+        modelId: 'gemini-3.1-pro',
+        modelName: 'Gemini 3.1 Pro (Flagship Reasoning)',
+        purpose: 'Tiefen-Differentialdiagnostik & toxikologische Kreuzanalysen',
+        costInputPerMillionEur: 1.84,
+        costOutputPerMillionEur: 11.04,
+        costCachedPerMillionEur: 0.184,
+        costInput2027PerMillionEur: 1.84,
+        costOutput2027PerMillionEur: 11.04,
+        costCached2027PerMillionEur: 0.184,
+        customerInputPerMillionEur: 3.50,
+        customerOutputPerMillionEur: 20.00,
+        customerCachedPerMillionEur: 0.50,
+      },
+    ]
   };
 
   const ensureDataDir = () => {
@@ -132,12 +191,13 @@ async function startServer() {
         therapistName: 'Sophie Brunner',
         therapistEmail: 'sophie.brunner@homoeopathie-zuerich.ch',
         endpoint: '/api/analyze',
-        actionName: 'Große klinische Fallanalyse',
+        actionName: 'Große klinische Fallanalyse & Repertorisation',
         model: 'gemini-3.8-flash',
         promptTokens: 2540,
         candidatesTokens: 1890,
+        cachedTokens: 1200,
         totalTokens: 4430,
-        costEur: 0.00076
+        costEur: 0.00835
       },
       {
         id: 'tok-seed-102',
@@ -150,8 +210,9 @@ async function startServer() {
         model: 'gemini-3.8-flash',
         promptTokens: 1210,
         candidatesTokens: 840,
+        cachedTokens: 650,
         totalTokens: 2050,
-        costEur: 0.00034
+        costEur: 0.00378
       },
       {
         id: 'tok-seed-103',
@@ -161,9 +222,10 @@ async function startServer() {
         therapistEmail: 'sophie.brunner@homoeopathie-zuerich.ch',
         endpoint: '/api/check-medical-relevance',
         actionName: 'Medizinischer Relevanz-Check',
-        model: 'gemini-3.8-flash',
+        model: 'gemini-2.5-flash-lite',
         promptTokens: 215,
         candidatesTokens: 32,
+        cachedTokens: 0,
         totalTokens: 247,
         costEur: 0.00003
       },
@@ -178,8 +240,9 @@ async function startServer() {
         model: 'gemini-3.8-flash',
         promptTokens: 2610,
         candidatesTokens: 1950,
+        cachedTokens: 1400,
         totalTokens: 4560,
-        costEur: 0.00078
+        costEur: 0.00863
       },
       {
         id: 'tok-seed-202',
@@ -192,8 +255,9 @@ async function startServer() {
         model: 'gemini-3.8-flash',
         promptTokens: 1180,
         candidatesTokens: 810,
+        cachedTokens: 500,
         totalTokens: 1990,
-        costEur: 0.00033
+        costEur: 0.00364
       },
       {
         id: 'tok-seed-301',
@@ -206,8 +270,9 @@ async function startServer() {
         model: 'gemini-3.8-flash',
         promptTokens: 2430,
         candidatesTokens: 1810,
+        cachedTokens: 1100,
         totalTokens: 4240,
-        costEur: 0.00073
+        costEur: 0.00799
       },
       {
         id: 'tok-seed-302',
@@ -217,11 +282,12 @@ async function startServer() {
         therapistEmail: 'k.lindemann@naturheilpraxis-berlin.de',
         endpoint: '/api/check-medical-relevance',
         actionName: 'Medizinischer Relevanz-Check',
-        model: 'gemini-3.8-flash',
+        model: 'gemini-2.5-flash-lite',
         promptTokens: 195,
         candidatesTokens: 28,
+        cachedTokens: 0,
         totalTokens: 223,
-        costEur: 0.00002
+        costEur: 0.00003
       }
     ];
   };
@@ -251,17 +317,20 @@ async function startServer() {
     model: string;
     promptTokens: number;
     candidatesTokens: number;
+    cachedTokens?: number;
   }) => {
     try {
       ensureDataDir();
       const rates = getTokenRates();
       const promptTokens = Math.max(0, Math.round(params.promptTokens || 0));
       const candidatesTokens = Math.max(0, Math.round(params.candidatesTokens || 0));
+      const cachedTokens = Math.max(0, Math.round(params.cachedTokens || 0));
       const totalTokens = promptTokens + candidatesTokens;
       
-      const inputCost = (promptTokens / 1_000_000) * rates.inputPerMillionEur;
-      const outputCost = (candidatesTokens / 1_000_000) * rates.outputPerMillionEur;
-      const costEur = Math.round((inputCost + outputCost) * 100000) / 100000;
+      const inputCost = (promptTokens / 1_000_000) * (rates.inputPerMillionEur || 0.69);
+      const outputCost = (candidatesTokens / 1_000_000) * (rates.outputPerMillionEur || 3.45);
+      const cachedCost = (cachedTokens / 1_000_000) * (rates.cachedPerMillionEur || 0.069);
+      const costEur = Math.round((inputCost + outputCost + cachedCost) * 100000) / 100000;
 
       const logs = getStoredTokenLogs();
       const resolvedTherapistId = params.therapistId || 'th-101';
@@ -278,6 +347,7 @@ async function startServer() {
         model: params.model,
         promptTokens,
         candidatesTokens,
+        cachedTokens,
         totalTokens,
         costEur
       };
@@ -2002,6 +2072,7 @@ Checkliste für den Patienten:
 
       let totalPromptTokens = 0;
       let totalCandidatesTokens = 0;
+      let totalCachedTokens = 0;
       let totalTokens = 0;
       let totalCostEur = 0;
       const totalRequests = logs.length;
@@ -2015,6 +2086,7 @@ Checkliste für den Patienten:
         requestCount: number;
         promptTokens: number;
         candidatesTokens: number;
+        cachedTokens: number;
         totalTokens: number;
         totalCostEur: number;
         lastUsedAt: string;
@@ -2031,6 +2103,7 @@ Checkliste für den Patienten:
           requestCount: 0,
           promptTokens: 0,
           candidatesTokens: 0,
+          cachedTokens: 0,
           totalTokens: 0,
           totalCostEur: 0,
           lastUsedAt: ''
@@ -2040,6 +2113,7 @@ Checkliste für den Patienten:
       for (const log of logs) {
         totalPromptTokens += log.promptTokens || 0;
         totalCandidatesTokens += log.candidatesTokens || 0;
+        totalCachedTokens += log.cachedTokens || 0;
         totalTokens += log.totalTokens || 0;
         totalCostEur += log.costEur || 0;
 
@@ -2054,6 +2128,7 @@ Checkliste für den Patienten:
             requestCount: 0,
             promptTokens: 0,
             candidatesTokens: 0,
+            cachedTokens: 0,
             totalTokens: 0,
             totalCostEur: 0,
             lastUsedAt: ''
@@ -2064,6 +2139,7 @@ Checkliste für den Patienten:
         entry.requestCount += 1;
         entry.promptTokens += log.promptTokens || 0;
         entry.candidatesTokens += log.candidatesTokens || 0;
+        entry.cachedTokens = (entry.cachedTokens || 0) + (log.cachedTokens || 0);
         entry.totalTokens += log.totalTokens || 0;
         entry.totalCostEur += log.costEur || 0;
         if (!entry.lastUsedAt || new Date(log.timestamp) > new Date(entry.lastUsedAt)) {
@@ -2079,6 +2155,7 @@ Checkliste für den Patienten:
       res.json({
         totalPromptTokens,
         totalCandidatesTokens,
+        totalCachedTokens,
         totalTokens,
         totalCostEur: Math.round(totalCostEur * 100000) / 100000,
         totalRequests,

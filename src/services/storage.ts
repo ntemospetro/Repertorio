@@ -1,4 +1,4 @@
-import { Therapist, PatientCase, PackagePlan, LanguageCode, AdminCredentials, SiteConfig, EmailConfig, NameChangeRequest, FollowUpEntry, InitialPrescription, ActiveView, TermsPdfArchiveItem } from '../types';
+import { Therapist, PatientCase, PackagePlan, LanguageCode, AdminCredentials, SiteConfig, EmailConfig, NameChangeRequest, FollowUpEntry, InitialPrescription, ActiveView, TermsPdfArchiveItem, FreeTrialLimitConfig, TrialLimitMode } from '../types';
 import { DEFAULT_TERMS, DEFAULT_TERMS_BY_LANG, getDefaultTermsForLanguage, TermsAndConditions } from '../data/defaultTerms';
 
 export const DEFAULT_ADMIN_CREDENTIALS: AdminCredentials = {
@@ -37,6 +37,7 @@ const STORAGE_KEYS = {
   SITE_CONFIG: 'homoeo_saas_site_config_v1',
   EMAIL_CONFIG: 'homoeo_saas_email_config_v1',
   REG_TRIAL: 'homoeo_saas_reg_trial_v1',
+  FREE_TRIAL_LIMIT: 'homoeo_free_trial_limit_v1',
   NAME_CHANGE_REQUESTS: 'homoeo_name_change_requests',
   TERMS_PDF_ARCHIVE: 'homoeo_saas_terms_pdf_archive_v1',
   ACTIVE_VIEW: 'homoeo_saas_active_view_v1',
@@ -137,6 +138,123 @@ export function saveRegistrationTrialTranslations(translations: RegistrationTria
 export function getLocalizedRegistrationTrial(lang: LanguageCode): RegistrationTrialConfig {
   const translations = getRegistrationTrialTranslations();
   return translations[lang] || translations['de'];
+}
+
+// Free Trial Quota Configuration (Analyses, Tokens, or Whichever is First)
+export const DEFAULT_FREE_TRIAL_LIMIT: FreeTrialLimitConfig = {
+  limitMode: 'both_whichever_first',
+  maxAnalyses: 3,
+  maxTokens: 25000,
+};
+
+export function getFreeTrialLimitConfig(): FreeTrialLimitConfig {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.FREE_TRIAL_LIMIT);
+    if (!raw) return DEFAULT_FREE_TRIAL_LIMIT;
+    return { ...DEFAULT_FREE_TRIAL_LIMIT, ...JSON.parse(raw) };
+  } catch {
+    return DEFAULT_FREE_TRIAL_LIMIT;
+  }
+}
+
+export function saveFreeTrialLimitConfig(config: FreeTrialLimitConfig): void {
+  safeLocalStorageSetItem(STORAGE_KEYS.FREE_TRIAL_LIMIT, JSON.stringify(config));
+  window.dispatchEvent(new Event('homoeo_trial_limit_updated'));
+}
+
+export function checkTherapistLimit(therapist: Therapist): {
+  isLocked: boolean;
+  reason: 'analyses_reached' | 'tokens_reached' | 'none';
+  remainingAnalyses: number;
+  remainingTokens: number;
+  limitMode: TrialLimitMode;
+  maxAnalyses: number;
+  maxTokens: number;
+  usedAnalyses: number;
+  usedTokens: number;
+} {
+  const isUnlimited = !!therapist.isUnlimited || therapist.tarif === 'pro_unlimited' || therapist.maxAnalyses >= 900000;
+  const trialConfig = getFreeTrialLimitConfig();
+  const maxAnalyses = therapist.maxAnalyses ?? trialConfig.maxAnalyses ?? 3;
+  const maxTokens = therapist.maxTokens ?? trialConfig.maxTokens ?? 25000;
+  const usedAnalyses = therapist.usedAnalyses || 0;
+  const usedTokens = therapist.usedTokens || 0;
+
+  if (isUnlimited) {
+    return {
+      isLocked: false,
+      reason: 'none',
+      remainingAnalyses: 999999,
+      remainingTokens: 999999999,
+      limitMode: trialConfig.limitMode,
+      maxAnalyses,
+      maxTokens,
+      usedAnalyses,
+      usedTokens
+    };
+  }
+
+  const analysesReached = usedAnalyses >= maxAnalyses;
+  const tokensReached = usedTokens >= maxTokens;
+
+  let isLocked = false;
+  let reason: 'analyses_reached' | 'tokens_reached' | 'none' = 'none';
+
+  if (trialConfig.limitMode === 'analyses_only') {
+    isLocked = analysesReached;
+    if (isLocked) reason = 'analyses_reached';
+  } else if (trialConfig.limitMode === 'tokens_only') {
+    isLocked = tokensReached;
+    if (isLocked) reason = 'tokens_reached';
+  } else {
+    // 'both_whichever_first'
+    if (analysesReached || tokensReached) {
+      isLocked = true;
+      if (analysesReached && !tokensReached) {
+        reason = 'analyses_reached';
+      } else if (tokensReached && !analysesReached) {
+        reason = 'tokens_reached';
+      } else {
+        reason = 'analyses_reached';
+      }
+    }
+  }
+
+  return {
+    isLocked,
+    reason,
+    remainingAnalyses: Math.max(0, maxAnalyses - usedAnalyses),
+    remainingTokens: Math.max(0, maxTokens - usedTokens),
+    limitMode: trialConfig.limitMode,
+    maxAnalyses,
+    maxTokens,
+    usedAnalyses,
+    usedTokens
+  };
+}
+
+export function recordTherapistTokenUsage(therapistId: string, tokens: number): void {
+  if (!therapistId || !tokens || tokens <= 0) return;
+  const current = getTherapists();
+  const index = current.findIndex(t => t.id === therapistId);
+  if (index === -1) return;
+
+  const therapist = current[index];
+  const newUsedTokens = (therapist.usedTokens || 0) + tokens;
+  const isUnlimited = !!therapist.isUnlimited || therapist.tarif === 'pro_unlimited' || therapist.maxAnalyses >= 900000;
+  
+  const updatedTherapist: Therapist = {
+    ...therapist,
+    usedTokens: newUsedTokens,
+  };
+
+  const limitCheck = checkTherapistLimit(updatedTherapist);
+  if (!isUnlimited && limitCheck.isLocked) {
+    updatedTherapist.status = 'limit_reached';
+  }
+
+  current[index] = updatedTherapist;
+  saveTherapists(current);
 }
 
 // Site Config Management
@@ -1106,42 +1224,50 @@ export function authenticateTherapist(email: string, password: string): {
   return { success: false, error: 'invalid_password' };
 }
 
-export function incrementAnalysesUsed(therapistId: string): { success: boolean; remaining: number; therapist: Therapist | null } {
+export function incrementAnalysesUsed(therapistId: string): { 
+  success: boolean; 
+  remaining: number; 
+  therapist: Therapist | null;
+  reason?: 'analyses_reached' | 'tokens_reached';
+} {
   const current = getTherapists();
   const index = current.findIndex(t => t.id === therapistId);
   if (index === -1) return { success: false, remaining: 0, therapist: null };
   
   const therapist = current[index];
-  const isUnlimited = therapist.isUnlimited || therapist.tarif === 'pro_unlimited' || therapist.maxAnalyses >= 900000;
-  
-  // If not unlimited and already reached max
-  if (!isUnlimited && therapist.usedAnalyses >= therapist.maxAnalyses) {
+  const limitCheck = checkTherapistLimit(therapist);
+
+  if (limitCheck.isLocked) {
     return {
       success: false,
-      remaining: 0,
+      remaining: limitCheck.remainingAnalyses,
       therapist,
+      reason: limitCheck.reason !== 'none' ? limitCheck.reason : 'analyses_reached',
     };
   }
   
+  const isUnlimited = !!therapist.isUnlimited || therapist.tarif === 'pro_unlimited' || therapist.maxAnalyses >= 900000;
   const newCount = therapist.usedAnalyses + 1;
-  const newStatus = (!isUnlimited && newCount >= therapist.maxAnalyses) ? 'limit_reached' : (isUnlimited ? 'upgraded' : 'active');
-  
-  const updated: Therapist = {
+  const updatedTherapist: Therapist = {
     ...therapist,
     usedAnalyses: newCount,
-    status: newStatus,
   };
+
+  const newLimitCheck = checkTherapistLimit(updatedTherapist);
+  const newStatus = (!isUnlimited && newLimitCheck.isLocked) ? 'limit_reached' : (isUnlimited ? 'upgraded' : 'active');
+  updatedTherapist.status = newStatus;
   
-  current[index] = updated;
+  current[index] = updatedTherapist;
   saveTherapists(current);
   
-  const remaining = isUnlimited ? 999999 : Math.max(0, updated.maxAnalyses - updated.usedAnalyses);
-  return { success: true, remaining, therapist: updated };
+  const remaining = isUnlimited ? 999999 : newLimitCheck.remainingAnalyses;
+  return { success: true, remaining, therapist: updatedTherapist };
 }
 
 export function resetTherapistQuota(therapistId: string): Therapist | null {
   return updateTherapist(therapistId, {
     usedAnalyses: 0,
+    usedTokens: 0,
     status: 'active',
   });
 }
