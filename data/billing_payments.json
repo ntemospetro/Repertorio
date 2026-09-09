@@ -1,0 +1,41 @@
+[
+  {
+    "id": "pay-seed-1",
+    "therapistId": "th-101",
+    "therapistName": "Katharina Lindemann",
+    "therapistEmail": "k.lindemann@naturheilpraxis-berlin.de",
+    "amountEur": 50,
+    "type": "initial_deposit",
+    "status": "succeeded",
+    "stripeSessionId": "cs_test_initial_th101",
+    "createdAt": "2026-09-01T10:00:00Z",
+    "month": "2026-09",
+    "note": "Initiales Token-Guthaben Praxis-Paket"
+  },
+  {
+    "id": "pay-seed-2",
+    "therapistId": "th-102",
+    "therapistName": "Dr. med. Markus Vogel",
+    "therapistEmail": "praxis@dr-vogel-muenchen.de",
+    "amountEur": 20,
+    "type": "initial_deposit",
+    "status": "succeeded",
+    "stripeSessionId": "cs_test_initial_th102",
+    "createdAt": "2026-08-15T14:30:00Z",
+    "month": "2026-08",
+    "note": "Startguthaben-Einzahlung"
+  },
+  {
+    "id": "pay-seed-3",
+    "therapistId": "th-103",
+    "therapistName": "Sophie Brunner",
+    "therapistEmail": "sophie.brunner@homoeopathie-zuerich.ch",
+    "amountEur": 100,
+    "type": "initial_deposit",
+    "status": "succeeded",
+    "stripeSessionId": "cs_test_initial_th103",
+    "createdAt": "2026-09-02T08:15:00Z",
+    "month": "2026-09",
+    "note": "Premium Start-Guthaben"
+  }
+]

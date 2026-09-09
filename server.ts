@@ -2316,7 +2316,7 @@ Checkliste für den Patienten:
   // =============================================================
 
   // 1. Get Admin Stripe Config (Masked)
-  app.get("/api/admin/stripe/config", (req, res) => {
+  app.get(["/api/admin/stripe/config", "/api/admin/stripe/config/"], (req, res) => {
     try {
       const config = getRawStripeConfig();
       const host = req.get('host') || 'localhost:3000';
@@ -2341,7 +2341,7 @@ Checkliste für den Patienten:
   });
 
   // 2. Save Admin Stripe Config
-  app.post("/api/admin/stripe/config", (req, res) => {
+  app.post(["/api/admin/stripe/config", "/api/admin/stripe/config/"], (req, res) => {
     try {
       const { mode, publishableKey, secretKey, webhookSecret } = req.body;
       const updates: any = {};
@@ -2378,7 +2378,7 @@ Checkliste für den Patienten:
   });
 
   // 3. Test Stripe Connection
-  app.post("/api/admin/stripe/test", async (req, res) => {
+  app.post(["/api/admin/stripe/test", "/api/admin/stripe/test/"], async (req, res) => {
     try {
       const client = getStripeClient();
       if (!client) {
@@ -2405,7 +2405,7 @@ Checkliste für den Patienten:
   });
 
   // 4. Get Billing Payments Log
-  app.get("/api/admin/billing/payments", (req, res) => {
+  app.get(["/api/admin/billing/payments", "/api/admin/billing/payments/"], (req, res) => {
     try {
       const therapistId = req.query.therapistId as string | undefined;
       const payments = getPaymentLogs(therapistId);
@@ -2417,7 +2417,7 @@ Checkliste für den Patienten:
   });
 
   // 5. Create Stripe Checkout Session (for initial booking or top-up)
-  app.post("/api/billing/create-checkout-session", async (req, res) => {
+  app.post(["/api/billing/create-checkout-session", "/api/billing/create-checkout-session/"], async (req, res) => {
     try {
       const {
         therapistId,
@@ -2504,7 +2504,7 @@ Checkliste für den Patienten:
   });
 
   // 6. Stripe Webhook Endpoint (Credits Balance in Real-Time)
-  app.post("/api/billing/webhook", (req, res) => {
+  app.post(["/api/billing/webhook", "/api/billing/webhook/"], (req, res) => {
     try {
       const sig = req.headers['stripe-signature'];
       const config = getRawStripeConfig();
@@ -2553,7 +2553,7 @@ Checkliste für den Patienten:
   });
 
   // 7. Get Therapist Billing & Balance Status
-  app.get("/api/therapist/billing/:therapistId", (req, res) => {
+  app.get(["/api/therapist/billing/:therapistId", "/api/therapist/billing/:therapistId/"], (req, res) => {
     try {
       const { therapistId } = req.params;
       const balRecord = getTherapistBalanceRecord(therapistId);
@@ -2577,7 +2577,7 @@ Checkliste für den Patienten:
   });
 
   // 8. Direct Top-Up (Immediate balance recharge)
-  app.post("/api/therapist/billing/top-up", (req, res) => {
+  app.post(["/api/therapist/billing/top-up", "/api/therapist/billing/top-up/"], (req, res) => {
     try {
       const { therapistId, therapistName, therapistEmail, amountEur, type = 'manual_reload', note } = req.body;
       const amount = Math.max(1, Number(amountEur) || 20);
@@ -2599,7 +2599,7 @@ Checkliste für den Patienten:
   });
 
   // 9. Update Therapist Billing Settings (Threshold & Auto-reload)
-  app.post("/api/therapist/billing/settings", (req, res) => {
+  app.post(["/api/therapist/billing/settings", "/api/therapist/billing/settings/"], (req, res) => {
     try {
       const { therapistId, lowBalanceThreshold, autoReloadEnabled, autoReloadAmount } = req.body;
       const updated = updateTherapistBalanceConfig(therapistId, {
@@ -2612,6 +2612,33 @@ Checkliste für den Patienten:
     } catch (err) {
       console.error("Error updating therapist billing settings:", err);
       res.status(500).json({ error: "Failed to update settings" });
+    }
+  });
+
+  // 10. Admin Manually Adjust Therapist Balance
+  app.post(["/api/admin/billing/balance/adjust", "/api/admin/billing/balance/adjust/"], (req, res) => {
+    try {
+      const { therapistId, amountEur, note } = req.body;
+      const num = Number(amountEur);
+      if (isNaN(num)) {
+        return res.status(400).json({ success: false, error: "Ungültiger Betrag" });
+      }
+      let updated;
+      if (num >= 0) {
+        const updated = creditDepositToBalance({
+          therapistId,
+          amountEur: num,
+          type: 'manual_reload',
+          note: note || `Admin-Anpassung: +${num.toFixed(2)} €`
+        });
+        res.json({ success: true, balance: updated.balanceEur });
+      } else {
+        const updated = deductUsageFromBalance(therapistId, Math.abs(num));
+        res.json({ success: true, balance: updated.newBalanceEur });
+      }
+    } catch (err) {
+      console.error("Error adjusting therapist balance:", err);
+      res.status(500).json({ success: false, error: "Fehler beim Anpassen des Guthabens" });
     }
   });
 
