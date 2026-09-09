@@ -2457,7 +2457,8 @@ Checkliste für den Patienten:
               therapistId: therapistId || '',
               therapistName: therapistName || '',
               amountEur: amount.toString(),
-              type: type || 'manual_reload'
+              type: type || 'manual_reload',
+              targetTariffId: req.body.targetTariffId || ''
             },
             success_url: successUrl || `${origin}/?payment=success&session_id={CHECKOUT_SESSION_ID}&therapistId=${therapistId}`,
             cancel_url: cancelUrl || `${origin}/?payment=cancelled&therapistId=${therapistId}`,
@@ -2476,16 +2477,6 @@ Checkliste für den Patienten:
 
       // Safe Sandbox Fallback (if no Stripe keys entered yet)
       const mockSessionId = 'cs_sandbox_' + Date.now();
-      creditDepositToBalance({
-        therapistId: therapistId || 'th-101',
-        therapistName: therapistName || 'Therapeut',
-        therapistEmail,
-        amountEur: amount,
-        type,
-        stripeSessionId: mockSessionId,
-        note: `Sandbox-Testbuchung: +${amount.toFixed(2)} €`
-      });
-
       const returnUrl = (successUrl || `${origin}/?payment=success`)
         + (successUrl?.includes('?') ? '&' : '?')
         + `session_id=${mockSessionId}&amount=${amount}&sandbox=true`;
@@ -2495,11 +2486,116 @@ Checkliste für den Patienten:
         url: returnUrl,
         mode: 'sandbox',
         amountEur: amount,
-        message: 'Sandbox-Modus: Guthaben wurde sofort gutgeschrieben (keine Live-Kreditkartendaten hinterlegt).'
+        message: 'Sandbox-Modus: Weiterleitung zur Bestätigung.'
       });
     } catch (err: any) {
       console.error("Error creating checkout session:", err);
       res.status(500).json({ error: "Failed to create checkout session" });
+    }
+  });
+
+  // 5b. Verify Session and Credit Balance only upon Stripe Confirmation
+  app.get(["/api/billing/verify-session", "/api/billing/verify-session/"], async (req, res) => {
+    try {
+      const sessionId = (req.query.sessionId as string) || '';
+      const therapistIdParam = (req.query.therapistId as string) || '';
+
+      if (!sessionId) {
+        return res.status(400).json({ success: false, error: 'Session ID missing' });
+      }
+
+      // Check if this session was already credited
+      const existingPayments = getPaymentLogs(therapistIdParam || undefined);
+      const alreadyCredited = existingPayments.find(p => p.stripeSessionId === sessionId);
+      if (alreadyCredited) {
+        return res.json({
+          success: true,
+          status: 'already_credited',
+          credited: true,
+          amountEur: alreadyCredited.amountEur,
+          therapistId: alreadyCredited.therapistId
+        });
+      }
+
+      const client = getStripeClient();
+      const config = getRawStripeConfig();
+
+      // Real Stripe session verification
+      if (client && config.secretKey && !sessionId.startsWith('cs_sandbox_') && !sessionId.startsWith('cs_offline_')) {
+        try {
+          const session = await client.checkout.sessions.retrieve(sessionId);
+          if (session && session.payment_status === 'paid') {
+            const therapistId = session.metadata?.therapistId || session.client_reference_id || therapistIdParam;
+            const amountEur = session.metadata?.amountEur 
+              ? parseFloat(session.metadata.amountEur) 
+              : ((session.amount_total || 0) / 100);
+            const typeRaw = session.metadata?.type || 'manual_reload';
+            const validTypes = ['initial_deposit', 'manual_reload', 'auto_reload', 'package_purchase'] as const;
+            const type = validTypes.includes(typeRaw as any) ? (typeRaw as typeof validTypes[number]) : 'manual_reload';
+            const targetTariffId = session.metadata?.targetTariffId;
+
+            if (therapistId && amountEur > 0) {
+              creditDepositToBalance({
+                therapistId,
+                therapistName: session.metadata?.therapistName,
+                therapistEmail: session.customer_details?.email || session.customer_email || undefined,
+                amountEur,
+                type,
+                stripeSessionId: session.id,
+                stripePaymentIntentId: typeof session.payment_intent === 'string' ? session.payment_intent : undefined,
+                note: `Stripe Verified: +${amountEur.toFixed(2)} €`
+              });
+            }
+
+            return res.json({
+              success: true,
+              status: 'paid',
+              credited: true,
+              amountEur,
+              therapistId,
+              targetTariffId,
+              type
+            });
+          } else {
+            return res.status(400).json({
+              success: false,
+              status: session?.payment_status || 'unpaid',
+              error: 'Zahlung noch nicht bestätigt oder fehlgeschlagen.'
+            });
+          }
+        } catch (stripeErr: any) {
+          console.error("Error retrieving Stripe session:", stripeErr);
+          return res.status(400).json({ success: false, error: stripeErr.message });
+        }
+      }
+
+      // Sandbox verification
+      if (sessionId.startsWith('cs_sandbox_') || sessionId.startsWith('cs_offline_')) {
+        const therapistId = therapistIdParam || 'th-101';
+        const amountEur = parseFloat((req.query.amount as string) || '20') || 20;
+
+        creditDepositToBalance({
+          therapistId,
+          amountEur,
+          type: 'manual_reload',
+          stripeSessionId: sessionId,
+          note: `Sandbox-Zahlung bestätigt: +${amountEur.toFixed(2)} €`
+        });
+
+        return res.json({
+          success: true,
+          status: 'paid',
+          credited: true,
+          amountEur,
+          therapistId,
+          type: 'manual_reload'
+        });
+      }
+
+      res.status(400).json({ success: false, error: 'Unbekannte Session' });
+    } catch (err: any) {
+      console.error("Error in verify-session:", err);
+      res.status(500).json({ success: false, error: err.message || 'Verification failed' });
     }
   });
 

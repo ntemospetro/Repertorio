@@ -372,6 +372,7 @@ export async function createCheckoutSession(params: {
   therapistEmail?: string;
   amountEur: number;
   type?: 'initial_deposit' | 'manual_reload' | 'auto_reload' | 'package_purchase';
+  targetTariffId?: string;
   successUrl?: string;
   cancelUrl?: string;
 }): Promise<{
@@ -392,16 +393,6 @@ export async function createCheckoutSession(params: {
     });
     if (res.ok) {
       const data = await res.json();
-      if (data && data.mode === 'sandbox') {
-        topUpTherapistBalanceLocal({
-          therapistId: params.therapistId,
-          therapistName: params.therapistName,
-          therapistEmail: params.therapistEmail,
-          amountEur: amount,
-          type: params.type,
-          note: `Sandbox-Aufladung: +${amount.toFixed(2)} €`
-        });
-      }
       return data;
     }
   } catch (err) {
@@ -409,23 +400,60 @@ export async function createCheckoutSession(params: {
   }
 
   // Graceful local fallback if backend endpoint returned 404 or network is unavailable
-  const mockSessionId = 'cs_offline_' + Date.now();
-  topUpTherapistBalanceLocal({
-    therapistId: params.therapistId,
-    therapistName: params.therapistName,
-    therapistEmail: params.therapistEmail,
-    amountEur: amount,
-    type: params.type || 'manual_reload',
-    note: `Offline-/Sandbox-Guthaben: +${amount.toFixed(2)} €`
-  });
+  const mockSessionId = 'cs_sandbox_' + Date.now();
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  const successUrl = params.successUrl || `${origin}/?payment=success&session_id=${mockSessionId}&therapistId=${params.therapistId}`;
 
   return {
     sessionId: mockSessionId,
-    url: '',
+    url: successUrl,
     mode: 'sandbox',
     amountEur: amount,
     fallback: true,
-    message: `Testmodus / Offline-Fallback: +${amount.toFixed(2)} € wurden verbucht.`
+    message: `Testmodus / Sandbox: Weiterleitung zur Bestätigung.`
+  };
+}
+
+export async function verifyStripeCheckoutSession(sessionId: string, therapistId?: string): Promise<{
+  success: boolean;
+  status?: string;
+  amountEur?: number;
+  therapistId?: string;
+  targetTariffId?: string;
+  type?: string;
+  message?: string;
+}> {
+  if (!sessionId) {
+    return { success: false, message: 'Keine Session-ID übergeben' };
+  }
+
+  try {
+    const res = await fetch(`/api/billing/verify-session?sessionId=${encodeURIComponent(sessionId)}&therapistId=${encodeURIComponent(therapistId || '')}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success && data.credited && typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('homoeo_billing_balance_changed'));
+      }
+      return data;
+    }
+  } catch (err) {
+    console.warn('[Stripe Billing] Failed to verify checkout session with server:', err);
+  }
+
+  // If in sandbox mode or test mode
+  if (sessionId.startsWith('cs_sandbox_') || sessionId.startsWith('cs_offline_')) {
+    return {
+      success: true,
+      status: 'complete',
+      amountEur: 20,
+      therapistId: therapistId || 'th-101',
+      message: 'Sandbox-Zahlung bestätigt'
+    };
+  }
+
+  return {
+    success: false,
+    message: 'Zahlungsüberprüfung fehlgeschlagen. Bitte überprüfen Sie Ihre Daten.'
   };
 }
 
