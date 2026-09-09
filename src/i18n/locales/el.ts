@@ -519,7 +519,7 @@ export const el = {
   "scale2Short": "Μέτριο",
   "scale3Short": "Έντονο",
   "scale4Short": "Ακραίο",
-  "tabCaseManagement": "Τεκμηρίωση Περιστατικών & Ρεπερτοριοποίηση",
+  "tabCaseManagement": "Ρεπερτοριοποίηση",
   "tabMateriaMedica": "Materia Medica",
   "materiaMedicaTitle": "Materia Medica",
   "materiaMedicaSubtitle": "Επιστημονικό λεξικό ομοιοπαθητικών φαρμάκων με Hahnemann, Kent & Hering",
@@ -2293,6 +2293,32 @@ export const el = {
   landingSimTranspNote: "Κάθε πρόταση παραπέμπει επακριβώς σε ρουμπρίκες Kent και αποσπάσματα Materia Medica",
   landingSimNoBlackbox: "100% διαφανές • Χωρίς «μαύρο κουτί»",
 
+  // Semantic Simulation Chapters
+  landingSimChapterMind: "Διάνοια",
+  landingSimChapterTime: "Χρόνος",
+  landingSimChapterGeneral: "Γενικά",
+  landingSimChapterModality: "Τροποποίηση",
+  landingSimChapterLocation: "Εντόπιση",
+
+  // Live Explanation Cockpit (Phases 1 & 2)
+  landingSimExplLiveDiagnostics: "Διαγνωστικά σε πραγματικό χρόνο",
+  landingSimExplPhase1Title: "Συστηματική ανάλυση ελεύθερου κειμένου",
+  landingSimExplPhase1Sub: "Επεξεργασία φυσικής γλώσσας και κατάτμηση του ιστορικού",
+  landingSimExplPhase1Step1: "Καταγραφή της φυσικής γλώσσας του ασθενούς χωρίς άκαμπτες φόρμες",
+  landingSimExplPhase1Step2: "Φιλτράρισμα περιττών λέξεων και απομόνωση κλινικών φαινομένων",
+  landingSimExplPhase1Step3: "Δόμηση βάσει χρονικών τροποποιήσεων, αιτιών και διανοητικής διάθεσης",
+  landingSimExplPhase1Badge: "Φάση 1: Κατάτμηση ενεργή",
+
+  landingSimExplPhase2Title: "Ρεπερτοριοποίηση και στάθμιση",
+  landingSimExplPhase2Sub: "Ταυτόχρονος έλεγχος με πάνω από 70.000 κλασικές ρουμπρίκες",
+  landingSimExplPhase2Step1: "Ακριβής χαρτογράφηση ρουμπρικών κατά Kent, Boger και Boericke",
+  landingSimExplPhase2Step2: "Ιεραρχική προτεραιοποίηση βασικών συμπτωμάτων (βαθμοί 2 & 3)",
+  landingSimExplPhase2Step3: "Διαφορικός προέλεγχος αντενδείξεων και τροποποιήσεων",
+  landingSimExplPhase2Badge: "Φάση 2: Ρεπερτοριοποίηση σε εξέλιξη",
+
+  landingSimExplCalculating: "Υπολογισμός μήτρας ομοιότητας...",
+  landingSimExplAnalyzingTokens: "Εξαγωγή βασικών συμπτωμάτων...",
+
   // Case 1 Data
   landingSimCase1Title: "Περιστατικό 1: Οξεία νυχτερινή αγωνία & έντονη ανησυχία",
   landingSimSampleText: "«Ο ασθενής αναφέρει ξαφνική αφύπνιση στις 2 π.μ. με ταχυπαλμία, έντονο φόβο θανάτου και κινητική ανησυχία. Έντονη δίψα για μικρές γουλιές κρύου νερού. Κρυώνει, επιθυμεί ζεστά σκεπάσματα...»",
@@ -2336,6 +2362,12 @@ export const el = {
   // 5 Core Pillars
   landingPillarsEyebrow: "5 Βασικοί πυλώνες για το ιατρείο σας",
   landingPillarsMainTitle: "Εργαλεία ακριβούς κλινικής έρευνας για ομοιοπαθητικούς",
+  landingPillar1Badge: "Πυλώνας 1",
+  landingPillar2Badge: "Πυλώνας 2",
+  landingPillar3Badge: "Πυλώνας 3",
+  landingPillar4Badge: "Πυλώνας 4",
+  landingPillar5Badge: "Πυλώνας 5",
+  landingPillar1BenefitsTitle: "Πλεονεκτήματα για το ιατρείο",
   
   landingPillar1Title: "1. Ελεύθερο κείμενο αντί για επίπονη αναζήτηση ρουμπρίκων",
   landingPillar1Subtitle: "Περιγράψτε το περιστατικό ακριβώς όπως το καταγράφετε",
@@ -2401,6 +2433,9 @@ export const el = {
   landingPhilosophyTitle3: "Για σύγχρονα ιατρεία και απαιτητικούς επαγγελματίες",
   landingPhilosophySub3: "Αφιερώστε λιγότερο χρόνο σε μηχανικές αναζητήσεις",
   landingPhilosophyText3: "Όταν οι μηχανικές αναζητήσεις καθυστερούν την κλινική σας εργασία, η πλατφόρμα μας αναλαμβάνει το κουραστικό μέρος. Καταγράψτε το περιστατικό με φυσικότητα και αφήστε το σύστημα να οργανώσει και να παραθέσει τις πηγές. Περισσότερη ουσιαστική επαφή με τον ασθενή.",
+  landingPhilosophyBadge1: "100% Κυριαρχία του θεραπευτή",
+  landingPhilosophyBadge2: "Επαληθεύσιμες παραπομπές πηγών",
+  landingPhilosophyBadge3: "Εστίαση στη θεραπευτική συνεδρία",
 
   // Section 6: Βήματα
   landingWorkflowEyebrow: "Η διαδικασία",

@@ -19,7 +19,8 @@ import {
 import { useTranslation } from '../i18n/LanguageContext';
 
 export function SemanticEngineAnimation() {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
+  const prevLangRef = useRef(language);
   const [activeCaseIndex, setActiveCaseIndex] = useState<number>(0);
   const [isPlaying, setIsPlaying] = useState<boolean>(true);
   
@@ -29,6 +30,16 @@ export function SemanticEngineAnimation() {
   const [visibleTokens, setVisibleTokens] = useState<number>(0);
   const [visibleRemedies, setVisibleRemedies] = useState<number>(0);
 
+  // When language switches mid-flight: reset typing counter so text isn't truncated or mismatched
+  useEffect(() => {
+    if (prevLangRef.current !== language) {
+      prevLangRef.current = language;
+      if (stage === 'typing') {
+        setTypedChars(0);
+      }
+    }
+  }, [language, stage]);
+
   // Define Case 1 & Case 2 data fully linked to i18n
   const cases = [
     {
@@ -37,10 +48,10 @@ export function SemanticEngineAnimation() {
       btnLabel: t('landingSimCase1Btn'),
       rawText: t('landingSimSampleText'),
       tokens: [
-        { text: t('landingSimTag2'), chapter: "Zeit" },
-        { text: t('landingSimTag1'), chapter: "Gemüt" },
-        { text: t('landingSimTag3'), chapter: "Allgemeines" },
-        { text: t('landingSimTag4'), chapter: "Modalität" }
+        { text: t('landingSimTag2'), chapter: t('landingSimChapterTime') },
+        { text: t('landingSimTag1'), chapter: t('landingSimChapterMind') },
+        { text: t('landingSimTag3'), chapter: t('landingSimChapterGeneral') },
+        { text: t('landingSimTag4'), chapter: t('landingSimChapterModality') }
       ],
       remedies: [
         {
@@ -75,10 +86,10 @@ export function SemanticEngineAnimation() {
       btnLabel: t('landingSimCase2Btn'),
       rawText: t('landingSimSampleText2'),
       tokens: [
-        { text: t('landingSimCase2Tag1'), chapter: "Allgemeines" },
-        { text: t('landingSimCase2Tag2'), chapter: "Modalität" },
-        { text: t('landingSimCase2Tag3'), chapter: "Lokalisation" },
-        { text: t('landingSimCase2Tag4'), chapter: "Modalität" }
+        { text: t('landingSimCase2Tag1'), chapter: t('landingSimChapterGeneral') },
+        { text: t('landingSimCase2Tag2'), chapter: t('landingSimChapterModality') },
+        { text: t('landingSimCase2Tag3'), chapter: t('landingSimChapterLocation') },
+        { text: t('landingSimCase2Tag4'), chapter: t('landingSimChapterModality') }
       ],
       remedies: [
         {
@@ -151,37 +162,37 @@ export function SemanticEngineAnimation() {
         }, 280);
         return () => clearTimeout(timer);
       } else {
-        // All tokens visible, wait 400ms before showing remedies
+        // All tokens visible, wait 400ms before showing remedies from top to bottom
         const timer = setTimeout(() => {
           setStage('remedies');
-          setVisibleRemedies(1);
+          setVisibleRemedies(1); // First reveal top remedy (index 0, Simile)
         }, 400);
         return () => clearTimeout(timer);
       }
     }
 
-    // 3. Stage 'remedies': pop in each remedy sequentially
+    // 3. Stage 'remedies': reveal remedies sequentially from top to bottom (idx 0 -> 1 -> 2)
     if (stage === 'remedies') {
       if (visibleRemedies < currentCase.remedies.length) {
         const timer = setTimeout(() => {
           setVisibleRemedies(prev => prev + 1);
-        }, 380);
+        }, 450);
         return () => clearTimeout(timer);
       } else {
         // All remedies displayed, switch to hold
         const timer = setTimeout(() => {
           setStage('hold');
-        }, 300);
+        }, 500);
         return () => clearTimeout(timer);
       }
     }
 
-    // 4. Stage 'hold': hold visible for 5.2 seconds, then transition to next case
+    // 4. Stage 'hold': hold visible for 5.5 seconds, then transition to next case
     if (stage === 'hold') {
       const timer = setTimeout(() => {
         const nextIndex = (activeCaseIndex + 1) % cases.length;
         resetToCase(nextIndex);
-      }, 5200);
+      }, 5500);
       return () => clearTimeout(timer);
     }
   }, [isPlaying, stage, typedChars, visibleTokens, visibleRemedies, fullText.length, activeCaseIndex, currentCase.tokens.length, currentCase.remedies.length, cases.length]);
@@ -287,7 +298,7 @@ export function SemanticEngineAnimation() {
         {/* Left Column (5 Cols): Live Anamnesis Typewriter & Extracted Symptoms */}
         <div className="lg:col-span-5 flex flex-col justify-between space-y-4">
           
-          <div className="bg-white border border-slate-200 rounded-xl p-4 sm:p-5 shadow-sm">
+          <div className="bg-white border border-slate-200 rounded-xl p-4 sm:p-5 pb-5 sm:pb-6 shadow-sm">
             {/* Anamnesis Header */}
             <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-100">
               <div className="flex items-center gap-2">
@@ -301,16 +312,16 @@ export function SemanticEngineAnimation() {
               </span>
             </div>
 
-            {/* Typewriter Text Container */}
-            <div className="p-4 rounded-xl bg-slate-50/80 border border-slate-200/80 text-xs sm:text-sm text-slate-800 leading-relaxed font-sans min-h-[140px]">
-              <span>{fullText.slice(0, typedChars)}</span>
+            {/* Typewriter Text Container - Fixed Height to fit full text without cut-off */}
+            <div className="p-4 rounded-xl bg-slate-50/80 border border-slate-200/80 text-xs sm:text-sm text-slate-800 leading-relaxed font-sans min-h-[175px] h-[175px] sm:h-[180px] overflow-y-auto">
+              <span>{stage === 'typing' ? fullText.slice(0, typedChars) : fullText}</span>
               {stage === 'typing' && (
                 <span className="inline-block w-0.5 h-4 bg-teal-600 ml-0.5 align-middle animate-pulse" />
               )}
             </div>
 
-            {/* 2. Sequentially Extracted Parameters */}
-            <div className="mt-4 pt-3 border-t border-slate-100 min-h-[135px]">
+            {/* 2. Sequentially Extracted Parameters with proper bottom spacing */}
+            <div className="mt-4 pt-3 border-t border-slate-100 min-h-[190px] pb-2">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
                   {t('landingSimExtractedTitle')}:
@@ -336,13 +347,13 @@ export function SemanticEngineAnimation() {
                   return (
                     <div 
                       key={idx}
-                      className="text-xs px-3 py-1.5 rounded-lg bg-teal-50/90 border border-teal-200/90 text-teal-950 font-medium flex items-center justify-between shadow-xs transition-all duration-300 animate-fadeIn"
+                      className="h-8 text-xs px-3 py-1.5 rounded-lg bg-teal-50/90 border border-teal-200/90 text-teal-950 font-medium flex items-center justify-between shadow-xs transition-all duration-300 animate-fadeIn"
                     >
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 truncate">
                         <CheckCircle2 className="w-3.5 h-3.5 text-teal-700 shrink-0" />
-                        <span>{token.text}</span>
+                        <span className="truncate">{token.text}</span>
                       </div>
-                      <span className="text-[10px] font-semibold text-teal-700 uppercase bg-white/80 px-1.5 py-0.5 rounded border border-teal-100">
+                      <span className="text-[10px] font-semibold text-teal-700 uppercase bg-white/80 px-1.5 py-0.5 rounded border border-teal-100 shrink-0">
                         {token.chapter}
                       </span>
                     </div>
@@ -353,8 +364,8 @@ export function SemanticEngineAnimation() {
 
           </div>
 
-          {/* Sub-card: Repertory Pipeline Context */}
-          <div className="bg-white border border-slate-200/90 rounded-xl p-3.5 flex items-center justify-between text-xs text-slate-700 shadow-xs">
+          {/* Sub-card: Repertory Pipeline Context - Fixed Height */}
+          <div className="bg-white border border-slate-200/90 rounded-xl p-3.5 flex items-center justify-between text-xs text-slate-700 shadow-xs h-[46px]">
             <div className="flex items-center gap-2">
               <Layers className="w-4 h-4 text-teal-700" />
               <span className="font-semibold">{t('landingSimPipelineBadge')}</span>
@@ -370,100 +381,173 @@ export function SemanticEngineAnimation() {
         <div className="lg:col-span-7 bg-white border border-slate-200 rounded-xl p-4 sm:p-6 shadow-sm flex flex-col justify-between">
           
           <div>
-            {/* Header */}
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+            {/* Header - Fixed Height */}
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 h-[42px]">
               <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-teal-700" />
-                <h4 className="text-xs sm:text-sm font-bold text-slate-900 tracking-wide">
-                  {t('landingSimTopRemedyTitle')}
-                </h4>
+                {stage === 'typing' || stage === 'tokens' ? (
+                  <>
+                    <Activity className="w-4 h-4 text-teal-700" />
+                    <h4 className="text-xs sm:text-sm font-bold text-slate-900 tracking-wide">
+                      {t('landingSimExplPhase1Title')}
+                    </h4>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4 text-teal-700" />
+                    <h4 className="text-xs sm:text-sm font-bold text-slate-900 tracking-wide">
+                      {t('landingSimTopRemedyTitle')}
+                    </h4>
+                  </>
+                )}
               </div>
               <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200">
                 <BookOpen className="w-3.5 h-3.5 text-teal-700" />
-                <span>{t('landingSimDiffLabel')}</span>
+                <span>{stage === 'typing' || stage === 'tokens' ? t('landingSimLiveStatus') : t('landingSimDiffLabel')}</span>
               </div>
             </div>
 
-            {/* Remedies List - Revealed Sequentially */}
-            <div className="space-y-3 min-h-[300px]">
-              {currentCase.remedies.map((remedy, idx) => {
-                const isVisible = (stage === 'remedies' || stage === 'hold') && idx < visibleRemedies;
-                const isWinner = remedy.isTop;
+            {/* Stages 1 & 2: Stable, Calm Explanation Cockpit - No black background, content does not jump */}
+            {(stage === 'typing' || stage === 'tokens') && (
+              <div className="h-[340px] flex flex-col justify-between">
+                <div className="bg-teal-50/70 border border-teal-200/80 rounded-xl p-5 shadow-xs">
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-teal-100/80 text-teal-900 text-xs font-bold border border-teal-200">
+                      <span className="w-2 h-2 rounded-full bg-teal-600 animate-ping" />
+                      <span>{t('landingSimExplLiveDiagnostics')}</span>
+                    </div>
+                    <span className="text-[11px] font-bold text-teal-700 font-mono">
+                      {t('landingSimExplPhase1Badge')}
+                    </span>
+                  </div>
 
-                if (!isVisible) {
-                  return (
+                  <h3 className="text-base font-bold text-slate-900 mb-1">
+                    {t('landingSimExplPhase1Title')}
+                  </h3>
+                  <p className="text-xs text-slate-600 mb-3.5">
+                    {t('landingSimExplPhase1Sub')}
+                  </p>
+
+                  <div className="space-y-2.5 pt-2.5 border-t border-teal-100/90 text-xs text-slate-700">
+                    <div className="flex items-start gap-2.5">
+                      <Check className="w-4 h-4 text-teal-700 shrink-0 mt-0.5" />
+                      <span>{t('landingSimExplPhase1Step1')}</span>
+                    </div>
+                    <div className="flex items-start gap-2.5">
+                      <Check className="w-4 h-4 text-teal-700 shrink-0 mt-0.5" />
+                      <span>{t('landingSimExplPhase1Step2')}</span>
+                    </div>
+                    <div className="flex items-start gap-2.5">
+                      <Check className="w-4 h-4 text-teal-700 shrink-0 mt-0.5" />
+                      <span>{t('landingSimExplPhase1Step3')}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Progress bar reflects typing then token analysis smoothly without altering the text card */}
+                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs text-slate-600">
+                  <div className="flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-teal-600 animate-pulse" />
+                    <span className="font-medium">
+                      {stage === 'typing' ? t('landingSimExplAnalyzingTokens') : t('landingSimExplCalculating')}
+                    </span>
+                  </div>
+                  <div className="w-24 sm:w-32 h-2 bg-slate-200 rounded-full overflow-hidden">
                     <div 
-                      key={idx}
-                      className="p-4 rounded-xl border border-dashed border-slate-200 bg-slate-50/50 min-h-[90px] flex items-center justify-center text-slate-400 text-xs transition-all duration-300"
+                      className="h-full bg-teal-600 rounded-full transition-all duration-200"
+                      style={{ 
+                        width: stage === 'typing'
+                          ? `${Math.min(55, Math.round((typedChars / Math.max(1, fullText.length)) * 55))}%`
+                          : `${55 + Math.round((visibleTokens / Math.max(1, currentCase.tokens.length)) * 45)}%`
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Stages 3 & 4: Remedies List - Revealed sequentially from top to bottom */}
+            {(stage === 'remedies' || stage === 'hold') && (
+              <div className="h-[340px] flex flex-col justify-between space-y-2.5">
+                {currentCase.remedies.map((remedy, idx) => {
+                  // Revealed sequentially from top to bottom (Step 1: idx 0 [Simile], Step 2: idx 1, Step 3: idx 2)
+                  const isVisible = stage === 'hold' || (stage === 'remedies' && idx < visibleRemedies);
+                  const isWinner = remedy.isTop;
+
+                  if (!isVisible) {
+                    return (
+                      <div 
+                        key={idx}
+                        className={`rounded-xl border border-dashed border-slate-200/80 bg-slate-50/40 transition-all duration-300 ${
+                          isWinner ? 'h-[105px]' : 'h-[95px]'
+                        }`}
+                      />
+                    );
+                  }
+
+                  return (
+                    <div
+                      key={remedy.name}
+                      className={`p-3.5 rounded-xl transition-all duration-500 ease-out transform translate-y-0 opacity-100 ${
+                        isWinner 
+                          ? 'h-[105px] bg-gradient-to-r from-teal-50/90 via-white to-white border-2 border-teal-600 shadow-sm' 
+                          : 'h-[95px] bg-white border border-slate-200/90 shadow-2xs hover:border-slate-300'
+                      }`}
                     >
-                      <span className="opacity-60">{t('landingSimScanProgress')}</span>
+                      <div className="flex items-center justify-between gap-2 mb-1.5">
+                        <div className="flex items-center gap-2">
+                          <span className={`w-5 h-5 rounded-full text-[11px] font-extrabold flex items-center justify-center ${
+                            isWinner ? 'bg-teal-700 text-white' : 'bg-slate-100 text-slate-700'
+                          }`}>
+                            {idx + 1}
+                          </span>
+                          <span className={`font-bold ${isWinner ? 'text-sm sm:text-base text-slate-900' : 'text-xs sm:text-sm text-slate-800'}`}>
+                            {remedy.name}
+                          </span>
+                          {isWinner && (
+                            <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 border border-teal-200">
+                              <Check className="w-3 h-3 text-teal-700" /> {t('landingSimSimileCandidate')}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] text-slate-500 font-medium hidden sm:inline">
+                            {remedy.rubricsMatched}
+                          </span>
+                          <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-md ${
+                            isWinner 
+                              ? 'bg-teal-700 text-white shadow-xs' 
+                              : 'bg-slate-100 text-slate-700 border border-slate-200'
+                          }`}>
+                            {remedy.score}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Percentage Progress Bar in HomeoPilot360 Teal */}
+                      <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden mb-1.5">
+                        <div 
+                          className={`h-full transition-all duration-500 rounded-full ${
+                            isWinner ? 'bg-gradient-to-r from-teal-700 to-teal-500' : 'bg-slate-400'
+                          }`}
+                          style={{ width: `${remedy.percentage}%` }}
+                        />
+                      </div>
+
+                      {/* Detailed Clinical Repertory Verification */}
+                      <p className="text-[11px] text-slate-600 leading-relaxed font-sans pl-7 line-clamp-2">
+                        {remedy.detail}
+                      </p>
                     </div>
                   );
-                }
-
-                return (
-                  <div
-                    key={remedy.name}
-                    className={`p-4 rounded-xl transition-all duration-300 animate-fadeIn ${
-                      isWinner 
-                        ? 'bg-gradient-to-r from-teal-50/80 via-white to-white border-2 border-teal-600 shadow-md' 
-                        : 'bg-white border border-slate-200/90 shadow-xs hover:border-slate-300'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-2 mb-2">
-                      <div className="flex items-center gap-2.5">
-                        <span className={`w-6 h-6 rounded-full text-xs font-extrabold flex items-center justify-center ${
-                          isWinner ? 'bg-teal-700 text-white' : 'bg-slate-100 text-slate-700'
-                        }`}>
-                          {idx + 1}
-                        </span>
-                        <span className={`font-bold ${isWinner ? 'text-base text-slate-900' : 'text-sm text-slate-800'}`}>
-                          {remedy.name}
-                        </span>
-                        {isWinner && (
-                          <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-teal-100 text-teal-800 border border-teal-200">
-                            <Check className="w-3 h-3 text-teal-700" /> {t('landingSimSimileCandidate')}
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-3">
-                        <span className="text-xs text-slate-500 font-medium hidden sm:inline">
-                          {remedy.rubricsMatched}
-                        </span>
-                        <span className={`text-xs font-bold px-2.5 py-1 rounded-lg ${
-                          isWinner 
-                            ? 'bg-teal-700 text-white shadow-xs' 
-                            : 'bg-slate-100 text-slate-700 border border-slate-200'
-                        }`}>
-                          {remedy.score}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Percentage Progress Bar in HomeoPilot360 Teal */}
-                    <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-2">
-                      <div 
-                        className={`h-full transition-all duration-700 rounded-full ${
-                          isWinner ? 'bg-gradient-to-r from-teal-700 to-teal-500' : 'bg-slate-400'
-                        }`}
-                        style={{ width: `${remedy.percentage}%` }}
-                      />
-                    </div>
-
-                    {/* Detailed Clinical Repertory Verification */}
-                    <p className="text-xs text-slate-600 leading-relaxed font-sans pl-8">
-                      {remedy.detail}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
+                })}
+              </div>
+            )}
 
           </div>
 
-          {/* Footer Transparency Badge */}
-          <div className="mt-5 pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-slate-500">
+          {/* Footer Transparency Badge - Fixed Height */}
+          <div className="mt-5 pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-slate-500 h-[36px]">
             <span className="flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4 text-teal-700 shrink-0" />
               <span>{t('landingSimTranspNote')}</span>

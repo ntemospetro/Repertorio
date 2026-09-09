@@ -519,7 +519,7 @@ export const ru = {
   "scale2Short": "Умеренная",
   "scale3Short": "Сильная",
   "scale4Short": "Экстремальная",
-  "tabCaseManagement": "Документация Случаев & Реперторизация",
+  "tabCaseManagement": "Реперторизация",
   "tabMateriaMedica": "Materia Medica",
   "materiaMedicaTitle": "Materia Medica",
   "materiaMedicaSubtitle": "Научный гомеопатический справочник с Ганеманом, Кентом и Херингом",
@@ -2293,6 +2293,32 @@ export const ru = {
   landingSimTranspNote: "Каждое предложение строго ссылается на рубрики Кента и статьи Materia Medica",
   landingSimNoBlackbox: "100% прозрачно • Никакого «черного ящика»",
 
+  // Semantic Simulation Chapters
+  landingSimChapterMind: "Психика",
+  landingSimChapterTime: "Время",
+  landingSimChapterGeneral: "Общие",
+  landingSimChapterModality: "Модальность",
+  landingSimChapterLocation: "Локализация",
+
+  // Live Explanation Cockpit (Phases 1 & 2)
+  landingSimExplLiveDiagnostics: "Диагностика в реальном времени",
+  landingSimExplPhase1Title: "Систематический анализ свободного текста",
+  landingSimExplPhase1Sub: "Лингвистическая обработка и сегментация анамнеза",
+  landingSimExplPhase1Step1: "Фиксация спонтанной речи пациента без жестких опросников",
+  landingSimExplPhase1Step2: "Отсеивание лишних слов и выделение ключевых клинических феноменов",
+  landingSimExplPhase1Step3: "Структурирование по временным модальностям, причинам и настроению",
+  landingSimExplPhase1Badge: "Фаза 1: Активная сегментация",
+
+  landingSimExplPhase2Title: "Реперторизация и взвешивание",
+  landingSimExplPhase2Sub: "Одновременная сверка с более чем 70 000 классических рубрик",
+  landingSimExplPhase2Step1: "Точное сопоставление рубрик по Кенту, Богеру и Берике",
+  landingSimExplPhase2Step2: "Иерархическая приоритезация ключевых симптомов (2 и 3 степени)",
+  landingSimExplPhase2Step3: "Дифференциальная предварительная проверка противопоказаний",
+  landingSimExplPhase2Badge: "Фаза 2: Реперторизация выполняется",
+
+  landingSimExplCalculating: "Расчет матрицы подобия...",
+  landingSimExplAnalyzingTokens: "Выделение ключевых симптомов...",
+
   // Case 1 Data
   landingSimCase1Title: "Случай 1: Острая ночная тревога и двигательное беспокойство",
   landingSimSampleText: "«Пациент жалуется на внезапное пробуждение в 2 часа ночи с сильным сердцебиением, непреодолимым страхом смерти и двигательным беспокойством. Выраженная жажда холодной воды маленькими глотками. Зябкость, желание тепло укутаться...»",
@@ -2336,6 +2362,12 @@ export const ru = {
   // 5 Core Pillars
   landingPillarsEyebrow: "5 ключевых опор для вашей практики",
   landingPillarsMainTitle: "Инструменты точного клинического поиска для гомеопатов",
+  landingPillar1Badge: "Опора 1",
+  landingPillar2Badge: "Опора 2",
+  landingPillar3Badge: "Опора 3",
+  landingPillar4Badge: "Опора 4",
+  landingPillar5Badge: "Опора 5",
+  landingPillar1BenefitsTitle: "Преимущества для практики",
   
   landingPillar1Title: "1. Свободный текст вместо утомительного поиска рубрик",
   landingPillar1Subtitle: "Описывайте случай так, как вы его документируете",
@@ -2401,6 +2433,9 @@ export const ru = {
   landingPhilosophyTitle3: "Для современных кабинетов и взыскательных гомеопатов",
   landingPhilosophySub3: "Тратьте меньше времени на механический поиск",
   landingPhilosophyText3: "Когда ручной поиск тормозит прием, наша платформа берет механику на себя. Описывайте клинический случай привычным языком; система структурирует и сопоставит литературные первоисточники. Больше внимания пациенту, меньше рутины с указателями.",
+  landingPhilosophyBadge1: "100% Врачебный суверенитет",
+  landingPhilosophyBadge2: "Проверяемые литературные источники",
+  landingPhilosophyBadge3: "Фокус на консультации пациента",
 
   // Section 6: Шаги
   landingWorkflowEyebrow: "Процесс работы",

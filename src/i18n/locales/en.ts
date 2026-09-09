@@ -519,7 +519,7 @@ export const en = {
   "scale2Short": "Moderate",
   "scale3Short": "Severe",
   "scale4Short": "Extreme",
-  "tabCaseManagement": "Case Records & Repertorization",
+  "tabCaseManagement": "Repertorization",
   "tabMateriaMedica": "Materia Medica",
   "materiaMedicaTitle": "Materia Medica",
   "materiaMedicaSubtitle": "Scientific homeopathic remedy lexicon with Hahnemann, Kent & Hering",
@@ -2299,6 +2299,32 @@ export const en = {
   landingSimTranspNote: "Every proposal cites verified Kent rubrics & Materia Medica passages",
   landingSimNoBlackbox: "100% transparent • Zero black box",
 
+  // Semantic Simulation Chapters
+  landingSimChapterMind: "Mind",
+  landingSimChapterTime: "Time",
+  landingSimChapterGeneral: "Generals",
+  landingSimChapterModality: "Modality",
+  landingSimChapterLocation: "Location",
+
+  // Live Explanation Cockpit (Phases 1 & 2)
+  landingSimExplLiveDiagnostics: "Live Diagnostics",
+  landingSimExplPhase1Title: "Systematic Free-Text Analysis",
+  landingSimExplPhase1Sub: "Ongoing natural language processing & case segmentation",
+  landingSimExplPhase1Step1: "Captures natural patient speech without rigid forms",
+  landingSimExplPhase1Step2: "Filters conversational noise and isolates relevant clinical phenomena",
+  landingSimExplPhase1Step3: "Structures symptoms by time modalities, triggers & emotional state",
+  landingSimExplPhase1Badge: "Phase 1: Segmentation active",
+
+  landingSimExplPhase2Title: "Repertorisation & Weighting",
+  landingSimExplPhase2Sub: "Simultaneous cross-reference against 70,000+ classical rubrics",
+  landingSimExplPhase2Step1: "Precise rubric mapping according to Kent, Boger and Boericke",
+  landingSimExplPhase2Step2: "Hierarchical prioritization of keynote symptoms (Grades 2 & 3)",
+  landingSimExplPhase2Step3: "Differential pre-screening against contraindications & modalities",
+  landingSimExplPhase2Badge: "Phase 2: Repertorisation running",
+
+  landingSimExplCalculating: "Calculating similarity matrix...",
+  landingSimExplAnalyzingTokens: "Extracting core symptoms...",
+
   // Case 1 Data
   landingSimCase1Title: "Case 1: Acute Nocturnal Anxiety & Restlessness",
   landingSimSampleText: "“Patient reports sudden waking at 2 AM with heart palpitations, intense fear of death, and motor restlessness. Marked thirst for small sips of cold water. Chilly, craving warm wrapping...”",
@@ -2342,6 +2368,12 @@ export const en = {
   // 5 Core Pillars
   landingPillarsEyebrow: "5 Core Pillars for Your Practice",
   landingPillarsMainTitle: "Precision Clinical Research Tools for Homeopaths",
+  landingPillar1Badge: "Pillar 1",
+  landingPillar2Badge: "Pillar 2",
+  landingPillar3Badge: "Pillar 3",
+  landingPillar4Badge: "Pillar 4",
+  landingPillar5Badge: "Pillar 5",
+  landingPillar1BenefitsTitle: "Practice Benefits",
   
   landingPillar1Title: "1. Natural Free Text Instead of Tedious Rubric Browsing",
   landingPillar1Subtitle: "Describe the case exactly as you document it",
@@ -2407,6 +2439,9 @@ export const en = {
   landingPhilosophyTitle3: "For Modern Practices & Discerning Practitioners",
   landingPhilosophySub3: "Spend less time on mechanical lookup",
   landingPhilosophyText3: "When clinical care is hindered by tedious manual searching, our platform takes over the heavy lifting. Document your cases naturally as they unfold; the platform handles the structuring, literature retrieval, and comparative presentation. More time for the patient, less time searching.",
+  landingPhilosophyBadge1: "100% Practitioner Sovereignty",
+  landingPhilosophyBadge2: "Verifiable Literature Citations",
+  landingPhilosophyBadge3: "Focus on the Consultation",
 
   // Section 6: Workflow Steps (01-05)
   landingWorkflowEyebrow: "Simple Workflow",

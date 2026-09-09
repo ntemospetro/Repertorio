@@ -519,7 +519,7 @@ export const de = {
   "scale2Short": "Mäßig",
   "scale3Short": "Stark",
   "scale4Short": "Extrem",
-  "tabCaseManagement": "Falldokumentation & Repertorisation",
+  "tabCaseManagement": "Repertorisation",
   "tabMateriaMedica": "Materia Medica",
   "materiaMedicaTitle": "Materia Medica",
   "materiaMedicaSubtitle": "Wissenschaftliches homöopathisches Arzneimittellexikon mit Hahnemann, Kent & Hering",
@@ -2299,6 +2299,32 @@ export const de = {
   landingSimTranspNote: "Jeder Vorschlag verweist exakt auf Kent-Rubriken & Materia-Medica-Passagen",
   landingSimNoBlackbox: "100% transparent • Keine Blackbox",
 
+  // Semantic Simulation Chapters
+  landingSimChapterMind: "Gemüt",
+  landingSimChapterTime: "Zeit",
+  landingSimChapterGeneral: "Allgemeines",
+  landingSimChapterModality: "Modalität",
+  landingSimChapterLocation: "Lokalisation",
+
+  // Live Explanation Cockpit (Phases 1 & 2)
+  landingSimExplLiveDiagnostics: "Echtzeit-Diagnostik",
+  landingSimExplPhase1Title: "Systematische Freitextanalyse",
+  landingSimExplPhase1Sub: "Laufende Sprachverarbeitung & Segmentierung der Anamnese",
+  landingSimExplPhase1Step1: "Erfassung natürlicher Patientensprache ohne starre Schemata",
+  landingSimExplPhase1Step2: "Automatisches Filtern von Füllwörtern & Isolieren relevanter Phänomene",
+  landingSimExplPhase1Step3: "Strukturierung nach Zeitmodalitäten, Auslösern & Gemütszuständen",
+  landingSimExplPhase1Badge: "Phase 1: Segmentierung aktiv",
+
+  landingSimExplPhase2Title: "Repertorisation & Gewichtung",
+  landingSimExplPhase2Sub: "Simultaner Abgleich mit über 70.000 klassischen Rubriken",
+  landingSimExplPhase2Step1: "Exaktes Rubriken-Mapping nach Kent, Boger und Boericke",
+  landingSimExplPhase2Step2: "Hierarchische Priorisierung von Leitsymptomen (Grade 2 & 3)",
+  landingSimExplPhase2Step3: "Differenzialdiagnostische Vorprüfung auf Kontraindikationen",
+  landingSimExplPhase2Badge: "Phase 2: Repertorisation läuft",
+
+  landingSimExplCalculating: "Kalkuliere Ähnlichkeitsmatrix...",
+  landingSimExplAnalyzingTokens: "Extrahiere Kern-Symptome...",
+
   // Case 1 Data
   landingSimCase1Title: "Fall 1: Akuter nächtlicher Angst- und Unruhezustand",
   landingSimSampleText: "„Patient klagt über plötzliches Erwachen um 2 Uhr nachts mit Herzklopfen, intensiver Todesangst und motorischer Unruhe. Ausgeprägter Durst auf kleine Mengen kaltes Wasser. Fröstelig, Verlangen nach warmer Einhüllung...“",
@@ -2342,6 +2368,12 @@ export const de = {
   // 5 Core Pillars
   landingPillarsEyebrow: "5 Kern-Säulen für Ihre Praxis",
   landingPillarsMainTitle: "Präzise Recherchewerkzeuge für homöopathische Fachanwender",
+  landingPillar1Badge: "Säule 1",
+  landingPillar2Badge: "Säule 2",
+  landingPillar3Badge: "Säule 3",
+  landingPillar4Badge: "Säule 4",
+  landingPillar5Badge: "Säule 5",
+  landingPillar1BenefitsTitle: "Praxis-Vorteile",
   
   landingPillar1Title: "1. Freitext statt mühsamer Rubrikensuche",
   landingPillar1Subtitle: "Beschreiben Sie den Fall so, wie Sie ihn dokumentieren",
@@ -2407,6 +2439,9 @@ export const de = {
   landingPhilosophyTitle3: "Für moderne Praxen und fachkundige Anwender",
   landingPhilosophySub3: "Weniger Zeit mit mechanischer Recherche verbringen",
   landingPhilosophyText3: "Wenn Ihre fachliche Arbeit durch umfangreiche manuelle Such- und Vergleichsprozesse ausgebremst wird, kann unsere Plattform einen Teil dieser Arbeit übernehmen. Sie erfassen Ihre Informationen in der Form, in der sie ohnehin entstehen. Die Software unterstützt anschließend bei der Strukturierung, Recherche und Gegenüberstellung relevanter Inhalte. Mehr Fokus auf den Fall. Weniger Zeit mit wiederkehrender Sucharbeit.",
+  landingPhilosophyBadge1: "100% Therapeuten-Souveränität",
+  landingPhilosophyBadge2: "Prüfbare Literatur-Zitate",
+  landingPhilosophyBadge3: "Fokus auf das Gespräch",
 
   // Section 6: So einfach funktioniert es (01-05)
   landingWorkflowEyebrow: "Der Arbeitsablauf",

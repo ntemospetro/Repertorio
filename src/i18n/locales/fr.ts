@@ -519,7 +519,7 @@ export const fr = {
   "scale2Short": "Modéré",
   "scale3Short": "Fort",
   "scale4Short": "Extrême",
-  "tabCaseManagement": "Dossiers Patients & Répertorisation",
+  "tabCaseManagement": "Répertorisation",
   "tabMateriaMedica": "Materia Medica",
   "materiaMedicaTitle": "Materia Medica",
   "materiaMedicaSubtitle": "Lexique scientifique des remèdes homéopathiques avec Hahnemann, Kent et Hering",
@@ -2293,6 +2293,32 @@ export const fr = {
   landingSimTranspNote: "Chaque suggestion renvoie précisément aux rubriques de Kent et aux traités de Matière Médicale",
   landingSimNoBlackbox: "100% transparent • Aucune boîte noire",
 
+  // Semantic Simulation Chapters
+  landingSimChapterMind: "Mental",
+  landingSimChapterTime: "Temps",
+  landingSimChapterGeneral: "Généraux",
+  landingSimChapterModality: "Modalité",
+  landingSimChapterLocation: "Localisation",
+
+  // Live Explanation Cockpit (Phases 1 & 2)
+  landingSimExplLiveDiagnostics: "Diagnostic en direct",
+  landingSimExplPhase1Title: "Analyse systématique en texte libre",
+  landingSimExplPhase1Sub: "Traitement linguistique en cours et segmentation de l'anamnèse",
+  landingSimExplPhase1Step1: "Saisie de la parole naturelle du patient sans formulaires rigides",
+  landingSimExplPhase1Step2: "Filtre les mots de remplissage et isole les phénomènes cliniques clés",
+  landingSimExplPhase1Step3: "Structuration selon les modalités temporelles, déclencheurs et état d'esprit",
+  landingSimExplPhase1Badge: "Phase 1 : Segmentation active",
+
+  landingSimExplPhase2Title: "Répertorisation et pondération",
+  landingSimExplPhase2Sub: "Confrontation simultanée à plus de 70 000 rubriques classiques",
+  landingSimExplPhase2Step1: "Correspondance exacte des rubriques selon Kent, Boger et Boericke",
+  landingSimExplPhase2Step2: "Hiérarchisation des symptômes clés (degrés 2 et 3)",
+  landingSimExplPhase2Step3: "Vérification différentielle préalable des contre-indications",
+  landingSimExplPhase2Badge: "Phase 2 : Répertorisation en cours",
+
+  landingSimExplCalculating: "Calcul de la matrice de similitude...",
+  landingSimExplAnalyzingTokens: "Extraction des symptômes clés...",
+
   // Case 1 Data
   landingSimCase1Title: "Cas 1 : Angoisse aiguë nocturne et agitation",
   landingSimSampleText: "« Le patient décrit un réveil brutal à 2 heures du matin avec palpitations, angoisse intense de mort et agitation motrice. Soif marquée pour de petites gorgées d'eau fraîche. Frilosité, besoin d'être chaudement enveloppé... »",
@@ -2336,6 +2362,12 @@ export const fr = {
   // 5 Core Pillars
   landingPillarsEyebrow: "5 piliers fondamentaux pour votre cabinet",
   landingPillarsMainTitle: "Des outils de recherche clinique précis pour les praticiens homéopathes",
+  landingPillar1Badge: "Pilier 1",
+  landingPillar2Badge: "Pilier 2",
+  landingPillar3Badge: "Pilier 3",
+  landingPillar4Badge: "Pilier 4",
+  landingPillar5Badge: "Pilier 5",
+  landingPillar1BenefitsTitle: "Avantages pour le cabinet",
   
   landingPillar1Title: "1. Texte libre au lieu d'une recherche laborieuse de rubriques",
   landingPillar1Subtitle: "Décrivez le cas tel que vous le documentez",
@@ -2401,6 +2433,9 @@ export const fr = {
   landingPhilosophyTitle3: "Pour les cabinets modernes et praticiens exigeants",
   landingPhilosophySub3: "Consacrez moins de temps aux recherches mécaniques",
   landingPhilosophyText3: "Lorsque le temps clinique est rogné par de laborieuses recherches dans les index, notre plateforme prend le relais. Documentez vos cas naturellement ; le système se charge de la structuration et de la mise en regard des sources. Plus de présence pour le patient, moins de temps perdu en manipulations.",
+  landingPhilosophyBadge1: "100% Souveraineté du thérapeute",
+  landingPhilosophyBadge2: "Citations vérifiables de la littérature",
+  landingPhilosophyBadge3: "Priorité à la consultation",
 
   // Section 6: Workflow
   landingWorkflowEyebrow: "Le déroulement",

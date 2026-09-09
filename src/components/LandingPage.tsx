@@ -213,7 +213,7 @@ export function LandingPage({ onGetStarted, onGoToLogin }: LandingPageProps) {
                 <div className="md:col-span-7 space-y-4">
                   <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-teal-50 text-teal-800 text-xs font-bold">
                     <ClipboardList className="w-4 h-4" />
-                    <span>Säule 1</span>
+                    <span>{t('landingPillar1Badge')}</span>
                   </div>
                   <h3 className="text-xl sm:text-2xl font-bold text-slate-900">
                     {t('landingPillar1Title')}
@@ -230,7 +230,7 @@ export function LandingPage({ onGetStarted, onGoToLogin }: LandingPageProps) {
                 </div>
                 <div className="md:col-span-5 bg-slate-50 p-6 rounded-xl border border-slate-200/80">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">
-                    Praxis-Vorteile
+                    {t('landingPillar1BenefitsTitle')}
                   </h4>
                   <ul className="space-y-2.5 text-xs sm:text-sm text-slate-700">
                     <li className="flex items-start gap-2">
@@ -266,7 +266,7 @@ export function LandingPage({ onGetStarted, onGoToLogin }: LandingPageProps) {
                 <div className="space-y-4">
                   <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-teal-50 text-teal-800 text-xs font-bold">
                     <BrainCircuit className="w-4 h-4" />
-                    <span>Säule 2</span>
+                    <span>{t('landingPillar2Badge')}</span>
                   </div>
                   <h3 className="text-lg sm:text-xl font-bold text-slate-900">
                     {t('landingPillar2Title')}
@@ -288,7 +288,7 @@ export function LandingPage({ onGetStarted, onGoToLogin }: LandingPageProps) {
                 <div className="space-y-4">
                   <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-teal-50 text-teal-800 text-xs font-bold">
                     <Scale className="w-4 h-4" />
-                    <span>Säule 3</span>
+                    <span>{t('landingPillar3Badge')}</span>
                   </div>
                   <h3 className="text-lg sm:text-xl font-bold text-slate-900">
                     {t('landingPillar3Title')}
@@ -315,7 +315,7 @@ export function LandingPage({ onGetStarted, onGoToLogin }: LandingPageProps) {
                 <div className="space-y-4">
                   <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-teal-50 text-teal-800 text-xs font-bold">
                     <Laptop className="w-4 h-4" />
-                    <span>Säule 4</span>
+                    <span>{t('landingPillar4Badge')}</span>
                   </div>
                   <h3 className="text-lg sm:text-xl font-bold text-slate-900">
                     {t('landingPillar4Title')}
@@ -351,7 +351,7 @@ export function LandingPage({ onGetStarted, onGoToLogin }: LandingPageProps) {
                 <div className="space-y-4">
                   <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-teal-50 text-teal-800 text-xs font-bold">
                     <Globe className="w-4 h-4" />
-                    <span>Säule 5</span>
+                    <span>{t('landingPillar5Badge')}</span>
                   </div>
                   <h3 className="text-lg sm:text-xl font-bold text-slate-900">
                     {t('landingPillar5Title')}
@@ -463,7 +463,7 @@ export function LandingPage({ onGetStarted, onGoToLogin }: LandingPageProps) {
                 </p>
               </div>
               <div className="mt-6 pt-4 border-t border-slate-100 text-xs font-mono font-semibold text-teal-800">
-                100% Therapeuten-Souveränität
+                {t('landingPhilosophyBadge1')}
               </div>
             </div>
 
@@ -484,7 +484,7 @@ export function LandingPage({ onGetStarted, onGoToLogin }: LandingPageProps) {
                 </p>
               </div>
               <div className="mt-6 pt-4 border-t border-slate-100 text-xs font-mono font-semibold text-teal-800">
-                Prüfbare Literatur-Zitate
+                {t('landingPhilosophyBadge2')}
               </div>
             </div>
 
@@ -505,7 +505,7 @@ export function LandingPage({ onGetStarted, onGoToLogin }: LandingPageProps) {
                 </p>
               </div>
               <div className="mt-6 pt-4 border-t border-slate-100 text-xs font-mono font-semibold text-teal-800">
-                Fokus auf das Gespräch
+                {t('landingPhilosophyBadge3')}
               </div>
             </div>
 

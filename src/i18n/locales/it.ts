@@ -519,7 +519,7 @@ export const it = {
   "scale2Short": "Moderato",
   "scale3Short": "Forte",
   "scale4Short": "Estremo",
-  "tabCaseManagement": "Documentazione Casi & Repertorizzazione",
+  "tabCaseManagement": "Repertorizzazione",
   "tabMateriaMedica": "Materia Medica",
   "materiaMedicaTitle": "Materia Medica",
   "materiaMedicaSubtitle": "Lessico scientifico dei rimedi omeopatici con Hahnemann, Kent e Hering",
@@ -2293,6 +2293,32 @@ export const it = {
   landingSimTranspNote: "Ogni proposta cita con precisione le rubriche di Kent e i trattati di Materia Medica",
   landingSimNoBlackbox: "100% trasparente • Nessuna scatola nera",
 
+  // Semantic Simulation Chapters
+  landingSimChapterMind: "Mente",
+  landingSimChapterTime: "Tempo",
+  landingSimChapterGeneral: "Generali",
+  landingSimChapterModality: "Modalità",
+  landingSimChapterLocation: "Localizzazione",
+
+  // Live Explanation Cockpit (Phases 1 & 2)
+  landingSimExplLiveDiagnostics: "Diagnostica in tempo reale",
+  landingSimExplPhase1Title: "Analisi sistematica del testo libero",
+  landingSimExplPhase1Sub: "Elaborazione del linguaggio in corso e segmentazione dell'anamnesi",
+  landingSimExplPhase1Step1: "Registrazione del linguaggio spontaneo senza maschere rigide",
+  landingSimExplPhase1Step2: "Filtra il parlato comune e isola i fenomeni clinici essenziali",
+  landingSimExplPhase1Step3: "Strutturazione per modalità temporali, fattori scatenanti e stato d'animo",
+  landingSimExplPhase1Badge: "Fase 1: Segmentazione attiva",
+
+  landingSimExplPhase2Title: "Repertorizzazione e ponderazione",
+  landingSimExplPhase2Sub: "Raffronto simultaneo con oltre 70.000 rubriche classiche",
+  landingSimExplPhase2Step1: "Mappatura esatta delle rubriche secondo Kent, Boger e Boericke",
+  landingSimExplPhase2Step2: "Prioritizzazione gerarchica dei sintomi guida (gradi 2 e 3)",
+  landingSimExplPhase2Step3: "Verifica differenziale preliminare di controindicazioni e modalità",
+  landingSimExplPhase2Badge: "Fase 2: Repertorizzazione in corso",
+
+  landingSimExplCalculating: "Calcolo della matrice di similitudine...",
+  landingSimExplAnalyzingTokens: "Estrazione dei sintomi chiave...",
+
   // Case 1 Data
   landingSimCase1Title: "Caso 1: Ansia acuta notturna e agitazione motoria",
   landingSimSampleText: "«Il paziente lamenta risveglio improvviso alle 2:00 di notte con palpitazioni, intensa angoscia di morte e agitazione motoria. Sete marcata di piccoli sorsi d'acqua fredda. Freddoloso, desiderio di essere coperto calorosamente...»",
@@ -2336,6 +2362,12 @@ export const it = {
   // 5 Core Pillars
   landingPillarsEyebrow: "5 pilastri fondamentali per la vostra pratica",
   landingPillarsMainTitle: "Strumenti di ricerca clinica accurata per omeopati",
+  landingPillar1Badge: "Pilastro 1",
+  landingPillar2Badge: "Pilastro 2",
+  landingPillar3Badge: "Pilastro 3",
+  landingPillar4Badge: "Pilastro 4",
+  landingPillar5Badge: "Pilastro 5",
+  landingPillar1BenefitsTitle: "Vantaggi per lo studio",
   
   landingPillar1Title: "1. Testo libero invece della tediosa ricerca di rubriche",
   landingPillar1Subtitle: "Descrivete il caso esattamente come lo documentate",
@@ -2401,6 +2433,9 @@ export const it = {
   landingPhilosophyTitle3: "Per studi moderni e terapeuti attenti",
   landingPhilosophySub3: "Meno tempo dedicato alla ricerca meccanica",
   landingPhilosophyText3: "Quando i passaggi manuali sottraggono tempo alla relazione terapeutica, la nostra piattaforma compie il lavoro ripetitivo. Annotate il caso con naturalezza; il sistema si occupa di ordinare e confrontare i riferimenti repertoriali. Più attenzione al paziente, meno tempo perso a sfogliare indici.",
+  landingPhilosophyBadge1: "100% Sovranità del terapeuta",
+  landingPhilosophyBadge2: "Citazioni letterarie verificabili",
+  landingPhilosophyBadge3: "Focus sul colloquio col paziente",
 
   // Section 6: Workflow
   landingWorkflowEyebrow: "Il flusso di lavoro",

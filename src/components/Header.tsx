@@ -390,7 +390,7 @@ export const Header: React.FC<HeaderProps> = ({
                   <ChevronRight className="w-4 h-4 text-slate-400" />
                 </button>
 
-                {/* 2. Falldokumentation & Repertorisation */}
+                {/* 2. Repertorisation */}
                 <button
                   type="button"
                   id="mobile-nav-tab-cases"
