@@ -2477,9 +2477,18 @@ Checkliste für den Patienten:
 
       // Safe Sandbox Fallback (if no Stripe keys entered yet)
       const mockSessionId = 'cs_sandbox_' + Date.now();
-      const returnUrl = (successUrl || `${origin}/?payment=success`)
-        + (successUrl?.includes('?') ? '&' : '?')
-        + `session_id=${mockSessionId}&amount=${amount}&sandbox=true`;
+      let returnUrl = successUrl || `${origin}/?payment=success&session_id=${mockSessionId}&therapistId=${therapistId}`;
+      if (returnUrl.includes('{CHECKOUT_SESSION_ID}')) {
+        returnUrl = returnUrl.replace('{CHECKOUT_SESSION_ID}', mockSessionId);
+      } else if (!returnUrl.includes('session_id=')) {
+        returnUrl += (returnUrl.includes('?') ? '&' : '?') + `session_id=${mockSessionId}`;
+      }
+      if (!returnUrl.includes('amount=')) {
+        returnUrl += `&amount=${amount}`;
+      }
+      if (!returnUrl.includes('sandbox=')) {
+        returnUrl += `&sandbox=true`;
+      }
 
       return res.json({
         sessionId: mockSessionId,

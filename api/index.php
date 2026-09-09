@@ -2309,9 +2309,18 @@ if ($route === 'billing/create-checkout-session') {
 
     // Safe Sandbox Fallback
     $mockSessionId = 'cs_sandbox_' . round(microtime(true) * 1000);
-    $returnUrl = $successUrl;
-    $delim = (strpos($returnUrl, '?') !== false) ? '&' : '?';
-    $returnUrl .= "{$delim}session_id={$mockSessionId}&amount={$amountEur}&sandbox=true";
+    if (strpos($successUrl, '{CHECKOUT_SESSION_ID}') !== false) {
+        $returnUrl = str_replace('{CHECKOUT_SESSION_ID}', $mockSessionId, $successUrl);
+    } else {
+        $delim = (strpos($successUrl, '?') !== false) ? '&' : '?';
+        $returnUrl = "{$successUrl}{$delim}session_id={$mockSessionId}";
+    }
+    if (strpos($returnUrl, 'amount=') === false) {
+        $returnUrl .= "&amount={$amountEur}";
+    }
+    if (strpos($returnUrl, 'sandbox=') === false) {
+        $returnUrl .= "&sandbox=true";
+    }
 
     echo json_encode([
         'sessionId' => $mockSessionId,
@@ -2326,14 +2335,14 @@ if ($route === 'billing/create-checkout-session') {
 // =========================================================================
 // ROUTE 19b: VERIFY CHECKOUT SESSION (/api/billing/verify-session)
 // =========================================================================
-if ($route === 'billing/verify-session') {
-    $sessionId = $_GET['sessionId'] ?? '';
-    $therapistId = $_GET['therapistId'] ?? 'th-101';
-    $amountEur = isset($_GET['amount']) ? (float)$_GET['amount'] : 20.0;
+if ($route === 'billing/verify-session' || $route === 'verify-session' || $route === 'billing/verify_session' || $route === 'api/billing/verify-session') {
+    $sessionId = $_GET['sessionId'] ?? ($_GET['session_id'] ?? '');
+    $therapistId = $_GET['therapistId'] ?? ($_GET['therapist_id'] ?? 'th-101');
+    $amountEur = isset($_GET['amount']) ? (float)$_GET['amount'] : (isset($_GET['amountEur']) ? (float)$_GET['amountEur'] : 20.0);
 
-    if (empty($sessionId)) {
+    if (empty($sessionId) || $sessionId === '{CHECKOUT_SESSION_ID}' || strpos($sessionId, 'CHECKOUT_SESSION_ID') !== false) {
         http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Keine Session-ID angegeben']);
+        echo json_encode(['success' => false, 'error' => 'Ungültige oder fehlende Session-ID']);
         exit;
     }
 

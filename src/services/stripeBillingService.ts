@@ -423,8 +423,8 @@ export async function verifyStripeCheckoutSession(sessionId: string, therapistId
   type?: string;
   message?: string;
 }> {
-  if (!sessionId) {
-    return { success: false, message: 'Keine Session-ID übergeben' };
+  if (!sessionId || sessionId === '{CHECKOUT_SESSION_ID}' || sessionId.includes('CHECKOUT_SESSION_ID')) {
+    return { success: false, message: 'Keine gültige Session-ID übergeben' };
   }
 
   try {

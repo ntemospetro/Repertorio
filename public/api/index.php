@@ -2309,27 +2309,137 @@ if ($route === 'billing/create-checkout-session') {
 
     // Safe Sandbox Fallback
     $mockSessionId = 'cs_sandbox_' . round(microtime(true) * 1000);
-    creditDepositPhp([
-        'therapistId' => $therapistId,
-        'therapistName' => $therapistName,
-        'therapistEmail' => $therapistEmail,
-        'amountEur' => $amountEur,
-        'type' => $type,
-        'stripeSessionId' => $mockSessionId,
-        'note' => 'Sandbox-Testbuchung: +' . number_format($amountEur, 2, '.', '') . ' €'
-    ]);
-
-    $returnUrl = $successUrl;
-    $delim = (strpos($returnUrl, '?') !== false) ? '&' : '?';
-    $returnUrl .= "{$delim}session_id={$mockSessionId}&amount={$amountEur}&sandbox=true";
+    if (strpos($successUrl, '{CHECKOUT_SESSION_ID}') !== false) {
+        $returnUrl = str_replace('{CHECKOUT_SESSION_ID}', $mockSessionId, $successUrl);
+    } else {
+        $delim = (strpos($successUrl, '?') !== false) ? '&' : '?';
+        $returnUrl = "{$successUrl}{$delim}session_id={$mockSessionId}";
+    }
+    if (strpos($returnUrl, 'amount=') === false) {
+        $returnUrl .= "&amount={$amountEur}";
+    }
+    if (strpos($returnUrl, 'sandbox=') === false) {
+        $returnUrl .= "&sandbox=true";
+    }
 
     echo json_encode([
         'sessionId' => $mockSessionId,
         'url' => $returnUrl,
         'mode' => 'sandbox',
         'amountEur' => $amountEur,
-        'message' => 'Sandbox-Modus: Guthaben wurde sofort gutgeschrieben (keine Live-Kreditkartendaten hinterlegt).'
+        'message' => 'Sandbox-Modus: Weiterleitung zur Zahlungsbestätigung.'
     ]);
+    exit;
+}
+
+// =========================================================================
+// ROUTE 19b: VERIFY CHECKOUT SESSION (/api/billing/verify-session)
+// =========================================================================
+if ($route === 'billing/verify-session' || $route === 'verify-session' || $route === 'billing/verify_session' || $route === 'api/billing/verify-session') {
+    $sessionId = $_GET['sessionId'] ?? ($_GET['session_id'] ?? '');
+    $therapistId = $_GET['therapistId'] ?? ($_GET['therapist_id'] ?? 'th-101');
+    $amountEur = isset($_GET['amount']) ? (float)$_GET['amount'] : (isset($_GET['amountEur']) ? (float)$_GET['amountEur'] : 20.0);
+
+    if (empty($sessionId) || $sessionId === '{CHECKOUT_SESSION_ID}' || strpos($sessionId, 'CHECKOUT_SESSION_ID') !== false) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Ungültige oder fehlende Session-ID']);
+        exit;
+    }
+
+    // Check if already credited
+    $payments = getStoredBillingPayments();
+    foreach ($payments as $p) {
+        if (!empty($p['stripeSessionId']) && $p['stripeSessionId'] === $sessionId) {
+            echo json_encode([
+                'success' => true,
+                'status' => 'already_credited',
+                'credited' => true,
+                'amountEur' => $p['amountEur'],
+                'therapistId' => $p['therapistId']
+            ]);
+            exit;
+        }
+    }
+
+    $cfg = getStoredStripeConfig();
+    $secretKey = $cfg['secretKey'] ?? '';
+
+    // Verify with Stripe API if live/test Stripe session
+    if (!empty($secretKey) && strpos($sessionId, 'cs_sandbox_') === false && strpos($sessionId, 'cs_offline_') === false) {
+        $ch = curl_init('https://api.stripe.com/v1/checkout/sessions/' . urlencode($sessionId));
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Authorization: Bearer ' . $secretKey
+        ]);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 20);
+        $stripeRaw = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        $sessionData = @json_decode($stripeRaw, true);
+        if ($httpCode === 200 && !empty($sessionData['id']) && ($sessionData['payment_status'] ?? '') === 'paid') {
+            $sessTherapistId = $sessionData['metadata']['therapistId'] ?? ($sessionData['client_reference_id'] ?? $therapistId);
+            $sessAmount = isset($sessionData['metadata']['amountEur'])
+                ? (float)$sessionData['metadata']['amountEur']
+                : (((float)($sessionData['amount_total'] ?? 0)) / 100);
+            $sessType = $sessionData['metadata']['type'] ?? 'manual_reload';
+            $targetTariffId = $sessionData['metadata']['targetTariffId'] ?? null;
+
+            creditDepositPhp([
+                'therapistId' => $sessTherapistId,
+                'therapistName' => $sessionData['metadata']['therapistName'] ?? 'Therapeut',
+                'therapistEmail' => $sessionData['customer_details']['email'] ?? ($sessionData['customer_email'] ?? ''),
+                'amountEur' => $sessAmount,
+                'type' => $sessType,
+                'stripeSessionId' => $sessionData['id'],
+                'stripePaymentIntentId' => $sessionData['payment_intent'] ?? null,
+                'note' => 'Stripe Zahlung bestätigt: +' . number_format($sessAmount, 2, '.', '') . ' €'
+            ]);
+
+            echo json_encode([
+                'success' => true,
+                'status' => 'paid',
+                'credited' => true,
+                'amountEur' => $sessAmount,
+                'therapistId' => $sessTherapistId,
+                'targetTariffId' => $targetTariffId,
+                'type' => $sessType
+            ]);
+            exit;
+        } else {
+            http_response_code(400);
+            echo json_encode([
+                'success' => false,
+                'status' => $sessionData['payment_status'] ?? 'unpaid',
+                'error' => 'Zahlung noch nicht eingegangen oder abgelehnt.'
+            ]);
+            exit;
+        }
+    }
+
+    // Sandbox Confirmation
+    if (strpos($sessionId, 'cs_sandbox_') === 0 || strpos($sessionId, 'cs_offline_') === 0) {
+        creditDepositPhp([
+            'therapistId' => $therapistId,
+            'amountEur' => $amountEur,
+            'type' => 'manual_reload',
+            'stripeSessionId' => $sessionId,
+            'note' => 'Sandbox-Zahlung bestätigt: +' . number_format($amountEur, 2, '.', '') . ' €'
+        ]);
+
+        echo json_encode([
+            'success' => true,
+            'status' => 'paid',
+            'credited' => true,
+            'amountEur' => $amountEur,
+            'therapistId' => $therapistId,
+            'type' => 'manual_reload'
+        ]);
+        exit;
+    }
+
+    http_response_code(400);
+    echo json_encode(['success' => false, 'error' => 'Ungültige Session-ID']);
     exit;
 }
 

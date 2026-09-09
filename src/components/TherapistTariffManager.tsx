@@ -87,7 +87,8 @@ export const TherapistTariffManager: React.FC<TherapistTariffManagerProps> = ({
     // Check if returning from Stripe checkout or payment redirect
     const urlParams = new URLSearchParams(window.location.search);
     const paymentStatus = urlParams.get('payment');
-    const sessionId = urlParams.get('session_id');
+    const rawSessionIds = urlParams.getAll('session_id');
+    const sessionId = rawSessionIds.find(s => s && s !== '{CHECKOUT_SESSION_ID}' && !s.includes('CHECKOUT_SESSION_ID')) || null;
     const stripeStatus = urlParams.get('stripe_status');
 
     if (paymentStatus === 'cancelled' || stripeStatus === 'cancelled') {
@@ -125,11 +126,11 @@ export const TherapistTariffManager: React.FC<TherapistTariffManagerProps> = ({
             }, 6000);
             window.history.replaceState({}, document.title, window.location.pathname);
           });
-      } else {
-        setSuccessMessage(t('therapistPaymentSuccessMsg'));
-        setTimeout(() => setSuccessMessage(null), 5000);
+      } else if (paymentStatus === 'success') {
+        // Returned without a valid session ID
+        setErrorMessage(t('therapistPaymentErrorDesc'));
+        setTimeout(() => setErrorMessage(null), 6000);
         window.history.replaceState({}, document.title, window.location.pathname);
-        loadBillingData();
       }
     }
 
