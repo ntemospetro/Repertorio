@@ -2253,5 +2253,6 @@ export const it = {
   adminStripeSimTargetPlan: "Tariffa di destinazione",
   adminStripeSimulateBtn: "Simula subito la transazione di test",
   adminStripeSimSuccess: "Transazione di test eseguita con successo e registrata.",
-  adminStripeSimNotice: "Nota: Gli utenti clienti non possono effettuare pagamenti in modalità test. Tutti i test sono limitati a questa console di amministrazione."
+  adminStripeSimNotice: "Nota: Gli utenti clienti non possono effettuare pagamenti in modalità test. Tutti i test sono limitati a questa console di amministrazione.",
+  tariffDowngradeToFreeForbidden: "Il ritorno al piano gratuito non è più possibile dopo un aggiornamento."
 };

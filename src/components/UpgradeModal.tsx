@@ -20,7 +20,11 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
   therapist,
 }) => {
   const { t } = useTranslation();
-  const plans = getPackagePlans().filter(p => p.isActive !== false);
+  const currentTariffId = therapist?.tarifId || therapist?.tarif;
+  const isFreeTier = !currentTariffId || currentTariffId === 'free' || currentTariffId === 'free_trial';
+  const plans = getPackagePlans()
+    .filter(p => p.isActive !== false)
+    .filter(p => isFreeTier || !(p.id === 'free' || p.id === 'free_trial' || (p.price === 0 && !p.isUnlimited)));
 
   if (!isOpen) return null;
 

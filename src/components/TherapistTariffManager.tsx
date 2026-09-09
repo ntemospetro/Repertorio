@@ -70,7 +70,16 @@ export const TherapistTariffManager: React.FC<TherapistTariffManagerProps> = ({
   // Determine if therapist is on a free plan
   const currentPlanId = therapist.tarifId || therapist.tarif;
   const currentPlan = packagePlans.find(p => p.id === currentPlanId) || packagePlans.find(p => p.id === 'free_trial');
-  const isFreeTier = currentPlan?.price === 0 || currentPlan?.billingPeriod === 'free' || therapist.tarif === 'free_trial' || therapist.tarif === 'free';
+  const isFreeTier = !currentPlan || currentPlan.id === 'free' || currentPlan.id === 'free_trial' || (currentPlan.price === 0 && !currentPlan.isUnlimited) || therapist.tarif === 'free' || therapist.tarif === 'free_trial';
+
+  // If the therapist already has an upgraded/paid tariff, the free tier option completely disappears
+  const visiblePackagePlans = packagePlans.filter((plan) => {
+    const isPlanFree = plan.id === 'free' || plan.id === 'free_trial' || (plan.price === 0 && !plan.isUnlimited);
+    if (!isFreeTier && isPlanFree) {
+      return false;
+    }
+    return true;
+  });
 
   const loadBillingData = async () => {
     setLoadingBilling(true);
@@ -225,6 +234,14 @@ export const TherapistTariffManager: React.FC<TherapistTariffManagerProps> = ({
       return;
     }
 
+    // Downgrade to free tier is strictly forbidden if therapist has already upgraded
+    const isPlanFree = plan.id === 'free' || plan.id === 'free_trial' || (plan.price === 0 && !plan.isUnlimited);
+    if (!isFreeTier && isPlanFree) {
+      setErrorMessage(t('tariffDowngradeToFreeForbidden'));
+      setTimeout(() => setErrorMessage(null), 5000);
+      return;
+    }
+
     const calculation = calculateUpgradeCost(plan);
     if (calculation.toPay > 0) {
       // Open modal showing pro-rata calculation and payment step
@@ -233,7 +250,7 @@ export const TherapistTariffManager: React.FC<TherapistTariffManagerProps> = ({
       setModalStep('overview');
       setPaymentFormError(null);
     } else {
-      // Free switch or downgrade
+      // Free switch
       const updated = assignPackageToTherapist(therapist.id, plan.id, resetUsageOnSwitch);
       if (updated) {
         if (onTariffChanged) onTariffChanged(updated);
@@ -498,7 +515,7 @@ export const TherapistTariffManager: React.FC<TherapistTariffManagerProps> = ({
                     Guthaben über Stripe aufladen
                   </span>
                   <p className="text-xs text-slate-600 mb-4">
-                    Sichere Zahlung per Kreditkarte oder SEPA-Lastschrift über Stripe Checkout. Ihr Guthaben wird in Echtzeit gutgeschrieben.
+                    Sichere Zahlung per Kredit- oder Debitkarte über Stripe Checkout. Ihr Guthaben wird in Echtzeit gutgeschrieben.
                   </p>
 
                   {/* Quick Preset Buttons */}
@@ -628,7 +645,7 @@ export const TherapistTariffManager: React.FC<TherapistTariffManagerProps> = ({
 
         {/* Tarife Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {packagePlans.map((plan) => {
+          {visiblePackagePlans.map((plan) => {
             const isCurrent = (therapist.tarifId || therapist.tarif) === plan.id;
             const isHighlighted = plan.badge === 'Beliebt' || plan.badge === 'Flatrate' || plan.isUnlimited;
 

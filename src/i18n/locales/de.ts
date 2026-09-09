@@ -2259,5 +2259,6 @@ export const de = {
   adminStripeSimTargetPlan: "Ziel-Tarif",
   adminStripeSimulateBtn: "Test-Transaktion jetzt simulieren",
   adminStripeSimSuccess: "Test-Transaktion erfolgreich durchgeführt und im Protokoll verbucht.",
-  adminStripeSimNotice: "Hinweis: Kunden-Benutzer können im Testmodus keine Buchungen vornehmen. Alle Testläufe sind auf diese Admin-Konsole beschränkt."
+  adminStripeSimNotice: "Hinweis: Kunden-Benutzer können im Testmodus keine Buchungen vornehmen. Alle Testläufe sind auf diese Admin-Konsole beschränkt.",
+  tariffDowngradeToFreeForbidden: "Ein Wechsel zurück zum kostenlosen Tarif ist nach einem Upgrade nicht mehr möglich."
 };

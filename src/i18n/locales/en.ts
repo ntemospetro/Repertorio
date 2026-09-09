@@ -2259,5 +2259,6 @@ export const en = {
   adminStripeSimTargetPlan: "Target Tariff",
   adminStripeSimulateBtn: "Simulate Test Transaction Now",
   adminStripeSimSuccess: "Test transaction executed successfully and logged in records.",
-  adminStripeSimNotice: "Notice: Client users cannot make bookings in test mode. All test runs are restricted to this Admin Console."
+  adminStripeSimNotice: "Notice: Client users cannot make bookings in test mode. All test runs are restricted to this Admin Console.",
+  tariffDowngradeToFreeForbidden: "Downgrading back to the free plan is not possible after an upgrade."
 };

@@ -2253,5 +2253,6 @@ export const fr = {
   adminStripeSimTargetPlan: "Forfait cible",
   adminStripeSimulateBtn: "Simuler la transaction de test maintenant",
   adminStripeSimSuccess: "Transaction de test exécutée avec succès et enregistrée.",
-  adminStripeSimNotice: "Remarque : Les clients ne peuvent pas effectuer de réservations en mode test. Tous les tests sont réservés à cette console d'administration."
+  adminStripeSimNotice: "Remarque : Les clients ne peuvent pas effectuer de réservations en mode test. Tous les tests sont réservés à cette console d'administration.",
+  tariffDowngradeToFreeForbidden: "Le retour au forfait gratuit n'est plus possible après une mise à niveau."
 };

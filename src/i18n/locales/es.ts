@@ -2253,5 +2253,6 @@ export const es = {
   adminStripeSimTargetPlan: "Tarifa de destino",
   adminStripeSimulateBtn: "Simular transacción de prueba ahora",
   adminStripeSimSuccess: "Transacción de prueba ejecutada con éxito y registrada.",
-  adminStripeSimNotice: "Nota: Los usuarios clientes no pueden realizar reservas en modo de prueba. Todas las pruebas están restringidas a esta consola de administración."
+  adminStripeSimNotice: "Nota: Los usuarios clientes no pueden realizar reservas en modo de prueba. Todas las pruebas están restringidas a esta consola de administración.",
+  tariffDowngradeToFreeForbidden: "No es posible volver al plan gratuito después de haber actualizado."
 };
