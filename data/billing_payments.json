@@ -1,6 +1,30 @@
 [
   {
     "therapistId": "th-101",
+    "therapistName": "th-101",
+    "amountEur": 20,
+    "type": "manual_reload",
+    "status": "succeeded",
+    "stripeSessionId": "cs_sandbox_topup123",
+    "note": "Sandbox-Zahlung bestätigt: +20.00 €",
+    "id": "pay-1788956406595-93754",
+    "createdAt": "2026-09-09T12:20:06.595Z",
+    "month": "2026-09"
+  },
+  {
+    "therapistId": "th-101",
+    "therapistName": "th-101",
+    "amountEur": 59,
+    "type": "package_purchase",
+    "status": "succeeded",
+    "stripeSessionId": "cs_sandbox_test123",
+    "note": "Tarif-Upgrade bestätigt: 59.00 €",
+    "id": "pay-1788956396804-8w5ft",
+    "createdAt": "2026-09-09T12:19:56.804Z",
+    "month": "2026-09"
+  },
+  {
+    "therapistId": "th-101",
     "therapistName": "Therapeut",
     "amountEur": 25,
     "type": "manual_reload",

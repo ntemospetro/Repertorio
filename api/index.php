@@ -2132,6 +2132,38 @@ function creditDepositPhp($params) {
     return $balances[$therapistId];
 }
 
+function recordTariffUpgradePaymentPhp($params) {
+    $therapistId = $params['therapistId'] ?? 'th-101';
+    $amountEur = max(0.0, (float)($params['amountEur'] ?? 0));
+    $targetTariffId = $params['targetTariffId'] ?? 'pro_monthly';
+    $stripeSessionId = $params['stripeSessionId'] ?? null;
+    $stripePaymentIntentId = $params['stripePaymentIntentId'] ?? null;
+    $paymentMethod = $params['paymentMethod'] ?? 'card';
+    $note = $params['note'] ?? ("Tarif-Upgrade auf " . $targetTariffId . ": " . number_format($amountEur, 2, '.', '') . " €");
+
+    $payments = getStoredBillingPayments();
+    $newPayment = [
+        'id' => 'pay-' . round(microtime(true) * 1000) . '-' . substr(md5(uniqid()), 0, 5),
+        'therapistId' => $therapistId,
+        'therapistName' => $params['therapistName'] ?? $therapistId,
+        'therapistEmail' => $params['therapistEmail'] ?? '',
+        'amountEur' => $amountEur,
+        'type' => 'package_purchase',
+        'targetTariffId' => $targetTariffId,
+        'paymentMethod' => $paymentMethod,
+        'status' => 'paid',
+        'stripeSessionId' => $stripeSessionId,
+        'stripePaymentIntentId' => $stripePaymentIntentId,
+        'createdAt' => date('c'),
+        'month' => date('Y-m'),
+        'note' => $note
+    ];
+    array_unshift($payments, $newPayment);
+    saveStoredBillingPayments(array_slice($payments, 0, 100));
+
+    return $newPayment;
+}
+
 // =========================================================================
 // ROUTE 16: STRIPE CONFIGURATION (/api/admin/stripe/config)
 // =========================================================================
@@ -2385,27 +2417,54 @@ if ($route === 'billing/verify-session' || $route === 'verify-session' || $route
             $sessType = $sessionData['metadata']['type'] ?? 'manual_reload';
             $targetTariffId = $sessionData['metadata']['targetTariffId'] ?? null;
 
-            creditDepositPhp([
-                'therapistId' => $sessTherapistId,
-                'therapistName' => $sessionData['metadata']['therapistName'] ?? 'Therapeut',
-                'therapistEmail' => $sessionData['customer_details']['email'] ?? ($sessionData['customer_email'] ?? ''),
-                'amountEur' => $sessAmount,
-                'type' => $sessType,
-                'stripeSessionId' => $sessionData['id'],
-                'stripePaymentIntentId' => $sessionData['payment_intent'] ?? null,
-                'note' => 'Stripe Zahlung bestätigt: +' . number_format($sessAmount, 2, '.', '') . ' €'
-            ]);
+            if ($sessType === 'package_purchase') {
+                recordTariffUpgradePaymentPhp([
+                    'therapistId' => $sessTherapistId,
+                    'therapistName' => $sessionData['metadata']['therapistName'] ?? 'Therapeut',
+                    'therapistEmail' => $sessionData['customer_details']['email'] ?? ($sessionData['customer_email'] ?? ''),
+                    'amountEur' => $sessAmount,
+                    'targetTariffId' => $targetTariffId,
+                    'stripeSessionId' => $sessionData['id'],
+                    'stripePaymentIntentId' => $sessionData['payment_intent'] ?? null,
+                    'note' => 'Stripe Tarif-Upgrade bezahlt: ' . number_format($sessAmount, 2, '.', '') . ' €'
+                ]);
 
-            echo json_encode([
-                'success' => true,
-                'status' => 'paid',
-                'credited' => true,
-                'amountEur' => $sessAmount,
-                'therapistId' => $sessTherapistId,
-                'targetTariffId' => $targetTariffId,
-                'type' => $sessType
-            ]);
-            exit;
+                echo json_encode([
+                    'success' => true,
+                    'status' => 'paid',
+                    'credited' => false,
+                    'upgraded' => true,
+                    'amountEur' => $sessAmount,
+                    'therapistId' => $sessTherapistId,
+                    'targetTariffId' => $targetTariffId,
+                    'type' => 'package_purchase',
+                    'message' => 'Tarif-Upgrade erfolgreich bezahlt und freigeschaltet.'
+                ]);
+                exit;
+            } else {
+                creditDepositPhp([
+                    'therapistId' => $sessTherapistId,
+                    'therapistName' => $sessionData['metadata']['therapistName'] ?? 'Therapeut',
+                    'therapistEmail' => $sessionData['customer_details']['email'] ?? ($sessionData['customer_email'] ?? ''),
+                    'amountEur' => $sessAmount,
+                    'type' => $sessType,
+                    'stripeSessionId' => $sessionData['id'],
+                    'stripePaymentIntentId' => $sessionData['payment_intent'] ?? null,
+                    'note' => 'Stripe Zahlung bestätigt: +' . number_format($sessAmount, 2, '.', '') . ' €'
+                ]);
+
+                echo json_encode([
+                    'success' => true,
+                    'status' => 'paid',
+                    'credited' => true,
+                    'upgraded' => false,
+                    'amountEur' => $sessAmount,
+                    'therapistId' => $sessTherapistId,
+                    'targetTariffId' => null,
+                    'type' => $sessType
+                ]);
+                exit;
+            }
         } else {
             http_response_code(400);
             echo json_encode([
@@ -2417,25 +2476,54 @@ if ($route === 'billing/verify-session' || $route === 'verify-session' || $route
         }
     }
 
-    // Sandbox Confirmation
+    // Sandbox / Internal Confirmation
     if (strpos($sessionId, 'cs_sandbox_') === 0 || strpos($sessionId, 'cs_offline_') === 0) {
-        creditDepositPhp([
-            'therapistId' => $therapistId,
-            'amountEur' => $amountEur,
-            'type' => 'manual_reload',
-            'stripeSessionId' => $sessionId,
-            'note' => 'Sandbox-Zahlung bestätigt: +' . number_format($amountEur, 2, '.', '') . ' €'
-        ]);
+        $reqType = $_GET['type'] ?? '';
+        $targetTariffId = $_GET['targetTariffId'] ?? ($_GET['target_tariff_id'] ?? null);
+        $isUpgrade = ($reqType === 'package_purchase' || !empty($targetTariffId));
 
-        echo json_encode([
-            'success' => true,
-            'status' => 'paid',
-            'credited' => true,
-            'amountEur' => $amountEur,
-            'therapistId' => $therapistId,
-            'type' => 'manual_reload'
-        ]);
-        exit;
+        if ($isUpgrade) {
+            recordTariffUpgradePaymentPhp([
+                'therapistId' => $therapistId,
+                'amountEur' => $amountEur,
+                'targetTariffId' => $targetTariffId ?? 'pro_monthly',
+                'stripeSessionId' => $sessionId,
+                'paymentMethod' => $_GET['paymentMethod'] ?? 'card',
+                'note' => 'Tarif-Upgrade bestätigt: ' . number_format($amountEur, 2, '.', '') . ' €'
+            ]);
+
+            echo json_encode([
+                'success' => true,
+                'status' => 'paid',
+                'credited' => false,
+                'upgraded' => true,
+                'amountEur' => $amountEur,
+                'therapistId' => $therapistId,
+                'targetTariffId' => $targetTariffId,
+                'type' => 'package_purchase',
+                'message' => 'Tarif-Upgrade erfolgreich autorisiert und aktiviert.'
+            ]);
+            exit;
+        } else {
+            creditDepositPhp([
+                'therapistId' => $therapistId,
+                'amountEur' => $amountEur,
+                'type' => 'manual_reload',
+                'stripeSessionId' => $sessionId,
+                'note' => 'Guthaben-Aufladung bestätigt: +' . number_format($amountEur, 2, '.', '') . ' €'
+            ]);
+
+            echo json_encode([
+                'success' => true,
+                'status' => 'paid',
+                'credited' => true,
+                'upgraded' => false,
+                'amountEur' => $amountEur,
+                'therapistId' => $therapistId,
+                'type' => 'manual_reload'
+            ]);
+            exit;
+        }
     }
 
     http_response_code(400);

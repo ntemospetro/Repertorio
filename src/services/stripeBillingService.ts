@@ -402,7 +402,7 @@ export async function createCheckoutSession(params: {
   // Graceful local fallback if backend endpoint returned 404 or network is unavailable
   const mockSessionId = 'cs_sandbox_' + Date.now();
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
-  const successUrl = params.successUrl || `${origin}/?payment=success&session_id=${mockSessionId}&therapistId=${params.therapistId}`;
+  const successUrl = params.successUrl || `${origin}/?payment=success&session_id=${mockSessionId}&therapistId=${params.therapistId}&amount=${amount}&type=${params.type || 'manual_reload'}${params.targetTariffId ? `&targetTariffId=${encodeURIComponent(params.targetTariffId)}` : ''}`;
 
   return {
     sessionId: mockSessionId,
@@ -414,7 +414,16 @@ export async function createCheckoutSession(params: {
   };
 }
 
-export async function verifyStripeCheckoutSession(sessionId: string, therapistId?: string): Promise<{
+export async function verifyStripeCheckoutSession(
+  sessionId: string,
+  therapistId?: string,
+  options?: {
+    targetTariffId?: string;
+    type?: string;
+    amountEur?: number;
+    paymentMethod?: string;
+  }
+): Promise<{
   success: boolean;
   status?: string;
   amountEur?: number;
@@ -422,13 +431,24 @@ export async function verifyStripeCheckoutSession(sessionId: string, therapistId
   targetTariffId?: string;
   type?: string;
   message?: string;
+  credited?: boolean;
+  upgraded?: boolean;
 }> {
   if (!sessionId || sessionId === '{CHECKOUT_SESSION_ID}' || sessionId.includes('CHECKOUT_SESSION_ID')) {
     return { success: false, message: 'Keine gültige Session-ID übergeben' };
   }
 
+  const queryParams = new URLSearchParams({
+    sessionId,
+    therapistId: therapistId || '',
+  });
+  if (options?.targetTariffId) queryParams.set('targetTariffId', options.targetTariffId);
+  if (options?.type) queryParams.set('type', options.type);
+  if (options?.amountEur !== undefined) queryParams.set('amount', String(options.amountEur));
+  if (options?.paymentMethod) queryParams.set('paymentMethod', options.paymentMethod);
+
   try {
-    const res = await fetch(`/api/billing/verify-session?sessionId=${encodeURIComponent(sessionId)}&therapistId=${encodeURIComponent(therapistId || '')}`);
+    const res = await fetch(`/api/billing/verify-session?${queryParams.toString()}`);
     if (res.ok) {
       const data = await res.json();
       if (data.success && data.credited && typeof window !== 'undefined') {
@@ -442,12 +462,17 @@ export async function verifyStripeCheckoutSession(sessionId: string, therapistId
 
   // If in sandbox mode or test mode
   if (sessionId.startsWith('cs_sandbox_') || sessionId.startsWith('cs_offline_')) {
+    const isUpgrade = options?.type === 'package_purchase' || Boolean(options?.targetTariffId);
     return {
       success: true,
-      status: 'complete',
-      amountEur: 20,
+      status: 'paid',
+      credited: !isUpgrade,
+      upgraded: isUpgrade,
+      amountEur: options?.amountEur || 20,
       therapistId: therapistId || 'th-101',
-      message: 'Sandbox-Zahlung bestätigt'
+      targetTariffId: options?.targetTariffId,
+      type: options?.type || (isUpgrade ? 'package_purchase' : 'manual_reload'),
+      message: isUpgrade ? 'Tarif-Upgrade erfolgreich bestätigt' : 'Sandbox-Zahlung bestätigt'
     };
   }
 

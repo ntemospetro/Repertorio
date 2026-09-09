@@ -1,13 +1,13 @@
 [
   {
     "therapistId": "th-101",
-    "balanceEur": 92.85,
-    "totalDepositedEur": 95,
+    "balanceEur": 112.85,
+    "totalDepositedEur": 115,
     "lowBalanceThreshold": 5,
     "autoReloadEnabled": false,
     "autoReloadAmount": 20,
-    "lastDepositAt": "2026-09-09T10:34:23.088Z",
-    "updatedAt": "2026-09-09T10:34:23.088Z"
+    "lastDepositAt": "2026-09-09T12:20:06.595Z",
+    "updatedAt": "2026-09-09T12:20:06.595Z"
   },
   {
     "therapistId": "th-102",

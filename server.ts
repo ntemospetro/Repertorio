@@ -2544,22 +2544,59 @@ Checkliste für den Patienten:
             const targetTariffId = session.metadata?.targetTariffId;
 
             if (therapistId && amountEur > 0) {
-              creditDepositToBalance({
-                therapistId,
-                therapistName: session.metadata?.therapistName,
-                therapistEmail: session.customer_details?.email || session.customer_email || undefined,
-                amountEur,
-                type,
-                stripeSessionId: session.id,
-                stripePaymentIntentId: typeof session.payment_intent === 'string' ? session.payment_intent : undefined,
-                note: `Stripe Verified: +${amountEur.toFixed(2)} €`
-              });
+              if (type === 'package_purchase') {
+                addPaymentLog({
+                  therapistId,
+                  therapistName: session.metadata?.therapistName || therapistId,
+                  therapistEmail: session.customer_details?.email || session.customer_email || undefined,
+                  amountEur,
+                  type: 'package_purchase',
+                  status: 'succeeded',
+                  stripeSessionId: session.id,
+                  stripePaymentIntentId: typeof session.payment_intent === 'string' ? session.payment_intent : undefined,
+                  note: `Stripe Tarif-Upgrade bezahlt: ${amountEur.toFixed(2)} €`
+                });
+
+                return res.json({
+                  success: true,
+                  status: 'paid',
+                  credited: false,
+                  upgraded: true,
+                  amountEur,
+                  therapistId,
+                  targetTariffId,
+                  type: 'package_purchase',
+                  message: 'Tarif-Upgrade erfolgreich bezahlt und aktiviert.'
+                });
+              } else {
+                creditDepositToBalance({
+                  therapistId,
+                  therapistName: session.metadata?.therapistName,
+                  therapistEmail: session.customer_details?.email || session.customer_email || undefined,
+                  amountEur,
+                  type,
+                  stripeSessionId: session.id,
+                  stripePaymentIntentId: typeof session.payment_intent === 'string' ? session.payment_intent : undefined,
+                  note: `Stripe Verified: +${amountEur.toFixed(2)} €`
+                });
+
+                return res.json({
+                  success: true,
+                  status: 'paid',
+                  credited: true,
+                  upgraded: false,
+                  amountEur,
+                  therapistId,
+                  targetTariffId,
+                  type
+                });
+              }
             }
 
             return res.json({
               success: true,
               status: 'paid',
-              credited: true,
+              credited: false,
               amountEur,
               therapistId,
               targetTariffId,
@@ -2582,6 +2619,33 @@ Checkliste für den Patienten:
       if (sessionId.startsWith('cs_sandbox_') || sessionId.startsWith('cs_offline_')) {
         const therapistId = therapistIdParam || 'th-101';
         const amountEur = parseFloat((req.query.amount as string) || '20') || 20;
+        const reqType = (req.query.type as string) || '';
+        const targetTariffId = (req.query.targetTariffId as string) || (req.query.target_tariff_id as string) || undefined;
+        const isUpgrade = reqType === 'package_purchase' || Boolean(targetTariffId);
+
+        if (isUpgrade) {
+          addPaymentLog({
+            therapistId,
+            therapistName: therapistId,
+            amountEur,
+            type: 'package_purchase',
+            status: 'succeeded',
+            stripeSessionId: sessionId,
+            note: `Tarif-Upgrade bestätigt: ${amountEur.toFixed(2)} €`
+          });
+
+          return res.json({
+            success: true,
+            status: 'paid',
+            credited: false,
+            upgraded: true,
+            amountEur,
+            therapistId,
+            targetTariffId,
+            type: 'package_purchase',
+            message: 'Tarif-Upgrade erfolgreich autorisiert und aktiviert.'
+          });
+        }
 
         creditDepositToBalance({
           therapistId,
@@ -2595,6 +2659,7 @@ Checkliste für den Patienten:
           success: true,
           status: 'paid',
           credited: true,
+          upgraded: false,
           amountEur,
           therapistId,
           type: 'manual_reload'

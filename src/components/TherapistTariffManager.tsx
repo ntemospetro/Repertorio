@@ -10,6 +10,7 @@ import {
   Infinity as InfinityIcon, 
   Layers, 
   ArrowRight,
+  ArrowLeft,
   RotateCcw,
   CreditCard,
   Coins,
@@ -18,7 +19,9 @@ import {
   PlusCircle,
   ShieldCheck,
   X,
-  Lock
+  Lock,
+  Building2,
+  LockKeyhole
 } from 'lucide-react';
 import {
   fetchTherapistBalance,
@@ -52,9 +55,25 @@ export const TherapistTariffManager: React.FC<TherapistTariffManagerProps> = ({
   const [showCustomTopUp, setShowCustomTopUp] = useState<boolean>(false);
   const [autoReloadActive, setAutoReloadActive] = useState<boolean>(false);
 
-  // Pro-rata Upgrade Modal State
+  // Payment Modal State
   const [upgradeTargetPlan, setUpgradeTargetPlan] = useState<PackagePlan | null>(null);
+  const [topUpModalAmount, setTopUpModalAmount] = useState<number | null>(null);
   const [upgradeLoading, setUpgradeLoading] = useState<boolean>(false);
+  const [modalStep, setModalStep] = useState<'overview' | 'payment_details'>('overview');
+  const [paymentMethod, setPaymentMethod] = useState<'card' | 'sepa'>('card');
+  const [cardHolder, setCardHolder] = useState<string>(
+    `${therapist.vorname || ''} ${therapist.nachname || ''}`.trim() || 'Dr. Med. Therapeut'
+  );
+  const [cardNumber, setCardNumber] = useState<string>('4242 4242 4242 4242');
+  const [cardExpiry, setCardExpiry] = useState<string>('12/28');
+  const [cardCvc, setCardCvc] = useState<string>('888');
+  const [sepaAccountHolder, setSepaAccountHolder] = useState<string>(
+    `${therapist.vorname || ''} ${therapist.nachname || ''}`.trim() || 'Dr. Med. Therapeut'
+  );
+  const [sepaIban, setSepaIban] = useState<string>('DE89 3704 0044 0532 0130 00');
+  const [sepaBic, setSepaBic] = useState<string>('BYLADEM1001');
+  const [sepaMandateAccepted, setSepaMandateAccepted] = useState<boolean>(true);
+  const [paymentFormError, setPaymentFormError] = useState<string | null>(null);
 
   // Determine if therapist is on a free plan
   const currentPlanId = therapist.tarifId || therapist.tarif;
@@ -90,6 +109,9 @@ export const TherapistTariffManager: React.FC<TherapistTariffManagerProps> = ({
     const rawSessionIds = urlParams.getAll('session_id');
     const sessionId = rawSessionIds.find(s => s && s !== '{CHECKOUT_SESSION_ID}' && !s.includes('CHECKOUT_SESSION_ID')) || null;
     const stripeStatus = urlParams.get('stripe_status');
+    const returnType = urlParams.get('type') || '';
+    const returnTargetTariffId = urlParams.get('targetTariffId') || urlParams.get('target_tariff_id') || '';
+    const returnAmount = parseFloat(urlParams.get('amount') || '0') || 0;
 
     if (paymentStatus === 'cancelled' || stripeStatus === 'cancelled') {
       setErrorMessage(t('therapistPaymentCancelledMsg'));
@@ -98,18 +120,32 @@ export const TherapistTariffManager: React.FC<TherapistTariffManagerProps> = ({
     } else if (paymentStatus === 'success' || stripeStatus === 'success' || sessionId) {
       // Verify payment with Stripe backend before crediting or updating
       if (sessionId) {
-        verifyStripeCheckoutSession(sessionId, therapist.id)
+        verifyStripeCheckoutSession(sessionId, therapist.id, {
+          targetTariffId: returnTargetTariffId,
+          type: returnType,
+          amountEur: returnAmount
+        })
           .then((res) => {
             if (res.success) {
-              setSuccessMessage(t('therapistPaymentSuccessMsg'));
-              if (res.targetTariffId) {
-                const targetPlan = packagePlans.find(p => p.id === res.targetTariffId);
+              const finalTargetId = res.targetTariffId || returnTargetTariffId;
+              const isUpgrade = res.upgraded || res.type === 'package_purchase' || Boolean(finalTargetId);
+
+              if (isUpgrade && finalTargetId) {
+                const targetPlan = packagePlans.find(p => p.id === finalTargetId);
                 if (targetPlan) {
                   const updated = assignPackageToTherapist(therapist.id, targetPlan.id, resetUsageOnSwitch);
                   if (updated && onTariffChanged) {
                     onTariffChanged(updated);
                   }
+                  setSuccessMessage(t('tariffUpgradeSuccessMsg', {
+                    planName: targetPlan.name,
+                    amount: (res.amountEur || returnAmount || targetPlan.price).toFixed(2)
+                  }));
                 }
+              } else {
+                setSuccessMessage(t('paymentTopUpSuccessMsg', {
+                  amount: (res.amountEur || returnAmount || 20).toFixed(2)
+                }));
               }
               loadBillingData();
             } else {
@@ -139,37 +175,16 @@ export const TherapistTariffManager: React.FC<TherapistTariffManagerProps> = ({
     };
   }, [therapist.id]);
 
-  const handleTopUp = async (amount: number) => {
+  const handleTopUp = (amount: number) => {
     if (isFreeTier) {
       setErrorMessage(t('therapistFreeTierNoTopUp'));
       setTimeout(() => setErrorMessage(null), 5000);
       return;
     }
-
-    setTopUpLoading(true);
-    setErrorMessage(null);
-    try {
-      const session = await createCheckoutSession({
-        therapistId: therapist.id,
-        amountEur: amount,
-        type: 'manual_reload',
-        therapistEmail: therapist.email,
-        therapistName: `${therapist.vorname || ''} ${therapist.nachname || ''}`.trim(),
-      });
-
-      if (session?.url && session.mode === 'stripe') {
-        window.location.href = session.url;
-      } else if (session?.url && session.mode === 'sandbox') {
-        window.location.href = session.url;
-      } else {
-        setErrorMessage(t('therapistPaymentErrorDesc'));
-      }
-    } catch (err) {
-      console.error('Top-up error:', err);
-      setErrorMessage(t('therapistPaymentErrorDesc'));
-    } finally {
-      setTopUpLoading(false);
-    }
+    setTopUpModalAmount(amount);
+    setUpgradeTargetPlan(null);
+    setModalStep('payment_details');
+    setPaymentFormError(null);
   };
 
   const handleToggleAutoReload = async () => {
@@ -220,8 +235,11 @@ export const TherapistTariffManager: React.FC<TherapistTariffManagerProps> = ({
 
     const calculation = calculateUpgradeCost(plan);
     if (calculation.toPay > 0) {
-      // Open modal showing pro-rata calculation and Stripe payment option
+      // Open modal showing pro-rata calculation and payment step
       setUpgradeTargetPlan(plan);
+      setTopUpModalAmount(null);
+      setModalStep('overview');
+      setPaymentFormError(null);
     } else {
       // Free switch or downgrade
       const updated = assignPackageToTherapist(therapist.id, plan.id, resetUsageOnSwitch);
@@ -233,38 +251,88 @@ export const TherapistTariffManager: React.FC<TherapistTariffManagerProps> = ({
     }
   };
 
-  const handleExecuteUpgradePayment = async () => {
-    if (!upgradeTargetPlan) return;
-    const { toPay } = calculateUpgradeCost(upgradeTargetPlan);
+  const handleExecutePayment = async () => {
+    setPaymentFormError(null);
 
-    if (toPay <= 0) {
-      const updated = assignPackageToTherapist(therapist.id, upgradeTargetPlan.id, resetUsageOnSwitch);
-      if (updated && onTariffChanged) onTariffChanged(updated);
-      setUpgradeTargetPlan(null);
-      setSuccessMessage(`Erfolgreich auf den Tarif "${upgradeTargetPlan.name}" gewechselt!`);
-      setTimeout(() => setSuccessMessage(null), 4000);
-      return;
+    // Form validation
+    if (paymentMethod === 'card') {
+      const cleanNum = cardNumber.replace(/\D/g, '');
+      if (!cardHolder.trim() || cleanNum.length < 12) {
+        setPaymentFormError(t('paymentCardValidationErr'));
+        return;
+      }
+    } else {
+      const cleanIban = sepaIban.replace(/\s+/g, '');
+      if (!sepaAccountHolder.trim() || cleanIban.length < 15) {
+        setPaymentFormError(t('paymentIbanValidationErr'));
+        return;
+      }
+      if (!sepaMandateAccepted) {
+        setPaymentFormError('Bitte akzeptieren Sie das SEPA-Lastschriftmandat.');
+        return;
+      }
     }
 
     setUpgradeLoading(true);
+
+    const isUpgrade = Boolean(upgradeTargetPlan);
+    const amountToPay = isUpgrade 
+      ? calculateUpgradeCost(upgradeTargetPlan!).toPay 
+      : (topUpModalAmount || 20);
+    const targetTariffId = isUpgrade ? upgradeTargetPlan!.id : undefined;
+    const paymentType = isUpgrade ? 'package_purchase' : 'manual_reload';
+
     try {
       const session = await createCheckoutSession({
         therapistId: therapist.id,
-        amountEur: toPay,
-        type: 'package_purchase',
-        targetTariffId: upgradeTargetPlan.id,
+        amountEur: amountToPay,
+        type: paymentType,
+        targetTariffId,
         therapistEmail: therapist.email,
         therapistName: `${therapist.vorname || ''} ${therapist.nachname || ''}`.trim(),
       });
 
-      if (session?.url) {
+      if (session?.url && session.mode === 'stripe') {
         window.location.href = session.url;
-      } else {
-        setErrorMessage(t('therapistPaymentErrorDesc'));
+        return;
       }
-    } catch (err) {
-      console.error('Upgrade checkout failed:', err);
-      setErrorMessage(t('therapistPaymentErrorDesc'));
+
+      // Direct verification (Sandbox/Internal Mode)
+      const verifyRes = await verifyStripeCheckoutSession(
+        session?.sessionId || ('cs_sandbox_' + Date.now()),
+        therapist.id,
+        {
+          targetTariffId,
+          type: paymentType,
+          amountEur: amountToPay,
+          paymentMethod
+        }
+      );
+
+      if (verifyRes.success) {
+        if (isUpgrade && upgradeTargetPlan) {
+          const updated = assignPackageToTherapist(therapist.id, upgradeTargetPlan.id, resetUsageOnSwitch);
+          if (updated && onTariffChanged) {
+            onTariffChanged(updated);
+          }
+          setSuccessMessage(t('tariffUpgradeSuccessMsg', { 
+            planName: upgradeTargetPlan.name, 
+            amount: amountToPay.toFixed(2) 
+          }));
+        } else {
+          setSuccessMessage(t('paymentTopUpSuccessMsg', { 
+            amount: amountToPay.toFixed(2) 
+          }));
+        }
+        await loadBillingData();
+        setUpgradeTargetPlan(null);
+        setTopUpModalAmount(null);
+      } else {
+        setPaymentFormError(verifyRes.message || t('therapistPaymentErrorDesc'));
+      }
+    } catch (err: any) {
+      console.error('Payment execution failed:', err);
+      setPaymentFormError(t('therapistPaymentErrorDesc'));
     } finally {
       setUpgradeLoading(false);
     }
@@ -451,9 +519,9 @@ export const TherapistTariffManager: React.FC<TherapistTariffManagerProps> = ({
             {isFreeTier ? (
               <div className="h-full flex flex-col justify-between">
                 <div>
-                  <div className="flex items-center gap-2 text-amber-800 font-bold text-sm mb-1.5">
-                    <Lock className="w-4 h-4 text-amber-600" />
-                    <span>{t('therapistPaymentErrorTitle')}</span>
+                  <div className="flex items-center gap-2 text-slate-800 font-bold text-sm mb-1.5">
+                    <Sparkles className="w-4 h-4 text-teal-600" />
+                    <span>{t('therapistFreeTierCardTitle')}</span>
                   </div>
                   <p className="text-xs text-slate-600 leading-relaxed mb-4">
                     {t('therapistFreeTierNoTopUp')}
@@ -721,31 +789,43 @@ export const TherapistTariffManager: React.FC<TherapistTariffManagerProps> = ({
         </div>
       </div>
 
-      {/* 4. PRO-RATA TARIFF UPGRADE MODAL */}
-      {upgradeTargetPlan && (() => {
-        const calc = calculateUpgradeCost(upgradeTargetPlan);
+      {/* 4. PROFESSIONAL PAYMENT & UPGRADE MODAL */}
+      {(upgradeTargetPlan || topUpModalAmount) && (() => {
+        const isUpgrade = Boolean(upgradeTargetPlan);
+        const calc = upgradeTargetPlan ? calculateUpgradeCost(upgradeTargetPlan) : null;
+        const amountToPay = isUpgrade ? (calc?.toPay ?? 0) : (topUpModalAmount ?? 20);
+
+        const handleCloseModal = () => {
+          if (upgradeLoading) return;
+          setUpgradeTargetPlan(null);
+          setTopUpModalAmount(null);
+          setPaymentFormError(null);
+        };
 
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fadeIn">
-            <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden">
+            <div className="bg-white rounded-2xl max-w-xl w-full shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
               {/* Header */}
-              <div className="p-6 bg-gradient-to-r from-slate-900 to-teal-950 text-white flex items-center justify-between">
+              <div className="p-5 bg-gradient-to-r from-slate-900 via-slate-800 to-teal-950 text-white flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-teal-500/20 flex items-center justify-center text-teal-300">
-                    <Sparkles className="w-5 h-5" />
+                    {isUpgrade ? <Sparkles className="w-5 h-5" /> : <Coins className="w-5 h-5" />}
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold">
-                      {t('tariffUpgradeModalTitle')}
+                    <h3 className="text-base sm:text-lg font-bold">
+                      {isUpgrade ? t('tariffUpgradeModalTitle') : t('paymentMethodModalTitle')}
                     </h3>
                     <p className="text-xs text-slate-300 mt-0.5">
-                      {currentPlan?.name || 'Aktueller Tarif'} ➔ {upgradeTargetPlan.name}
+                      {isUpgrade 
+                        ? `${currentPlan?.name || 'Aktueller Tarif'} ➔ ${upgradeTargetPlan?.name}`
+                        : `Guthaben-Aufladung (+${amountToPay.toFixed(2)} €)`
+                      }
                     </p>
                   </div>
                 </div>
                 <button
                   type="button"
-                  onClick={() => setUpgradeTargetPlan(null)}
+                  onClick={handleCloseModal}
                   disabled={upgradeLoading}
                   className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
                 >
@@ -753,74 +833,309 @@ export const TherapistTariffManager: React.FC<TherapistTariffManagerProps> = ({
                 </button>
               </div>
 
-              {/* Body: Calculation details */}
-              <div className="p-6 space-y-4 text-slate-800">
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  {calc.oldPrice > 0 
-                    ? t('tariffUpgradeExplanation', { remaining: calc.remainingCredit.toFixed(2), newPrice: calc.newPrice.toFixed(2) })
-                    : t('tariffUpgradeFreeExplanation', { newPrice: calc.newPrice.toFixed(2) })}
-                </p>
-
-                <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-2.5 text-xs">
-                  <div className="flex justify-between items-center text-slate-600">
-                    <span>{t('tariffUpgradeNewPrice')}:</span>
-                    <span className="font-bold text-slate-900 font-mono text-sm">{calc.newPrice.toFixed(2)} €</span>
-                  </div>
-
-                  {calc.oldPrice > 0 && (
-                    <>
-                      <div className="flex justify-between items-center text-slate-600">
-                        <span>{t('tariffUpgradeOldPrice')}:</span>
-                        <span className="font-mono text-slate-700">{calc.oldPrice.toFixed(2)} €</span>
-                      </div>
-                      <div className="flex justify-between items-center text-slate-600">
-                        <span>{t('tariffUpgradeConsumed')}:</span>
-                        <span className="font-mono text-slate-700">- {calc.consumedAmount.toFixed(2)} €</span>
-                      </div>
-                      <div className="flex justify-between items-center text-teal-700 font-medium pt-1 border-t border-slate-200">
-                        <span>{t('tariffUpgradeRemainingCredit')}:</span>
-                        <span className="font-mono font-bold">{calc.remainingCredit.toFixed(2)} €</span>
-                      </div>
-                    </>
-                  )}
-
-                  <div className="flex justify-between items-center pt-2 border-t-2 border-slate-300 text-slate-900 font-bold text-sm">
-                    <span className="text-slate-900">{t('tariffUpgradeAmountToPay')}:</span>
-                    <span className="text-emerald-700 font-extrabold text-base font-mono">{calc.toPay.toFixed(2)} €</span>
-                  </div>
+              {/* Step Navigation Tabs (only for Upgrade) */}
+              {isUpgrade && (
+                <div className="flex border-b border-slate-200 bg-slate-50 text-xs font-semibold shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => { if (!upgradeLoading) setModalStep('overview'); }}
+                    className={`flex-1 py-3 px-4 text-center border-b-2 transition-colors cursor-pointer flex items-center justify-center gap-2 ${
+                      modalStep === 'overview'
+                        ? 'border-teal-600 text-teal-700 bg-white font-bold'
+                        : 'border-transparent text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    <span>{t('paymentStepTariff')}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { if (!upgradeLoading) setModalStep('payment_details'); }}
+                    className={`flex-1 py-3 px-4 text-center border-b-2 transition-colors cursor-pointer flex items-center justify-center gap-2 ${
+                      modalStep === 'payment_details'
+                        ? 'border-teal-600 text-teal-700 bg-white font-bold'
+                        : 'border-transparent text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    <LockKeyhole className="w-3.5 h-3.5" />
+                    <span>2. {t('paymentStepDetails')}</span>
+                  </button>
                 </div>
+              )}
 
-                <div className="p-3 bg-teal-50 border border-teal-200 rounded-xl flex items-start gap-2.5 text-xs text-teal-900">
-                  <ShieldCheck className="w-4 h-4 text-teal-600 shrink-0 mt-0.5" />
-                  <span>
-                    {t('tariffUpgradePaymentNotice')}
-                  </span>
-                </div>
+              {/* Scrollable Body */}
+              <div className="p-6 space-y-4 overflow-y-auto">
+                {/* STEP 1: Overview & Pro-Rata (Only for Upgrade) */}
+                {isUpgrade && modalStep === 'overview' && calc && (
+                  <div className="space-y-4">
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                      {calc.oldPrice > 0 
+                        ? t('tariffUpgradeExplanation', { remaining: calc.remainingCredit.toFixed(2), newPrice: calc.newPrice.toFixed(2) })
+                        : t('tariffUpgradeFreeExplanation', { newPrice: calc.newPrice.toFixed(2) })}
+                    </p>
+
+                    <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-2.5 text-xs">
+                      <div className="flex justify-between items-center text-slate-600">
+                        <span>{t('tariffUpgradeNewPrice')}:</span>
+                        <span className="font-bold text-slate-900 font-mono text-sm">{calc.newPrice.toFixed(2)} €</span>
+                      </div>
+
+                      {calc.oldPrice > 0 && (
+                        <>
+                          <div className="flex justify-between items-center text-slate-600">
+                            <span>{t('tariffUpgradeOldPrice')}:</span>
+                            <span className="font-mono text-slate-700">{calc.oldPrice.toFixed(2)} €</span>
+                          </div>
+                          <div className="flex justify-between items-center text-slate-600">
+                            <span>{t('tariffUpgradeConsumed')}:</span>
+                            <span className="font-mono text-slate-700">- {calc.consumedAmount.toFixed(2)} €</span>
+                          </div>
+                          <div className="flex justify-between items-center text-teal-700 font-medium pt-1 border-t border-slate-200">
+                            <span>{t('tariffUpgradeRemainingCredit')}:</span>
+                            <span className="font-mono font-bold">{calc.remainingCredit.toFixed(2)} €</span>
+                          </div>
+                        </>
+                      )}
+
+                      <div className="flex justify-between items-center pt-2 border-t-2 border-slate-300 text-slate-900 font-bold text-sm">
+                        <span className="text-slate-900">{t('tariffUpgradeAmountToPay')}:</span>
+                        <span className="text-emerald-700 font-extrabold text-base font-mono">{calc.toPay.toFixed(2)} €</span>
+                      </div>
+                    </div>
+
+                    <div className="p-3 bg-teal-50 border border-teal-200 rounded-xl flex items-start gap-2.5 text-xs text-teal-900">
+                      <ShieldCheck className="w-4 h-4 text-teal-600 shrink-0 mt-0.5" />
+                      <span>{t('tariffUpgradePaymentNotice')}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* STEP 2: Bank / Card Details */}
+                {(modalStep === 'payment_details' || !isUpgrade) && (
+                  <div className="space-y-4">
+                    {/* Method Selector Tabs */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod('card')}
+                        className={`p-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                          paymentMethod === 'card'
+                            ? 'bg-teal-50/80 border-teal-600 text-teal-900 shadow-xs'
+                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                        }`}
+                      >
+                        <CreditCard className="w-4 h-4 text-teal-600" />
+                        <span>{t('paymentMethodCreditCard')}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod('sepa')}
+                        className={`p-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                          paymentMethod === 'sepa'
+                            ? 'bg-teal-50/80 border-teal-600 text-teal-900 shadow-xs'
+                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                        }`}
+                      >
+                        <Building2 className="w-4 h-4 text-teal-600" />
+                        <span>{t('paymentMethodSepa')}</span>
+                      </button>
+                    </div>
+
+                    {/* Method 1: Credit Card Form */}
+                    {paymentMethod === 'card' && (
+                      <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-3">
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                            {t('cardHolderLabel')}
+                          </label>
+                          <input
+                            type="text"
+                            value={cardHolder}
+                            onChange={(e) => setCardHolder(e.target.value)}
+                            placeholder={t('paymentCardHolderPlaceholder')}
+                            className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-teal-600 font-medium"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                            {t('cardNumberLabel')}
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="text"
+                              value={cardNumber}
+                              onChange={(e) => setCardNumber(e.target.value)}
+                              placeholder={t('paymentCardNumberPlaceholder')}
+                              maxLength={19}
+                              className="w-full pl-9 pr-3 py-2 text-xs font-mono font-bold bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-teal-600"
+                            />
+                            <CreditCard className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                              {t('cardExpiryLabel')}
+                            </label>
+                            <input
+                              type="text"
+                              value={cardExpiry}
+                              onChange={(e) => setCardExpiry(e.target.value)}
+                              placeholder={t('paymentCardExpiryPlaceholder')}
+                              maxLength={5}
+                              className="w-full px-3 py-2 text-xs font-mono font-bold bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-teal-600"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                              {t('cardCvcLabel')}
+                            </label>
+                            <input
+                              type="password"
+                              value={cardCvc}
+                              onChange={(e) => setCardCvc(e.target.value)}
+                              placeholder={t('paymentCardCvcPlaceholder')}
+                              maxLength={4}
+                              className="w-full px-3 py-2 text-xs font-mono font-bold bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-teal-600"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Method 2: SEPA Form */}
+                    {paymentMethod === 'sepa' && (
+                      <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-3">
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                            {t('sepaAccountHolderLabel')}
+                          </label>
+                          <input
+                            type="text"
+                            value={sepaAccountHolder}
+                            onChange={(e) => setSepaAccountHolder(e.target.value)}
+                            placeholder={t('paymentCardHolderPlaceholder')}
+                            className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-teal-600 font-medium"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                            {t('sepaIbanLabel')}
+                          </label>
+                          <input
+                            type="text"
+                            value={sepaIban}
+                            onChange={(e) => setSepaIban(e.target.value.toUpperCase())}
+                            placeholder={t('paymentIbanPlaceholder')}
+                            className="w-full px-3 py-2 text-xs font-mono font-bold bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-teal-600 uppercase"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                            {t('sepaBicLabel')}
+                          </label>
+                          <input
+                            type="text"
+                            value={sepaBic}
+                            onChange={(e) => setSepaBic(e.target.value.toUpperCase())}
+                            placeholder={t('paymentBicPlaceholder')}
+                            className="w-full px-3 py-2 text-xs font-mono font-bold bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-teal-600 uppercase"
+                          />
+                        </div>
+
+                        <label className="flex items-start gap-2 pt-2 border-t border-slate-200 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={sepaMandateAccepted}
+                            onChange={(e) => setSepaMandateAccepted(e.target.checked)}
+                            className="mt-0.5 rounded text-teal-600 focus:ring-teal-500"
+                          />
+                          <span className="text-[11px] text-slate-600 leading-snug">
+                            {t('sepaMandateNotice')}
+                          </span>
+                        </label>
+                      </div>
+                    )}
+
+                    {/* Security & Instant Guarantee */}
+                    <div className="p-3 bg-teal-50/70 border border-teal-200 rounded-xl space-y-1 text-xs text-teal-900">
+                      <div className="flex items-center gap-2 font-semibold text-teal-800">
+                        <ShieldCheck className="w-4 h-4 text-teal-600 shrink-0" />
+                        <span>{t('paymentSecurityNote')}</span>
+                      </div>
+                      <p className="text-[11px] text-teal-700 pl-6">
+                        {t('paymentInstantActivation')}
+                      </p>
+                    </div>
+
+                    {/* Validation Error Banner */}
+                    {paymentFormError && (
+                      <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4 shrink-0 text-red-600" />
+                        <span>{paymentFormError}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
-              {/* Actions */}
-              <div className="p-6 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setUpgradeTargetPlan(null)}
-                  disabled={upgradeLoading}
-                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 rounded-xl hover:bg-slate-200/50 transition-colors cursor-pointer"
-                >
-                  Abbrechen
-                </button>
-                <button
-                  type="button"
-                  onClick={handleExecuteUpgradePayment}
-                  disabled={upgradeLoading}
-                  className="px-5 py-2.5 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center gap-2 cursor-pointer"
-                >
-                  {upgradeLoading ? (
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <CreditCard className="w-4 h-4" />
-                  )}
-                  <span>{t('tariffUpgradeConfirmBtn', { amount: calc.toPay.toFixed(2) })}</span>
-                </button>
+              {/* Actions Footer */}
+              <div className="p-5 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-3 shrink-0">
+                {isUpgrade && modalStep === 'payment_details' ? (
+                  <button
+                    type="button"
+                    onClick={() => { setModalStep('overview'); setPaymentFormError(null); }}
+                    disabled={upgradeLoading}
+                    className="px-3.5 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    <span>{t('paymentBackBtn')}</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleCloseModal}
+                    disabled={upgradeLoading}
+                    className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 rounded-xl hover:bg-slate-200/50 transition-colors cursor-pointer"
+                  >
+                    {t('cancel')}
+                  </button>
+                )}
+
+                {isUpgrade && modalStep === 'overview' ? (
+                  <button
+                    type="button"
+                    onClick={() => { setModalStep('payment_details'); setPaymentFormError(null); }}
+                    className="px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center gap-2 cursor-pointer ml-auto"
+                  >
+                    <span>{t('paymentNextToPaymentBtn')}</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleExecutePayment}
+                    disabled={upgradeLoading}
+                    className="px-5 py-2.5 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center gap-2 cursor-pointer ml-auto"
+                  >
+                    {upgradeLoading ? (
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <CreditCard className="w-4 h-4" />
+                    )}
+                    <span>
+                      {isUpgrade 
+                        ? t('paymentSubmitUpgradeBtn', { amount: amountToPay.toFixed(2) })
+                        : t('paymentSubmitTopUpBtn', { amount: amountToPay.toFixed(2) })
+                      }
+                    </span>
+                  </button>
+                )}
               </div>
             </div>
           </div>
