@@ -7,10 +7,17 @@ import {
   getActiveTherapistId,
   setActiveTherapistId,
   getTherapists,
+  saveTherapists,
+  getPatientCases,
+  safeLocalStorageSetItem,
+  STORAGE_KEYS,
+  getPackagePlans,
+  savePackagePlans,
   getSiteConfig,
   getStoredActiveView,
   setStoredActiveView
 } from './services/storage';
+import { initCloudSync } from './services/cloudSyncService';
 import { 
   initNavigation, 
   navigateTo, 
@@ -65,6 +72,21 @@ function AppContent() {
       window.removeEventListener('homoeo_active_therapist_changed', syncState);
       window.removeEventListener('homoeo_admin_auth_changed', syncState);
     };
+  }, []);
+
+  // Initialize Firebase Cloud Sync (Firestore)
+  useEffect(() => {
+    initCloudSync(
+      getTherapists,
+      saveTherapists,
+      () => getPatientCases(),
+      (cases) => {
+        safeLocalStorageSetItem(STORAGE_KEYS.CASES, JSON.stringify(cases));
+        window.dispatchEvent(new Event('homoeo_cases_updated'));
+      },
+      getPackagePlans,
+      savePackagePlans
+    );
   }, []);
 
   // Handle Favicon

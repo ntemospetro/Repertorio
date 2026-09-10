@@ -474,9 +474,9 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = ({
 
   return (
     <div className="w-full space-y-6">
-      {/* Top Header Card (Uniform Falldokumentation Design) */}
+      {/* Top Header Card */}
       <div className="w-full bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs relative overflow-hidden">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
             <div className="w-12 h-12 rounded-2xl bg-teal-700 text-white flex items-center justify-center font-bold text-base shadow-xs shrink-0 font-serif">
               <BookOpen className="w-6 h-6" />
@@ -507,37 +507,6 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = ({
                 <span>{t('tabQuickIntake')}</span>
               </button>
             )}
-          </div>
-        </div>
-
-        {/* Structured 3-Column Meta Grid (Exact match with Falldokumentation's metadata row) */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4 text-xs">
-          <div className="bg-slate-50/70 p-3 rounded-xl border border-slate-100 flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center shrink-0 border border-teal-100/80">
-              <BookOpen className="w-4 h-4" />
-            </div>
-            <div className="min-w-0">
-              <span className="block text-[11px] text-slate-400 font-medium">{t('materiaFeatureLexicon')}</span>
-              <span className="font-semibold text-slate-800 text-xs truncate block">{t('materiaFeatureLexiconSub')}</span>
-            </div>
-          </div>
-          <div className="bg-slate-50/70 p-3 rounded-xl border border-slate-100 flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center shrink-0 border border-teal-100/80">
-              <SlidersHorizontal className="w-4 h-4" />
-            </div>
-            <div className="min-w-0">
-              <span className="block text-[11px] text-slate-400 font-medium">{t('materiaFeatureAuthors')}</span>
-              <span className="font-semibold text-slate-800 text-xs truncate block">{t('materiaFeatureAuthorsSub')}</span>
-            </div>
-          </div>
-          <div className="bg-slate-50/70 p-3 rounded-xl border border-slate-100 flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center shrink-0 border border-teal-100/80">
-              <Pill className="w-4 h-4" />
-            </div>
-            <div className="min-w-0">
-              <span className="block text-[11px] text-slate-400 font-medium">{t('materiaFeaturePotencies')}</span>
-              <span className="font-semibold text-slate-800 text-xs truncate block">{t('materiaFeaturePotenciesSub')}</span>
-            </div>
           </div>
         </div>
       </div>

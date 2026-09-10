@@ -1,4 +1,5 @@
 import { StripeConfig, BillingDepositRecord } from '../types';
+import { cloudSaveTherapistBalance, cloudSavePaymentLog } from './cloudSyncService';
 
 export interface AdminStripeConfigResponse extends StripeConfig {
   secretKeyMasked: string;
@@ -274,6 +275,9 @@ function getLocalBalancesMap(): Record<string, TherapistBillingStatus> {
 function saveLocalBalancesMap(map: Record<string, TherapistBillingStatus>): void {
   try {
     localStorage.setItem(LOCAL_STORAGE_KEYS.THERAPIST_BALANCES, JSON.stringify(map));
+    for (const [id, rec] of Object.entries(map)) {
+      cloudSaveTherapistBalance(id, rec);
+    }
   } catch (e) {}
 }
 
@@ -338,6 +342,7 @@ export function topUpTherapistBalanceLocal(params: {
     };
     paymentsList.unshift(newPayment);
     localStorage.setItem(LOCAL_STORAGE_KEYS.BILLING_PAYMENTS, JSON.stringify(paymentsList.slice(0, 50)));
+    cloudSavePaymentLog(newPayment);
   } catch (e) {}
 
   if (typeof window !== 'undefined') {

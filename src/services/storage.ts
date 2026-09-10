@@ -1,5 +1,12 @@
 import { Therapist, PatientCase, PackagePlan, LanguageCode, AdminCredentials, SiteConfig, EmailConfig, NameChangeRequest, FollowUpEntry, InitialPrescription, ActiveView, TermsPdfArchiveItem, FreeTrialLimitConfig, TrialLimitMode } from '../types';
 import { DEFAULT_TERMS, DEFAULT_TERMS_BY_LANG, getDefaultTermsForLanguage, TermsAndConditions } from '../data/defaultTerms';
+import {
+  cloudSaveTherapist,
+  cloudDeleteTherapist,
+  cloudSaveCase,
+  cloudDeleteCase,
+  cloudDeleteCases
+} from './cloudSyncService';
 
 export const DEFAULT_ADMIN_CREDENTIALS: AdminCredentials = {
   email: 'p.stogian@yahoo.com',
@@ -26,7 +33,7 @@ export const DEFAULT_EMAIL_CONFIG: EmailConfig = {
   popSecure: true,
 };
 
-const STORAGE_KEYS = {
+export const STORAGE_KEYS = {
   THERAPISTS: 'homoeo_saas_therapists_v1',
   ACTIVE_THERAPIST: 'homoeo_saas_active_therapist_id_v1',
   CASES: 'homoeo_saas_cases_v1',
@@ -1110,6 +1117,7 @@ export function createTherapist(data: Omit<Therapist, 'id' | 'tarif' | 'tarifLab
   const updated = [newTherapist, ...current];
   saveTherapists(updated);
   setActiveTherapistId(newTherapist.id);
+  cloudSaveTherapist(newTherapist);
   return newTherapist;
 }
 
@@ -1163,12 +1171,14 @@ export function updateTherapist(id: string, updates: Partial<Therapist>): Therap
 
   current[index] = updatedItem;
   saveTherapists(current);
+  cloudSaveTherapist(updatedItem);
   return updatedItem;
 }
 
 export function deleteTherapist(id: string): void {
   const current = getTherapists().filter(t => t.id !== id);
   saveTherapists(current);
+  cloudDeleteTherapist(id);
   
   const activeId = getActiveTherapistId();
   if (activeId === id) {
@@ -1338,6 +1348,7 @@ export function savePatientCase(caseData: Omit<PatientCase, 'id'> & { id?: strin
   if (newOrUpdated.patientName) {
     recordPatientEdited(newOrUpdated.patientName);
   }
+  cloudSaveCase(newOrUpdated);
   window.dispatchEvent(new Event('homoeo_cases_updated'));
   return newOrUpdated;
 }
@@ -1345,17 +1356,28 @@ export function savePatientCase(caseData: Omit<PatientCase, 'id'> & { id?: strin
 export function deletePatientCase(caseId: string): void {
   const all = getPatientCases().filter(c => c.id !== caseId);
   safeLocalStorageSetItem(STORAGE_KEYS.CASES, JSON.stringify(all));
+  cloudDeleteCase(caseId);
   window.dispatchEvent(new Event('homoeo_cases_updated'));
 }
 
 export function deletePatientAndAllCases(patientName: string, therapistId?: string): void {
   const cleanName = patientName.trim().toLowerCase();
-  const all = getPatientCases().filter(c => {
+  const all = getPatientCases();
+  const toDeleteIds = all.filter(c => {
+    const isSameTherapist = !therapistId || c.therapistId === therapistId;
+    return isSameTherapist && (c.patientName || '').trim().toLowerCase() === cleanName;
+  }).map(c => c.id);
+
+  const remaining = all.filter(c => {
     const isSameTherapist = !therapistId || c.therapistId === therapistId;
     if (!isSameTherapist) return true;
     return (c.patientName || '').trim().toLowerCase() !== cleanName;
   });
-  safeLocalStorageSetItem(STORAGE_KEYS.CASES, JSON.stringify(all));
+  safeLocalStorageSetItem(STORAGE_KEYS.CASES, JSON.stringify(remaining));
+
+  if (toDeleteIds.length > 0) {
+    cloudDeleteCases(toDeleteIds);
+  }
 
   // Also remove from recently edited patients
   try {

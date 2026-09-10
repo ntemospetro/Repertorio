@@ -1831,22 +1831,7 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
               <span>{t('tabQuickIntake')}</span>
             </button>
 
-            {/* 4. Medikamente & Analyse */}
-            <button
-              type="button"
-              id="sidebar-nav-tab-medications"
-              onClick={() => handleSelectTab('medications')}
-              className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-3 transition-colors cursor-pointer ${
-                panelTab === 'medications'
-                  ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/50'
-                  : 'text-slate-600 hover:bg-slate-200/50 hover:text-slate-900'
-              }`}
-            >
-              <Pill className="w-4 h-4 text-teal-600" />
-              <span>{t('tabMedications')}</span>
-            </button>
-
-            {/* 5. Materia Medica */}
+            {/* 4. Materia Medica */}
             <button
               type="button"
               id="sidebar-nav-tab-materiamedica"
@@ -1861,7 +1846,7 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
               <span>{t('tabMateriaMedica')}</span>
             </button>
 
-            {/* 6. Repertorium */}
+            {/* 5. Repertorium */}
             <button
               type="button"
               id="sidebar-nav-tab-repertorium"
@@ -1874,6 +1859,21 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
             >
               <Layers className="w-4 h-4 text-teal-600" />
               <span>{t('tabRepertorium')}</span>
+            </button>
+
+            {/* 6. Medikamente & Analyse */}
+            <button
+              type="button"
+              id="sidebar-nav-tab-medications"
+              onClick={() => handleSelectTab('medications')}
+              className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-3 transition-colors cursor-pointer ${
+                panelTab === 'medications'
+                  ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/50'
+                  : 'text-slate-600 hover:bg-slate-200/50 hover:text-slate-900'
+              }`}
+            >
+              <Pill className="w-4 h-4 text-teal-600" />
+              <span>{t('tabMedications')}</span>
             </button>
           </div>
         </div>
