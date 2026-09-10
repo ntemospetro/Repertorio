@@ -2519,4 +2519,9 @@ export const de = {
   repertoriumWeightHeading: "Symptom-Wertigkeit (Grad 1–4, optional):",
   repertoriumClearWeight: "Wertung abwählen",
   repertoriumMatchesLabel: "Repertorium-Treffer:",
+  materiaPaginationPrev: "Vorherige Seite",
+  materiaPaginationNext: "Nächste Seite",
+  materiaPaginationShowing: "Zeige {from}–{to} von {total} Mitteln",
+  materiaLoadMore: "Weitere {count} Mittel anzeigen",
+  materiaPageIndicator: "Seite {current} von {total}",
 };

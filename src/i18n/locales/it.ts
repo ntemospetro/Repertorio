@@ -2513,4 +2513,9 @@ export const it = {
   repertoriumWeightHeading: "Gradazione del sintomo (Grado 1–4, facoltativo):",
   repertoriumClearWeight: "Deseleziona gradazione",
   repertoriumMatchesLabel: "Risultati del repertorio:",
+  materiaPaginationPrev: "Pagina precedente",
+  materiaPaginationNext: "Pagina successiva",
+  materiaPaginationShowing: "Mostrando {from}–{to} di {total} rimedi",
+  materiaLoadMore: "Mostra altri {count} rimedi",
+  materiaPageIndicator: "Pagina {current} di {total}",
 };

@@ -2519,4 +2519,9 @@ export const en = {
   repertoriumWeightHeading: "Symptom Weight (Grade 1–4, optional):",
   repertoriumClearWeight: "Deselect rating",
   repertoriumMatchesLabel: "Repertory hits:",
+  materiaPaginationPrev: "Previous page",
+  materiaPaginationNext: "Next page",
+  materiaPaginationShowing: "Showing {from}–{to} of {total} remedies",
+  materiaLoadMore: "Show {count} more remedies",
+  materiaPageIndicator: "Page {current} of {total}",
 };

@@ -2513,4 +2513,9 @@ export const es = {
   repertoriumWeightHeading: "Valoración del síntoma (Grado 1–4, opcional):",
   repertoriumClearWeight: "Deseleccionar valoración",
   repertoriumMatchesLabel: "Aciertos del repertorio:",
+  materiaPaginationPrev: "Página anterior",
+  materiaPaginationNext: "Página siguiente",
+  materiaPaginationShowing: "Mostrando {from}–{to} de {total} remedios",
+  materiaLoadMore: "Mostrar {count} remedios más",
+  materiaPageIndicator: "Página {current} de {total}",
 };

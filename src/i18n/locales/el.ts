@@ -2513,4 +2513,9 @@ export const el = {
   repertoriumWeightHeading: "Βαθμολόγηση συμπτώματος (Βαθμός 1–4, προαιρετικό):",
   repertoriumClearWeight: "Αποεπιλογή βαθμολόγησης",
   repertoriumMatchesLabel: "Αποτελέσματα ρεπερτορίου:",
+  materiaPaginationPrev: "Προηγούμενη σελίδα",
+  materiaPaginationNext: "Επόμενη σελίδα",
+  materiaPaginationShowing: "Εμφάνιση {from}–{to} από {total} ιάματα",
+  materiaLoadMore: "Εμφάνιση άλλων {count} ιαμάτων",
+  materiaPageIndicator: "Σελίδα {current} από {total}",
 };

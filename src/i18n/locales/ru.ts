@@ -2513,4 +2513,9 @@ export const ru = {
   repertoriumWeightHeading: "Оценка симптома (Степень 1–4, опционально):",
   repertoriumClearWeight: "Снять оценку",
   repertoriumMatchesLabel: "Совпадений в репертории:",
+  materiaPaginationPrev: "Предыдущая страница",
+  materiaPaginationNext: "Следующая страница",
+  materiaPaginationShowing: "Показано {from}–{to} из {total} препаратов",
+  materiaLoadMore: "Показать ещё {count} препаратов",
+  materiaPageIndicator: "Страница {current} из {total}",
 };

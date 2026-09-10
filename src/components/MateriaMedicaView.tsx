@@ -205,12 +205,16 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = ({
   const [isRecording, setIsRecording] = useState(false);
   const [recordSecondsLeft, setRecordSecondsLeft] = useState(60);
   const [recommendations, setRecommendations] = useState<SymptomMatchResult[]>([]);
-  const [isSpeechSupported, setIsSpeechSupported] = useState(true);
+  const [isSpeechSupported] = useState<boolean>(() => isSpeechRecognitionSupported());
   const [copySuccess, setCopySuccess] = useState<string | null>(null);
   const [showClarificationModal, setShowClarificationModal] = useState(false);
   const [acuteAnswers, setAcuteAnswers] = useState<AcuteAnswers>({});
   const [diffResult, setDiffResult] = useState<DifferentialDiagnosisResult | null>(null);
   const [showExcludedInView, setShowExcludedInView] = useState<boolean>(false);
+
+  // Pagination for Lexicon to ensure sub-millisecond tab switching & instant rendering
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const pageSize = 24;
 
   const recognitionRef = useRef<SpeechRecognitionSession | null>(null);
   const timerIntervalRef = useRef<number | null>(null);
@@ -218,10 +222,6 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = ({
   const lastSpokenTranscriptRef = useRef<string>('');
   const isFinalizingRef = useRef<boolean>(false);
   const modalBodyRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    setIsSpeechSupported(isSpeechRecognitionSupported());
-  }, []);
 
   // Fetch localized remedies based on active language
   const localizedRemedies = useMemo(() => {
@@ -457,6 +457,19 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = ({
     return Array.from(new Set(localizedRemedies.map((r) => r.latinName[0].toUpperCase()))).sort();
   }, [localizedRemedies]);
 
+  // Reset pagination to page 1 whenever filters or search change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedCategory, selectedAuthor, selectedLetter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredRemedies.length / pageSize));
+  const currentSafePage = Math.min(Math.max(1, currentPage), totalPages);
+
+  const paginatedRemedies = useMemo(() => {
+    const start = (currentSafePage - 1) * pageSize;
+    return filteredRemedies.slice(start, start + pageSize);
+  }, [filteredRemedies, currentSafePage, pageSize]);
+
   const authors = [
     { key: 'all' as ClassicalAuthorFilterKey, label: t('filterAuthorAll') },
     { key: 'hahnemann' as ClassicalAuthorFilterKey, label: t('filterAuthorHahnemann') },
@@ -660,6 +673,11 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = ({
             <span>
               {t('showingRemediesCount')}: <strong className="text-slate-800">{filteredRemedies.length}</strong> /{' '}
               {localizedRemedies.length}
+              {totalPages > 1 && (
+                <span className="ml-2 text-teal-800 font-semibold">
+                  • {t('materiaPageIndicator', { current: String(currentSafePage), total: String(totalPages) })}
+                </span>
+              )}
             </span>
             {(searchQuery || selectedAuthor !== 'all' || selectedCategory !== 'all' || selectedLetter !== 'all') && (
               <button
@@ -680,7 +698,7 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = ({
 
           {/* Remedies Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {filteredRemedies.map((remedy) => (
+            {paginatedRemedies.map((remedy) => (
               <div
                 key={remedy.id}
                 className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between group hover:border-teal-300"
@@ -793,6 +811,102 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = ({
               </div>
             ))}
           </div>
+
+          {/* Pagination Controls */}
+          {filteredRemedies.length > pageSize && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-slate-200">
+              <div className="text-xs text-slate-500 font-medium">
+                {t('materiaPaginationShowing', {
+                  from: String((currentSafePage - 1) * pageSize + 1),
+                  to: String(Math.min(currentSafePage * pageSize, filteredRemedies.length)),
+                  total: String(filteredRemedies.length)
+                })}
+              </div>
+
+              <div className="flex items-center gap-1.5 flex-wrap justify-center">
+                <button
+                  type="button"
+                  id="mm-pagination-prev-btn"
+                  onClick={() => {
+                    setCurrentPage((prev) => Math.max(1, prev - 1));
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  disabled={currentSafePage <= 1}
+                  className={`px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1 transition-all ${
+                    currentSafePage <= 1
+                      ? 'border-slate-200 text-slate-300 bg-slate-50 cursor-not-allowed'
+                      : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700 cursor-pointer shadow-2xs'
+                  }`}
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>{t('materiaPaginationPrev')}</span>
+                </button>
+
+                {/* Page Numbers */}
+                {(() => {
+                  const pages: (number | string)[] = [];
+                  if (totalPages <= 7) {
+                    for (let i = 1; i <= totalPages; i++) pages.push(i);
+                  } else {
+                    pages.push(1);
+                    if (currentSafePage > 3) pages.push('ellipsis-start');
+                    const start = Math.max(2, currentSafePage - 1);
+                    const end = Math.min(totalPages - 1, currentSafePage + 1);
+                    for (let i = start; i <= end; i++) pages.push(i);
+                    if (currentSafePage < totalPages - 2) pages.push('ellipsis-end');
+                    pages.push(totalPages);
+                  }
+
+                  return pages.map((p, idx) => {
+                    if (typeof p === 'string') {
+                      return (
+                        <span key={`el-${idx}`} className="px-2 py-1 text-slate-400 text-xs font-semibold select-none">
+                          ...
+                        </span>
+                      );
+                    }
+                    const isCurrent = p === currentSafePage;
+                    return (
+                      <button
+                        key={`page-${p}`}
+                        id={`mm-pagination-page-${p}`}
+                        type="button"
+                        onClick={() => {
+                          setCurrentPage(p);
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }}
+                        className={`w-8 h-8 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                          isCurrent
+                            ? 'bg-teal-700 text-white shadow-xs'
+                            : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200/80 shadow-2xs'
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    );
+                  });
+                })()}
+
+                <button
+                  type="button"
+                  id="mm-pagination-next-btn"
+                  onClick={() => {
+                    setCurrentPage((prev) => Math.min(totalPages, prev + 1));
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  disabled={currentSafePage >= totalPages}
+                  className={`px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1 transition-all ${
+                    currentSafePage >= totalPages
+                      ? 'border-slate-200 text-slate-300 bg-slate-50 cursor-not-allowed'
+                      : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700 cursor-pointer shadow-2xs'
+                  }`}
+                >
+                  <span>{t('materiaPaginationNext')}</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
 
           {filteredRemedies.length === 0 && (
             <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center space-y-3">

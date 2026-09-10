@@ -2513,4 +2513,9 @@ export const fr = {
   repertoriumWeightHeading: "Valorisation du symptôme (Degré 1–4, optionnel) :",
   repertoriumClearWeight: "Désélectionner l'évaluation",
   repertoriumMatchesLabel: "Résultats du répertoire :",
+  materiaPaginationPrev: "Page précédente",
+  materiaPaginationNext: "Page suivante",
+  materiaPaginationShowing: "Affichage de {from} à {to} sur {total} remèdes",
+  materiaLoadMore: "Afficher {count} remèdes de plus",
+  materiaPageIndicator: "Page {current} sur {total}",
 };
