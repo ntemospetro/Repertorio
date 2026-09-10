@@ -19,11 +19,17 @@ import {
   Copy,
   AlertCircle,
   FilterX,
-  Scissors
+  Scissors,
+  HelpCircle,
+  ChevronDown
 } from 'lucide-react';
 import { useTranslation, useLanguage } from '../i18n/LanguageContext';
 import { LocalizedRemedy, getLocalizedRemedies } from '../data/materiaMedicaData';
 import { RemedyMonographModal } from './RemedyMonographModal';
+import { 
+  findGuidedAnamnesisTopic, 
+  GuidedAnamnesisTopic 
+} from '../data/guidedAnamnesisQuestions';
 import { 
   RepertoriumSymptomInput, 
   SymptomWeightGrade, 
@@ -402,6 +408,173 @@ export const RepertoriumView: React.FC<RepertoriumViewProps> = ({
                               className="w-full px-3 py-2 text-xs bg-white rounded-lg border border-slate-200 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 text-slate-900 placeholder:text-slate-400 outline-none transition-all shadow-2xs font-medium"
                             />
                           </div>
+
+                          {/* Dynamic Guided Anamnesis Dropdown Questions for Pillars 1-4 */}
+                          {(() => {
+                            const topic = findGuidedAnamnesisTopic(symptom.chiefComplaint || symptom.text || '');
+                            if (!topic) return null;
+
+                            return (
+                              <div className="p-3 bg-teal-50/70 rounded-xl border border-teal-200/90 space-y-3 mt-2 shadow-2xs">
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-6 h-6 rounded-md bg-teal-600 text-white flex items-center justify-center shrink-0">
+                                      <HelpCircle className="w-3.5 h-3.5" />
+                                    </div>
+                                    <div>
+                                      <span className="text-[11px] font-bold text-teal-950 block">
+                                        {t('repertoriumGuidedAssistantTitle')}
+                                      </span>
+                                      <span className="text-[10px] text-teal-700 block">
+                                        {t('repertoriumGuidedAssistantSubtitle')}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-100 text-teal-900 border border-teal-300 shrink-0">
+                                    {topic.chiefComplaint[language] || topic.chiefComplaint.de}
+                                  </span>
+                                </div>
+
+                                <div className="space-y-2.5 pt-1 border-t border-teal-200/60">
+                                  {/* Pillar 1 Dropdown (Wo & Wie?) */}
+                                  <div className="space-y-1">
+                                    <div className="flex items-center justify-between text-[11px] font-semibold text-slate-800">
+                                      <span className="flex items-center gap-1.5 text-sky-800">
+                                        <MapPin className="w-3 h-3 text-sky-600" />
+                                        <span>{topic.pillar1.title[language] || topic.pillar1.title.de}</span>
+                                      </span>
+                                      <span className="text-[10px] text-slate-500 italic">
+                                        {topic.pillar1.question[language] || topic.pillar1.question.de}
+                                      </span>
+                                    </div>
+                                    <div className="relative">
+                                      <select
+                                        id={`repertorium-guided-${symptom.id}-p1`}
+                                        className="w-full appearance-none px-3 py-2 pr-8 text-xs bg-white text-slate-900 rounded-lg border border-slate-300 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none shadow-2xs font-medium cursor-pointer transition-colors"
+                                        value={
+                                          topic.pillar1.options.find(opt => opt.pillarValue === symptom.location)?.id || ''
+                                        }
+                                        onChange={(e) => {
+                                          const selected = topic.pillar1.options.find(opt => opt.id === e.target.value);
+                                          handleUpdatePillar(symptom.id, 'location', selected ? selected.pillarValue : '');
+                                        }}
+                                      >
+                                        <option value="">{t('repertoriumGuidedSelectPlaceholder')}</option>
+                                        {topic.pillar1.options.map(opt => (
+                                          <option key={opt.id} value={opt.id}>
+                                            {opt.label[language] || opt.label.de} {opt.remediesHint}
+                                          </option>
+                                        ))}
+                                      </select>
+                                      <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-2.5 pointer-events-none" />
+                                    </div>
+                                  </div>
+
+                                  {/* Pillar 2 Dropdown (Besser / Schlechter?) */}
+                                  <div className="space-y-1">
+                                    <div className="flex items-center justify-between text-[11px] font-semibold text-slate-800">
+                                      <span className="flex items-center gap-1.5 text-emerald-800">
+                                        <Sliders className="w-3 h-3 text-emerald-600" />
+                                        <span>{topic.pillar2.title[language] || topic.pillar2.title.de}</span>
+                                      </span>
+                                      <span className="text-[10px] text-slate-500 italic">
+                                        {topic.pillar2.question[language] || topic.pillar2.question.de}
+                                      </span>
+                                    </div>
+                                    <div className="relative">
+                                      <select
+                                        id={`repertorium-guided-${symptom.id}-p2`}
+                                        className="w-full appearance-none px-3 py-2 pr-8 text-xs bg-white text-slate-900 rounded-lg border border-slate-300 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none shadow-2xs font-medium cursor-pointer transition-colors"
+                                        value={
+                                          topic.pillar2.options.find(opt => opt.pillarValue === symptom.modalities)?.id || ''
+                                        }
+                                        onChange={(e) => {
+                                          const selected = topic.pillar2.options.find(opt => opt.id === e.target.value);
+                                          handleUpdatePillar(symptom.id, 'modalities', selected ? selected.pillarValue : '');
+                                        }}
+                                      >
+                                        <option value="">{t('repertoriumGuidedSelectPlaceholder')}</option>
+                                        {topic.pillar2.options.map(opt => (
+                                          <option key={opt.id} value={opt.id}>
+                                            {opt.label[language] || opt.label.de} {opt.remediesHint}
+                                          </option>
+                                        ))}
+                                      </select>
+                                      <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-2.5 pointer-events-none" />
+                                    </div>
+                                  </div>
+
+                                  {/* Pillar 3 Dropdown (Begleitsymptome?) */}
+                                  <div className="space-y-1">
+                                    <div className="flex items-center justify-between text-[11px] font-semibold text-slate-800">
+                                      <span className="flex items-center gap-1.5 text-purple-800">
+                                        <Award className="w-3 h-3 text-purple-600" />
+                                        <span>{topic.pillar3.title[language] || topic.pillar3.title.de}</span>
+                                      </span>
+                                      <span className="text-[10px] text-slate-500 italic">
+                                        {topic.pillar3.question[language] || topic.pillar3.question.de}
+                                      </span>
+                                    </div>
+                                    <div className="relative">
+                                      <select
+                                        id={`repertorium-guided-${symptom.id}-p3`}
+                                        className="w-full appearance-none px-3 py-2 pr-8 text-xs bg-white text-slate-900 rounded-lg border border-slate-300 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none shadow-2xs font-medium cursor-pointer transition-colors"
+                                        value={
+                                          topic.pillar3.options.find(opt => opt.pillarValue === symptom.concomitants)?.id || ''
+                                        }
+                                        onChange={(e) => {
+                                          const selected = topic.pillar3.options.find(opt => opt.id === e.target.value);
+                                          handleUpdatePillar(symptom.id, 'concomitants', selected ? selected.pillarValue : '');
+                                        }}
+                                      >
+                                        <option value="">{t('repertoriumGuidedSelectPlaceholder')}</option>
+                                        {topic.pillar3.options.map(opt => (
+                                          <option key={opt.id} value={opt.id}>
+                                            {opt.label[language] || opt.label.de} {opt.remediesHint}
+                                          </option>
+                                        ))}
+                                      </select>
+                                      <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-2.5 pointer-events-none" />
+                                    </div>
+                                  </div>
+
+                                  {/* Pillar 4 Dropdown (Gemüt / Geist?) */}
+                                  <div className="space-y-1">
+                                    <div className="flex items-center justify-between text-[11px] font-semibold text-slate-800">
+                                      <span className="flex items-center gap-1.5 text-amber-800">
+                                        <Flame className="w-3 h-3 text-amber-600" />
+                                        <span>{topic.pillar4.title[language] || topic.pillar4.title.de}</span>
+                                      </span>
+                                      <span className="text-[10px] text-slate-500 italic">
+                                        {topic.pillar4.question[language] || topic.pillar4.question.de}
+                                      </span>
+                                    </div>
+                                    <div className="relative">
+                                      <select
+                                        id={`repertorium-guided-${symptom.id}-p4`}
+                                        className="w-full appearance-none px-3 py-2 pr-8 text-xs bg-white text-slate-900 rounded-lg border border-slate-300 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none shadow-2xs font-medium cursor-pointer transition-colors"
+                                        value={
+                                          topic.pillar4.options.find(opt => opt.pillarValue === symptom.sensation)?.id || ''
+                                        }
+                                        onChange={(e) => {
+                                          const selected = topic.pillar4.options.find(opt => opt.id === e.target.value);
+                                          handleUpdatePillar(symptom.id, 'sensation', selected ? selected.pillarValue : '');
+                                        }}
+                                      >
+                                        <option value="">{t('repertoriumGuidedSelectPlaceholder')}</option>
+                                        {topic.pillar4.options.map(opt => (
+                                          <option key={opt.id} value={opt.id}>
+                                            {opt.label[language] || opt.label.de} {opt.remediesHint}
+                                          </option>
+                                        ))}
+                                      </select>
+                                      <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-2.5 pointer-events-none" />
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })()}
 
                           {/* Step 1: Säule 1: Lokalisation & Ausstrahlung */}
                           {level >= 1 && (
