@@ -75,7 +75,8 @@ export const RepertoriumView: React.FC<RepertoriumViewProps> = ({
     { key: 'hahnemann' as ClassicalAuthorFilterKey, label: t('filterAuthorHahnemann') },
     { key: 'kent' as ClassicalAuthorFilterKey, label: t('filterAuthorKent') },
     { key: 'hering' as ClassicalAuthorFilterKey, label: t('filterAuthorHering') },
-    { key: 'boericke' as ClassicalAuthorFilterKey, label: t('filterAuthorBoericke') }
+    { key: 'boericke' as ClassicalAuthorFilterKey, label: t('filterAuthorBoericke') },
+    { key: 'boger' as ClassicalAuthorFilterKey, label: t('filterAuthorBoger' as any) || 'Boger' }
   ];
 
   // Compute live repertorisation using Classical Repertory Engine (Hahnemann, Kent, Hering, Boericke)

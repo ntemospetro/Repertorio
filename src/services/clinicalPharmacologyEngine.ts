@@ -2,6 +2,11 @@ import { PatientCase, PatientLifestyleData, MedicationRiskAnalysisResult, Langua
 import { getActiveTherapist } from './storage';
 import { TOP_MEDICATIONS_CATALOG } from '../data/topMedicationsCatalog';
 import {
+  evaluateAmtsMedications,
+  evaluateAmtsPairs,
+  generateAmtsReportMarkdown
+} from './amtsDosageEngine';
+import {
   getLocalizedConstitution,
   getLocalizedLifestyleInteractions,
   getLocalizedDrugPairingRow,
@@ -941,53 +946,33 @@ export function generateDeterministicClinicalComparison(
     }
   }
 
-  tableRows.push(`${lifestyleRowTitle} ${lifeMech} | ${lifeMaternal} | ${lifeFetal} | ${lifeWarn} |`);
+  // 1. RUN QUANTITATIVE AMTS CLINICAL DOSAGE & TOXICOLOGY ENGINE (v5.0)
+  const amtsResult = evaluateAmtsMedications(meds, age, weightKg);
+  const amtsPairs = evaluateAmtsPairs(amtsResult.uniqueSubstances);
 
-  // Construct Markdown Content
-  const markdown = `### ${tpl.warningHeader}
-"${tpl.warningNotice}"
-
-### ${tpl.triageSectionTitle}
-${triageLabel}
-
-**${tpl.holisticNotice}:**
-- **${tpl.factorMedsTitle}:** ${medEvalText}
-- **${tpl.factorConstitutionTitle}:** ${constitutionEvalText}
-- **${tpl.factorPregnancyTitle}:** ${pregEvalText}
-- **${tpl.factorLifestyleTitle}:** ${lifestyleEvalText}
-
-**${tpl.actionTitle}:**
-${coreActionText}
-
-### ${tpl.matrixSectionTitle}
-
-${tpl.tableHeader}
-${tableRows.join('\n')}
-
-### ${tpl.diagnosticSectionTitle}
-${tpl.diagnosticChecklistIntro}
-
-- **${tpl.diagnosticQuestionsTitle}:**
-  - "${tpl.questionComboRisk(meds.map(m => m.name).join(', '))}"
-  ${pkResult.hasDosageRelevance ? `- "${tpl.questionDoseAdjust(pkResult.affectedDrugs.join(', '), weightKg)}"` : ''}
-  ${isPregnant ? `- "${tpl.questionPregnancySafety(pregnancyMonth, trimesterName)}"` : ''}
-  - "${tpl.questionStomachProtection}"
-
-- **${tpl.diagnosticLabTitle}:**
-  - ${tpl.labCbcCoagulation}
-  - ${tpl.labLiverFunction}
-  ${isPregnant ? `- ${tpl.labPrenatalDoppler}` : ''}
-
-- **${tpl.diagnosticEmergencyTitle}:**
-  - ${tpl.emergencyGiBleeding}
-  - ${tpl.emergencyDyspneaSyncope}
-  ${isPregnant ? `- ${tpl.emergencyPregnancyVaginalBleeding}` : ''}`;
+  const amtsReport = generateAmtsReportMarkdown(
+    amtsResult,
+    amtsPairs,
+    {
+      name: patientCase.patientName,
+      age,
+      gender,
+      weightKg,
+      heightCm,
+      bmi,
+      isPregnant,
+      pregnancyMonth,
+      isSmoker: isSmoking,
+      hasAlcohol,
+    },
+    language
+  );
 
   return {
     analyzedAt: new Date().toISOString(),
-    triageLevel,
-    triageLabel,
-    markdownContent: markdown,
+    triageLevel: amtsReport.triageLevel,
+    triageLabel: amtsReport.triageLabel,
+    markdownContent: amtsReport.markdown,
     medicationsSummary: medSummaries,
     patientProfileSummary: {
       age: age || undefined,

@@ -11,11 +11,14 @@ import {
 } from '../services/clinicalPharmacologyEngine';
 import { exportMedicationRiskComparisonPDF } from '../services/pdfExportService';
 import { fetchTranslatedComparison } from '../services/medicationLocalization';
+import { evaluateAmtsMedications } from '../services/amtsDosageEngine';
+import { getPatientCases } from '../services/storage';
 import {
   Scale,
   ShieldAlert,
   ShieldCheck,
   AlertTriangle,
+  AlertOctagon,
   Flame,
   Wine,
   Baby,
@@ -34,6 +37,10 @@ import {
   FileText,
   Minus,
   Plus,
+  User,
+  UserPlus,
+  Search,
+  X,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -263,6 +270,63 @@ export const MedicationMultiComparisonView: React.FC<Props> = ({
     }
   }, [meds]);
 
+  // Quantitative AMTS Dosage Evaluation (Overdose, Organ Impact, Standard Max Doses)
+  const amtsEvaluation = useMemo(() => {
+    return evaluateAmtsMedications(meds, patientAge, currentWeight);
+  }, [meds, patientAge, currentWeight]);
+
+  // Patient Selection & Simulation modal states
+  const [isPatientModalOpen, setIsPatientModalOpen] = useState(false);
+  const [isNewPatientModalOpen, setIsNewPatientModalOpen] = useState(false);
+  const [patientSearchTerm, setPatientSearchTerm] = useState('');
+  const [newPatientForm, setNewPatientForm] = useState({
+    name: '',
+    age: 45,
+    gender: 'weiblich' as 'männlich' | 'weiblich' | 'divers',
+  });
+
+  const storedPatients = useMemo(() => {
+    return getPatientCases();
+  }, [isPatientModalOpen]);
+
+  const filteredPatients = useMemo(() => {
+    if (!patientSearchTerm.trim()) return storedPatients;
+    const q = patientSearchTerm.toLowerCase();
+    return storedPatients.filter(p =>
+      (p.patientName || '').toLowerCase().includes(q) ||
+      (p.hauptbeschwerde || '').toLowerCase().includes(q)
+    );
+  }, [storedPatients, patientSearchTerm]);
+
+  const handleSelectPatient = (p: PatientCase) => {
+    if (onUpdateCase) {
+      onUpdateCase(p);
+    }
+    setIsPatientModalOpen(false);
+    setHasPendingChanges(true);
+  };
+
+  const handleCreateNewPatient = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPatientForm.name.trim()) return;
+    const newCase: Partial<PatientCase> = {
+      id: `sim-${Date.now()}`,
+      patientName: newPatientForm.name.trim(),
+      patientAge: Number(newPatientForm.age) || 45,
+      patientGender: newPatientForm.gender,
+      medikamenteList: [...meds],
+      lifestyleData: {
+        ...lifestyle,
+      },
+    };
+    if (onUpdateCase) {
+      onUpdateCase(newCase);
+    }
+    setIsNewPatientModalOpen(false);
+    setNewPatientForm({ name: '', age: 45, gender: 'weiblich' });
+    setHasPendingChanges(true);
+  };
+
   // Active result displayed
   const activeResult: MedicationRiskAnalysisResult = analysisResult || baselineTriage;
 
@@ -458,10 +522,49 @@ export const MedicationMultiComparisonView: React.FC<Props> = ({
       </div>
 
       {/* ========================================================================= */}
+      {/* 0. NOTFALL-ALARM: TOXISCHE ÜBERDOSIERUNG (AMTS v5.0)                       */}
+      {/* ========================================================================= */}
+      {amtsEvaluation.hasToxicOverdose && (
+        <div className="rounded-2xl border-2 border-red-500 bg-red-50/95 p-4 sm:p-5 shadow-sm text-red-950 flex flex-col sm:flex-row items-start gap-4 animate-in fade-in duration-200">
+          <div className="w-10 h-10 rounded-xl bg-red-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+            <AlertOctagon className="w-6 h-6 animate-pulse" />
+          </div>
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-extrabold text-red-900">
+                {t('medComparisonToxicOverdoseAlert' as TranslationKey) || '🚨 NOTFALL-ALARM: Toxische Überdosierung festgestellt!'}
+              </h3>
+            </div>
+            <p className="text-xs text-red-800 mt-1 font-medium leading-relaxed">
+              {t('medComparisonOverdoseDetail' as TranslationKey) || 'Die berechnete 24h-Gesamttagesdosis übersteigt die behördliche Standard-Höchstdosis (BfArM / Rote Liste). Akute Intoxikationsgefahr!'}
+            </p>
+            <div className="mt-2.5 flex flex-wrap gap-2">
+              {amtsEvaluation.evaluations
+                .filter(e => e.status === 'TOXISCH_UEBERDOSIERT')
+                .map((e, idx) => (
+                  <span
+                    key={idx}
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-red-100 border border-red-300 text-xs font-bold text-red-900 shadow-2xs"
+                  >
+                    <span>{e.drugName}:</span>
+                    <span className="font-mono text-red-700">{e.dailyDoseMg} mg/d</span>
+                    <span className="text-red-500">|</span>
+                    <span className="text-[11px] text-red-600">Max: {e.maxDailyDoseMg} mg/d</span>
+                    <span className="px-1.5 py-0.5 rounded bg-red-600 text-white text-[10px] font-extrabold">
+                      +{e.percentageExceeded}%
+                    </span>
+                  </span>
+                ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
       {/* 1. PATIENTENPROFIL & RISIKOFAKTOREN (5 EINFLUSSFAKTOREN)                  */}
       {/* ========================================================================= */}
       <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-2xs space-y-3.5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
           <div className="flex items-center gap-2">
             <Activity className="w-4 h-4 text-teal-600" />
             <h2 className="text-sm font-bold text-slate-900">
@@ -470,24 +573,49 @@ export const MedicationMultiComparisonView: React.FC<Props> = ({
           </div>
 
           <div className="flex items-center gap-2 text-xs text-slate-600 flex-wrap">
-            <span className="font-semibold text-slate-800">{currentCase.patientName || t('unnamedPatient' as TranslationKey) || 'Patient/in'}</span>
-            {patientAge ? (
-              <>
-                <span className="text-slate-300">•</span>
-                <span>{patientAge} {t('yearsOld' as TranslationKey) || 'Jahre'}</span>
-              </>
-            ) : null}
-            <span className="text-slate-300">•</span>
-            <span className="capitalize">{currentCase.patientGender ? t(`gender${currentCase.patientGender.charAt(0).toUpperCase() + currentCase.patientGender.slice(1)}` as TranslationKey) || currentCase.patientGender : ''}</span>
+            <div className="flex items-center gap-1.5 bg-slate-100/80 px-2.5 py-1 rounded-lg border border-slate-200">
+              <User className="w-3.5 h-3.5 text-slate-500" />
+              <span className="font-semibold text-slate-800">{currentCase.patientName || t('unnamedPatient' as TranslationKey) || 'Patient/in'}</span>
+              {patientAge ? (
+                <>
+                  <span className="text-slate-300">•</span>
+                  <span>{patientAge} {t('yearsOld' as TranslationKey) || 'Jahre'}</span>
+                </>
+              ) : null}
+              <span className="text-slate-300">•</span>
+              <span className="capitalize">{currentCase.patientGender ? t(`gender${currentCase.patientGender.charAt(0).toUpperCase() + currentCase.patientGender.slice(1)}` as TranslationKey) || currentCase.patientGender : ''}</span>
+            </div>
             {bmiDetails && (
-              <>
-                <span className="text-slate-300">•</span>
+              <div className="flex items-center gap-1.5">
                 <span className="font-semibold text-slate-800">BMI {bmiDetails.value}</span>
                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${bmiDetails.badgeClass}`}>
                   {t(bmiDetails.categoryKey)}
                 </span>
-              </>
+              </div>
             )}
+
+            {/* Patient Switch & Simulation Buttons */}
+            <div className="flex items-center gap-1.5 ml-auto sm:ml-2">
+              <button
+                type="button"
+                onClick={() => setIsPatientModalOpen(true)}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 transition-colors shadow-2xs cursor-pointer"
+                title={t('medComparisonSelectPatient' as TranslationKey) || 'Patient wählen / suchen'}
+              >
+                <Search className="w-3 h-3 text-slate-400" />
+                <span>{t('medComparisonSelectPatient' as TranslationKey) || 'Patient wählen'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsNewPatientModalOpen(true)}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 transition-colors shadow-2xs cursor-pointer"
+                title={t('medComparisonNewPatient' as TranslationKey) || 'Neuer Patient / Simulation'}
+              >
+                <UserPlus className="w-3 h-3 text-teal-600" />
+                <span>{t('medComparisonNewPatient' as TranslationKey) || '+ Neu / Simulation'}</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -795,13 +923,23 @@ export const MedicationMultiComparisonView: React.FC<Props> = ({
           </div>
 
           {onOpenMedicationsModal && (
-            <button
-              type="button"
-              onClick={onOpenMedicationsModal}
-              className="text-xs font-bold text-teal-700 hover:text-teal-900 transition-colors cursor-pointer"
-            >
-              + {t('medComparisonEditMedsBtn' as TranslationKey) || 'Medikamente bearbeiten / ergänzen'}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onOpenMedicationsModal}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 transition-colors shadow-2xs cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>{t('medComparisonAddMedicationQuick' as TranslationKey) || '+ Medikament hinzufügen'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={onOpenMedicationsModal}
+                className="text-xs font-semibold text-slate-600 hover:text-slate-900 px-2.5 py-1.5 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                {t('medComparisonEditMedsBtn' as TranslationKey) || 'Medikamente bearbeiten / ergänzen'}
+              </button>
+            </div>
           )}
         </div>
 
@@ -813,19 +951,52 @@ export const MedicationMultiComparisonView: React.FC<Props> = ({
                 <th className="py-2.5 px-3.5">{t('medComparisonColDrugName' as TranslationKey) || 'Präparat / Handelsname'}</th>
                 <th className="py-2.5 px-3.5">{t('medComparisonColActiveSubstance' as TranslationKey) || 'Wirkstoff'}</th>
                 <th className="py-2.5 px-3.5">{t('medComparisonColDosage' as TranslationKey) || 'Dosierung'}</th>
+                <th className="py-2.5 px-3.5">{t('medComparisonSingleDose' as TranslationKey) || 'Einzeldosis'}</th>
+                <th className="py-2.5 px-3.5">{t('medComparisonDailyDose' as TranslationKey) || 'Tagesdosis'}</th>
+                <th className="py-2.5 px-3.5">{t('medComparisonMaxDose' as TranslationKey) || 'Max. Dosis'}</th>
                 <th className="py-2.5 px-3.5">{t('medComparisonColAdministration' as TranslationKey) || 'Einnahmeart'}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {meds.map((m, idx) => (
-                <tr key={idx} className="hover:bg-slate-50/70 transition-colors">
-                  <td className="py-2.5 px-3.5 text-center text-slate-400 font-mono text-[11px]">{idx + 1}</td>
-                  <td className="py-2.5 px-3.5 font-bold text-slate-900">{m.name}</td>
-                  <td className="py-2.5 px-3.5 text-slate-700 font-medium">{m.wirkstoff || '—'}</td>
-                  <td className="py-2.5 px-3.5 font-bold text-teal-900">{m.dosierung || t('medNotSpecified' as TranslationKey) || 'Nicht angegeben'}</td>
-                  <td className="py-2.5 px-3.5 text-slate-600">{m.einnahmeart || 'oral'}</td>
-                </tr>
-              ))}
+              {meds.map((m, idx) => {
+                const evalItem = amtsEvaluation.evaluations[idx];
+                const isOverdosed = evalItem?.status === 'TOXISCH_UEBERDOSIERT';
+                return (
+                  <tr key={idx} className={`transition-colors ${isOverdosed ? 'bg-red-50/70 hover:bg-red-100/60' : 'hover:bg-slate-50/70'}`}>
+                    <td className="py-2.5 px-3.5 text-center text-slate-400 font-mono text-[11px]">{idx + 1}</td>
+                    <td className="py-2.5 px-3.5 font-bold text-slate-900">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span>{m.name}</span>
+                        {isOverdosed && (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-red-600 text-white shadow-2xs">
+                            +{evalItem.percentageExceeded}%
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="py-2.5 px-3.5 text-slate-700 font-medium">{m.wirkstoff || '—'}</td>
+                    <td className="py-2.5 px-3.5 font-bold text-teal-900">{m.dosierung || t('medNotSpecified' as TranslationKey) || 'Nicht angegeben'}</td>
+                    <td className="py-2.5 px-3.5 text-slate-700 font-mono">
+                      {evalItem?.singleDoseMg !== null && evalItem?.singleDoseMg !== undefined
+                        ? `${evalItem.singleDoseMg} mg`
+                        : '—'}
+                    </td>
+                    <td className="py-2.5 px-3.5 font-mono font-bold">
+                      {evalItem?.dailyDoseMg !== null && evalItem?.dailyDoseMg !== undefined ? (
+                        <span className={isOverdosed ? 'text-red-700' : 'text-slate-800'}>
+                          {evalItem.dailyDoseMg} mg/Tag
+                        </span>
+                      ) : (
+                        '—'
+                      )}
+                    </td>
+                    <td className="py-2.5 px-3.5 text-slate-600 font-mono">
+                      {evalItem?.maxDailyDoseMg ? `${evalItem.maxDailyDoseMg} mg/Tag` : '—'}
+                    </td>
+                    <td className="py-2.5 px-3.5 text-slate-600">{m.einnahmeart || 'oral'}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -1173,6 +1344,189 @@ export const MedicationMultiComparisonView: React.FC<Props> = ({
                 {sanitizeMarkdownContent(activeResult.markdownContent)}
               </ReactMarkdown>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: PATIENT AUSWÄHLEN / DURCHSUCHEN                                   */}
+      {/* ========================================================================= */}
+      {isPatientModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden flex flex-col max-h-[85vh]">
+            <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/70">
+              <div className="flex items-center gap-2">
+                <User className="w-4 h-4 text-teal-600" />
+                <h3 className="font-bold text-slate-900 text-sm">
+                  {t('medComparisonSelectPatient' as TranslationKey) || 'Patient wählen / suchen'}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsPatientModalOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-4 border-b border-slate-100 bg-white">
+              <div className="relative">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={patientSearchTerm}
+                  onChange={e => setPatientSearchTerm(e.target.value)}
+                  placeholder={t('medComparisonSearchPatientPlaceholder' as TranslationKey) || 'Patienten nach Name suchen...'}
+                  className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  autoFocus
+                />
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-2 divide-y divide-slate-100">
+              {filteredPatients.length === 0 ? (
+                <div className="py-8 text-center text-xs text-slate-400">
+                  {t('medComparisonNoPatientsFound' as TranslationKey) || 'Keine gespeicherten Patienten gefunden'}
+                </div>
+              ) : (
+                filteredPatients.map(p => {
+                  const isCurrent = p.id === currentCase.id || p.patientName === currentCase.patientName;
+                  return (
+                    <button
+                      key={p.id || p.patientName}
+                      type="button"
+                      onClick={() => handleSelectPatient(p)}
+                      className={`w-full text-left p-3 rounded-xl transition-colors flex items-center justify-between cursor-pointer ${
+                        isCurrent ? 'bg-teal-50/80 text-teal-900 font-bold border border-teal-200' : 'hover:bg-slate-50 text-slate-800'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 shrink-0 font-bold text-xs">
+                          {(p.patientName || 'P').charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <div className="font-bold text-xs text-slate-900">{p.patientName}</div>
+                          <div className="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5">
+                            {p.patientAge && <span>{p.patientAge} {t('yearsOld' as TranslationKey) || 'Jahre'}</span>}
+                            {p.patientGender && <span>• {p.patientGender}</span>}
+                            {p.medikamenteList && (
+                              <span>• {p.medikamenteList.length} {t('medComparisonCountBadge' as TranslationKey) || 'Medikamente'}</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      {isCurrent && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-teal-100 text-teal-800">
+                          {t('activeFilter' as TranslationKey) || 'Aktiv'}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })
+              )}
+            </div>
+
+            <div className="p-3 border-t border-slate-200 bg-slate-50/70 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setIsPatientModalOpen(false)}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 rounded-xl hover:bg-slate-200/60 transition-colors cursor-pointer"
+              >
+                {t('medComparisonCancel' as TranslationKey) || 'Abbrechen'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: NEUER PATIENT / SIMULATION                                        */}
+      {/* ========================================================================= */}
+      {isNewPatientModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+            <form onSubmit={handleCreateNewPatient}>
+              <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/70">
+                <div className="flex items-center gap-2">
+                  <UserPlus className="w-4 h-4 text-teal-600" />
+                  <h3 className="font-bold text-slate-900 text-sm">
+                    {t('medComparisonNewPatientTitle' as TranslationKey) || 'Neuen Patienten für Analyse erfassen'}
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsNewPatientModalOpen(false)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="p-5 space-y-3.5">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    {t('medComparisonPatientNameLabel' as TranslationKey) || 'Name des Patienten'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newPatientForm.name}
+                    onChange={e => setNewPatientForm({ ...newPatientForm, name: e.target.value })}
+                    placeholder="z. B. Max Mustermann (Simulation)"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    autoFocus
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      {t('medComparisonPatientAgeLabel' as TranslationKey) || 'Alter (Jahre)'}
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      max={130}
+                      value={newPatientForm.age}
+                      onChange={e => setNewPatientForm({ ...newPatientForm, age: parseInt(e.target.value, 10) || 0 })}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      {t('medComparisonPatientGenderLabel' as TranslationKey) || 'Geschlecht'}
+                    </label>
+                    <select
+                      value={newPatientForm.gender}
+                      onChange={e => setNewPatientForm({ ...newPatientForm, gender: e.target.value as any })}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    >
+                      <option value="weiblich">{t('genderFemale' as TranslationKey) || 'Weiblich'}</option>
+                      <option value="männlich">{t('genderMale' as TranslationKey) || 'Männlich'}</option>
+                      <option value="divers">{t('genderDiverse' as TranslationKey) || 'Divers'}</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 border-t border-slate-200 bg-slate-50/70 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsNewPatientModalOpen(false)}
+                  className="px-3.5 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 rounded-xl hover:bg-slate-200/60 transition-colors cursor-pointer"
+                >
+                  {t('medComparisonCancel' as TranslationKey) || 'Abbrechen'}
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 text-xs font-bold bg-teal-700 hover:bg-teal-800 text-white rounded-xl shadow-xs transition-colors cursor-pointer"
+                >
+                  {t('medComparisonSavePatient' as TranslationKey) || 'Patient übernehmen'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

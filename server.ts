@@ -26,6 +26,11 @@ import {
   getPaymentLogs,
   addPaymentLog,
 } from "./serverStripe";
+import {
+  evaluateAmtsMedications,
+  evaluateAmtsPairs,
+  generateAmtsReportMarkdown
+} from "./src/services/amtsDosageEngine";
 
 dotenv.config();
 
@@ -1776,18 +1781,36 @@ ${text}`;
     }
   });
 
-  // Clinical Pharmacology Comparison & Multi-Medication Risk Analysis API
+  // Clinical Pharmacology Comparison & Multi-Medication Risk Analysis API (AMTS Engine v5.0)
   app.post("/api/medications/clinical-comparison", async (req, res) => {
     try {
       const { patientCase, lifestyle, language } = req.body;
-      const apiKey = getGeminiApiKey();
-
-      if (!apiKey) {
-        return res.status(503).json({ error: "No API key configured" });
-      }
-
       const meds = patientCase?.medikamenteList || [];
-      const ai = new GoogleGenAI({ apiKey });
+
+      // Patient demographics
+      const patientAge = patientCase?.patientAge !== undefined && patientCase?.patientAge !== null
+        ? Number(patientCase.patientAge)
+        : (() => {
+            const bStr = patientCase?.patientBirthDate || patientCase?.geburtsdatum;
+            if (!bStr) return null;
+            const b = new Date(bStr);
+            if (isNaN(b.getTime())) return null;
+            const diff = new Date().getFullYear() - b.getFullYear();
+            return diff >= 0 && diff <= 130 ? diff : null;
+          })();
+
+      const weightKg = Number(lifestyle?.bodyWeightKg || patientCase?.befundDetails?.gewicht || 70);
+      const heightCm = Number(lifestyle?.bodyHeightCm || patientCase?.patientHeightCm || patientCase?.befundDetails?.groesse || 170);
+      const computedBmi = heightCm > 0 && weightKg > 0 ? parseFloat((weightKg / ((heightCm / 100) ** 2)).toFixed(1)) : undefined;
+
+      const isSmoker = Boolean(lifestyle?.isSmoker || lifestyle?.smokingStatus === 'smoker');
+      const hasAlcohol = Boolean(lifestyle?.alcoholDaily || lifestyle?.alcoholFrequency === 'daily' || (lifestyle?.alcoholFrequency && lifestyle?.alcoholFrequency !== 'never'));
+      const isPregnant = Boolean(lifestyle?.isPregnant || patientCase?.isPregnant);
+      const pregnancyMonth = Number(lifestyle?.pregnancyMonth || patientCase?.pregnancyMonth || 1);
+
+      // 1. DETERMINISTIC AMTS QUANTITATIVE COMPUTATION (BfArM / Rote Liste)
+      const amtsPreCalc = evaluateAmtsMedications(meds, patientAge, weightKg);
+      const pairs = evaluateAmtsPairs(amtsPreCalc.uniqueSubstances);
 
       const targetLang = (language as string) || 'de';
       const langNames: Record<string, string> = {
@@ -1801,76 +1824,128 @@ ${text}`;
       };
       const targetLanguageName = langNames[targetLang] || "German (Deutsch)";
 
-      const isSmoker = Boolean(lifestyle?.isSmoker || lifestyle?.smokingStatus === 'smoker');
-      const hasAlcohol = Boolean(lifestyle?.alcoholDaily || lifestyle?.alcoholFrequency === 'daily' || (lifestyle?.alcoholFrequency && lifestyle?.alcoholFrequency !== 'never'));
+      const apiKey = getGeminiApiKey();
+
+      // If no API key, instantly return high-grade deterministic AMTS report
+      if (!apiKey) {
+        const detReport = generateAmtsReportMarkdown(
+          amtsPreCalc,
+          pairs,
+          {
+            name: patientCase?.patientName,
+            age: patientAge,
+            gender: patientCase?.geschlecht,
+            weightKg,
+            heightCm,
+            bmi: computedBmi,
+            isPregnant,
+            pregnancyMonth,
+            isSmoker,
+            hasAlcohol,
+          },
+          targetLang
+        );
+
+        return res.json({
+          analyzedAt: new Date().toISOString(),
+          triageLevel: detReport.triageLevel,
+          triageLabel: detReport.triageLabel,
+          markdownContent: detReport.markdown,
+          medicationsSummary: meds.map((m: any) => `${m.name} (${m.dosierung || 'Standard'})`),
+          patientProfileSummary: {
+            gender: patientCase?.geschlecht,
+            isPregnant,
+            pregnancyMonth,
+            hasAlcohol,
+            isSmoker,
+            weightKg,
+            heightCm,
+            bmi: computedBmi,
+          }
+        });
+      }
+
+      const ai = new GoogleGenAI({ apiKey });
+
+      // Build explicit quantitative grounding for the LLM
+      const quantitativeGrounding = amtsPreCalc.evaluations.map(e => {
+        return `- ${e.drugName} (${e.substance}): Einzeldosis ${e.singleDoseMg ?? 'k. A.'} mg, Frequenz ${e.frequencyPer24h}x/24h -> Berechnete Gesamttagesdosis: ${e.dailyDoseMg ?? 'k. A.'} mg/Tag | BfArM-Höchstdosis: ${e.maxDailyDoseMg ?? 'Nicht gelistet'} mg/Tag | Überschreitung: ${e.percentageExceeded !== null ? `${e.percentageExceeded}%` : 'Keine'} | Status: ${e.status} (Zielorgan: ${e.targetOrgan}) -> ${e.clinicalRiskSummary}`;
+      }).join('\n');
+
+      const overdoseAlert = amtsPreCalc.hasToxicOverdose
+        ? `🚨 VORBERECHNETE AKUTE ÜBERDOSIERUNG ERKANNT:\n` + amtsPreCalc.evaluations.filter(e => e.status === 'TOXISCH_UEBERDOSIERT').map(e => `* ${e.drugName}: ${e.dailyDoseMg} mg/Tag berechnet vs. ${e.maxDailyDoseMg} mg/Tag Höchstdosis (+${e.percentageExceeded}% Überschreitung). Zielorgan: ${e.targetOrgan}. GEFAHR: ${e.clinicalRiskSummary}`).join('\n')
+        : `Alle verordneten Wirkstoffe liegen innerhalb der überprüfbaren BfArM-Höchstdosen oder Dosis fehlt.`;
 
       const prompt = `
-Du bist ein führender klinischer Pharmakologe und international anerkannter Experte für Arzneimittelsicherheit. Deine Aufgabe ist es, komplexe Patientenprofile, bestehend aus Mehrfachmedikation (inkl. Dosis), Patientendaten (Alter, Geschlecht, Gewicht, Größe, BMI), Schwangerschaftsstatus (inkl. genauer Woche/Monat) und Lebensstilfaktoren (Alkohol ja/nein, Rauchen ja/nein), auf kombinierte Risiken zu analysieren.
+# SYSTEM INSTRUCTIONS: AMTS CLINICAL ANALYSIS ENGINE (v5.0)
+
+Du bist die analytische Komponente der AMTS Clinical Analysis Engine (Arzneimitteltherapiesicherheit), konform mit den Richtlinien des BfArM, der EMA und der Arzneimittelkommission der Deutschen Ärzteschaft (AkdÄ).
+Deine Aufgabe ist es, übermittelte Arzneimitteltherapien strukturiert, konservativ, evidenzbasiert, nachvollziehbar und reproduzierbar zu interpretieren. Du agierst als klinischer Pharmakologe und Toxikologe.
+Halluzinationen und unbegründete Spekulationen sind strengstens untersagt. Wenn Daten fehlen (z.B. Nierenfunktion, Laborwerte), deklariere diesen Parameter explizit als „NICHT_BEURTEILBAR“.
 
 SPRACHANFORDERUNG (STRIKT & VERPFLICHTEND):
-Verfasse die gesamte klinische Analyse und alle Textabschnitte, Überschriften, Tabellenköpfe und Empfehlungen VOLLSTÄNDIG in der Sprache: ${targetLanguageName}.
-Verwende die authentische, exakte medizinisch-pharmakologische Fachterminologie in dieser Sprache (${targetLanguageName}).
+Verfasse die gesamte klinische Analyse und alle Textabschnitte, Tabellen und Empfehlungen VOLLSTÄNDIG in der Zielsprache: ${targetLanguageName}.
 
-Befolge für eine fehlerfreie, professionelle und evidenzbasierte Auswertung strikt folgende medizinisch-fachliche Vorgaben:
-
-1. KEINE ISOLIERTE BETRACHTUNG: Analysiere die kumulative Gesamtwirkung aller verordneten Medikamente und patientenspezifischen Faktoren als Gesamtsynergie im Körper.
-2. ALKOHOL & RAUCHEN (BINÄRE PARAMETER & INTERAKTIONSFOKUS):
-   - Alkohol und Rauchen werden AUSSCHLIESSLICH binär erfasst (Ja oder Nein). Gib NIEMALS Milligramm-Angaben (mg/Tag) oder Zigarettenmengen aus.
-   - Weise generell NUR DANN auf Gefahren durch Alkohol oder Rauchen hin, wenn diese in direktem Zusammenhang mit den eingenommenen Medikamenten stehen (Wechselwirkungen, Wirkungsverstärkung oder -minderung) ODER bei Schwangeren.
-   - Bei Schwangeren weise mit erhöhter Priorität auf die gravierenden Gefahren hin (teratogene Risiken, FASD, fetale Schädigungen, intrauterine Wachstumsretardierung).
-   - Falls keine direkte Wechselwirkung mit den Medikamenten vorliegt und keine Schwangerschaft besteht, stelle klar, dass keine direkte pharmakologische Interaktion mit der aktuellen Medikation vorliegt.
-3. ÜBERGEWICHT & KÖRPERBAU (PHARMAKOKINETIK & DOSIERUNGSRELEVANZ):
-   - Berücksichtige den Faktor Übergewicht/Körperbau NUR DANN, wenn er einen direkten Einfluss auf die Pharmakokinetik oder die Dosierung der ausgewählten Medikamente hat.
-   - Erkenne extreme Unterschiede im Körperbau (z. B. 50 kg / 160 cm im Vergleich zu 120 kg / 190 cm): Lipophile Wirkstoffe (vergrößertes Verteilungsvolumen, verlängerte Halbwertszeit bei Adipositas), hydrophile Wirkstoffe (Gefahr toxischer Überdosierung bei Dosierung nach Gesamtkörpergewicht statt Idealgewicht) oder DOACs (Dosisreduktion bei ≤ 60 kg), und weise professionell darauf hin.
-4. TRIMESTRALE SPEZIFITÄT: Bei Schwangerschaft schlüssle das exakte Risiko für den spezifischen Schwangerschaftsmonat (bzw. das Trimenon) sowohl für die Mutter als auch embryotoxikologisch für den Fötus auf.
-5. ABSOLUTES HALLUZINATIONSVERBOT: Du darfst nur medizinisch und wissenschaftlich gesicherte Interaktionen nennen.
-6. SAUBERE TABELLENFORMATIERUNG (GFM): Verwende saubere, geschlossene Markdown-Tabellen.
-
-PATIENTENDATEN & PROFIL:
+PATIENTENDATEN:
 - Patient/in: ${patientCase?.patientName || 'Anonym'}
-- Alter: ${patientCase?.geburtsdatum ? patientCase.geburtsdatum : 'nicht angegeben'}
-- Geschlecht: ${patientCase?.geschlecht || 'weiblich'}
-- Körpergewicht: ${lifestyle?.bodyWeightKg || patientCase?.befundDetails?.gewicht || 70} kg
-- Körpergröße: ${lifestyle?.bodyHeightCm || patientCase?.patientHeightCm || patientCase?.befundDetails?.groesse || 170} cm
-- Body-Mass-Index (BMI): ${lifestyle?.bmi ? `${lifestyle.bmi} kg/m²` : 'Standard'}
-- Schwangerschaft: ${lifestyle?.isPregnant ? `Ja, ${lifestyle.pregnancyMonth || patientCase?.pregnancyMonth || 1}. Schwangerschaftsmonat` : 'Nein / nicht schwanger'}
-- Rauchen: ${isSmoker ? 'Ja (Raucher)' : 'Nein (Nichtraucher)'}
-- Alkoholkonsum: ${hasAlcohol ? 'Ja (Alkoholkonsum angegeben)' : 'Nein (Kein Alkoholkonsum)'}
+- Alter: ${patientAge !== null ? `${patientAge} Jahre` : 'NICHT_BEURTEILBAR (kein Geburtsdatum angegeben)'}
+- Geschlecht: ${patientCase?.geschlecht || 'nicht spezifiziert'}
+- Körpergewicht: ${weightKg} kg | Größe: ${heightCm} cm | BMI: ${computedBmi ? `${computedBmi} kg/m²` : 'k. A.'}
+- Schwangerschaft: ${isPregnant ? `Ja, ${pregnancyMonth}. Monat` : 'Nein / nicht schwanger'}
+- Nikotin: ${isSmoker ? 'Ja (Raucher)' : 'Nein'}
+- Alkohol: ${hasAlcohol ? 'Ja (Alkoholkonsum angegeben)' : 'Nein'}
 
-VERORDNETE MEDIKAMENTE:
-${JSON.stringify(meds, null, 2)}
+VORBERECHNETE QUANTITATIVE DOSIERUNGSDATEN (BfArM-REFERENZ):
+${quantitativeGrounding}
 
-Generiere den Output EXAKT in folgender Struktur in der Zielsprache (${targetLanguageName}):
+${overdoseAlert}
 
-### ⚠️ [WICHTIGER MEDIZINISCHER WARNHINWEIS / IMPORTANT MEDICAL NOTICE]
-(Verfasse den Hinweis in ${targetLanguageName}, dass diese Analyse der Risiko-Früherkennung dient und keine ärztliche Konsultation ersetzt.)
+THEORETISCHE ANZAHL DISJUNKTER WIRKSTOFF-PAARE n * (n - 1) / 2: ${amtsPreCalc.theoreticalPairCount} Paare.
+KUMULATIVE ORGAN-TOXIZITÄTS-EINSTUFUNG:
+- Gastrointestinal: ${amtsPreCalc.cumulativeOrganRisk.gastrointestinal} (${amtsPreCalc.organRiskReasons.gastrointestinal || ''})
+- Renal: ${amtsPreCalc.cumulativeOrganRisk.renal} (${amtsPreCalc.organRiskReasons.renal || ''})
+- Kardiovaskulär: ${amtsPreCalc.cumulativeOrganRisk.kardiovaskulaer} (${amtsPreCalc.organRiskReasons.kardiovaskulaer || ''})
+- Hepatisch: ${amtsPreCalc.cumulativeOrganRisk.hepatisch} (${amtsPreCalc.organRiskReasons.hepatisch || ''})
+- ZNS: ${amtsPreCalc.cumulativeOrganRisk.zns} (${amtsPreCalc.organRiskReasons.zns || ''})
 
-### 1. [KLINISCHE DRINGLICHKEIT (Triage) / CLINICAL TRIAGE]
-Gib eine klare, ganzheitliche Einstufung des Gesamtrisikos an.
-WICHTIG: Die Beurteilung MUSS zwingend ALLE vorhandenen Daten (alle verordneten Medikamente mit Dosierung, Konstitution/BMI, Schwangerschaftsmonat/-trimenon und Lebensstilfaktoren wie Alkohol und Rauchen) gleichzeitig berücksichtigen und würdigen. Beziehe dich NIEMALS isoliert nur auf einen Einzelfaktor, sondern stelle die kumulative Gesamtsituation dar.
-Verwende am Anfang der Beurteilung genau eines der folgenden Schlüsselwörter:
-- [KRITISCH / AKUTE LEBENSGEFAHR] (oder in ${targetLanguageName}: [CRITICAL] / [ΚΡΙΣΙΜΟ] etc.): (Multidimensionale Gesamtwürdigung)
-ODER
-- [HOCH] (oder in ${targetLanguageName}: [HIGH] / [ΥΨΗΛΟ] etc.): (Multidimensionale Gesamtwürdigung)
-ODER
-- [GERING / ÜBERWACHUNG] (oder in ${targetLanguageName}: [LOW] / [ΧΑΜΗΛΟ] etc.): (Multidimensionale Gesamtwürdigung)
+AUFBAU DES BERICHTS (HALTE DICH EXAKT AN DIESE 5 ABSCHNITTE IN ${targetLanguageName}):
 
-### 2. [INTEGRATIVE RISIKO-MATRIX / RISK MATRIX]
-Erstelle eine saubere, vollständige Markdown-Tabelle im GFM-Format. Jede Zeile MUSS mit | beginnen und mit | enden.
-Spalten (in ${targetLanguageName} übersetzt):
-| Analysierte Konstellation | Biologischer Wirkmechanismus | Spezifisches Risiko für den Patienten | Spezifisches Risiko für den Fötus (Schwangerschaft) | Priorisierte Überwachungs-Parameter |
+### ⚠️ WICHTIGER MEDIZINISCHER WARNHINWEIS
+(Klarer Hinweis, dass dieses AMTS-Assistenzsystem der klinischen Risiko-Früherkennung dient und keine ärztliche Entscheidung ersetzt.)
+
+### 1. KLINISCHE DRINGLICHKEIT & AMTS-TRIAGE (v5.0)
+Beginne zwingend mit genau einer der folgenden Einstufungen in Großbuchstaben / eckigen Klammern:
+${amtsPreCalc.hasToxicOverdose ? '- [KRITISCH / AKUTE LEBENSGEFAHR]' : '- [KRITISCH / AKUTE LEBENSGEFAHR] ODER [HOCH] ODER [GERING / ÜBERWACHUNG]'}
+(Erkläre die Begründung präzise. Falls eine toxische Überdosierung vorliegt, hebe sofort die akute Lebensgefahr und das betroffene Zielorgan hervor!)
+
+### 2. QUANTITATIVE DOSIERUNGSBERECHNUNG & HOECHSTDOSIS-VERGLEICH (BfArM / Rote Liste)
+Erstelle eine vollständige GFM-Markdown-Tabelle aller Substanzen mit folgenden Spalten:
+| Wirkstoff / Handelsname | Berechnete 24h-Tagesdosis | Max. Referenzdosis (BfArM) | Abweichung (%) | Status & Zielorgan | Klinische Risikobewertung |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+(Jede Zeile muss den Status NORMAL, TOXISCH_UEBERDOSIERT oder NICHT_BEURTEILBAR ausweisen. Bei Überdosierung: Zielorgan und akutes Risiko nennen!)
+
+### 3. DETERMINISTISCHE PAARWEISE INTERAKTIONSMATRIX
+(Theoretische Anzahl Paare: ${amtsPreCalc.theoreticalPairCount})
+Erstelle eine GFM-Markdown-Tabelle aller relevanten 2er-Wirkstoffkombinationen:
+| Wirkstoff-Paarung | AMTS-Schweregrad | Biologischer Wirkmechanismus | Klinische Konsequenz | Priorisierte Handlungsempfehlung |
 | :--- | :--- | :--- | :--- | :--- |
+(Klassifiziere nach Grad 4 [Kontraindiziert], Grad 3 [Schwerwiegend], Grad 2 [Mittelschwer], Grad 1 [Gering] oder Keine Interaktion.)
 
-Zeilen:
-| **[Medikament A] + [Medikament B]** | Direkte Kreuzreaktion | Mütterliche/Patienten-Gefahr | Fötale Auswirkung | Notwendige Kontrollen |
-| **Synergie mit Schwangerschaft** | Pathophysiologie im spezifischen Monat/Trimester | Risiken Komplikationen | Embryotoxizität | Kontrolluntersuchungen |
-| **Kombination + Lebensstil** | Toxische Verstärkung | Beschleunigung von Organschäden | Akute Schädigung | Verhaltensanweisung |
+### 4. KUMULATIVE MULTI-DRUG- & ORGAN-TOXIZITÄT (5 ZIELSYSTEME)
+Erstelle eine GFM-Markdown-Tabelle für die 5 Organsysteme:
+| Ziel-Organsystem | Kumulative Risikostufe | Pathophysiologische Begründung & Leitlinien-Referenz |
+| :--- | :--- | :--- |
+- Gastrointestinal (GI-Blutungen, Ulzera)
+- Renal (GFR-Abfall, Autoregulation, Elektrolyte)
+- Kardiovaskulär (Arrhythmien, Bradykardie, Kardiogener Schock, AV-Block)
+- Hepatisch (CYP-Clearance, Transaminasen)
+- ZNS (Kumulative Sedierung, Vigilanz, Atemdepression)
+(Risikostufen: KRITISCH | HOCH | MITTEL | GERING | NICHT_BEURTEILBAR)
 
-### 3. [DIAGNOSTISCHER LEITFADEN FÜR DEN ARZTBESUCH / CLINICAL GUIDELINE]
-Checkliste für den Patienten:
-- Konkrete Fragen an den behandelnden Arzt
-- Dringende Labor-/Untersuchungs-Anforderungen
-- Alarmsymptome, bei denen unverzüglich der Notruf gewählt werden muss
+### 5. DIAGNOSTISCHER LEITFADEN FÜR DEN ARZTBESUCH & NOTFALL-CHECKLISTE
+- Konkrete Fragen an den behandelnden Arzt (insb. Hinterfragung toxischer Dosierungen)
+- Dringende Labor- und Diagnostikanforderungen (12-Kanal-EKG, eGFR, Elektrolyte, etc.)
+- Alarmsymptome, bei denen unverzüglich der Notruf (112) gewählt werden muss
 `;
 
       const response = await ai.models.generateContent({
@@ -1878,9 +1953,9 @@ Checkliste für den Patienten:
         contents: prompt,
       });
 
-      const markdownContent = response.text || '';
+      let markdownContent = response.text || '';
       if (!markdownContent) {
-        return res.status(500).json({ error: "Empty response from clinical pharmacology model" });
+        throw new Error("Empty response from clinical pharmacology model");
       }
 
       const upper = markdownContent.toUpperCase();
@@ -1888,6 +1963,7 @@ Checkliste für den Patienten:
       let triageLabel = '[GERING / ÜBERWACHUNG]';
 
       if (
+        amtsPreCalc.hasToxicOverdose ||
         upper.includes('KRITISCH') ||
         upper.includes('CRITICAL') ||
         upper.includes('ΚΡΙΣΙΜ') ||
@@ -1912,10 +1988,10 @@ Checkliste für den Patienten:
 
       recordTokenUsage({
         endpoint: '/api/medications/clinical-comparison',
-        actionName: `Klinische Pharmakologie & Mehrfachmedikations-Vergleich (${targetLang.toUpperCase()})`,
+        actionName: `AMTS Clinical Analysis Engine v5.0 (${targetLang.toUpperCase()})`,
         model: 'gemini-2.5-flash',
-        promptTokens: response.usageMetadata?.promptTokenCount || 600,
-        candidatesTokens: response.usageMetadata?.candidatesTokenCount || 900
+        promptTokens: response.usageMetadata?.promptTokenCount || 750,
+        candidatesTokens: response.usageMetadata?.candidatesTokenCount || 1200
       });
 
       return res.json({
@@ -1926,14 +2002,71 @@ Checkliste für den Patienten:
         medicationsSummary: meds.map((m: any) => `${m.name} (${m.dosierung || 'Standard'})`),
         patientProfileSummary: {
           gender: patientCase?.geschlecht,
-          isPregnant: lifestyle?.isPregnant,
-          pregnancyMonth: lifestyle?.pregnancyMonth,
-          alcoholPureMgPerDay: lifestyle?.alcoholPureMgPerDay,
+          isPregnant,
+          pregnancyMonth,
+          hasAlcohol,
+          isSmoker,
+          weightKg,
+          heightCm,
+          bmi: computedBmi,
         }
       });
     } catch (err: any) {
-      console.error("[ClinicalComparison] Error:", err?.message || err);
-      res.status(500).json({ error: "Clinical comparison failed", details: err?.message });
+      console.error("[ClinicalComparison] Error, falling back to deterministic AMTS report:", err?.message || err);
+      
+      // Resilient fallback to deterministic AMTS calculation
+      try {
+        const { patientCase, lifestyle, language } = req.body;
+        const meds = patientCase?.medikamenteList || [];
+        const weightKg = Number(lifestyle?.bodyWeightKg || patientCase?.befundDetails?.gewicht || 70);
+        const heightCm = Number(lifestyle?.bodyHeightCm || patientCase?.patientHeightCm || patientCase?.befundDetails?.groesse || 170);
+        const computedBmi = heightCm > 0 && weightKg > 0 ? parseFloat((weightKg / ((heightCm / 100) ** 2)).toFixed(1)) : undefined;
+        const isSmoker = Boolean(lifestyle?.isSmoker || lifestyle?.smokingStatus === 'smoker');
+        const hasAlcohol = Boolean(lifestyle?.alcoholDaily || lifestyle?.alcoholFrequency === 'daily');
+        const isPregnant = Boolean(lifestyle?.isPregnant || patientCase?.isPregnant);
+        const pregnancyMonth = Number(lifestyle?.pregnancyMonth || patientCase?.pregnancyMonth || 1);
+
+        const amtsPreCalc = evaluateAmtsMedications(meds, null, weightKg);
+        const pairs = evaluateAmtsPairs(amtsPreCalc.uniqueSubstances);
+
+        const detReport = generateAmtsReportMarkdown(
+          amtsPreCalc,
+          pairs,
+          {
+            name: patientCase?.patientName,
+            age: null,
+            gender: patientCase?.geschlecht,
+            weightKg,
+            heightCm,
+            bmi: computedBmi,
+            isPregnant,
+            pregnancyMonth,
+            isSmoker,
+            hasAlcohol,
+          },
+          (language as string) || 'de'
+        );
+
+        return res.json({
+          analyzedAt: new Date().toISOString(),
+          triageLevel: detReport.triageLevel,
+          triageLabel: detReport.triageLabel,
+          markdownContent: detReport.markdown,
+          medicationsSummary: meds.map((m: any) => `${m.name} (${m.dosierung || 'Standard'})`),
+          patientProfileSummary: {
+            gender: patientCase?.geschlecht,
+            isPregnant,
+            pregnancyMonth,
+            hasAlcohol,
+            isSmoker,
+            weightKg,
+            heightCm,
+            bmi: computedBmi,
+          }
+        });
+      } catch (fallbackErr: any) {
+        res.status(500).json({ error: "Clinical comparison failed", details: fallbackErr?.message });
+      }
     }
   });
 
