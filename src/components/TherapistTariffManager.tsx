@@ -29,6 +29,7 @@ import {
   updateTherapistAutoReload,
   TherapistBalanceResponse
 } from '../services/stripeBillingService';
+import { TherapistBillingAnalytics } from './TherapistBillingAnalytics';
 
 interface TherapistTariffManagerProps {
   therapist: Therapist;
@@ -616,7 +617,12 @@ export const TherapistTariffManager: React.FC<TherapistTariffManagerProps> = ({
         )}
       </div>
 
-      {/* 3. TARIF-WECHSEL BEREICH */}
+      {/* 3. VISUALISIERUNG & VERBRAUCHS-STATISTIK (DIAGRAMME & ZUBUCHUNGEN) */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 p-6 sm:p-8 shadow-sm">
+        <TherapistBillingAnalytics therapist={therapist} />
+      </div>
+
+      {/* 4. TARIF-WECHSEL BEREICH */}
       <div id="tariff-plans-grid" className="bg-white rounded-2xl border border-slate-200/80 p-6 sm:p-8 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-100 pb-5 mb-6">
           <div>

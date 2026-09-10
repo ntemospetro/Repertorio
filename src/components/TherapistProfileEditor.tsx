@@ -6,6 +6,7 @@ import { Eye, EyeOff, KeyRound, X, Save, AlertCircle, CheckCircle2, ShieldCheck,
 import { useTranslation } from '../i18n/LanguageContext';
 import { LANGUAGES } from '../i18n/translations';
 import { getLocalizedCountries, getCountryFlag } from '../data/countries';
+import { TherapistBillingAnalytics } from './TherapistBillingAnalytics';
 
 interface TherapistProfileEditorProps {
   therapist: Therapist;
@@ -682,6 +683,11 @@ export const TherapistProfileEditor: React.FC<TherapistProfileEditorProps> = ({ 
           </button>
         </div>
       </form>
+
+      {/* 4. TOKEN / GUTHABEN & ABRECHNUNG STATISTIK & DIAGRAMME */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 p-6 sm:p-8 shadow-sm">
+        <TherapistBillingAnalytics therapist={therapist} />
+      </div>
 
       {/* Name Change Modal */}
       {isNameModalOpen && (
