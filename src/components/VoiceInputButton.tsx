@@ -228,14 +228,14 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
     xs: 'w-6 h-6 p-1 text-xs',
     sm: 'w-7 h-7 p-1.5 text-xs',
     md: 'w-8 h-8 p-2 text-sm',
-    card: 'w-full sm:w-32 md:w-36 lg:w-40 min-h-[130px] p-3 text-xs rounded-xl flex-col gap-2',
+    card: 'w-full sm:w-32 md:w-36 shrink-0 min-h-[140px] p-4 text-xs rounded-xl flex-col gap-2.5 shadow-xs border',
   }[size];
 
   const iconSizes = {
     xs: 'w-3 h-3',
     sm: 'w-3.5 h-3.5',
     md: 'w-4 h-4',
-    card: 'w-8 h-8',
+    card: 'w-5 h-5',
   }[size];
 
   return (
@@ -251,14 +251,14 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
           className={`relative rounded-xl flex items-center justify-center transition-all cursor-pointer select-none ${sizeClasses} ${
             isCard
               ? isEvaluating
-                ? 'bg-amber-500 text-white ring-4 ring-amber-200 animate-pulse shadow-md border-2 border-amber-500'
+                ? 'bg-amber-500 text-white ring-4 ring-amber-200 animate-pulse shadow-md border-amber-500'
                 : isListening
-                ? 'bg-rose-600 hover:bg-rose-700 text-white ring-4 ring-rose-200 animate-pulse shadow-md border-2 border-rose-600'
+                ? 'bg-rose-600 hover:bg-rose-700 text-white ring-4 ring-rose-200 animate-pulse shadow-md border-rose-700'
                 : showAcceptedFeedback
-                ? 'bg-teal-700 text-white ring-4 ring-teal-200 shadow-md border-2 border-teal-700'
+                ? 'bg-teal-700 text-white ring-4 ring-teal-200 shadow-md border-teal-700'
                 : isStarting
-                ? 'bg-teal-700 text-white border-2 border-teal-700 animate-pulse shadow-xs'
-                : 'bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-white border-2 border-teal-600 shadow-xs'
+                ? 'bg-teal-700 text-white border-teal-700 animate-pulse shadow-xs'
+                : 'bg-[#00897b] hover:bg-[#00796b] text-white border-teal-800/20 shadow-xs'
               : isEvaluating
               ? 'bg-amber-500 text-white ring-2 ring-amber-300 ring-offset-1 animate-pulse shadow-md'
               : isListening
@@ -271,25 +271,25 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
           } ${disabled ? 'opacity-40 cursor-not-allowed' : ''} ${className}`}
         >
           {isCard ? (
-            <div className="flex flex-col items-center justify-center gap-2.5 h-full w-full py-1">
-              <div className={`w-13 h-13 rounded-2xl flex items-center justify-center transition-all shadow-xs ${
+            <div className="flex flex-col items-center justify-center gap-2.5 h-full w-full">
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
                 isListening 
                   ? 'bg-white/30 scale-110 shadow-md ring-2 ring-white/50' 
                   : isEvaluating
                   ? 'bg-white/30'
-                  : 'bg-white/20'
+                  : 'bg-white/15'
               }`}>
                 {isStarting || isEvaluating ? (
-                  <Loader2 className="w-7 h-7 text-white animate-spin" />
+                  <Loader2 className="w-5 h-5 text-white animate-spin" />
                 ) : isListening ? (
-                  <MicOff className="w-7 h-7 text-white animate-bounce" />
+                  <MicOff className="w-5 h-5 text-white animate-bounce" />
                 ) : (
-                  <Mic className="w-7 h-7 text-white" />
+                  <Mic className="w-5 h-5 text-white" />
                 )}
               </div>
 
               <div className="flex flex-col items-center gap-0.5">
-                <span className="font-medium text-xs text-white leading-tight">
+                <span className="font-bold text-xs text-white tracking-wide leading-tight">
                   {isListening 
                     ? (t('voiceRecordCardStopLabel' as TranslationKey) || 'Stopp')
                     : isEvaluating

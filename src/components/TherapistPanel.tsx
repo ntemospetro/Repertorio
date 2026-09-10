@@ -2706,9 +2706,11 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                 {/* 2. HAUPTBESCHWERDE & DYNAMISCHE FRAGEN */}
                 {currentStepConfig.id === 'hauptbeschwerde' && (
                   <div className="space-y-6 animate-in fade-in-50 duration-150">
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between gap-2 flex-wrap">
-                        <label className="block text-xs font-bold text-slate-800 uppercase" htmlFor="input-hauptbeschwerde">
+                    {/* Main Intake Card: Styled exactly like Akutanalyse Bild 2 */}
+                    <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs flex flex-col space-y-4 relative overflow-hidden">
+                      {/* Header Row: HAUPTBESCHWERDE & LEITSYMPTOM * on left, Eingabe löschen on right */}
+                      <div className="flex items-center justify-between gap-2">
+                        <label className="text-xs sm:text-sm font-bold text-slate-800 uppercase tracking-wider" htmlFor="input-hauptbeschwerde">
                           {t('mainComplaintTitle')}
                         </label>
                         {currentCase.hauptbeschwerde?.trim() && (
@@ -2721,30 +2723,26 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                                 hauptbeschwerdeRef.current.focus();
                               }
                             }}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors shadow-2xs cursor-pointer"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 text-xs font-semibold cursor-pointer transition-colors"
                             title={t('clearHauptbeschwerdeBtn')}
                           >
-                            <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                            <Trash2 className="w-3.5 h-3.5 text-rose-500" />
                             <span>{t('clearHauptbeschwerdeBtn')}</span>
                           </button>
                         )}
                       </div>
 
-                      <div className="flex flex-col sm:flex-row items-stretch gap-3">
+                      {/* Side-by-Side: Textarea on the left, Vertical Aufnahme Button on the right */}
+                      <div className="flex flex-col sm:flex-row gap-3 items-stretch">
                         <div className="relative flex-1 min-w-0">
                           <textarea
                             id="input-hauptbeschwerde"
                             ref={hauptbeschwerdeRef}
-                            rows={6}
+                            rows={5}
                             placeholder={t('mainComplaintPlaceholder')}
                             value={currentCase.hauptbeschwerde || ''}
                             onChange={(e) => handleUpdateHauptbeschwerde(e.target.value)}
-                            onInput={(e) => {
-                              const target = e.target as HTMLTextAreaElement;
-                              target.style.height = 'auto';
-                              target.style.height = `${Math.max(150, target.scrollHeight)}px`;
-                            }}
-                            className="w-full px-4 py-3.5 pr-10 border-2 border-teal-600/60 rounded-xl bg-white text-sm text-slate-900 font-medium placeholder:text-slate-400 focus:outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100 shadow-2xs min-h-[150px] leading-relaxed transition-all resize-y"
+                            className="w-full h-full min-h-[140px] p-4 bg-white border border-slate-300 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 transition-all resize-none pr-9 shadow-2xs"
                           />
                           {currentCase.hauptbeschwerde?.trim() && (
                             <button
@@ -2755,7 +2753,7 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                                   hauptbeschwerdeRef.current.focus();
                                 }
                               }}
-                              className="absolute top-3 right-3 p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                              className="absolute top-3.5 right-3.5 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer transition-colors"
                               title={t('clearHauptbeschwerdeBtn')}
                               aria-label={t('clearHauptbeschwerdeBtn')}
                             >
@@ -2763,7 +2761,7 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                             </button>
                           )}
                         </div>
-                        <div className="w-full sm:w-32 md:w-36 lg:w-40 shrink-0 flex items-stretch">
+                        <div className="w-full sm:w-32 md:w-36 shrink-0 flex items-stretch">
                           <VoiceInputButton
                             value={currentCase.hauptbeschwerde || ''}
                             onChange={(val) => handleUpdateHauptbeschwerde(val)}
@@ -2774,6 +2772,7 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                           />
                         </div>
                       </div>
+                    </div>
 
                       {/* Visual Live Tags for Detected Complaints */}
                       {currentCase.hauptbeschwerde?.trim() && (() => {
@@ -2808,7 +2807,6 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                           </div>
                         );
                       })()}
-                    </div>
 
                     {/* Homoeopathic In-Depth Anamnesis (Popup Card matching Medikamente layout) */}
                     {(() => {

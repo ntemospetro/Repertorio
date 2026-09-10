@@ -47,8 +47,8 @@ export const RepertoriumView: React.FC<RepertoriumViewProps> = ({
     { id: 'sym-1', text: '', weight: null },
   ]);
 
-  // Filter mode: strict intersection vs weighted
-  const [strictOnly, setStrictOnly] = useState<boolean>(false);
+  // Filter mode: strict intersection vs weighted (default active per clinical precision workflow)
+  const [strictOnly, setStrictOnly] = useState<boolean>(true);
 
   // Filter by classical authors (All, Hahnemann, Kent, Hering, Boericke)
   const [selectedAuthor, setSelectedAuthor] = useState<ClassicalAuthorFilterKey>('all');
@@ -368,27 +368,6 @@ export const RepertoriumView: React.FC<RepertoriumViewProps> = ({
               <Plus className="w-4 h-4" />
               <span>{t('repertoriumAddSymptom')}</span>
             </button>
-
-            {/* Strict Intersection Toggle */}
-            <div className="mt-5 pt-4 border-t border-slate-100">
-              <label className="flex items-start gap-3 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  id="repertorium-strict-toggle"
-                  checked={strictOnly}
-                  onChange={(e) => setStrictOnly(e.target.checked)}
-                  className="mt-0.5 w-4 h-4 text-teal-600 border-slate-300 rounded focus:ring-teal-500 cursor-pointer"
-                />
-                <div className="text-xs">
-                  <span className="font-semibold text-slate-800">
-                    {t('repertoriumFilterAllCovered')}
-                  </span>
-                  <p className="text-slate-500 mt-0.5">
-                    {t('repertoriumStrictDesc')}
-                  </p>
-                </div>
-              </label>
-            </div>
           </div>
 
           {/* Classical Authors Guidance Card */}
@@ -409,6 +388,45 @@ export const RepertoriumView: React.FC<RepertoriumViewProps> = ({
 
         {/* Right Column: Narrowed Results List (7 cols on lg) */}
         <div className="lg:col-span-7 space-y-4">
+          {/* Strict Intersection Toggle Card: Positioned directly above the found remedies on the right */}
+          <div
+            id="repertorium-strict-filter-card"
+            className={`rounded-2xl border transition-all p-4 shadow-xs ${
+              strictOnly
+                ? 'bg-gradient-to-r from-teal-50/90 to-emerald-50/60 border-teal-300/90 ring-1 ring-teal-200/50'
+                : 'bg-white border-slate-200/80 hover:border-slate-300'
+            }`}
+          >
+            <label className="flex items-start justify-between gap-3 cursor-pointer select-none">
+              <div className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  id="repertorium-strict-toggle"
+                  checked={strictOnly}
+                  onChange={(e) => setStrictOnly(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 text-teal-600 border-slate-300 rounded focus:ring-teal-500 cursor-pointer"
+                />
+                <div className="text-xs">
+                  <span className="font-bold text-slate-800 flex items-center gap-1.5">
+                    {t('repertoriumFilterAllCovered')}
+                  </span>
+                  <p className="text-slate-600 mt-0.5 leading-relaxed">
+                    {t('repertoriumStrictDesc')}
+                  </p>
+                </div>
+              </div>
+              <span
+                className={`text-[11px] font-bold px-2.5 py-1 rounded-full shrink-0 transition-colors ${
+                  strictOnly
+                    ? 'bg-teal-700 text-white shadow-2xs'
+                    : 'bg-slate-100 text-slate-600'
+                }`}
+              >
+                {strictOnly ? t('repertoriumFullCoverage') : t('filterAuthorAll')}
+              </span>
+            </label>
+          </div>
+
           {/* Results Summary Bar */}
           <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs">
             <div className="flex items-center justify-between gap-4 flex-wrap">
