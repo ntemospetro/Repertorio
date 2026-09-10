@@ -21,11 +21,13 @@ import {
   FilterX,
   Scissors,
   HelpCircle,
-  ChevronDown
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { useTranslation, useLanguage } from '../i18n/LanguageContext';
 import { LocalizedRemedy, getLocalizedRemedies } from '../data/materiaMedicaData';
 import { RemedyMonographModal } from './RemedyMonographModal';
+import { FunnelStageRemediesModal } from './FunnelStageRemediesModal';
 import { 
   findGuidedAnamnesisTopic, 
   GuidedAnamnesisTopic 
@@ -36,7 +38,8 @@ import {
   performBoerickeRepertorisation,
   performSubtractiveFunnelCascade,
   BoerickeRepertorisationResult,
-  SubtractiveCascadeReport 
+  SubtractiveCascadeReport,
+  SubtractiveCascadeStep 
 } from '../services/boerickeRepertoryService';
 import { 
   getRemedyClassicalAuthors, 
@@ -111,6 +114,12 @@ export const RepertoriumView: React.FC<RepertoriumViewProps> = ({
 
   // Filter mode: strict intersection by default (ONLY display remedies matching ALL conditions simultaneously)
   const [strictOnly, setStrictOnly] = useState<boolean>(true);
+
+  // Funnel collapsible state: always closed by default
+  const [isFunnelOpen, setIsFunnelOpen] = useState<boolean>(false);
+
+  // Selected stage for full-screen paginated modal
+  const [selectedFunnelStep, setSelectedFunnelStep] = useState<SubtractiveCascadeStep | null>(null);
 
   // Filter by classical authors (All, Hahnemann, Kent, Hering, Boericke)
   const [selectedAuthor, setSelectedAuthor] = useState<ClassicalAuthorFilterKey>('all');
@@ -868,93 +877,139 @@ export const RepertoriumView: React.FC<RepertoriumViewProps> = ({
             </div>
           </div>
 
-          {/* Subtractive Funnel Filter Visualization (Permanente Reduktion nach Stufen) */}
+          {/* Subtractive Funnel Filter Visualization (Permanente Reduktion nach Stufen) - Aufklappbar, default geschlossen */}
           {hasAnyEnteredSymptom && funnelReport.isConfigured && funnelReport.steps.length > 0 && (
             <div 
               id="repertorium-subtractive-funnel-card"
-              className="bg-white rounded-2xl border border-teal-200/90 shadow-xs p-4 md:p-5 space-y-3.5 transition-all"
+              className="bg-white rounded-2xl border border-teal-200/90 shadow-xs overflow-hidden transition-all"
             >
-              <div className="flex items-center justify-between gap-2 flex-wrap pb-2.5 border-b border-slate-100">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 shadow-2xs">
+              {/* Collapsible Header Accordion Toggle */}
+              <button
+                type="button"
+                id="repertorium-funnel-collapse-toggle"
+                onClick={() => setIsFunnelOpen(prev => !prev)}
+                className="w-full text-left p-4 md:p-5 flex items-center justify-between gap-3 hover:bg-teal-50/40 transition-colors cursor-pointer"
+                aria-expanded={isFunnelOpen}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 shrink-0 shadow-2xs">
                     <Scissors className="w-4 h-4" />
                   </div>
                   <div>
-                    <h3 className="text-xs md:text-sm font-bold text-slate-900 flex items-center gap-2">
-                      <span>{t('repertoriumFunnelTitle')}</span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-xs md:text-sm font-bold text-slate-900">
+                        {t('repertoriumFunnelTitle')}
+                      </h3>
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-100 text-teal-900 border border-teal-300">
                         {t('repertoriumFunnelActiveBadge')}
                       </span>
-                    </h3>
-                    <p className="text-[11px] text-slate-500">
+                      {funnelReport.survivingRemedies.length > 0 && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-300">
+                          {funnelReport.survivingRemedies.length} {t('repertoriumRemediesUnit')}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
                       {t('repertoriumFunnelSubtitle')}
                     </p>
                   </div>
                 </div>
-              </div>
 
-              {/* Cascade Stages Flow */}
-              <div className="grid grid-cols-1 gap-2">
-                {funnelReport.steps.map((step) => {
-                  const eliminated = step.countBefore - step.countAfter;
-                  return (
-                    <div
-                      key={step.stepNumber}
-                      className={`p-3 rounded-xl border transition-all ${
-                        step.isAborted
-                          ? 'bg-rose-50/70 border-rose-300 text-rose-900'
-                          : 'bg-slate-50/80 border-slate-200 text-slate-800'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-2 flex-wrap">
-                        <div className="flex items-center gap-2">
-                          <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                            step.isAborted 
-                              ? 'bg-rose-200 text-rose-800' 
-                              : 'bg-teal-700 text-white'
-                          }`}>
-                            {step.stepNumber}
-                          </span>
-                          <span className="text-xs font-bold">
-                            {step.title}
-                          </span>
-                        </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-xs font-semibold text-teal-700 hidden sm:inline">
+                    {isFunnelOpen ? t('repertoriumFunnelToggleClose') : t('repertoriumFunnelToggleOpen')}
+                  </span>
+                  <div className="w-7 h-7 rounded-lg bg-teal-50 border border-teal-200/80 flex items-center justify-center text-teal-700">
+                    {isFunnelOpen ? (
+                      <ChevronUp className="w-4 h-4" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4" />
+                    )}
+                  </div>
+                </div>
+              </button>
 
-                        <div className="flex items-center gap-2 text-xs">
-                          {eliminated > 0 && (
-                            <span className="text-[11px] font-semibold text-rose-700 bg-rose-100/70 px-2 py-0.5 rounded-md">
-                              {t('repertoriumFunnelEliminatedCount', { count: eliminated })}
+              {/* Collapsible Content Area */}
+              {isFunnelOpen && (
+                <div className="px-4 pb-4 md:px-5 md:pb-5 space-y-3.5 border-t border-slate-100 pt-3.5 animate-in fade-in duration-200">
+                  <div className="text-[11px] text-slate-500 bg-teal-50/60 border border-teal-100/90 rounded-xl px-3 py-2 flex items-center gap-2">
+                    <Sparkles className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+                    <span>
+                      {t('repertoriumFunnelClickStageHint', { count: funnelReport.steps[0]?.countAfter || 0 })}
+                    </span>
+                  </div>
+
+                  {/* Cascade Stages Flow - Clickable for Fullscreen Modal */}
+                  <div className="grid grid-cols-1 gap-2.5">
+                    {funnelReport.steps.map((step) => {
+                      const eliminated = step.countBefore - step.countAfter;
+                      return (
+                        <button
+                          type="button"
+                          key={step.stepNumber}
+                          id={`repertorium-funnel-step-btn-${step.stepNumber}`}
+                          onClick={() => setSelectedFunnelStep(step)}
+                          className={`w-full text-left p-3.5 rounded-xl border transition-all cursor-pointer group hover:shadow-sm ${
+                            step.isAborted
+                              ? 'bg-rose-50/70 hover:bg-rose-50 border-rose-300 text-rose-900'
+                              : 'bg-slate-50/80 hover:bg-teal-50/50 border-slate-200 hover:border-teal-300 text-slate-800'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <div className="flex items-center gap-2">
+                              <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                                step.isAborted 
+                                  ? 'bg-rose-200 text-rose-800' 
+                                  : 'bg-teal-700 text-white'
+                              }`}>
+                                {step.stepNumber}
+                              </span>
+                              <span className="text-xs font-bold group-hover:text-teal-900 transition-colors">
+                                {step.title}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-2 text-xs">
+                              {eliminated > 0 && (
+                                <span className="text-[11px] font-semibold text-rose-700 bg-rose-100/70 px-2 py-0.5 rounded-md">
+                                  {t('repertoriumFunnelEliminatedCount', { count: eliminated })}
+                                </span>
+                              )}
+                              <span className={`font-bold px-2 py-0.5 rounded-md text-[11px] flex items-center gap-1 ${
+                                step.countAfter > 0 
+                                  ? 'bg-emerald-100 text-emerald-900 border border-emerald-300' 
+                                  : 'bg-rose-100 text-rose-900 border border-rose-300'
+                              }`}>
+                                <span>{t('repertoriumFunnelRemediesCount', { count: step.countAfter })}</span>
+                                <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-teal-700 group-hover:translate-x-0.5 transition-transform" />
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="mt-1.5 pl-7 text-[11px] flex items-center justify-between text-slate-600">
+                            <span>
+                              <span className="font-semibold text-slate-500">Kriterium: </span>
+                              <span className="italic font-medium text-slate-800">„{step.inputCriterion}“</span>
                             </span>
-                          )}
-                          <span className={`font-bold px-2 py-0.5 rounded-md text-[11px] ${
-                            step.countAfter > 0 
-                              ? 'bg-emerald-100 text-emerald-900 border border-emerald-300' 
-                              : 'bg-rose-100 text-rose-900 border border-rose-300'
-                          }`}>
-                            {t('repertoriumFunnelRemediesCount', { count: step.countAfter })}
-                          </span>
-                        </div>
-                      </div>
+                            <span className="text-[10px] text-teal-700 font-semibold group-hover:underline">
+                              Liste anzeigen →
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
 
-                      <div className="mt-1.5 pl-7 text-[11px] flex items-center justify-between text-slate-600">
-                        <span>
-                          <span className="font-semibold text-slate-500">Kriterium: </span>
-                          <span className="italic font-medium text-slate-800">„{step.inputCriterion}“</span>
-                        </span>
+                  {/* Abort Banner */}
+                  {funnelReport.abortStepNumber !== null && (
+                    <div className="p-3 rounded-xl bg-rose-50 border border-rose-300 flex items-start gap-2.5 text-rose-900">
+                      <FilterX className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+                      <div className="text-xs">
+                        <div className="font-bold">{t('repertoriumFunnelAbortHeading')}</div>
+                        <div className="font-medium mt-0.5">{funnelReport.abortMessage}</div>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-
-              {/* Abort Banner */}
-              {funnelReport.abortStepNumber !== null && (
-                <div className="p-3 rounded-xl bg-rose-50 border border-rose-300 flex items-start gap-2.5 text-rose-900">
-                  <FilterX className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
-                  <div className="text-xs">
-                    <div className="font-bold">{t('repertoriumFunnelAbortHeading')}</div>
-                    <div className="font-medium mt-0.5">{funnelReport.abortMessage}</div>
-                  </div>
+                  )}
                 </div>
               )}
             </div>
@@ -1247,6 +1302,20 @@ export const RepertoriumView: React.FC<RepertoriumViewProps> = ({
             }
             setSelectedRemedy(null);
           }}
+        />
+      )}
+
+      {/* Full-Screen Paginated Funnel Stage Remedies Modal */}
+      {selectedFunnelStep && (
+        <FunnelStageRemediesModal
+          isOpen={Boolean(selectedFunnelStep)}
+          step={selectedFunnelStep}
+          allRemedies={allRemedies}
+          onClose={() => setSelectedFunnelStep(null)}
+          onOpenMonograph={(remedy) => {
+            setSelectedRemedy(remedy);
+          }}
+          onSelectRemedyForCase={onSelectRemedyForCase}
         />
       )}
     </div>
