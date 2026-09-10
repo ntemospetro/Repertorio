@@ -34,6 +34,9 @@ import {
   ClassicalAuthorFilterKey 
 } from '../data/classicalAuthorsMap';
 import { 
+  getBogerSynopticEntry 
+} from '../data/bogerSynopticData';
+import { 
   matchSymptomsToRemedies, 
   SymptomMatchResult,
   performDifferentialDiagnosis,
@@ -716,7 +719,7 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = ({
                       </div>
                       {(() => {
                         const authorsInfo = getRemedyClassicalAuthors(remedy.id);
-                        const hasAny = authorsInfo.hahnemann || authorsInfo.kent || authorsInfo.hering || authorsInfo.boericke;
+                        const hasAny = authorsInfo.hahnemann || authorsInfo.kent || authorsInfo.hering || authorsInfo.boericke || authorsInfo.boger;
                         if (!hasAny) return null;
                         return (
                           <div className="flex flex-wrap items-center gap-1 mt-1.5">
@@ -738,6 +741,11 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = ({
                             {authorsInfo.boericke && (
                               <span className="text-[10px] font-medium px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-800 border border-emerald-200/60" title="William Boericke">
                                 Boericke
+                              </span>
+                            )}
+                            {authorsInfo.boger && (
+                              <span className="text-[10px] font-medium px-1.5 py-0.2 rounded bg-purple-50 text-purple-800 border border-purple-200/60" title="Cyrus Maxwell Boger">
+                                Boger
                               </span>
                             )}
                           </div>
@@ -1296,7 +1304,7 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = ({
                 </p>
                 {(() => {
                   const authorsInfo = getRemedyClassicalAuthors(selectedRemedyForModal.id);
-                  const hasAny = authorsInfo.hahnemann || authorsInfo.kent || authorsInfo.hering || authorsInfo.boericke;
+                  const hasAny = authorsInfo.hahnemann || authorsInfo.kent || authorsInfo.hering || authorsInfo.boericke || authorsInfo.boger;
                   if (!hasAny) return null;
                   return (
                     <div className="flex flex-wrap items-center gap-1.5 pt-1">
@@ -1319,6 +1327,11 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = ({
                       {authorsInfo.boericke && (
                         <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                           William Boericke
+                        </span>
+                      )}
+                      {authorsInfo.boger && (
+                        <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                          Cyrus Maxwell Boger
                         </span>
                       )}
                     </div>
@@ -1486,6 +1499,71 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = ({
                   </div>
                 </div>
               )}
+
+              {/* 9. C. M. Boger Synoptic Key & Charakteristika */}
+              {(() => {
+                const bogerData = getBogerSynopticEntry(selectedRemedyForModal.id);
+                if (!bogerData) return null;
+                return (
+                  <div className="space-y-3 bg-purple-50/50 p-4 rounded-xl border border-purple-200/70 mt-4">
+                    <div className="flex items-center gap-2 text-purple-950 font-bold text-xs uppercase tracking-wider">
+                      <BookOpen className="w-4 h-4 text-purple-700" />
+                      <span>{t('secBogerSynopticTitle')}</span>
+                    </div>
+
+                    {/* Region / Sphere of Action */}
+                    <div className="space-y-1">
+                      <div className="text-[11px] font-bold text-purple-900 uppercase tracking-wider">
+                        {t('secBogerRegion')}:
+                      </div>
+                      <p className="text-xs text-slate-700 leading-relaxed bg-white/70 p-2.5 rounded-lg border border-purple-100">
+                        {bogerData.region}
+                      </p>
+                    </div>
+
+                    {/* Boger Modalities: Worse / Better */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <div className="bg-white/80 p-2.5 rounded-lg border border-rose-100">
+                        <div className="flex items-center gap-1.5 text-rose-800 font-bold text-[11px] uppercase tracking-wider mb-1.5">
+                          <Flame className="w-3.5 h-3.5 text-rose-600" />
+                          <span>{t('secBogerWorse')}</span>
+                        </div>
+                        <ul className="space-y-1 text-xs text-slate-700 list-disc list-inside">
+                          {bogerData.worse.map((w, wIdx) => (
+                            <li key={wIdx} className="leading-snug">{w}</li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      <div className="bg-white/80 p-2.5 rounded-lg border border-teal-100">
+                        <div className="flex items-center gap-1.5 text-teal-800 font-bold text-[11px] uppercase tracking-wider mb-1.5">
+                          <Snowflake className="w-3.5 h-3.5 text-teal-600" />
+                          <span>{t('secBogerBetter')}</span>
+                        </div>
+                        <ul className="space-y-1 text-xs text-slate-700 list-disc list-inside">
+                          {bogerData.better.map((b, bIdx) => (
+                            <li key={bIdx} className="leading-snug">{b}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+
+                    {/* Boger Highlights */}
+                    <div className="space-y-1">
+                      <div className="text-[11px] font-bold text-purple-900 uppercase tracking-wider">
+                        {t('secBogerKeynotes')}:
+                      </div>
+                      <ul className="space-y-1.5 text-xs text-slate-800 list-disc list-inside bg-white/70 p-2.5 rounded-lg border border-purple-100">
+                        {bogerData.highlights.map((hl, hlIdx) => (
+                          <li key={hlIdx} className="leading-relaxed font-medium">
+                            {hl}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Modal Footer */}
