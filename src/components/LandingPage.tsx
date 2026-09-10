@@ -221,35 +221,35 @@ export function LandingPage({ onGetStarted, onGoToLogin }: LandingPageProps) {
                 {/* Right: Materia Medica Monograph Mockup Card */}
                 <div className="md:col-span-6 bg-slate-900 rounded-xl p-5 text-white shadow-inner border border-slate-800">
                   <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-800 text-xs">
-                    <span className="font-serif italic text-teal-300 text-sm font-semibold">Arnica montana (Bergwohlverleih)</span>
+                    <span className="font-serif italic text-teal-300 text-sm font-semibold">{t('landingShowcase1ArnicaName')}</span>
                     <span className="text-[10px] bg-emerald-900/60 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-700/50">
-                      Boericke & Kent
+                      {t('landingShowcase1Authors')}
                     </span>
                   </div>
 
                   <div className="space-y-2.5 text-xs">
                     <div className="p-2.5 rounded-lg bg-slate-800/70 border border-slate-700">
-                      <div className="font-bold text-slate-300 mb-1">Leitsymptomatik & Traumatologie:</div>
+                      <div className="font-bold text-slate-300 mb-1">{t('landingShowcase1KeynotesTitle')}</div>
                       <p className="text-slate-400 text-[11px] leading-relaxed">
-                        Folgen von stumpfen Verletzungen, Quetschungen, Überanstrengung. Patient behauptet, es fehle ihm nichts; Bett fühlt sich zu hart an.
+                        {t('landingShowcase1KeynotesDesc')}
                       </p>
                     </div>
 
                     <div className="grid grid-cols-2 gap-2 text-[11px]">
                       <div className="p-2 rounded bg-rose-950/30 border border-rose-900/50 text-rose-200">
-                        <strong className="block text-[10px] uppercase text-rose-400 font-bold mb-0.5">Verschlechterung (&lt;)</strong>
-                        Berührung, Erschütterung, feuchte Kälte
+                        <strong className="block text-[10px] uppercase text-rose-400 font-bold mb-0.5">{t('landingShowcase1AggravationTitle')}</strong>
+                        {t('landingShowcase1AggravationDesc')}
                       </div>
                       <div className="p-2 rounded bg-emerald-950/30 border border-emerald-900/50 text-emerald-200">
-                        <strong className="block text-[10px] uppercase text-emerald-400 font-bold mb-0.5">Besserung (&gt;)</strong>
-                        Liegen mit tief liegendem Kopf
+                        <strong className="block text-[10px] uppercase text-emerald-400 font-bold mb-0.5">{t('landingShowcase1AmeliorationTitle')}</strong>
+                        {t('landingShowcase1AmeliorationDesc')}
                       </div>
                     </div>
                   </div>
 
                   <div className="mt-3 pt-2.5 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
-                    <span>Klassisches Quellenwerk: Materia Medica mit Repertorium</span>
-                    <span className="text-emerald-400 font-mono">100% verifiziert</span>
+                    <span>{t('landingShowcase1SourceBook')}</span>
+                    <span className="text-emerald-400 font-mono">{t('landingShowcase1Verified')}</span>
                   </div>
                 </div>
               </div>
@@ -289,37 +289,37 @@ export function LandingPage({ onGetStarted, onGoToLogin }: LandingPageProps) {
                 {/* Right: Repertorium Rubrik & Grade Simulation Card */}
                 <div className="md:col-span-6 bg-slate-900 rounded-xl p-5 text-white shadow-inner border border-slate-800">
                   <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-800 text-xs text-slate-400">
-                    <span className="font-mono text-slate-300 font-semibold">Boericke Rubrikenmatrix</span>
+                    <span className="font-mono text-slate-300 font-semibold">{t('landingShowcase2RubricMatrix')}</span>
                     <span className="text-[10px] bg-violet-900/60 text-violet-300 px-2 py-0.5 rounded-full border border-violet-700/50">
-                      Grad 1 - 4
+                      {t('landingShowcase2Grades')}
                     </span>
                   </div>
 
                   <div className="space-y-2.5 text-xs">
                     <div className="p-2.5 rounded-lg bg-slate-800/80 border border-slate-700 flex items-center justify-between">
-                      <span className="text-slate-200">Plötzliches hohes Fieber, brennende Hitze</span>
+                      <span className="text-slate-200">{t('landingShowcase2Rubric1Text')}</span>
                       <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40">
-                        Grad 4 · Keynote
+                        {t('landingShowcase2Rubric1Grade')}
                       </span>
                     </div>
 
                     <div className="p-2.5 rounded-lg bg-slate-800/80 border border-slate-700 flex items-center justify-between">
-                      <span className="text-slate-200">Kopfschmerz klopfend, &lt; durch Erschütterung</span>
+                      <span className="text-slate-200">{t('landingShowcase2Rubric2Text')}</span>
                       <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                        Grad 3 · Hochwertig
+                        {t('landingShowcase2Rubric2Grade')}
                       </span>
                     </div>
 
                     <div className="p-2.5 rounded-lg bg-slate-800/80 border border-slate-700 flex items-center justify-between">
-                      <span className="text-slate-300">Pupillenerweiterung & gerötetes Gesicht</span>
+                      <span className="text-slate-300">{t('landingShowcase2Rubric3Text')}</span>
                       <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-teal-500/20 text-teal-300 border border-teal-500/40">
-                        Grad 2 · Bestätigend
+                        {t('landingShowcase2Rubric3Grade')}
                       </span>
                     </div>
                   </div>
 
                   <div className="mt-3 pt-2.5 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
-                    <span className="text-violet-300 font-medium">Repertorisations-Score: 11 / 12 Punkte</span>
+                    <span className="text-violet-300 font-medium">{t('landingShowcase2ScoreText')}</span>
                     <span className="text-emerald-400 font-bold">1. Bell. (3/3)</span>
                   </div>
                 </div>
@@ -362,10 +362,10 @@ export function LandingPage({ onGetStarted, onGoToLogin }: LandingPageProps) {
                   <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-800 text-xs text-slate-400">
                     <div className="flex items-center gap-2">
                       <Search className="w-3.5 h-3.5 text-amber-400" />
-                      <span className="font-mono text-slate-300 font-semibold">Arzneimittelanalyse: Vormedikation</span>
+                      <span className="font-mono text-slate-300 font-semibold">{t('landingShowcase3CardTitle')}</span>
                     </div>
                     <span className="text-[10px] bg-amber-900/60 text-amber-300 px-2 py-0.5 rounded-full border border-amber-700/50">
-                      2 Präparate geprüft
+                      {t('landingShowcase3CheckedCount')}
                     </span>
                   </div>
                   
@@ -373,21 +373,21 @@ export function LandingPage({ onGetStarted, onGoToLogin }: LandingPageProps) {
                   <div className="space-y-2 text-xs">
                     <div className="p-2.5 rounded-lg bg-slate-800/80 border border-slate-700 flex items-center justify-between">
                       <div>
-                        <div className="font-bold text-slate-200">Ramipril 5mg (ACE-Hemmer)</div>
-                        <div className="text-[11px] text-slate-400">Bekannte Nebenwirkung: Reizhusten, Hyperkaliämie</div>
+                        <div className="font-bold text-slate-200">{t('landingShowcase3Med1Name')}</div>
+                        <div className="text-[11px] text-slate-400">{t('landingShowcase3Med1SideEffect')}</div>
                       </div>
                       <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-amber-300 border border-amber-700/50">
-                        Präparat 1
+                        {t('landingShowcase3Prep1')}
                       </span>
                     </div>
 
                     <div className="p-2.5 rounded-lg bg-slate-800/80 border border-slate-700 flex items-center justify-between">
                       <div>
-                        <div className="font-bold text-slate-200">Ibuprofen 600mg (NSAR)</div>
-                        <div className="text-[11px] text-slate-400">Nebenwirkung: Gastrointestinale Ulzeration, Nierenbelastung</div>
+                        <div className="font-bold text-slate-200">{t('landingShowcase3Med2Name')}</div>
+                        <div className="text-[11px] text-slate-400">{t('landingShowcase3Med2SideEffect')}</div>
                       </div>
                       <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-amber-300 border border-amber-700/50">
-                        Präparat 2
+                        {t('landingShowcase3Prep2')}
                       </span>
                     </div>
 
@@ -395,19 +395,19 @@ export function LandingPage({ onGetStarted, onGoToLogin }: LandingPageProps) {
                     <div className="p-2.5 rounded-lg bg-rose-950/40 border border-rose-800/60 text-rose-200">
                       <div className="flex items-center gap-1.5 font-bold text-rose-300 text-xs mb-1">
                         <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />
-                        <span>Risikovergleich & Wechselwirkung: Relevante Interaktion</span>
+                        <span>{t('landingShowcase3RiskTitle')}</span>
                       </div>
                       <p className="text-[11px] text-rose-200/90 leading-relaxed">
-                        Kombination vermindert die antihypertensive Wirkung von Ramipril und erhöht das Risiko einer akuten Nierenfunktionsstörung.
+                        {t('landingShowcase3RiskDesc')}
                       </p>
                     </div>
                   </div>
 
                   <div className="mt-3 pt-2.5 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
                     <span className="flex items-center gap-1.5 text-rose-400 font-semibold">
-                      <AlertCircle className="w-3.5 h-3.5" /> Red Flag: Nephrotoxisches Risiko
+                      <AlertCircle className="w-3.5 h-3.5" /> {t('landingShowcase3RedFlag')}
                     </span>
-                    <span className="font-mono text-[10px] text-slate-400">Kontraindikation beachtet</span>
+                    <span className="font-mono text-[10px] text-slate-400">{t('landingShowcase3Contraindication')}</span>
                   </div>
                 </div>
               </div>
@@ -424,7 +424,7 @@ export function LandingPage({ onGetStarted, onGoToLogin }: LandingPageProps) {
                     <div className="flex items-center gap-2">
                       <h4 className="text-base font-bold text-slate-900">{t('landingRedFlagsTitle')}</h4>
                       <span className="text-[10px] font-bold uppercase tracking-wider bg-rose-200/80 text-rose-800 px-2 py-0.5 rounded-full">
-                        Sicherheitsstandard
+                        {t('landingRedFlagsBadge')}
                       </span>
                     </div>
                     <p className="text-xs sm:text-sm font-semibold text-rose-900 mt-0.5">
@@ -438,7 +438,7 @@ export function LandingPage({ onGetStarted, onGoToLogin }: LandingPageProps) {
                 <div className="shrink-0 flex items-center gap-2 self-stretch md:self-auto justify-end">
                   <span className="inline-flex items-center gap-1.5 text-xs font-bold text-rose-800 bg-white/80 border border-rose-200 px-3 py-1.5 rounded-lg shadow-2xs">
                     <ShieldCheck className="w-4 h-4 text-rose-600" />
-                    Patientensicherheit oberste Priorität
+                    {t('landingRedFlagsPill')}
                   </span>
                 </div>
               </div>
