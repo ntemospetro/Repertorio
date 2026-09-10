@@ -40,10 +40,12 @@ import {
 
 interface TherapistBillingAnalyticsProps {
   therapist: Therapist;
+  showOnlySection?: 'all' | 'charts_only' | 'history_only';
 }
 
 export const TherapistBillingAnalytics: React.FC<TherapistBillingAnalyticsProps> = ({
-  therapist
+  therapist,
+  showOnlySection = 'all'
 }) => {
   const { t, language } = useTranslation();
   const [loading, setLoading] = useState<boolean>(true);
@@ -231,32 +233,35 @@ export const TherapistBillingAnalytics: React.FC<TherapistBillingAnalyticsProps>
 
   return (
     <div className="space-y-6" id="therapist-billing-analytics">
-      {/* SECTION HEADER */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
-        <div>
-          <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-            <BarChart3 className="w-5 h-5 text-teal-600" />
-            {t('therapistBillingAnalyticsTitle')}
-          </h3>
-          <p className="text-xs text-slate-500 mt-1">
-            {t('therapistBillingAnalyticsSubtitle')}
-          </p>
-        </div>
+      {/* 4 HIGH-CONTRAST KPI METRIC TILES & CHARTS */}
+      {showOnlySection !== 'history_only' && (
+        <>
+          {/* SECTION HEADER */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+            <div>
+              <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                <BarChart3 className="w-5 h-5 text-teal-600" />
+                {t('therapistBillingAnalyticsTitle')}
+              </h3>
+              <p className="text-xs text-slate-500 mt-1">
+                {t('therapistBillingAnalyticsSubtitle')}
+              </p>
+            </div>
 
-        <button
-          type="button"
-          onClick={loadData}
-          disabled={loading}
-          className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 rounded-lg border border-slate-200 transition-colors cursor-pointer self-start sm:self-auto"
-          title="Aktualisieren"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-teal-600' : ''}`} />
-          <span>{t('adminTokensRefresh')}</span>
-        </button>
-      </div>
+            <button
+              type="button"
+              onClick={loadData}
+              disabled={loading}
+              className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 rounded-lg border border-slate-200 transition-colors cursor-pointer self-start sm:self-auto"
+              title="Aktualisieren"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-teal-600' : ''}`} />
+              <span>{t('adminTokensRefresh')}</span>
+            </button>
+          </div>
 
-      {/* 4 HIGH-CONTRAST KPI METRIC TILES */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* 4 HIGH-CONTRAST KPI METRIC TILES */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Tile 1: Restguthaben (Primary Focus) */}
         <div className="bg-gradient-to-br from-teal-900 via-slate-900 to-slate-950 text-white p-5 rounded-2xl border border-teal-800/40 shadow-sm relative overflow-hidden flex flex-col justify-between">
           <div className="absolute right-0 top-0 w-32 h-32 bg-teal-500/10 rounded-full blur-2xl pointer-events-none" />
@@ -502,9 +507,12 @@ export const TherapistBillingAnalytics: React.FC<TherapistBillingAnalyticsProps>
           </div>
         </div>
       </div>
+        </>
+      )}
 
       {/* STATISTIK DER ZUBUCHUNGEN (TABELLE & DETAILÜBERSICHT) */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+      {showOnlySection !== 'charts_only' && (
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
         <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h4 className="text-base font-bold text-slate-900 flex items-center gap-2">
@@ -585,6 +593,7 @@ export const TherapistBillingAnalytics: React.FC<TherapistBillingAnalyticsProps>
           </div>
         )}
       </div>
+      )}
     </div>
   );
 };

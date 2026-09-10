@@ -2552,4 +2552,45 @@ export const el = {
   therapistTypeManualReload: "Προσθήκη Υπολοίπου",
   therapistTypeAutoReload: "Αυτόματη Φόρτιση",
   therapistTypePackagePurchase: "Αναβάθμιση Πακέτου",
+
+  // Therapist Settings Tabs
+  therapistTabCreditOverview: "Υπόλοιπο & Κατανάλωση",
+  therapistTabTariffPlans: "Προγράμματα & Πακέτα",
+  therapistTabTransactions: "Ιστορικό Συναλλαγών",
+  therapistTabCreditOverviewDesc: "Ζωντανό υπόλοιπο, ανάλυση κατανάλωσης και ανανέωση",
+  therapistTabTariffPlansDesc: "Διαθέσιμα πακέτα και αλλαγή προγράμματος",
+  therapistTabTransactionsDesc: "Πλήρες αρχείο ανανεώσεων και τιμολογίων",
+
+  // Landing Page Feature Showcases (Medikamentensuche, Repertorium, Materia Medica)
+  landingShowcasesEyebrow: "Ολοκληρωμένη Σουίτα Ιατρείου",
+  landingShowcasesTitle: "Βασικά Εργαλεία για την Κλασική Ομοιοπαθητική",
+  landingShowcasesLead: "Συνδυάστε την κλασική γνώση των Hahnemann, Kent και Boericke με σύγχρονη τεχνολογία για στοχευμένη ανάλυση.",
+  
+  landingShowcase1Badge: "Αναζήτηση Φαρμάκων",
+  landingShowcase1Title: "Έξυπνη Αναζήτηση Φαρμάκων & Ουσιών",
+  landingShowcase1Desc: "Άμεση πρόσβαση σε μια εκτενή φαρμακοποιία με λατινικές και τοπικές ονομασίες. Αναζητήστε βασικά συμπτώματα, τροποποιητικούς παράγοντες και κλινικές ενδείξεις.",
+  landingShowcase1Feature1: "Άμεση αναζήτηση κειμένου σε λατινικά και κοινά ονόματα",
+  landingShowcase1Feature2: "Άμεσο φιλτράρισμα δυναμοποιήσεων C, D και LM",
+  landingShowcase1Feature3: "Απευθείας μεταφορά στη λήψη ιστορικού με ένα κλικ",
+
+  landingShowcase2Badge: "Κλασικό Ρεπερτόριο",
+  landingShowcase2Title: "Αξιολόγηση Συμπτωμάτων & Ρεπερτοριοποίηση",
+  landingShowcase2Desc: "Πληκτρολογήστε συμπτώματα ομαλά χωρίς καθυστέρηση. Αξιολογήστε τα συμπτώματα-κλειδιά από 1 έως 4 αστέρια και επιλέξτε αυστηρή τομή ή σταθμισμένη κατάταξη.",
+  landingShowcase2Feature1: "Εισαγωγή συμπτωμάτων μηδενικής καθυστέρησης με βελτιστοποιημένη απόκριση",
+  landingShowcase2Feature2: "Κλασική στάθμιση συμπτωμάτων από Βαθμό 1 έως Βαθμό 4 (Keynote)",
+  landingShowcase2Feature3: "Ευέλικτος υπολογισμός αυστηρής τομής ή σταθμισμένης κατάταξης",
+
+  landingShowcase3Badge: "Materia Medica",
+  landingShowcase3Title: "Εμπεριστατωμένες Μονογραφίες & Εικόνες Φαρμάκων",
+  landingShowcase3Desc: "Λεπτομερείς μονογραφίες κλασικών ομοιοπαθητικών φαρμάκων. Μελετήστε ψυχικά συμπτώματα, επιδεινώσεις, βελτιώσεις και επιβεβαιωμένες κλινικές ενδείξεις.",
+  landingShowcase3Feature1: "Δομημένες μονογραφίες φαρμάκων κατά τους κλασικούς συγγραφείς",
+  landingShowcase3Feature2: "Αναλυτικοί τροποποιητικοί παράγοντες (βελτίωση/επιδείνωση) με μια ματιά",
+  landingShowcase3Feature3: "Ενσωματωμένη γρήγορη πρόσβαση για οξέα και επείγοντα περιστατικά",
+
+  // Microphone Permission Modal
+  micPermissionDeniedTitle: "Δεν επετράπη η πρόσβαση στο μικρόφωνο",
+  micPermissionDeniedDesc: "Η άδεια χρήσης μικροφώνου απορρίφθηκε ή αποκλείστηκε στο πρόγραμμα περιήγησής σας. Για φωνητική καταγραφή, επιτρέψτε την πρόσβαση στο μικρόφωνο στις ρυθμίσεις του περιηγητή ή ακυρώστε.",
+  micPermissionDeniedHint: "Κάντε κλικ στο εικονίδιο κλειδαριάς ή ρυθμίσεων στη γραμμή διευθύνσεων του προγράμματος περιήγησης για να επιτρέψετε το μικρόφωνο για αυτόν τον ιστότοπο.",
+  micPermissionCancelBtn: "Ακύρωση",
+  micPermissionRetryBtn: "Δοκιμάστε ξανά",
 };

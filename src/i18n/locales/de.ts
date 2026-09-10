@@ -2558,4 +2558,45 @@ export const de = {
   therapistTypeManualReload: "Guthaben-Aufladung",
   therapistTypeAutoReload: "Auto-Nachbuchung",
   therapistTypePackagePurchase: "Tarif-Zubuchung",
+
+  // Therapist Settings Tabs
+  therapistTabCreditOverview: "Guthaben & Verbrauch",
+  therapistTabTariffPlans: "Tarifwechsel & Tarife",
+  therapistTabTransactions: "Buchungshistorie",
+  therapistTabCreditOverviewDesc: "Live-Restguthaben, Verbrauchsanalyse und Guthabenaufladung",
+  therapistTabTariffPlansDesc: "Verfügbare Leistungspakete und Tarifanpassung",
+  therapistTabTransactionsDesc: "Protokoll aller Transaktionen, Aufladungen und Rechnungsdaten",
+
+  // Landing Page Feature Showcases (Medikamentensuche, Repertorium, Materia Medica)
+  landingShowcasesEyebrow: "Umfassende Praxisausstattung",
+  landingShowcasesTitle: "Die Kernwerkzeuge für Ihren homöopathischen Praxisalltag",
+  landingShowcasesLead: "Kombinieren Sie fundiertes klassisches Wissen von Hahnemann, Kent und Boericke mit modernster Technologie für eine zielgerichtete Fallanalyse.",
+  
+  landingShowcase1Badge: "Medikamentensuche",
+  landingShowcase1Title: "Intelligente Medikamenten- & Wirkstoffsuche",
+  landingShowcase1Desc: "Greifen Sie in Sekundenschnelle auf ein umfassendes Arzneiverzeichnis mit lateinischen und deutschen Bezeichnungen zu. Durchsuchen Sie Leitsymptome, Modalitäten, klinische Indikationen und Hauptwirkungsbereiche gezielt nach klinischen Begriffen.",
+  landingShowcase1Feature1: "Sekundenschnelle Volltextsuche über lateinische und deutsche Namen",
+  landingShowcase1Feature2: "Sofortige Filterung nach C-, D- und LM-Potenzen",
+  landingShowcase1Feature3: "Direkte Übernahme in die Fallanamnese mit einem Klick",
+
+  landingShowcase2Badge: "Klassisches Repertorium",
+  landingShowcase2Title: "Symptomwertigkeit & Repertorisation",
+  landingShowcase2Desc: "Erfassen Sie Symptome flüssig ohne Eingabeverzögerung. Gewichten Sie Leitsymptome nach den klassischen Graden 1 bis 4 und bestimmen Sie präzise, ob eine strikte Schnittmenge aller Symptome oder ein gewichtetes Ranking analysiert werden soll.",
+  landingShowcase2Feature1: "Verzögerungsfreie Symptomeingabe mit optimierter Reaktionszeit",
+  landingShowcase2Feature2: "Klassische Symptomgewichtung von Grad 1 (beiläufig) bis Grad 4 (Keynote)",
+  landingShowcase2Feature3: "Flexible Schnittmengenberechnung oder gewichtete Gesamtanalyse",
+
+  landingShowcase3Badge: "Materia Medica",
+  landingShowcase3Title: "Fundierte Monographien & Arzneimittelbilder",
+  landingShowcase3Desc: "Detaillierte Ausarbeitungen klassischer homöopathischer Arzneimittel. Studieren Sie Gemütssymptome, Verschlimmerungen, Besserungen und bewährte klinische Indikationen – verfasst nach den historischen Meistern Hahnemann, Boericke und Kent.",
+  landingShowcase3Feature1: "Strukturierte Arzneimittelmonographien nach klassischen Autoren",
+  landingShowcase3Feature2: "Detaillierte Modalitäten (Besserung/Verschlechterung) auf einen Blick",
+  landingShowcase3Feature3: "Integrierter Akut- und Notfall-Schnellzugriff für die Praxis",
+
+  // Microphone Permission Modal
+  micPermissionDeniedTitle: "Mikrofonzugriff verweigert",
+  micPermissionDeniedDesc: "Die Mikrofonberechtigung wurde im Browser verweigert oder blockiert. Um die Spracheingabe zu nutzen, erlauben Sie bitte den Mikrofonzugriff in Ihren Browsereinstellungen oder brechen Sie den Vorgang ab.",
+  micPermissionDeniedHint: "Klicken Sie in der Adressleiste Ihres Browsers auf das Schloss- oder Einstellungssymbol, um das Mikrofon für diese Seite freizugeben.",
+  micPermissionCancelBtn: "Abbruch",
+  micPermissionRetryBtn: "Erneut versuchen",
 };

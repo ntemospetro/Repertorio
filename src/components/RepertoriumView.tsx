@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Layers, 
   Plus, 
@@ -47,8 +47,18 @@ export const RepertoriumView: React.FC<RepertoriumViewProps> = ({
     { id: 'sym-1', text: '', weight: null },
   ]);
 
-  // Filter mode: strict intersection vs weighted (default active per clinical precision workflow)
-  const [strictOnly, setStrictOnly] = useState<boolean>(true);
+  // Debounced symptoms state so typing into inputs is instantaneous and silky-smooth
+  const [debouncedSymptoms, setDebouncedSymptoms] = useState<RepertoriumSymptomInput[]>(symptoms);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSymptoms(symptoms);
+    }, 250);
+    return () => clearTimeout(handler);
+  }, [symptoms]);
+
+  // Filter mode: strict intersection vs weighted (Default: false, per user request)
+  const [strictOnly, setStrictOnly] = useState<boolean>(false);
 
   // Filter by classical authors (All, Hahnemann, Kent, Hering, Boericke)
   const [selectedAuthor, setSelectedAuthor] = useState<ClassicalAuthorFilterKey>('all');
@@ -70,13 +80,13 @@ export const RepertoriumView: React.FC<RepertoriumViewProps> = ({
 
   // Compute live repertorisation using Classical Repertory Engine (Hahnemann, Kent, Hering, Boericke)
   const results = useMemo(() => {
-    return performBoerickeRepertorisation(symptoms, language, strictOnly, selectedAuthor);
-  }, [symptoms, language, strictOnly, selectedAuthor]);
+    return performBoerickeRepertorisation(debouncedSymptoms, language, strictOnly, selectedAuthor);
+  }, [debouncedSymptoms, language, strictOnly, selectedAuthor]);
 
   // Individual symptom coverage counts
   const symptomHitCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    for (const sym of symptoms) {
+    for (const sym of debouncedSymptoms) {
       if (!sym.text || sym.text.trim().length === 0) {
         counts[sym.id] = 0;
         continue;
@@ -85,7 +95,7 @@ export const RepertoriumView: React.FC<RepertoriumViewProps> = ({
       counts[sym.id] = singleRes.length;
     }
     return counts;
-  }, [symptoms, language, selectedAuthor]);
+  }, [debouncedSymptoms, language, selectedAuthor]);
 
   const handleAddSymptom = () => {
     const nextId = `sym-${Date.now()}`;

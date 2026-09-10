@@ -2552,4 +2552,45 @@ export const fr = {
   therapistTypeManualReload: "Recharge de Solde",
   therapistTypeAutoReload: "Auto-Recharge",
   therapistTypePackagePurchase: "Surclassement de Forfait",
+
+  // Therapist Settings Tabs
+  therapistTabCreditOverview: "Solde & Consommation",
+  therapistTabTariffPlans: "Tarifs & Forfaits",
+  therapistTabTransactions: "Historique des Transactions",
+  therapistTabCreditOverviewDesc: "Solde en direct, analyse de consommation et recharge",
+  therapistTabTariffPlansDesc: "Forfaits disponibles et changement d'abonnement",
+  therapistTabTransactionsDesc: "Historique complet des recharges et factures",
+
+  // Landing Page Feature Showcases (Medikamentensuche, Repertorium, Materia Medica)
+  landingShowcasesEyebrow: "Suite Complète de Pratique",
+  landingShowcasesTitle: "Les Outils Clés pour Votre Pratique Homéopathique",
+  landingShowcasesLead: "Associez les connaissances classiques d'Hahnemann, Kent et Boericke à une technologie moderne pour une analyse ciblée.",
+  
+  landingShowcase1Badge: "Recherche de Médicaments",
+  landingShowcase1Title: "Recherche Intelligente de Remèdes et Substances",
+  landingShowcase1Desc: "Accédez en un instant à une pharmacopée complète avec dénominations latines et usuelles. Recherchez les keynotes, modalités et indications cliniques.",
+  landingShowcase1Feature1: "Recherche textuelle instantanée sur les noms latins et vernaculaires",
+  landingShowcase1Feature2: "Filtrage direct par dynamisations C, D et LM",
+  landingShowcase1Feature3: "Intégration directe dans l'anamnèse en un clic",
+
+  landingShowcase2Badge: "Répertoire Classique",
+  landingShowcase2Title: "Valorisation des Symptômes & Répertorisation",
+  landingShowcase2Desc: "Saisissez les symptômes de manière fluide sans latence. Pondérez les symptômes clés de 1 à 4 étoiles et choisissez l'intersection stricte ou pondérée.",
+  landingShowcase2Feature1: "Saisie sans latence avec réactivité optimisée",
+  landingShowcase2Feature2: "Pondération classique des symptômes de grade 1 à grade 4 (Keynote)",
+  landingShowcase2Feature3: "Calcul flexible par intersection stricte ou classement pondéré",
+
+  landingShowcase3Badge: "Materia Medica",
+  landingShowcase3Title: "Monographies Approfondies & Tableaux Cliniques",
+  landingShowcase3Desc: "Monographies complètes des remèdes homéopathiques classiques. Étudiez les symptômes mentaux, aggravations, améliorations et indications cliniques vérifiées.",
+  landingShowcase3Feature1: "Monographies structurées selon les auteurs classiques",
+  landingShowcase3Feature2: "Modalités détaillées (aggravation/amélioration) en un coup d'œil",
+  landingShowcase3Feature3: "Accès rapide d'urgence et aigu intégré pour la pratique",
+
+  // Microphone Permission Modal
+  micPermissionDeniedTitle: "Accès au microphone refusé",
+  micPermissionDeniedDesc: "L'autorisation du microphone a été refusée ou bloquée par votre navigateur. Pour dicter les symptômes à la voix, veuillez autoriser l'accès au microphone dans les paramètres de votre navigateur ou annuler.",
+  micPermissionDeniedHint: "Cliquez sur l'icône de cadenas ou de paramètres dans la barre d'adresse de votre navigateur pour autoriser le microphone sur ce site.",
+  micPermissionCancelBtn: "Annuler",
+  micPermissionRetryBtn: "Réessayer",
 };

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Mic, MicOff, Loader2, AlertCircle, X, ShieldAlert } from 'lucide-react';
+import { Mic, MicOff, Loader2, AlertCircle, X, ShieldAlert, AlertTriangle } from 'lucide-react';
 import { useTranslation } from '../i18n/LanguageContext';
 import { TranslationKey } from '../i18n/translations';
 import { 
@@ -38,6 +38,7 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [showRejectionNotice, setShowRejectionNotice] = useState(false);
   const [showAcceptedFeedback, setShowAcceptedFeedback] = useState(false);
+  const [showPermissionModal, setShowPermissionModal] = useState(false);
 
   const sessionRef = useRef<SpeechRecognitionSession | null>(null);
   const valueRef = useRef(value);
@@ -131,16 +132,8 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
     }
   }, [processCompletedVoiceInput]);
 
-  const toggleListening = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-
+  const startListening = useCallback(() => {
     if (disabled || isEvaluating) return;
-
-    if (isListening) {
-      stopListening();
-      return;
-    }
 
     if (!isSpeechRecognitionSupported()) {
       alert(
@@ -152,6 +145,7 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
 
     setIsStarting(true);
     setShowRejectionNotice(false);
+    setShowPermissionModal(false);
     sessionInitialTextRef.current = valueRef.current || '';
     recordedTranscriptRef.current = '';
     isProcessingRef.current = false;
@@ -191,7 +185,8 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
         }
 
         if (err === 'not-allowed' || err === 'permission-denied') {
-          alert('Mikrofon-Berechtigung wurde verweigert. Bitte erlauben Sie den Mikrofonzugriff in Ihren Browsereinstellungen.');
+          // Open custom modal with Cancel and Retry options instead of un-cancelable browser alert
+          setShowPermissionModal(true);
         }
       },
       onEnd: () => {
@@ -213,6 +208,20 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
     });
 
     sessionRef.current = session;
+  }, [disabled, isEvaluating, language, mode, onChange, processCompletedVoiceInput, stopListening, t]);
+
+  const toggleListening = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (disabled || isEvaluating) return;
+
+    if (isListening) {
+      stopListening();
+      return;
+    }
+
+    startListening();
   };
 
   const currentLangLabel = LANGUAGE_SPEECH_MAP[language] || 'de-DE';
@@ -364,6 +373,71 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
                   {t('btnOk')}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Microphone Permission Denied Modal with Cancel (Abbruch) & Retry */}
+      {showPermissionModal && typeof document !== 'undefined' && createPortal(
+        <div 
+          className="fixed inset-0 z-[999999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="mic-permission-modal-title"
+        >
+          <div 
+            className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 p-6 sm:p-7 space-y-4 animate-in zoom-in-95 duration-200"
+          >
+            <div className="flex items-start gap-4">
+              <div className="p-3 bg-amber-50 text-amber-600 rounded-xl shrink-0 border border-amber-200/70">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <h3 id="mic-permission-modal-title" className="text-base font-bold text-slate-900 leading-tight">
+                    {t('micPermissionDeniedTitle' as TranslationKey)}
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => setShowPermissionModal(false)}
+                    className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                    aria-label={t('micPermissionCancelBtn' as TranslationKey)}
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed mt-2">
+                  {t('micPermissionDeniedDesc' as TranslationKey)}
+                </p>
+                <div className="mt-3 p-3 bg-slate-50 border border-slate-200/80 rounded-xl text-xs text-slate-600 leading-relaxed">
+                  💡 <span className="font-semibold text-slate-700">{t('micPermissionDeniedHint' as TranslationKey)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Action buttons: Clear Cancel ("Abbruch") & Retry */}
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                id="mic-permission-cancel-btn"
+                onClick={() => setShowPermissionModal(false)}
+                className="px-4 py-2 text-xs sm:text-sm font-semibold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200/80 rounded-xl transition-colors cursor-pointer"
+              >
+                {t('micPermissionCancelBtn' as TranslationKey)}
+              </button>
+              <button
+                type="button"
+                id="mic-permission-retry-btn"
+                onClick={() => {
+                  setShowPermissionModal(false);
+                  startListening();
+                }}
+                className="px-4 py-2 text-xs sm:text-sm font-semibold text-white bg-teal-600 hover:bg-teal-700 rounded-xl shadow-xs transition-colors cursor-pointer"
+              >
+                {t('micPermissionRetryBtn' as TranslationKey)}
+              </button>
             </div>
           </div>
         </div>,

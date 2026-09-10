@@ -20,7 +20,10 @@ import {
   ShieldCheck,
   X,
   Lock,
-  LockKeyhole
+  LockKeyhole,
+  BarChart3,
+  History,
+  Wallet
 } from 'lucide-react';
 import {
   fetchTherapistBalance,
@@ -31,16 +34,28 @@ import {
 } from '../services/stripeBillingService';
 import { TherapistBillingAnalytics } from './TherapistBillingAnalytics';
 
+export type TherapistSettingsTab = 'credit' | 'tariffs' | 'history';
+
 interface TherapistTariffManagerProps {
   therapist: Therapist;
+  defaultTab?: TherapistSettingsTab;
   onTariffChanged?: (updated: Therapist) => void;
 }
 
 export const TherapistTariffManager: React.FC<TherapistTariffManagerProps> = ({
   therapist,
+  defaultTab = 'credit',
   onTariffChanged
 }) => {
   const { t } = useTranslation();
+  const [activeTab, setActiveTab] = useState<TherapistSettingsTab>(defaultTab);
+
+  useEffect(() => {
+    if (defaultTab) {
+      setActiveTab(defaultTab);
+    }
+  }, [defaultTab]);
+
   const packagePlans = getPackagePlans().filter(p => p.isActive !== false);
 
   const [resetUsageOnSwitch, setResetUsageOnSwitch] = useState<boolean>(true);
@@ -395,7 +410,89 @@ export const TherapistTariffManager: React.FC<TherapistTariffManagerProps> = ({
         )}
       </div>
 
-      {/* 2. STRIPE TOKEN-GUTHABEN & ABRECHNUNGS-KARTE */}
+      {/* NAVIGATION TABS FOR SETTINGS / BILLING */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 p-2 shadow-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <button
+            type="button"
+            id="settings-subtab-credit"
+            onClick={() => setActiveTab('credit')}
+            className={`px-4 py-3 rounded-xl text-left transition-all cursor-pointer flex items-center gap-3 ${
+              activeTab === 'credit'
+                ? 'bg-teal-50 border border-teal-200/80 text-teal-950 shadow-xs'
+                : 'hover:bg-slate-50 text-slate-600 border border-transparent'
+            }`}
+          >
+            <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+              activeTab === 'credit' ? 'bg-teal-600 text-white' : 'bg-slate-100 text-slate-500'
+            }`}>
+              <Wallet className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-xs sm:text-sm font-bold truncate">
+                {t('therapistTabCreditOverview')}
+              </div>
+              <div className="text-[11px] text-slate-500 truncate">
+                {t('therapistTabCreditOverviewDesc')}
+              </div>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            id="settings-subtab-tariffs"
+            onClick={() => setActiveTab('tariffs')}
+            className={`px-4 py-3 rounded-xl text-left transition-all cursor-pointer flex items-center gap-3 ${
+              activeTab === 'tariffs'
+                ? 'bg-teal-50 border border-teal-200/80 text-teal-950 shadow-xs'
+                : 'hover:bg-slate-50 text-slate-600 border border-transparent'
+            }`}
+          >
+            <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+              activeTab === 'tariffs' ? 'bg-teal-600 text-white' : 'bg-slate-100 text-slate-500'
+            }`}>
+              <Layers className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-xs sm:text-sm font-bold truncate">
+                {t('therapistTabTariffPlans')}
+              </div>
+              <div className="text-[11px] text-slate-500 truncate">
+                {t('therapistTabTariffPlansDesc')}
+              </div>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            id="settings-subtab-history"
+            onClick={() => setActiveTab('history')}
+            className={`px-4 py-3 rounded-xl text-left transition-all cursor-pointer flex items-center gap-3 ${
+              activeTab === 'history'
+                ? 'bg-teal-50 border border-teal-200/80 text-teal-950 shadow-xs'
+                : 'hover:bg-slate-50 text-slate-600 border border-transparent'
+            }`}
+          >
+            <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+              activeTab === 'history' ? 'bg-teal-600 text-white' : 'bg-slate-100 text-slate-500'
+            }`}>
+              <History className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-xs sm:text-sm font-bold truncate">
+                {t('therapistTabTransactions')}
+              </div>
+              <div className="text-[11px] text-slate-500 truncate">
+                {t('therapistTabTransactionsDesc')}
+              </div>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      {/* 2. TAB: CREDIT & USAGE */}
+      {activeTab === 'credit' && (
+        <div className="space-y-6">
       <div className="bg-white rounded-2xl border border-slate-200/80 p-6 sm:p-8 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5 mb-6">
           <div className="flex items-center gap-3">
@@ -617,12 +714,15 @@ export const TherapistTariffManager: React.FC<TherapistTariffManagerProps> = ({
         )}
       </div>
 
-      {/* 3. VISUALISIERUNG & VERBRAUCHS-STATISTIK (DIAGRAMME & ZUBUCHUNGEN) */}
+      {/* 3. VISUALISIERUNG & VERBRAUCHS-STATISTIK (DIAGRAMME) */}
       <div className="bg-white rounded-2xl border border-slate-200/80 p-6 sm:p-8 shadow-sm">
-        <TherapistBillingAnalytics therapist={therapist} />
+        <TherapistBillingAnalytics therapist={therapist} showOnlySection="charts_only" />
       </div>
+        </div>
+      )}
 
-      {/* 4. TARIF-WECHSEL BEREICH */}
+      {/* 4. TARIF-WECHSEL BEREICH (TABS: TARIFFS) */}
+      {activeTab === 'tariffs' && (
       <div id="tariff-plans-grid" className="bg-white rounded-2xl border border-slate-200/80 p-6 sm:p-8 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-100 pb-5 mb-6">
           <div>
@@ -761,6 +861,14 @@ export const TherapistTariffManager: React.FC<TherapistTariffManagerProps> = ({
           })}
         </div>
       </div>
+      )}
+
+      {/* 5. TAB: HISTORIE DER ZUBUCHUNGEN (TABS: HISTORY) */}
+      {activeTab === 'history' && (
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-6 sm:p-8 shadow-sm">
+          <TherapistBillingAnalytics therapist={therapist} showOnlySection="history_only" />
+        </div>
+      )}
 
       {/* 4. PROFESSIONAL PAYMENT & UPGRADE MODAL */}
       {(upgradeTargetPlan || topUpModalAmount) && (() => {

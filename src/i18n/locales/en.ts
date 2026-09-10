@@ -2558,4 +2558,45 @@ export const en = {
   therapistTypeManualReload: "Balance Recharge",
   therapistTypeAutoReload: "Auto-Reload",
   therapistTypePackagePurchase: "Tariff Upgrade",
+
+  // Therapist Settings Tabs
+  therapistTabCreditOverview: "Balance & Usage",
+  therapistTabTariffPlans: "Tariffs & Plans",
+  therapistTabTransactions: "Transaction History",
+  therapistTabCreditOverviewDesc: "Real-time balance, AI usage analytics and balance top-up",
+  therapistTabTariffPlansDesc: "Available service tiers and plan switching",
+  therapistTabTransactionsDesc: "Complete log of recharges, package purchases and billing records",
+
+  // Landing Page Feature Showcases (Medikamentensuche, Repertorium, Materia Medica)
+  landingShowcasesEyebrow: "Comprehensive Practice Suite",
+  landingShowcasesTitle: "Core Instruments for Classical Homeopathy",
+  landingShowcasesLead: "Combine profound historical knowledge from Hahnemann, Kent and Boericke with modern technology for targeted case analysis.",
+  
+  landingShowcase1Badge: "Remedy Search",
+  landingShowcase1Title: "Intelligent Remedy & Substance Finder",
+  landingShowcase1Desc: "Access an extensive pharmacopoeia with Latin and regional names in seconds. Search keynotes, modalities, clinical indications and spheres of action with high-precision keyword queries.",
+  landingShowcase1Feature1: "Instant full-text query across Latin and colloquial remedy names",
+  landingShowcase1Feature2: "Direct filtering by C, D and LM potency ranges",
+  landingShowcase1Feature3: "One-click transfer straight into active patient anamnesis",
+
+  landingShowcase2Badge: "Classical Repertory",
+  landingShowcase2Title: "Symptom Grading & Repertorisation",
+  landingShowcase2Desc: "Type patient symptoms smoothly without input latency. Grade core symptoms according to classical degrees 1 to 4 and choose between strict intersections or weighted multi-symptom coverage.",
+  landingShowcase2Feature1: "Zero-lag symptom entry with optimized responsive typing",
+  landingShowcase2Feature2: "Classical symptom weighting from Grade 1 (incidental) to Grade 4 (keynote)",
+  landingShowcase2Feature3: "Flexible toggle between strict intersection and weighted scoring",
+
+  landingShowcase3Badge: "Materia Medica",
+  landingShowcase3Title: "Profound Monographs & Drug Pictures",
+  landingShowcase3Desc: "Exhaustive monographs on classical homeopathic remedies. Study mind symptoms, aggravations, ameliorations and verified clinical indications structured according to the master prescribers.",
+  landingShowcase3Feature1: "Structured remedy monographs adhering to classical authors",
+  landingShowcase3Feature2: "Detailed modalities (worse/better) presented at a glance",
+  landingShowcase3Feature3: "Integrated acute and emergency quick-access for daily consultation",
+
+  // Microphone Permission Modal
+  micPermissionDeniedTitle: "Microphone Access Denied",
+  micPermissionDeniedDesc: "Microphone access was denied or blocked by your browser. To dictate symptoms by voice, please grant microphone permission in your browser settings or cancel.",
+  micPermissionDeniedHint: "Click the lock or site settings icon in your browser address bar to allow microphone access for this website.",
+  micPermissionCancelBtn: "Cancel",
+  micPermissionRetryBtn: "Try Again",
 };

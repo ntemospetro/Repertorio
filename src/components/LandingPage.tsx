@@ -23,6 +23,7 @@ import {
   Stethoscope,
   Globe,
   Laptop,
+  Pill,
   CheckCheck,
   AlertCircle
 } from 'lucide-react';
@@ -169,6 +170,246 @@ export function LandingPage({ onGetStarted, onGoToLogin }: LandingPageProps) {
           {/* 1.1 INTERACTIVE LIVE SEMANTIC SIMULATION (Hostinger Hermes Agent Style) */}
           <div id="landing-hero-animation-wrapper" className="mt-14 max-w-6xl mx-auto">
             <SemanticEngineAnimation />
+          </div>
+
+          {/* 1.2 THREE COMPACT SPLIT-SCREEN PRAXIS SHOWCASES */}
+          <div id="landing-showcases" className="mt-20 max-w-6xl mx-auto space-y-10">
+            <div className="text-center max-w-3xl mx-auto mb-6">
+              <span className="text-xs font-bold uppercase tracking-wider text-teal-700 bg-teal-50 px-3.5 py-1 rounded-full border border-teal-100">
+                {t('landingShowcasesEyebrow')}
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-3 mb-2">
+                {t('landingShowcasesTitle')}
+              </h2>
+              <p className="text-sm text-slate-600 leading-relaxed">
+                {t('landingShowcasesLead')}
+              </p>
+            </div>
+
+            {/* Showcase 1: Medikamentensuche */}
+            <div id="showcase-medication-search" className="bg-white rounded-2xl border border-slate-200/90 p-6 sm:p-8 shadow-sm hover:shadow-md transition-shadow">
+              <div className="grid md:grid-cols-12 gap-8 items-center">
+                {/* Left: Explanation */}
+                <div className="md:col-span-6 space-y-4 text-left">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-teal-50 text-teal-800 text-xs font-bold border border-teal-200/60">
+                    <Pill className="w-3.5 h-3.5 text-teal-600" />
+                    <span>{t('landingShowcase1Badge')}</span>
+                  </div>
+                  <h3 className="text-xl sm:text-2xl font-bold text-slate-900 leading-snug">
+                    {t('landingShowcase1Title')}
+                  </h3>
+                  <p className="text-sm text-slate-600 leading-relaxed">
+                    {t('landingShowcase1Desc')}
+                  </p>
+                  <ul className="space-y-2.5 text-xs sm:text-sm text-slate-700 pt-1">
+                    <li className="flex items-start gap-2.5">
+                      <CheckCircle2 className="w-4 h-4 text-teal-600 shrink-0 mt-0.5" />
+                      <span>{t('landingShowcase1Feature1')}</span>
+                    </li>
+                    <li className="flex items-start gap-2.5">
+                      <CheckCircle2 className="w-4 h-4 text-teal-600 shrink-0 mt-0.5" />
+                      <span>{t('landingShowcase1Feature2')}</span>
+                    </li>
+                    <li className="flex items-start gap-2.5">
+                      <CheckCircle2 className="w-4 h-4 text-teal-600 shrink-0 mt-0.5" />
+                      <span>{t('landingShowcase1Feature3')}</span>
+                    </li>
+                  </ul>
+                </div>
+
+                {/* Right: Realistic Clinical Mockup Card */}
+                <div className="md:col-span-6 bg-slate-900 rounded-xl p-5 text-white shadow-inner border border-slate-800">
+                  <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-800 text-xs text-slate-400">
+                    <div className="flex items-center gap-2">
+                      <Search className="w-3.5 h-3.5 text-teal-400" />
+                      <span className="font-mono text-slate-300 font-semibold">Arzneisuche: Belladonna</span>
+                    </div>
+                    <span className="text-[10px] bg-teal-900/60 text-teal-300 px-2 py-0.5 rounded-full border border-teal-700/50">
+                      78 Treffer
+                    </span>
+                  </div>
+                  
+                  {/* Results list mockup */}
+                  <div className="space-y-2 text-xs">
+                    <div className="p-2.5 rounded-lg bg-slate-800/80 border border-teal-500/40 flex items-center justify-between">
+                      <div>
+                        <div className="font-bold text-teal-300 font-serif">Atropa belladonna</div>
+                        <div className="text-[11px] text-slate-400">Tollkirsche · Solanaceae · Akut</div>
+                      </div>
+                      <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-teal-950 text-teal-200 border border-teal-800">
+                        C30 / D12
+                      </span>
+                    </div>
+
+                    <div className="p-2.5 rounded-lg bg-slate-800/50 border border-slate-700/60 flex items-center justify-between opacity-80">
+                      <div>
+                        <div className="font-semibold text-slate-200 font-serif">Aconitum napellus</div>
+                        <div className="text-[11px] text-slate-400">Eisenhut · Ranunculaceae</div>
+                      </div>
+                      <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300">
+                        C200
+                      </span>
+                    </div>
+
+                    <div className="p-2.5 rounded-lg bg-slate-800/40 border border-slate-700/40 flex items-center justify-between opacity-70">
+                      <div>
+                        <div className="font-semibold text-slate-300 font-serif">Bryonia alba</div>
+                        <div className="text-[11px] text-slate-400">Weiße Zaunrübe · Cucurbitaceae</div>
+                      </div>
+                      <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400">
+                        C30 / LM6
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 pt-2.5 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
+                    <span className="flex items-center gap-1.5 text-emerald-400">
+                      <Check className="w-3 h-3" /> Volltext-Index synchron
+                    </span>
+                    <span className="font-mono text-[10px]">Latenz: &lt; 15ms</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Showcase 2: Klassisches Repertorium & Symptomwertigkeit */}
+            <div id="showcase-repertorium" className="bg-white rounded-2xl border border-slate-200/90 p-6 sm:p-8 shadow-sm hover:shadow-md transition-shadow">
+              <div className="grid md:grid-cols-12 gap-8 items-center">
+                {/* Left: Explanation */}
+                <div className="md:col-span-6 space-y-4 text-left">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-violet-50 text-violet-800 text-xs font-bold border border-violet-200/60">
+                    <Scale className="w-3.5 h-3.5 text-violet-600" />
+                    <span>{t('landingShowcase2Badge')}</span>
+                  </div>
+                  <h3 className="text-xl sm:text-2xl font-bold text-slate-900 leading-snug">
+                    {t('landingShowcase2Title')}
+                  </h3>
+                  <p className="text-sm text-slate-600 leading-relaxed">
+                    {t('landingShowcase2Desc')}
+                  </p>
+                  <ul className="space-y-2.5 text-xs sm:text-sm text-slate-700 pt-1">
+                    <li className="flex items-start gap-2.5">
+                      <CheckCircle2 className="w-4 h-4 text-violet-600 shrink-0 mt-0.5" />
+                      <span>{t('landingShowcase2Feature1')}</span>
+                    </li>
+                    <li className="flex items-start gap-2.5">
+                      <CheckCircle2 className="w-4 h-4 text-violet-600 shrink-0 mt-0.5" />
+                      <span>{t('landingShowcase2Feature2')}</span>
+                    </li>
+                    <li className="flex items-start gap-2.5">
+                      <CheckCircle2 className="w-4 h-4 text-violet-600 shrink-0 mt-0.5" />
+                      <span>{t('landingShowcase2Feature3')}</span>
+                    </li>
+                  </ul>
+                </div>
+
+                {/* Right: Repertorium Rubrik & Grade Simulation Card */}
+                <div className="md:col-span-6 bg-slate-900 rounded-xl p-5 text-white shadow-inner border border-slate-800">
+                  <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-800 text-xs text-slate-400">
+                    <span className="font-mono text-slate-300 font-semibold">Boericke Rubrikenmatrix</span>
+                    <span className="text-[10px] bg-violet-900/60 text-violet-300 px-2 py-0.5 rounded-full border border-violet-700/50">
+                      Grad 1 - 4
+                    </span>
+                  </div>
+
+                  <div className="space-y-2.5 text-xs">
+                    <div className="p-2.5 rounded-lg bg-slate-800/80 border border-slate-700 flex items-center justify-between">
+                      <span className="text-slate-200">Plötzliches hohes Fieber, brennende Hitze</span>
+                      <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40">
+                        Grad 4 · Keynote
+                      </span>
+                    </div>
+
+                    <div className="p-2.5 rounded-lg bg-slate-800/80 border border-slate-700 flex items-center justify-between">
+                      <span className="text-slate-200">Kopfschmerz klopfend, &lt; durch Erschütterung</span>
+                      <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                        Grad 3 · Hochwertig
+                      </span>
+                    </div>
+
+                    <div className="p-2.5 rounded-lg bg-slate-800/80 border border-slate-700 flex items-center justify-between">
+                      <span className="text-slate-300">Pupillenerweiterung & gerötetes Gesicht</span>
+                      <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-teal-500/20 text-teal-300 border border-teal-500/40">
+                        Grad 2 · Bestätigend
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 pt-2.5 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
+                    <span className="text-violet-300 font-medium">Repertorisations-Score: 11 / 12 Punkte</span>
+                    <span className="text-emerald-400 font-bold">1. Bell. (3/3)</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Showcase 3: Materia Medica & Monographien */}
+            <div id="showcase-materia-medica" className="bg-white rounded-2xl border border-slate-200/90 p-6 sm:p-8 shadow-sm hover:shadow-md transition-shadow">
+              <div className="grid md:grid-cols-12 gap-8 items-center">
+                {/* Left: Explanation */}
+                <div className="md:col-span-6 space-y-4 text-left">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-emerald-50 text-emerald-800 text-xs font-bold border border-emerald-200/60">
+                    <BookOpen className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>{t('landingShowcase3Badge')}</span>
+                  </div>
+                  <h3 className="text-xl sm:text-2xl font-bold text-slate-900 leading-snug">
+                    {t('landingShowcase3Title')}
+                  </h3>
+                  <p className="text-sm text-slate-600 leading-relaxed">
+                    {t('landingShowcase3Desc')}
+                  </p>
+                  <ul className="space-y-2.5 text-xs sm:text-sm text-slate-700 pt-1">
+                    <li className="flex items-start gap-2.5">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span>{t('landingShowcase3Feature1')}</span>
+                    </li>
+                    <li className="flex items-start gap-2.5">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span>{t('landingShowcase3Feature2')}</span>
+                    </li>
+                    <li className="flex items-start gap-2.5">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span>{t('landingShowcase3Feature3')}</span>
+                    </li>
+                  </ul>
+                </div>
+
+                {/* Right: Materia Medica Monograph Mockup Card */}
+                <div className="md:col-span-6 bg-slate-900 rounded-xl p-5 text-white shadow-inner border border-slate-800">
+                  <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-800 text-xs">
+                    <span className="font-serif italic text-teal-300 text-sm font-semibold">Arnica montana (Bergwohlverleih)</span>
+                    <span className="text-[10px] bg-emerald-900/60 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-700/50">
+                      Boericke & Kent
+                    </span>
+                  </div>
+
+                  <div className="space-y-2.5 text-xs">
+                    <div className="p-2.5 rounded-lg bg-slate-800/70 border border-slate-700">
+                      <div className="font-bold text-slate-300 mb-1">Leitsymptomatik & Traumatologie:</div>
+                      <p className="text-slate-400 text-[11px] leading-relaxed">
+                        Folgen von stumpfen Verletzungen, Quetschungen, Überanstrengung. Patient behauptet, es fehle ihm nichts; Bett fühlt sich zu hart an.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-[11px]">
+                      <div className="p-2 rounded bg-rose-950/30 border border-rose-900/50 text-rose-200">
+                        <strong className="block text-[10px] uppercase text-rose-400 font-bold mb-0.5">Verschlechterung (&lt;)</strong>
+                        Berührung, Erschütterung, feuchte Kälte
+                      </div>
+                      <div className="p-2 rounded bg-emerald-950/30 border border-emerald-900/50 text-emerald-200">
+                        <strong className="block text-[10px] uppercase text-emerald-400 font-bold mb-0.5">Besserung (&gt;)</strong>
+                        Liegen mit tief liegendem Kopf
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 pt-2.5 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
+                    <span>Klassisches Quellenwerk: Materia Medica mit Repertorium</span>
+                    <span className="text-emerald-400 font-mono">100% verifiziert</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
         </div>

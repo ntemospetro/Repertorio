@@ -2552,4 +2552,45 @@ export const es = {
   therapistTypeManualReload: "Recarga de Saldo",
   therapistTypeAutoReload: "Auto-Recarga",
   therapistTypePackagePurchase: "Mejora de Tarifa",
+
+  // Therapist Settings Tabs
+  therapistTabCreditOverview: "Saldo y Consumo",
+  therapistTabTariffPlans: "Tarifas y Planes",
+  therapistTabTransactions: "Historial de Transacciones",
+  therapistTabCreditOverviewDesc: "Saldo en tiempo real, análisis de consumo y recargas",
+  therapistTabTariffPlansDesc: "Planes disponibles y cambio de tarifa",
+  therapistTabTransactionsDesc: "Registro completo de recargas y facturas",
+
+  // Landing Page Feature Showcases (Medikamentensuche, Repertorium, Materia Medica)
+  landingShowcasesEyebrow: "Suite Profesional Completa",
+  landingShowcasesTitle: "Herramientas Esenciales para la Homeopatía Clásica",
+  landingShowcasesLead: "Combine el conocimiento clásico de Hahnemann, Kent y Boericke con tecnología moderna para un análisis clínico preciso.",
+  
+  landingShowcase1Badge: "Búsqueda de Medicamentos",
+  landingShowcase1Title: "Buscador Inteligente de Remedios y Sustancias",
+  landingShowcase1Desc: "Acceda al instante a una farmacopea integral con nombres latinos y comunes. Busque síntomas guía, modalidades e indicaciones clínicas.",
+  landingShowcase1Feature1: "Búsqueda textual instantánea en nombres latinos y locales",
+  landingShowcase1Feature2: "Filtrado directo por potencias C, D y LM",
+  landingShowcase1Feature3: "Traspaso directo a la anamnesis con un solo clic",
+
+  landingShowcase2Badge: "Repertorio Clásico",
+  landingShowcase2Title: "Valoración de Síntomas y Repertorización",
+  landingShowcase2Desc: "Ingrese síntomas con total fluidez sin retrasos. Valore síntomas de 1 a 4 estrellas y elija intersección estricta o puntuación ponderada.",
+  landingShowcase2Feature1: "Entrada de síntomas sin latencia con respuesta optimizada",
+  landingShowcase2Feature2: "Ponderación clásica de síntomas desde Grado 1 hasta Grado 4 (Keynote)",
+  landingShowcase2Feature3: "Cálculo flexible entre intersección estricta y ranking ponderado",
+
+  landingShowcase3Badge: "Materia Medica",
+  landingShowcase3Title: "Monografías Profundas y Cuadros del Remedio",
+  landingShowcase3Desc: "Monografías exhaustivas de remedios homeopáticos clásicos. Estudie síntomas mentales, agravaciones, mejorías e indicaciones clínicas contrastadas.",
+  landingShowcase3Feature1: "Monografías estructuradas según los autores clásicos",
+  landingShowcase3Feature2: "Modalidades detalladas (mejoría/agravación) a simple vista",
+  landingShowcase3Feature3: "Acceso rápido para casos agudos y de urgencia en la consulta",
+
+  // Microphone Permission Modal
+  micPermissionDeniedTitle: "Acceso al micrófono denegado",
+  micPermissionDeniedDesc: "El permiso del micrófono fue denegado o bloqueado en su navegador. Para dictar los síntomas por voz, permita el acceso al micrófono en la configuración de su navegador o cancele la operación.",
+  micPermissionDeniedHint: "Haga clic en el icono de candado o configuración del sitio en la barra de direcciones de su navegador para permitir el micrófono para este sitio.",
+  micPermissionCancelBtn: "Cancelar",
+  micPermissionRetryBtn: "Reintentar",
 };

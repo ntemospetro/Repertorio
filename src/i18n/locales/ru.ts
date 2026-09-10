@@ -2552,4 +2552,45 @@ export const ru = {
   therapistTypeManualReload: "Пополнение баланса",
   therapistTypeAutoReload: "Автопополнение",
   therapistTypePackagePurchase: "Апгрейд тарифа",
+
+  // Therapist Settings Tabs
+  therapistTabCreditOverview: "Баланс и расход",
+  therapistTabTariffPlans: "Тарифы и планы",
+  therapistTabTransactions: "История транзакций",
+  therapistTabCreditOverviewDesc: "Текущий баланс, аналитика расходов и пополнение",
+  therapistTabTariffPlansDesc: "Доступные пакеты и смена тарифа",
+  therapistTabTransactionsDesc: "Полный журнал пополнений и счетов",
+
+  // Landing Page Feature Showcases (Medikamentensuche, Repertorium, Materia Medica)
+  landingShowcasesEyebrow: "Полный комплекс для практики",
+  landingShowcasesTitle: "Ключевые инструменты классической гомеопатии",
+  landingShowcasesLead: "Сочетайте классические знания Ганемана, Кента и Берике с передовыми технологиями для точного анализа случаев.",
+  
+  landingShowcase1Badge: "Поиск препаратов",
+  landingShowcase1Title: "Интеллектуальный поиск средств и веществ",
+  landingShowcase1Desc: "Мгновенный доступ к обширной фармакопее с латинскими и обиходными названиями. Поиск ключевых симптомов, модальностей и клинических показаний.",
+  landingShowcase1Feature1: "Мгновенный текстовый поиск по латинским и русским названиям",
+  landingShowcase1Feature2: "Прямой фильтр по потенциям C, D и LM",
+  landingShowcase1Feature3: "Перенос в активный анамнез пациента в один клик",
+
+  landingShowcase2Badge: "Классический реперторий",
+  landingShowcase2Title: "Оценка симптомов и реперторизация",
+  landingShowcase2Desc: "Вводите симптомы плавно и без задержек. Оценивайте ключевые симптомы от 1 до 4 звезд и выбирайте строгое пересечение или взвешенный рейтинг.",
+  landingShowcase2Feature1: "Ввод симптомов без задержек с мгновенным откликом",
+  landingShowcase2Feature2: "Классическая оценка симптомов от 1 степени до 4 степени (Keynote)",
+  landingShowcase2Feature3: "Гибкий выбор между строгим пересечением и взвешенным баллом",
+
+  landingShowcase3Badge: "Materia Medica",
+  landingShowcase3Title: "Фундаментальные монографии и лекарственные картины",
+  landingShowcase3Desc: "Подробные монографии классических гомеопатических препаратов. Изучайте психические симптомы, ухудшения, улучшения и проверенные клинические показания.",
+  landingShowcase3Feature1: "Структурированные монографии по классическим авторам",
+  landingShowcase3Feature2: "Детальные модальности (улучшение/ухудшение) с первого взгляда",
+  landingShowcase3Feature3: "Встроенный быстрый доступ к острым и неотложным состояниям",
+
+  // Microphone Permission Modal
+  micPermissionDeniedTitle: "Доступ к микрофону запрещен",
+  micPermissionDeniedDesc: "Разрешение на использование микрофона было отклонено или заблокировано в вашем браузере. Чтобы диктовать симптомы голосом, разрешите доступ к микрофону в настройках браузера или отмените действие.",
+  micPermissionDeniedHint: "Нажмите на значок замка или настроек сайта в адресной строке браузера, чтобы разрешить микрофон для этого сайта.",
+  micPermissionCancelBtn: "Отмена",
+  micPermissionRetryBtn: "Повторить попытку",
 };

@@ -2552,4 +2552,45 @@ export const it = {
   therapistTypeManualReload: "Ricarica Saldo",
   therapistTypeAutoReload: "Auto-Ricarica",
   therapistTypePackagePurchase: "Upgrade Tariffa",
+
+  // Therapist Settings Tabs
+  therapistTabCreditOverview: "Saldo & Consumi",
+  therapistTabTariffPlans: "Piani Tariffari",
+  therapistTabTransactions: "Cronologia Transazioni",
+  therapistTabCreditOverviewDesc: "Saldo in tempo reale, analisi dei consumi e ricariche",
+  therapistTabTariffPlansDesc: "Piani disponibili e cambio tariffa",
+  therapistTabTransactionsDesc: "Registro completo delle ricariche e fatture",
+
+  // Landing Page Feature Showcases (Medikamentensuche, Repertorium, Materia Medica)
+  landingShowcasesEyebrow: "Suite Completa per lo Studio",
+  landingShowcasesTitle: "Gli Strumenti Essenziali per l'Omeopatia Classica",
+  landingShowcasesLead: "Unisci la sapienza classica di Hahnemann, Kent e Boericke alla tecnologia moderna per un'analisi mirata.",
+  
+  landingShowcase1Badge: "Ricerca Rimedi",
+  landingShowcase1Title: "Ricerca Intelligente di Rimedi e Sostanze",
+  landingShowcase1Desc: "Accedi in pochi istanti a una farmacopea completa con denominazioni latine e comuni. Consulta keynotes, modalità e indicazioni cliniche.",
+  landingShowcase1Feature1: "Ricerca testuale istantanea sui nomi latini e volgari",
+  landingShowcase1Feature2: "Filtro immediato per potenze C, D e LM",
+  landingShowcase1Feature3: "Trasferimento diretto nell'anamnesi con un clic",
+
+  landingShowcase2Badge: "Repertorio Classico",
+  landingShowcase2Title: "Gradazione dei Sintomi & Repertorizzazione",
+  landingShowcase2Desc: "Inserisci i sintomi in modo fluido senza ritardi. Gradua i sintomi chiave da 1 a 4 stelle e scegli l'intersezione stretta o la ponderazione.",
+  landingShowcase2Feature1: "Digitazione sintomi senza latenza con risposta ottimizzata",
+  landingShowcase2Feature2: "Gradazione classica dei sintomi da Grado 1 a Grado 4 (Keynote)",
+  landingShowcase2Feature3: "Calcolo flessibile con intersezione rigorosa o ranking ponderato",
+
+  landingShowcase3Badge: "Materia Medica",
+  landingShowcase3Title: "Monografie Dettagliate & Quadri dei Rimedi",
+  landingShowcase3Desc: "Monografie esaustive dei rimedi omeopatici classici. Esamina sintomi psichici, aggravamenti, miglioramenti e indicazioni cliniche confermate.",
+  landingShowcase3Feature1: "Monografie strutturate secondo gli autori classici",
+  landingShowcase3Feature2: "Modalità dettagliate (miglioramento/peggioramento) a colpo d'occhio",
+  landingShowcase3Feature3: "Accesso rapido per emergenze e casi acuti integrato per lo studio",
+
+  // Microphone Permission Modal
+  micPermissionDeniedTitle: "Accesso al microfono negato",
+  micPermissionDeniedDesc: "L'autorizzazione al microfono è stata negata o bloccata nel browser. Per dettare i sintomi con la voce, consenti l'accesso al microfono nelle impostazioni del browser oppure annulla l'operazione.",
+  micPermissionDeniedHint: "Fai clic sull'icona del lucchetto o delle impostazioni del sito nella barra degli indirizzi del browser per abilitare il microfono per questo sito.",
+  micPermissionCancelBtn: "Annulla",
+  micPermissionRetryBtn: "Riprova",
 };
