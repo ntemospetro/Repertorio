@@ -25,7 +25,8 @@ import {
   Laptop,
   Pill,
   CheckCheck,
-  AlertCircle
+  AlertCircle,
+  AlertTriangle
 } from 'lucide-react';
 import { useTranslation } from '../i18n/LanguageContext';
 import { PackagePlan } from '../types';
@@ -93,7 +94,7 @@ export function LandingPage({ onGetStarted, onGoToLogin }: LandingPageProps) {
   }, []);
 
   return (
-    <div id="landing-page-root" className="bg-[#FAFBFB] text-slate-800 antialiased font-sans selection:bg-teal-100 selection:text-teal-900">
+    <div id="landing-page-root" className="bg-[#faf9f6] text-slate-800 antialiased font-sans selection:bg-teal-100 selection:text-teal-900">
       
       {/* 1. HERO SECTION WITH SEMANTIC ENGINE ANIMATION */}
       <section id="landing-hero" className="relative overflow-hidden pt-12 pb-20 md:pt-20 md:pb-28 border-b border-slate-200/70">
@@ -186,13 +187,13 @@ export function LandingPage({ onGetStarted, onGoToLogin }: LandingPageProps) {
               </p>
             </div>
 
-            {/* Showcase 1: Medikamentensuche */}
-            <div id="showcase-medication-search" className="bg-white rounded-2xl border border-slate-200/90 p-6 sm:p-8 shadow-sm hover:shadow-md transition-shadow">
+            {/* Showcase 1: Homöopathische Materia Medica */}
+            <div id="showcase-materia-medica" className="bg-white rounded-2xl border border-slate-200/90 p-6 sm:p-8 shadow-sm hover:shadow-md transition-shadow">
               <div className="grid md:grid-cols-12 gap-8 items-center">
                 {/* Left: Explanation */}
                 <div className="md:col-span-6 space-y-4 text-left">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-teal-50 text-teal-800 text-xs font-bold border border-teal-200/60">
-                    <Pill className="w-3.5 h-3.5 text-teal-600" />
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-emerald-50 text-emerald-800 text-xs font-bold border border-emerald-200/60">
+                    <BookOpen className="w-3.5 h-3.5 text-emerald-600" />
                     <span>{t('landingShowcase1Badge')}</span>
                   </div>
                   <h3 className="text-xl sm:text-2xl font-bold text-slate-900 leading-snug">
@@ -203,70 +204,52 @@ export function LandingPage({ onGetStarted, onGoToLogin }: LandingPageProps) {
                   </p>
                   <ul className="space-y-2.5 text-xs sm:text-sm text-slate-700 pt-1">
                     <li className="flex items-start gap-2.5">
-                      <CheckCircle2 className="w-4 h-4 text-teal-600 shrink-0 mt-0.5" />
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                       <span>{t('landingShowcase1Feature1')}</span>
                     </li>
                     <li className="flex items-start gap-2.5">
-                      <CheckCircle2 className="w-4 h-4 text-teal-600 shrink-0 mt-0.5" />
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                       <span>{t('landingShowcase1Feature2')}</span>
                     </li>
                     <li className="flex items-start gap-2.5">
-                      <CheckCircle2 className="w-4 h-4 text-teal-600 shrink-0 mt-0.5" />
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                       <span>{t('landingShowcase1Feature3')}</span>
                     </li>
                   </ul>
                 </div>
 
-                {/* Right: Realistic Clinical Mockup Card */}
+                {/* Right: Materia Medica Monograph Mockup Card */}
                 <div className="md:col-span-6 bg-slate-900 rounded-xl p-5 text-white shadow-inner border border-slate-800">
-                  <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-800 text-xs text-slate-400">
-                    <div className="flex items-center gap-2">
-                      <Search className="w-3.5 h-3.5 text-teal-400" />
-                      <span className="font-mono text-slate-300 font-semibold">Arzneisuche: Belladonna</span>
-                    </div>
-                    <span className="text-[10px] bg-teal-900/60 text-teal-300 px-2 py-0.5 rounded-full border border-teal-700/50">
-                      78 Treffer
+                  <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-800 text-xs">
+                    <span className="font-serif italic text-teal-300 text-sm font-semibold">Arnica montana (Bergwohlverleih)</span>
+                    <span className="text-[10px] bg-emerald-900/60 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-700/50">
+                      Boericke & Kent
                     </span>
                   </div>
-                  
-                  {/* Results list mockup */}
-                  <div className="space-y-2 text-xs">
-                    <div className="p-2.5 rounded-lg bg-slate-800/80 border border-teal-500/40 flex items-center justify-between">
-                      <div>
-                        <div className="font-bold text-teal-300 font-serif">Atropa belladonna</div>
-                        <div className="text-[11px] text-slate-400">Tollkirsche · Solanaceae · Akut</div>
-                      </div>
-                      <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-teal-950 text-teal-200 border border-teal-800">
-                        C30 / D12
-                      </span>
+
+                  <div className="space-y-2.5 text-xs">
+                    <div className="p-2.5 rounded-lg bg-slate-800/70 border border-slate-700">
+                      <div className="font-bold text-slate-300 mb-1">Leitsymptomatik & Traumatologie:</div>
+                      <p className="text-slate-400 text-[11px] leading-relaxed">
+                        Folgen von stumpfen Verletzungen, Quetschungen, Überanstrengung. Patient behauptet, es fehle ihm nichts; Bett fühlt sich zu hart an.
+                      </p>
                     </div>
 
-                    <div className="p-2.5 rounded-lg bg-slate-800/50 border border-slate-700/60 flex items-center justify-between opacity-80">
-                      <div>
-                        <div className="font-semibold text-slate-200 font-serif">Aconitum napellus</div>
-                        <div className="text-[11px] text-slate-400">Eisenhut · Ranunculaceae</div>
+                    <div className="grid grid-cols-2 gap-2 text-[11px]">
+                      <div className="p-2 rounded bg-rose-950/30 border border-rose-900/50 text-rose-200">
+                        <strong className="block text-[10px] uppercase text-rose-400 font-bold mb-0.5">Verschlechterung (&lt;)</strong>
+                        Berührung, Erschütterung, feuchte Kälte
                       </div>
-                      <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300">
-                        C200
-                      </span>
-                    </div>
-
-                    <div className="p-2.5 rounded-lg bg-slate-800/40 border border-slate-700/40 flex items-center justify-between opacity-70">
-                      <div>
-                        <div className="font-semibold text-slate-300 font-serif">Bryonia alba</div>
-                        <div className="text-[11px] text-slate-400">Weiße Zaunrübe · Cucurbitaceae</div>
+                      <div className="p-2 rounded bg-emerald-950/30 border border-emerald-900/50 text-emerald-200">
+                        <strong className="block text-[10px] uppercase text-emerald-400 font-bold mb-0.5">Besserung (&gt;)</strong>
+                        Liegen mit tief liegendem Kopf
                       </div>
-                      <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400">
-                        C30 / LM6
-                      </span>
                     </div>
                   </div>
 
                   <div className="mt-3 pt-2.5 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
-                    <span className="flex items-center gap-1.5 text-emerald-400">
-                      <Check className="w-3 h-3" /> Volltext-Index synchron
-                    </span>
-                    <span className="font-mono text-[10px]">Latenz: &lt; 15ms</span>
+                    <span>Klassisches Quellenwerk: Materia Medica mit Repertorium</span>
+                    <span className="text-emerald-400 font-mono">100% verifiziert</span>
                   </div>
                 </div>
               </div>
@@ -343,13 +326,13 @@ export function LandingPage({ onGetStarted, onGoToLogin }: LandingPageProps) {
               </div>
             </div>
 
-            {/* Showcase 3: Materia Medica & Monographien */}
-            <div id="showcase-materia-medica" className="bg-white rounded-2xl border border-slate-200/90 p-6 sm:p-8 shadow-sm hover:shadow-md transition-shadow">
+            {/* Showcase 3: Schulmedizinische Medikamentenanalyse & Risikovergleich */}
+            <div id="showcase-medication-analysis" className="bg-white rounded-2xl border border-slate-200/90 p-6 sm:p-8 shadow-sm hover:shadow-md transition-shadow">
               <div className="grid md:grid-cols-12 gap-8 items-center">
                 {/* Left: Explanation */}
                 <div className="md:col-span-6 space-y-4 text-left">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-emerald-50 text-emerald-800 text-xs font-bold border border-emerald-200/60">
-                    <BookOpen className="w-3.5 h-3.5 text-emerald-600" />
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-amber-50 text-amber-800 text-xs font-bold border border-amber-200/60">
+                    <Pill className="w-3.5 h-3.5 text-amber-600" />
                     <span>{t('landingShowcase3Badge')}</span>
                   </div>
                   <h3 className="text-xl sm:text-2xl font-bold text-slate-900 leading-snug">
@@ -360,53 +343,103 @@ export function LandingPage({ onGetStarted, onGoToLogin }: LandingPageProps) {
                   </p>
                   <ul className="space-y-2.5 text-xs sm:text-sm text-slate-700 pt-1">
                     <li className="flex items-start gap-2.5">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <CheckCircle2 className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                       <span>{t('landingShowcase3Feature1')}</span>
                     </li>
                     <li className="flex items-start gap-2.5">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <CheckCircle2 className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                       <span>{t('landingShowcase3Feature2')}</span>
                     </li>
                     <li className="flex items-start gap-2.5">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <CheckCircle2 className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                       <span>{t('landingShowcase3Feature3')}</span>
                     </li>
                   </ul>
                 </div>
 
-                {/* Right: Materia Medica Monograph Mockup Card */}
+                {/* Right: Clinical Drug Interaction & Side Effect Analysis Mockup Card */}
                 <div className="md:col-span-6 bg-slate-900 rounded-xl p-5 text-white shadow-inner border border-slate-800">
-                  <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-800 text-xs">
-                    <span className="font-serif italic text-teal-300 text-sm font-semibold">Arnica montana (Bergwohlverleih)</span>
-                    <span className="text-[10px] bg-emerald-900/60 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-700/50">
-                      Boericke & Kent
+                  <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-800 text-xs text-slate-400">
+                    <div className="flex items-center gap-2">
+                      <Search className="w-3.5 h-3.5 text-amber-400" />
+                      <span className="font-mono text-slate-300 font-semibold">Arzneimittelanalyse: Vormedikation</span>
+                    </div>
+                    <span className="text-[10px] bg-amber-900/60 text-amber-300 px-2 py-0.5 rounded-full border border-amber-700/50">
+                      2 Präparate geprüft
                     </span>
                   </div>
-
-                  <div className="space-y-2.5 text-xs">
-                    <div className="p-2.5 rounded-lg bg-slate-800/70 border border-slate-700">
-                      <div className="font-bold text-slate-300 mb-1">Leitsymptomatik & Traumatologie:</div>
-                      <p className="text-slate-400 text-[11px] leading-relaxed">
-                        Folgen von stumpfen Verletzungen, Quetschungen, Überanstrengung. Patient behauptet, es fehle ihm nichts; Bett fühlt sich zu hart an.
-                      </p>
+                  
+                  {/* Results list mockup */}
+                  <div className="space-y-2 text-xs">
+                    <div className="p-2.5 rounded-lg bg-slate-800/80 border border-slate-700 flex items-center justify-between">
+                      <div>
+                        <div className="font-bold text-slate-200">Ramipril 5mg (ACE-Hemmer)</div>
+                        <div className="text-[11px] text-slate-400">Bekannte Nebenwirkung: Reizhusten, Hyperkaliämie</div>
+                      </div>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-amber-300 border border-amber-700/50">
+                        Präparat 1
+                      </span>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2 text-[11px]">
-                      <div className="p-2 rounded bg-rose-950/30 border border-rose-900/50 text-rose-200">
-                        <strong className="block text-[10px] uppercase text-rose-400 font-bold mb-0.5">Verschlechterung (&lt;)</strong>
-                        Berührung, Erschütterung, feuchte Kälte
+                    <div className="p-2.5 rounded-lg bg-slate-800/80 border border-slate-700 flex items-center justify-between">
+                      <div>
+                        <div className="font-bold text-slate-200">Ibuprofen 600mg (NSAR)</div>
+                        <div className="text-[11px] text-slate-400">Nebenwirkung: Gastrointestinale Ulzeration, Nierenbelastung</div>
                       </div>
-                      <div className="p-2 rounded bg-emerald-950/30 border border-emerald-900/50 text-emerald-200">
-                        <strong className="block text-[10px] uppercase text-emerald-400 font-bold mb-0.5">Besserung (&gt;)</strong>
-                        Liegen mit tief liegendem Kopf
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-amber-300 border border-amber-700/50">
+                        Präparat 2
+                      </span>
+                    </div>
+
+                    {/* Risk & Interaction Check */}
+                    <div className="p-2.5 rounded-lg bg-rose-950/40 border border-rose-800/60 text-rose-200">
+                      <div className="flex items-center gap-1.5 font-bold text-rose-300 text-xs mb-1">
+                        <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />
+                        <span>Risikovergleich & Wechselwirkung: Relevante Interaktion</span>
                       </div>
+                      <p className="text-[11px] text-rose-200/90 leading-relaxed">
+                        Kombination vermindert die antihypertensive Wirkung von Ramipril und erhöht das Risiko einer akuten Nierenfunktionsstörung.
+                      </p>
                     </div>
                   </div>
 
                   <div className="mt-3 pt-2.5 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
-                    <span>Klassisches Quellenwerk: Materia Medica mit Repertorium</span>
-                    <span className="text-emerald-400 font-mono">100% verifiziert</span>
+                    <span className="flex items-center gap-1.5 text-rose-400 font-semibold">
+                      <AlertCircle className="w-3.5 h-3.5" /> Red Flag: Nephrotoxisches Risiko
+                    </span>
+                    <span className="font-mono text-[10px] text-slate-400">Kontraindikation beachtet</span>
                   </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Red Flags & Clinical Safety Banner */}
+            <div id="landing-redflags-banner" className="bg-gradient-to-r from-rose-50 via-amber-50 to-rose-50 border border-rose-200/80 rounded-2xl p-6 sm:p-7 shadow-sm">
+              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div className="flex items-start gap-3.5">
+                  <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center shrink-0 mt-0.5 font-bold">
+                    <AlertTriangle className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-base font-bold text-slate-900">{t('landingRedFlagsTitle')}</h4>
+                      <span className="text-[10px] font-bold uppercase tracking-wider bg-rose-200/80 text-rose-800 px-2 py-0.5 rounded-full">
+                        Sicherheitsstandard
+                      </span>
+                    </div>
+                    <p className="text-xs sm:text-sm font-semibold text-rose-900 mt-0.5">
+                      {t('landingRedFlagsSubtitle')}
+                    </p>
+                    <p className="text-xs text-slate-600 mt-1 max-w-3xl leading-relaxed">
+                      {t('landingRedFlagsDesc')}
+                    </p>
+                  </div>
+                </div>
+                <div className="shrink-0 flex items-center gap-2 self-stretch md:self-auto justify-end">
+                  <span className="inline-flex items-center gap-1.5 text-xs font-bold text-rose-800 bg-white/80 border border-rose-200 px-3 py-1.5 rounded-lg shadow-2xs">
+                    <ShieldCheck className="w-4 h-4 text-rose-600" />
+                    Patientensicherheit oberste Priorität
+                  </span>
                 </div>
               </div>
             </div>

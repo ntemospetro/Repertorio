@@ -2,8 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Therapist, LanguageCode } from '../types';
 import { updateTherapist } from '../services/storage';
 import { addNameChangeRequest } from '../services/storage';
-import { Eye, EyeOff, KeyRound, X, Save, AlertCircle, CheckCircle2, ShieldCheck, Building2, Calendar, MapPin, History, Edit3, FileText, User, Mail, Phone, Lock, Globe, Check } from 'lucide-react';
+import { Eye, EyeOff, KeyRound, X, Save, AlertCircle, CheckCircle2, ShieldCheck, Building2, Calendar, MapPin, History, Edit3, FileText, User, Mail, Phone, Lock, Globe, Check, Award, Compass, Users } from 'lucide-react';
 import { useTranslation } from '../i18n/LanguageContext';
+import { useTerminology, ProfessionalRole, TerminologyChoice } from '../i18n/TerminologyContext';
 import { LANGUAGES } from '../i18n/translations';
 import { getLocalizedCountries, getCountryFlag } from '../data/countries';
 
@@ -14,6 +15,12 @@ interface TherapistProfileEditorProps {
 
 export const TherapistProfileEditor: React.FC<TherapistProfileEditorProps> = ({ therapist, onUpdated }) => {
   const { t, language, setLanguage } = useTranslation();
+  const { role: contextRole, terminology: contextTerm, setRoleAndTerminology } = useTerminology();
+
+  // Role & Terminology State
+  const [selectedRole, setSelectedRole] = useState<ProfessionalRole>(therapist.professionalRole || contextRole || 'heilpraktiker');
+  const [selectedTerminology, setSelectedTerminology] = useState<TerminologyChoice>(therapist.terminologyPreference || contextTerm || 'patient');
+  const [roleSavedSuccess, setRoleSavedSuccess] = useState(false);
 
   // Contact State
   const [emailInput, setEmailInput] = useState(therapist.email || '');
@@ -31,6 +38,8 @@ export const TherapistProfileEditor: React.FC<TherapistProfileEditorProps> = ({ 
     setPraxisName(therapist.praxisName || '');
     setAdresse(therapist.adresse || '');
     setLand(therapist.land || 'Deutschland');
+    if (therapist.professionalRole) setSelectedRole(therapist.professionalRole);
+    if (therapist.terminologyPreference) setSelectedTerminology(therapist.terminologyPreference);
   }, [therapist]);
 
   // Security State
@@ -54,10 +63,15 @@ export const TherapistProfileEditor: React.FC<TherapistProfileEditorProps> = ({ 
   const hasEmailChanged = (emailInput || '').trim().toLowerCase() !== (therapist.email || '').trim().toLowerCase();
   const hasPhoneChanged = (phoneInput || '').trim() !== (therapist.telefon || '').trim();
   const hasPasswordChanged = passwordInput.length > 0;
+  const hasRoleChanged = 
+    selectedRole !== (therapist.professionalRole || 'heilpraktiker') ||
+    selectedTerminology !== (therapist.terminologyPreference || (selectedRole === 'berater' ? 'klient' : 'patient'));
+
   const hasOtherChanged = 
     (praxisName || '').trim() !== (therapist.praxisName || '').trim() ||
     (adresse || '').trim() !== (therapist.adresse || '').trim() ||
-    (land || '').trim() !== (therapist.land || 'Deutschland').trim();
+    (land || '').trim() !== (therapist.land || 'Deutschland').trim() ||
+    hasRoleChanged;
 
   const hasAnyChanges = hasEmailChanged || hasPhoneChanged || hasOtherChanged || hasPasswordChanged;
 
@@ -65,6 +79,25 @@ export const TherapistProfileEditor: React.FC<TherapistProfileEditorProps> = ({ 
     setLanguage(code, true);
     setLangChangeSuccess(true);
     setTimeout(() => setLangChangeSuccess(false), 3000);
+  };
+
+  const handleRoleQuickSelect = (newRole: ProfessionalRole) => {
+    setSelectedRole(newRole);
+    if (newRole === 'berater') {
+      setSelectedTerminology('klient');
+      setRoleAndTerminology(newRole, 'klient');
+    } else {
+      setRoleAndTerminology(newRole, selectedTerminology);
+    }
+    setRoleSavedSuccess(true);
+    setTimeout(() => setRoleSavedSuccess(false), 3000);
+  };
+
+  const handleTerminologyQuickSelect = (newTerm: TerminologyChoice) => {
+    setSelectedTerminology(newTerm);
+    setRoleAndTerminology(selectedRole, newTerm);
+    setRoleSavedSuccess(true);
+    setTimeout(() => setRoleSavedSuccess(false), 3000);
   };
 
   const handleSaveAll = (e?: React.FormEvent) => {
@@ -96,7 +129,11 @@ export const TherapistProfileEditor: React.FC<TherapistProfileEditorProps> = ({ 
       land: (land || '').trim(),
       email: (emailInput || '').trim(),
       telefon: (phoneInput || '').trim(),
+      professionalRole: selectedRole,
+      terminologyPreference: selectedTerminology,
     };
+
+    setRoleAndTerminology(selectedRole, selectedTerminology);
 
     if (hasPasswordChanged) {
       updates.password = passwordInput;
@@ -262,6 +299,142 @@ export const TherapistProfileEditor: React.FC<TherapistProfileEditorProps> = ({ 
               </button>
             );
           })}
+        </div>
+      </div>
+
+      {/* 0.1 BERUFSGRUPPE & RECHTSSICHERE TERMINOLOGIE */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 p-6 sm:p-8 shadow-sm" id="profile-role-terminology-section">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-4 mb-6 gap-4">
+          <div>
+            <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <Award className="w-5 h-5 text-teal-600" />
+              {t('roleSectionTitle')}
+            </h3>
+            <p className="text-xs text-slate-500 mt-1 max-w-2xl">
+              {t('roleSectionDesc')}
+            </p>
+          </div>
+          {roleSavedSuccess ? (
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 bg-emerald-50 text-emerald-700 rounded-lg border border-emerald-200 shrink-0 animate-fadeIn">
+              <Check className="w-3.5 h-3.5 text-emerald-600" />
+              {t('terminologySavedSuccess')}
+            </span>
+          ) : (
+            <span className="text-xs font-semibold px-2.5 py-1 bg-teal-50 text-teal-700 rounded-lg border border-teal-100 shrink-0 flex items-center gap-1.5">
+              <Compass className="w-3.5 h-3.5 text-teal-600" />
+              {t('therapistTabRoleTitle')}
+            </span>
+          )}
+        </div>
+
+        {/* Role Selection Grid */}
+        <div className="space-y-6">
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-3">
+              {t('roleLabel')}
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {(
+                [
+                  { id: 'heilpraktiker', labelKey: 'roleHeilpraktiker', descKey: 'roleHeilpraktikerDesc' },
+                  { id: 'arzt', labelKey: 'roleArzt', descKey: 'roleArztDesc' },
+                  { id: 'berater', labelKey: 'roleBerater', descKey: 'roleBeraterDesc' },
+                  { id: 'therapeut', labelKey: 'roleTherapeut', descKey: 'roleTherapeutDesc' },
+                  { id: 'tierheilpraktiker', labelKey: 'roleTierheilpraktiker', descKey: 'roleTierheilpraktikerDesc' },
+                ] as const
+              ).map((item) => {
+                const isSelected = selectedRole === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    id={`profile-role-btn-${item.id}`}
+                    onClick={() => handleRoleQuickSelect(item.id)}
+                    className={`p-4 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                      isSelected
+                        ? 'bg-teal-50/80 border-teal-500 ring-2 ring-teal-500/20 shadow-xs'
+                        : 'bg-slate-50/60 border-slate-200 hover:bg-slate-100 hover:border-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <span className={`text-sm font-bold ${isSelected ? 'text-teal-950' : 'text-slate-800'}`}>
+                        {t(item.labelKey as any)}
+                      </span>
+                      {isSelected && (
+                        <span className="w-2 h-2 rounded-full bg-teal-600 shrink-0 mt-1" />
+                      )}
+                    </div>
+                    <span className="text-[11px] leading-relaxed text-slate-500">
+                      {t(item.descKey as any)}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Terminology Toggle (Patient vs Klient) */}
+          <div className="pt-4 border-t border-slate-100">
+            <div className="flex items-center gap-2 mb-3">
+              <Users className="w-4 h-4 text-teal-600" />
+              <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                {t('terminologyPreferenceLabel')}
+              </label>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl">
+              <button
+                type="button"
+                id="profile-term-patient-btn"
+                onClick={() => handleTerminologyQuickSelect('patient')}
+                className={`p-4 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${
+                  selectedTerminology === 'patient'
+                    ? 'bg-teal-50/80 border-teal-500 ring-2 ring-teal-500/20 shadow-xs'
+                    : 'bg-slate-50/60 border-slate-200 hover:bg-slate-100 hover:border-slate-300'
+                }`}
+              >
+                <div>
+                  <div className="text-sm font-bold text-slate-900 mb-0.5">
+                    {t('terminologyPatient')}
+                  </div>
+                  <div className="text-xs text-slate-500">
+                    Patient • Patientenkartei • Fallberichte
+                  </div>
+                </div>
+                {selectedTerminology === 'patient' && (
+                  <CheckCircle2 className="w-5 h-5 text-teal-600 shrink-0 ml-2" />
+                )}
+              </button>
+
+              <button
+                type="button"
+                id="profile-term-klient-btn"
+                onClick={() => handleTerminologyQuickSelect('klient')}
+                className={`p-4 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${
+                  selectedTerminology === 'klient'
+                    ? 'bg-teal-50/80 border-teal-500 ring-2 ring-teal-500/20 shadow-xs'
+                    : 'bg-slate-50/60 border-slate-200 hover:bg-slate-100 hover:border-slate-300'
+                }`}
+              >
+                <div>
+                  <div className="text-sm font-bold text-slate-900 mb-0.5">
+                    {t('terminologyKlient')}
+                  </div>
+                  <div className="text-xs text-slate-500">
+                    Klient • Klientenkartei • Beratungsakte
+                  </div>
+                </div>
+                {selectedTerminology === 'klient' && (
+                  <CheckCircle2 className="w-5 h-5 text-teal-600 shrink-0 ml-2" />
+                )}
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-400 mt-3 flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-teal-500 shrink-0" />
+              {t('terminologyAutoHint')}
+            </p>
+          </div>
         </div>
       </div>
 

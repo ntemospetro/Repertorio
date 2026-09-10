@@ -2567,31 +2567,39 @@ export const de = {
   therapistTabTariffPlansDesc: "Verfügbare Leistungspakete und Tarifanpassung",
   therapistTabTransactionsDesc: "Protokoll aller Transaktionen, Aufladungen und Rechnungsdaten",
 
-  // Landing Page Feature Showcases (Medikamentensuche, Repertorium, Materia Medica)
-  landingShowcasesEyebrow: "Umfassende Praxisausstattung",
-  landingShowcasesTitle: "Die Kernwerkzeuge für Ihren homöopathischen Praxisalltag",
-  landingShowcasesLead: "Kombinieren Sie fundiertes klassisches Wissen von Hahnemann, Kent und Boericke mit modernster Technologie für eine zielgerichtete Fallanalyse.",
-  
-  landingShowcase1Badge: "Medikamentensuche",
-  landingShowcase1Title: "Intelligente Medikamenten- & Wirkstoffsuche",
-  landingShowcase1Desc: "Greifen Sie in Sekundenschnelle auf ein umfassendes Arzneiverzeichnis mit lateinischen und deutschen Bezeichnungen zu. Durchsuchen Sie Leitsymptome, Modalitäten, klinische Indikationen und Hauptwirkungsbereiche gezielt nach klinischen Begriffen.",
-  landingShowcase1Feature1: "Sekundenschnelle Volltextsuche über lateinische und deutsche Namen",
-  landingShowcase1Feature2: "Sofortige Filterung nach C-, D- und LM-Potenzen",
-  landingShowcase1Feature3: "Direkte Übernahme in die Fallanamnese mit einem Klick",
+  // Landing Page Feature Showcases: Materia Medica, Repertorium, Schulmedizinische Medikamentenanalyse
+  landingShowcasesEyebrow: "Drei Kernbereiche für Ihre Praxis",
+  landingShowcasesTitle: "Wissen, Repertorium und professionelle Arzneimittelanalyse",
+  landingShowcasesLead: "Drei klar getrennte Bereiche, die gemeinsam einen fundierten, rechtssicheren und nachvollziehbaren Analyseprozess im Praxisalltag ermöglichen.",
 
-  landingShowcase2Badge: "Klassisches Repertorium",
-  landingShowcase2Title: "Symptomwertigkeit & Repertorisation",
-  landingShowcase2Desc: "Erfassen Sie Symptome flüssig ohne Eingabeverzögerung. Gewichten Sie Leitsymptome nach den klassischen Graden 1 bis 4 und bestimmen Sie präzise, ob eine strikte Schnittmenge aller Symptome oder ein gewichtetes Ranking analysiert werden soll.",
-  landingShowcase2Feature1: "Verzögerungsfreie Symptomeingabe mit optimierter Reaktionszeit",
+  // Showcase 1: Materia Medica
+  landingShowcase1Badge: "Homöopathische Materia Medica",
+  landingShowcase1Title: "Klassische Arzneimittellehre & Monographien",
+  landingShowcase1Desc: "Reines homöopathisches Arzneiwissen nach den klassischen Meistern Hahnemann, Boericke und Kent. Durchsuchen Sie Arzneimittelprofile, Leitsymptome, Keynotes und Modalitäten ohne Vermischung mit konventioneller Pharmazie.",
+  landingShowcase1Feature1: "Originalgetreue Monographien klassischer Autoren (Boericke, Kent, Hahnemann)",
+  landingShowcase1Feature2: "Präzise Modalitäten: Verschlimmerung (<) und Besserung (>) auf einen Blick",
+  landingShowcase1Feature3: "Gezielte Volltextsuche nach Arzneinamen, Keynotes und Gemütssymptomen",
+
+  // Showcase 2: Klassisches Repertorium & Fallanalyse
+  landingShowcase2Badge: "Klassisches Repertorium & Fallarbeit",
+  landingShowcase2Title: "Symptomgewichtung (Grad 1–4) & Repertorisation",
+  landingShowcase2Desc: "Verbindet geführte Symptomaufnahme mit mathematisch fundierter Repertorisation. Bestimmen Sie exakt, ob eine strikte Schnittmenge aller Rubriken berechnet oder ein gewichtetes Ranking nach therapeutischen Graden erstellt werden soll.",
+  landingShowcase2Feature1: "Flüssige Symptomeingabe ohne Verzögerung mit Echtzeit-Rubrikensuche",
   landingShowcase2Feature2: "Klassische Symptomgewichtung von Grad 1 (beiläufig) bis Grad 4 (Keynote)",
-  landingShowcase2Feature3: "Flexible Schnittmengenberechnung oder gewichtete Gesamtanalyse",
+  landingShowcase2Feature3: "Differenzial- & Verdachtsanalyse mit Begründung und druckfertigem PDF-Export",
 
-  landingShowcase3Badge: "Materia Medica",
-  landingShowcase3Title: "Fundierte Monographien & Arzneimittelbilder",
-  landingShowcase3Desc: "Detaillierte Ausarbeitungen klassischer homöopathischer Arzneimittel. Studieren Sie Gemütssymptome, Verschlimmerungen, Besserungen und bewährte klinische Indikationen – verfasst nach den historischen Meistern Hahnemann, Boericke und Kent.",
-  landingShowcase3Feature1: "Strukturierte Arzneimittelmonographien nach klassischen Autoren",
-  landingShowcase3Feature2: "Detaillierte Modalitäten (Besserung/Verschlechterung) auf einen Blick",
-  landingShowcase3Feature3: "Integrierter Akut- und Notfall-Schnellzugriff für die Praxis",
+  // Showcase 3: Schulmedizinische Medikamenten- & Arzneimittelanalyse
+  landingShowcase3Badge: "Schulmedizinische Arzneimittelanalyse",
+  landingShowcase3Title: "Konventionelle Medikamente, Wechselwirkungen & Risiken",
+  landingShowcase3Desc: "Strikte Trennung von der Homöopathie: Untersuchen Sie die schulmedizinische Vormedikation Ihrer Patienten gezielt auf bekannte Nebenwirkungen, Kontraindikationen und gefährliche Wechselwirkungen bei Mehrfachmedikation.",
+  landingShowcase3Feature1: "Recherche zu konventionellen Medikamenten, Wirkstoffen und Indikationen",
+  landingShowcase3Feature2: "Kombinations- & Risikovergleich: Wechselwirkungen bei mehreren Medikamenten",
+  landingShowcase3Feature3: "Integrierte Red Flags & Alarmzeichen für sofortige fachärztliche Abklärung",
+
+  // Safety / Red Flags Banner
+  landingRedFlagsTitle: "Sicherheit & Red Flags in der Praxis",
+  landingRedFlagsSubtitle: "Dringliche Ausschlussdiagnosen und Indikation für sofortige ärztliche Notfallabklärung",
+  landingRedFlagsDesc: "Erkennt bedrohliche klinische Warnsignale, Kontraindikationen und Wechselwirkungen in der Vormedikation frühzeitig, um Behandlungsfehler zuverlässig zu vermeiden.",
 
   // Microphone Permission Modal
   micPermissionDeniedTitle: "Mikrofonzugriff verweigert",
@@ -2599,4 +2607,26 @@ export const de = {
   micPermissionDeniedHint: "Klicken Sie in der Adressleiste Ihres Browsers auf das Schloss- oder Einstellungssymbol, um das Mikrofon für diese Seite freizugeben.",
   micPermissionCancelBtn: "Abbruch",
   micPermissionRetryBtn: "Erneut versuchen",
+
+  // Role & Terminology Settings
+  therapistTabRoleTitle: "Rolle & Terminologie",
+  therapistTabRoleDesc: "Rechtssichere Begriffe und Berufsbezeichnung für Ihre Praxis anpassen",
+  roleSectionTitle: "Berufsgruppe & rechtssichere Terminologie",
+  roleSectionDesc: "Wählen Sie Ihre Berufsbezeichnung und steuern Sie dynamisch, ob in der gesamten Praxissoftware von 'Patienten' oder 'Klienten' gesprochen wird (u.a. für Heilpraktikergesetz, HWG und freie Beratungspraxen).",
+  roleLabel: "Berufsbezeichnung / Fachrichtung",
+  roleArzt: "Arzt / Facharzt",
+  roleArztDesc: "Verwendet standardmäßig die medizinische Terminologie 'Patient' / 'Patientenkartei'.",
+  roleHeilpraktiker: "Heilpraktiker / Heilpraktikerin",
+  roleHeilpraktikerDesc: "Passend für die heilkundliche Praxis nach dem Heilpraktikergesetz.",
+  roleBerater: "Homöopathischer Berater / Gesundheitscoach",
+  roleBeraterDesc: "Für freie Beratung & Prävention; bevorzugt den rechtssicheren Begriff 'Klient'.",
+  roleTherapeut: "Therapeut / Therapeutin (Allgemein)",
+  roleTherapeutDesc: "Für Therapeuten im In- und Ausland mit freier Begriffswahl.",
+  roleTierheilpraktiker: "Tierheilpraktiker / Tierheilpraktikerin",
+  roleTierheilpraktikerDesc: "Fokus auf Tiere & Tierhalter; verwendet 'Patient' bzw. 'Klient'.",
+  terminologyPreferenceLabel: "Bevorzugte Ansprache in der Kartei",
+  terminologyPatient: "Patient / Patientin (Standard Medizin & Heilkunde)",
+  terminologyKlient: "Klient / Klientin (Rechtssicher für Beratung & Coaching)",
+  terminologySavedSuccess: "Berufsprofil & Terminologie erfolgreich gespeichert!",
+  terminologyAutoHint: "Die Begriffe in Navigation, Karteikarten, Fallberichten und Formularen passen sich automatisch an Ihre Auswahl an.",
 };

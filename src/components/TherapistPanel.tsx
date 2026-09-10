@@ -21,6 +21,7 @@ import {
   SCALE_LABELS_1_TO_4 
 } from '../services/complaintQuestionGenerator';
 import { useTranslation, useLanguage } from '../i18n/LanguageContext';
+import { useTerminology } from '../i18n/TerminologyContext';
 import { TranslationKey } from '../i18n/translations';
 import { localizeStructuredMedication } from '../services/medicationLocalization';
 import { COMMON_MEDICATIONS_DB } from '../services/medicationDatabase';
@@ -173,6 +174,7 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
 }) => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const { t, language } = useTranslation();
+  const { termPatientenkartei, termPatient, termPatients } = useTerminology();
   const [panelTab, setPanelTab] = useState<'cases' | 'patients' | 'materiamedica' | 'repertorium' | 'quickintake' | 'medications' | 'documentation' | 'profile' | 'tariff'>(() => getStoredTherapistTab());
   const [patientDirectoryAction, setPatientDirectoryAction] = useState<'new_patient' | 'select_patient' | null>(null);
   const [currentStep, setCurrentStep] = useState<number>(1);
@@ -1799,7 +1801,7 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
               }`}
             >
               <Users className="w-4 h-4 text-teal-600" />
-              <span>{t('tabPatientDirectory')}</span>
+              <span>{termPatientenkartei}</span>
             </button>
 
             {/* 2. Repertorisation */}

@@ -24,6 +24,7 @@ import {
   dispatchNavigationEvents 
 } from './services/navigation';
 import { LanguageProvider, useTranslation } from './i18n/LanguageContext';
+import { TerminologyProvider } from './i18n/TerminologyContext';
 import { Header } from './components/Header';
 import { RegistrationView } from './components/RegistrationView';
 import { TherapistPanel } from './components/TherapistPanel';
@@ -232,7 +233,9 @@ function AppContent() {
 export default function App() {
   return (
     <LanguageProvider>
-      <AppContent />
+      <TerminologyProvider>
+        <AppContent />
+      </TerminologyProvider>
     </LanguageProvider>
   );
 }

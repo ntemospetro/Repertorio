@@ -2561,31 +2561,39 @@ export const fr = {
   therapistTabTariffPlansDesc: "Forfaits disponibles et changement d'abonnement",
   therapistTabTransactionsDesc: "Historique complet des recharges et factures",
 
-  // Landing Page Feature Showcases (Medikamentensuche, Repertorium, Materia Medica)
-  landingShowcasesEyebrow: "Suite Complète de Pratique",
-  landingShowcasesTitle: "Les Outils Clés pour Votre Pratique Homéopathique",
-  landingShowcasesLead: "Associez les connaissances classiques d'Hahnemann, Kent et Boericke à une technologie moderne pour une analyse ciblée.",
-  
-  landingShowcase1Badge: "Recherche de Médicaments",
-  landingShowcase1Title: "Recherche Intelligente de Remèdes et Substances",
-  landingShowcase1Desc: "Accédez en un instant à une pharmacopée complète avec dénominations latines et usuelles. Recherchez les keynotes, modalités et indications cliniques.",
-  landingShowcase1Feature1: "Recherche textuelle instantanée sur les noms latins et vernaculaires",
-  landingShowcase1Feature2: "Filtrage direct par dynamisations C, D et LM",
-  landingShowcase1Feature3: "Intégration directe dans l'anamnèse en un clic",
+  // Landing Page Feature Showcases: Materia Medica, Répertoire, Analyse des Médicaments
+  landingShowcasesEyebrow: "Trois Piliers pour Votre Pratique",
+  landingShowcasesTitle: "Materia Medica, Répertoire et Analyse des Médicaments",
+  landingShowcasesLead: "Trois domaines cliniques distincts offrant une démarche d'analyse rigoureuse, transparente et conforme au quotidien.",
 
-  landingShowcase2Badge: "Répertoire Classique",
-  landingShowcase2Title: "Valorisation des Symptômes & Répertorisation",
-  landingShowcase2Desc: "Saisissez les symptômes de manière fluide sans latence. Pondérez les symptômes clés de 1 à 4 étoiles et choisissez l'intersection stricte ou pondérée.",
-  landingShowcase2Feature1: "Saisie sans latence avec réactivité optimisée",
-  landingShowcase2Feature2: "Pondération classique des symptômes de grade 1 à grade 4 (Keynote)",
-  landingShowcase2Feature3: "Calcul flexible par intersection stricte ou classement pondéré",
+  // Showcase 1: Materia Medica
+  landingShowcase1Badge: "Materia Medica Homéopathique",
+  landingShowcase1Title: "Pharmacologie Classique & Monographies",
+  landingShowcase1Desc: "Savoir homéopathique pur d'après Hahnemann, Boericke et Kent. Consultez les profils de remèdes, keynotes et modalités sans confusion avec la pharmacologie moderne.",
+  landingShowcase1Feature1: "Monographies fidèles aux maîtres classiques (Boericke, Kent, Hahnemann)",
+  landingShowcase1Feature2: "Modalités précises : aggravations (<) et améliorations (>) d'un seul coup d'œil",
+  landingShowcase1Feature3: "Recherche en texte intégral par remèdes, keynotes et symptômes mentaux",
 
-  landingShowcase3Badge: "Materia Medica",
-  landingShowcase3Title: "Monographies Approfondies & Tableaux Cliniques",
-  landingShowcase3Desc: "Monographies complètes des remèdes homéopathiques classiques. Étudiez les symptômes mentaux, aggravations, améliorations et indications cliniques vérifiées.",
-  landingShowcase3Feature1: "Monographies structurées selon les auteurs classiques",
-  landingShowcase3Feature2: "Modalités détaillées (aggravation/amélioration) en un coup d'œil",
-  landingShowcase3Feature3: "Accès rapide d'urgence et aigu intégré pour la pratique",
+  // Showcase 2: Répertoire Classique & Analyse de Cas
+  landingShowcase2Badge: "Répertoire Classique & Analyse de Cas",
+  landingShowcase2Title: "Pondération des Symptômes (1–4) & Répertorisation",
+  landingShowcase2Desc: "Associe une anamnèse guidée à une répertorisation mathématique éprouvée. Choisissez une intersection stricte de toutes les rubriques ou un classement pondéré par degrés thérapeutiques.",
+  landingShowcase2Feature1: "Saisie sans latence avec recherche de rubriques en temps réel",
+  landingShowcase2Feature2: "Pondération classique des degrés 1 (occasionnel) à 4 (keynote)",
+  landingShowcase2Feature3: "Analyse différentielle argumentée et rapport prêt pour export PDF",
+
+  // Showcase 3: Analyse des Médicaments Conventionnels
+  landingShowcase3Badge: "Analyse des Médicaments Allopathiques",
+  landingShowcase3Title: "Médicaments Conventionnels, Interactions & Risques",
+  landingShowcase3Desc: "Séparation stricte avec l'homéopathie : analysez les traitements conventionnels en cours pour déceler effets secondaires connus, contre-indications et interactions médicamenteuses à risque.",
+  landingShowcase3Feature1: "Recherche exhaustive sur les principes actifs et médicaments conventionnels",
+  landingShowcase3Feature2: "Comparaison des combinaisons et risques en cas de polymédication",
+  landingShowcase3Feature3: "Alertes Red Flags intégrées pour avis médical d'urgence sans délai",
+
+  // Safety / Red Flags Banner
+  landingRedFlagsTitle: "Sécurité & Red Flags en Pratique Clinique",
+  landingRedFlagsSubtitle: "Diagnostics d'exclusion urgents et orientation médicale d'urgence",
+  landingRedFlagsDesc: "Détection précoce des signaux d'alerte critiques, contre-indications et interactions médicamenteuses pour sécuriser vos choix thérapeutiques.",
 
   // Microphone Permission Modal
   micPermissionDeniedTitle: "Accès au microphone refusé",
@@ -2593,4 +2601,26 @@ export const fr = {
   micPermissionDeniedHint: "Cliquez sur l'icône de cadenas ou de paramètres dans la barre d'adresse de votre navigateur pour autoriser le microphone sur ce site.",
   micPermissionCancelBtn: "Annuler",
   micPermissionRetryBtn: "Réessayer",
+
+  // Role & Terminology Settings
+  therapistTabRoleTitle: "Rôle & Terminologie",
+  therapistTabRoleDesc: "Adapter le titre professionnel et les termes juridiques pour votre pratique",
+  roleSectionTitle: "Groupe professionnel & terminologie conforme",
+  roleSectionDesc: "Choisissez votre titre professionnel et contrôlez dynamiquement si le logiciel utilise 'Patient' ou 'Client' dans toute l'application.",
+  roleLabel: "Titre professionnel / Spécialisation",
+  roleArzt: "Médecin / Spécialiste",
+  roleArztDesc: "Utilise par défaut la terminologie médicale 'Patient' / 'Dossier patient'.",
+  roleHeilpraktiker: "Naturopathe / Praticien de santé",
+  roleHeilpraktikerDesc: "Adapté à la pratique naturopathique et holistique.",
+  roleBerater: "Conseiller en homéopathie / Coach de santé",
+  roleBeraterDesc: "Pour la consultation et la prévention; utilise le terme 'Client'.",
+  roleTherapeut: "Thérapeute (Général)",
+  roleTherapeutDesc: "Pour les thérapeutes avec libre choix des termes.",
+  roleTierheilpraktiker: "Naturopathe animalier",
+  roleTierheilpraktikerDesc: "Focalisé sur les animaux et propriétaires; choix entre Patient et Client.",
+  terminologyPreferenceLabel: "Terme privilégié pour les dossiers",
+  terminologyPatient: "Patient / Patiente (Standard médical & clinique)",
+  terminologyKlient: "Client / Cliente (Conseil & Coaching)",
+  terminologySavedSuccess: "Profil professionnel et terminologie enregistrés avec succès !",
+  terminologyAutoHint: "Les termes de navigation et de dossiers s'adaptent automatiquement à votre sélection.",
 };

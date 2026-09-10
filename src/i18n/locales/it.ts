@@ -2561,31 +2561,39 @@ export const it = {
   therapistTabTariffPlansDesc: "Piani disponibili e cambio tariffa",
   therapistTabTransactionsDesc: "Registro completo delle ricariche e fatture",
 
-  // Landing Page Feature Showcases (Medikamentensuche, Repertorium, Materia Medica)
-  landingShowcasesEyebrow: "Suite Completa per lo Studio",
-  landingShowcasesTitle: "Gli Strumenti Essenziali per l'Omeopatia Classica",
-  landingShowcasesLead: "Unisci la sapienza classica di Hahnemann, Kent e Boericke alla tecnologia moderna per un'analisi mirata.",
-  
-  landingShowcase1Badge: "Ricerca Rimedi",
-  landingShowcase1Title: "Ricerca Intelligente di Rimedi e Sostanze",
-  landingShowcase1Desc: "Accedi in pochi istanti a una farmacopea completa con denominazioni latine e comuni. Consulta keynotes, modalità e indicazioni cliniche.",
-  landingShowcase1Feature1: "Ricerca testuale istantanea sui nomi latini e volgari",
-  landingShowcase1Feature2: "Filtro immediato per potenze C, D e LM",
-  landingShowcase1Feature3: "Trasferimento diretto nell'anamnesi con un clic",
+  // Landing Page Feature Showcases: Materia Medica, Repertorio, Analisi dei Farmaci
+  landingShowcasesEyebrow: "Tre Pilastri per il Vostro Studio",
+  landingShowcasesTitle: "Materia Medica, Repertorio e Analisi dei Farmaci",
+  landingShowcasesLead: "Tre aree cliniche distinte che garantiscono un percorso d'analisi fondato, trasparente e conforme nella pratica quotidiana.",
 
-  landingShowcase2Badge: "Repertorio Classico",
-  landingShowcase2Title: "Gradazione dei Sintomi & Repertorizzazione",
-  landingShowcase2Desc: "Inserisci i sintomi in modo fluido senza ritardi. Gradua i sintomi chiave da 1 a 4 stelle e scegli l'intersezione stretta o la ponderazione.",
-  landingShowcase2Feature1: "Digitazione sintomi senza latenza con risposta ottimizzata",
-  landingShowcase2Feature2: "Gradazione classica dei sintomi da Grado 1 a Grado 4 (Keynote)",
-  landingShowcase2Feature3: "Calcolo flessibile con intersezione rigorosa o ranking ponderato",
+  // Showcase 1: Materia Medica
+  landingShowcase1Badge: "Materia Medica Omeopatica",
+  landingShowcase1Title: "Farmacologia Classica & Monografie",
+  landingShowcase1Desc: "Pura conoscenza omeopatica secondo Hahnemann, Boericke e Kent. Consultate profili dei rimedi, keynotes e modalità senza interferenze farmacologiche.",
+  landingShowcase1Feature1: "Monografie fedeli dei maestri classici (Boericke, Kent, Hahnemann)",
+  landingShowcase1Feature2: "Modalità chiare: aggravamento (<) e miglioramento (>) a colpo d'occhio",
+  landingShowcase1Feature3: "Ricerca testuale mirata per rimedio, keynotes e sintomi mentali",
 
-  landingShowcase3Badge: "Materia Medica",
-  landingShowcase3Title: "Monografie Dettagliate & Quadri dei Rimedi",
-  landingShowcase3Desc: "Monografie esaustive dei rimedi omeopatici classici. Esamina sintomi psichici, aggravamenti, miglioramenti e indicazioni cliniche confermate.",
-  landingShowcase3Feature1: "Monografie strutturate secondo gli autori classici",
-  landingShowcase3Feature2: "Modalità dettagliate (miglioramento/peggioramento) a colpo d'occhio",
-  landingShowcase3Feature3: "Accesso rapido per emergenze e casi acuti integrato per lo studio",
+  // Showcase 2: Repertorio Classico & Analisi dei Casi
+  landingShowcase2Badge: "Repertorio Classico & Gestione Casi",
+  landingShowcase2Title: "Gradazione dei Sintomi (1–4) & Repertorizzazione",
+  landingShowcase2Desc: "Coniuga una raccolta guidata dei sintomi a una rigorosa repertorizzazione. Scegliete l'intersezione stretta di tutte le rubriche o una graduatoria ponderata.",
+  landingShowcase2Feature1: "Inserimento fluido senza latenza con ricerca delle rubriche in tempo reale",
+  landingShowcase2Feature2: "Gradazione classica da Grado 1 (occasionale) a Grado 4 (keynote)",
+  landingShowcase2Feature3: "Analisi differenziale motivata e referto pronto per la stampa in PDF",
+
+  // Showcase 3: Analisi dei Farmaci Convenzionali
+  landingShowcase3Badge: "Analisi dei Farmaci Allopatici",
+  landingShowcase3Title: "Farmaci Convenzionali, Interazioni & Rischi",
+  landingShowcase3Desc: "Rigorosa separazione dall'omeopatia: verificate la terapia farmacologica in corso per identificare effetti collaterali noti, controindicazioni e interazioni.",
+  landingShowcase3Feature1: "Ricerca esaustiva su farmaci convenzionali e principi attivi",
+  landingShowcase3Feature2: "Confronto combinazioni e valutazione rischi in politerapia",
+  landingShowcase3Feature3: "Segnali d'allarme Red Flags integrati per consulto medico urgente",
+
+  // Safety / Red Flags Banner
+  landingRedFlagsTitle: "Sicurezza & Red Flags nello Studio Medico",
+  landingRedFlagsSubtitle: "Diagnosi di esclusione urgenti e indicazioni per pronto soccorso medico",
+  landingRedFlagsDesc: "Rilevazione tempestiva di segnali d'allarme clinici, controindicazioni e rischi farmacologici per decisioni terapeutiche sicure.",
 
   // Microphone Permission Modal
   micPermissionDeniedTitle: "Accesso al microfono negato",
@@ -2593,4 +2601,26 @@ export const it = {
   micPermissionDeniedHint: "Fai clic sull'icona del lucchetto o delle impostazioni del sito nella barra degli indirizzi del browser per abilitare il microfono per questo sito.",
   micPermissionCancelBtn: "Annulla",
   micPermissionRetryBtn: "Riprova",
+
+  // Role & Terminology Settings
+  therapistTabRoleTitle: "Ruolo & Terminologia",
+  therapistTabRoleDesc: "Personalizza la qualifica professionale e i termini legali per il tuo studio",
+  roleSectionTitle: "Gruppo professionale & terminologia conforme",
+  roleSectionDesc: "Scegli la tua qualifica professionale e controlla dinamicamente se il software utilizza 'Paziente' o 'Cliente' in tutta la gestione dello studio.",
+  roleLabel: "Qualifica professionale / Specializzazione",
+  roleArzt: "Medico / Medico specialista",
+  roleArztDesc: "Utilizza come standard la terminologia medica 'Paziente' / 'Cartella paziente'.",
+  roleHeilpraktiker: "Naturopata / Operatore di medicina alternativa",
+  roleHeilpraktikerDesc: "Adatto alla pratica naturopatica e olistica.",
+  roleBerater: "Consulente omeopatico / Health Coach",
+  roleBeraterDesc: "Per consulenza e prevenzione; preferisce il termine 'Cliente'.",
+  roleTherapeut: "Terapeuta (Generale)",
+  roleTherapeutDesc: "Per terapeuti con libera scelta dei termini.",
+  roleTierheilpraktiker: "Naturopata veterinario",
+  roleTierheilpraktikerDesc: "Focalizzato su animali e proprietari; permette di scegliere Paziente o Cliente.",
+  terminologyPreferenceLabel: "Termine preferito per le cartelle",
+  terminologyPatient: "Paziente (Standard medico e clinico)",
+  terminologyKlient: "Cliente (Consulenza e Coaching)",
+  terminologySavedSuccess: "Profilo professionale e terminologia salvati con successo!",
+  terminologyAutoHint: "I termini nella navigazione, nelle schede e nelle relazioni si adattano automaticamente alla selezione.",
 };

@@ -2567,31 +2567,39 @@ export const en = {
   therapistTabTariffPlansDesc: "Available service tiers and plan switching",
   therapistTabTransactionsDesc: "Complete log of recharges, package purchases and billing records",
 
-  // Landing Page Feature Showcases (Medikamentensuche, Repertorium, Materia Medica)
-  landingShowcasesEyebrow: "Comprehensive Practice Suite",
-  landingShowcasesTitle: "Core Instruments for Classical Homeopathy",
-  landingShowcasesLead: "Combine profound historical knowledge from Hahnemann, Kent and Boericke with modern technology for targeted case analysis.",
-  
-  landingShowcase1Badge: "Remedy Search",
-  landingShowcase1Title: "Intelligent Remedy & Substance Finder",
-  landingShowcase1Desc: "Access an extensive pharmacopoeia with Latin and regional names in seconds. Search keynotes, modalities, clinical indications and spheres of action with high-precision keyword queries.",
-  landingShowcase1Feature1: "Instant full-text query across Latin and colloquial remedy names",
-  landingShowcase1Feature2: "Direct filtering by C, D and LM potency ranges",
-  landingShowcase1Feature3: "One-click transfer straight into active patient anamnesis",
+  // Landing Page Feature Showcases: Materia Medica, Repertory, Medication Analysis
+  landingShowcasesEyebrow: "Three Core Pillars for Clinical Practice",
+  landingShowcasesTitle: "Materia Medica, Repertory and Medication Analysis",
+  landingShowcasesLead: "Three distinct clinical domains providing a grounded, legally sound and transparent analysis process in daily practice.",
 
-  landingShowcase2Badge: "Classical Repertory",
-  landingShowcase2Title: "Symptom Grading & Repertorisation",
-  landingShowcase2Desc: "Type patient symptoms smoothly without input latency. Grade core symptoms according to classical degrees 1 to 4 and choose between strict intersections or weighted multi-symptom coverage.",
-  landingShowcase2Feature1: "Zero-lag symptom entry with optimized responsive typing",
-  landingShowcase2Feature2: "Classical symptom weighting from Grade 1 (incidental) to Grade 4 (keynote)",
-  landingShowcase2Feature3: "Flexible toggle between strict intersection and weighted scoring",
+  // Showcase 1: Materia Medica
+  landingShowcase1Badge: "Homeopathic Materia Medica",
+  landingShowcase1Title: "Classical Monographs & Symptom Pictures",
+  landingShowcase1Desc: "Pure homeopathic drug pictures according to the masters Hahnemann, Boericke and Kent. Browse remedy profiles, keynotes and modalities without confusion with modern pharmaceuticals.",
+  landingShowcase1Feature1: "Faithful classical monographs from Boericke, Kent and Hahnemann",
+  landingShowcase1Feature2: "Concise modalities: aggravations (<) and ameliorations (>) at a glance",
+  landingShowcase1Feature3: "Targeted full-text query for remedy names, keynotes and mind rubrics",
 
-  landingShowcase3Badge: "Materia Medica",
-  landingShowcase3Title: "Profound Monographs & Drug Pictures",
-  landingShowcase3Desc: "Exhaustive monographs on classical homeopathic remedies. Study mind symptoms, aggravations, ameliorations and verified clinical indications structured according to the master prescribers.",
-  landingShowcase3Feature1: "Structured remedy monographs adhering to classical authors",
-  landingShowcase3Feature2: "Detailed modalities (worse/better) presented at a glance",
-  landingShowcase3Feature3: "Integrated acute and emergency quick-access for daily consultation",
+  // Showcase 2: Classical Repertory & Case Analysis
+  landingShowcase2Badge: "Classical Repertory & Case Work",
+  landingShowcase2Title: "Symptom Grading (1–4) & Repertorisation",
+  landingShowcase2Desc: "Connects structured intake with mathematical repertorisation. Choose between a strict intersection of all symptoms or a weighted ranking based on classical homeopathic degrees.",
+  landingShowcase2Feature1: "Fluid zero-latency symptom entry with real-time rubric search",
+  landingShowcase2Feature2: "Classical grading from Grade 1 (incidental) to Grade 4 (keynote)",
+  landingShowcase2Feature3: "Differential & suspected remedy analysis with print-ready PDF export",
+
+  // Showcase 3: Conventional Medication & Interaction Analysis
+  landingShowcase3Badge: "Conventional Medication Analysis",
+  landingShowcase3Title: "Pharmaceutical Drugs, Interactions & Safety",
+  landingShowcase3Desc: "Strictly separate from homeopathy: Investigate your patient's conventional pharmaceutical co-medication for adverse side effects, contraindications and dangerous multi-drug interactions.",
+  landingShowcase3Feature1: "Comprehensive research on conventional pharmaceuticals and active agents",
+  landingShowcase3Feature2: "Combination & risk analysis: interactions in polypharmacy regimens",
+  landingShowcase3Feature3: "Integrated Red Flags & warning signals for immediate medical clearance",
+
+  // Safety / Red Flags Banner
+  landingRedFlagsTitle: "Safety & Red Flags in Daily Practice",
+  landingRedFlagsSubtitle: "Urgent exclusionary diagnoses and indications for medical emergency referral",
+  landingRedFlagsDesc: "Early detection of threatening clinical red flags, contraindications and medication risks to reliably safeguard therapeutic decisions.",
 
   // Microphone Permission Modal
   micPermissionDeniedTitle: "Microphone Access Denied",
@@ -2599,4 +2607,26 @@ export const en = {
   micPermissionDeniedHint: "Click the lock or site settings icon in your browser address bar to allow microphone access for this website.",
   micPermissionCancelBtn: "Cancel",
   micPermissionRetryBtn: "Try Again",
+
+  // Role & Terminology Settings
+  therapistTabRoleTitle: "Role & Terminology",
+  therapistTabRoleDesc: "Customize professional title and legally compliant terms for your practice",
+  roleSectionTitle: "Professional Group & Legally Compliant Terminology",
+  roleSectionDesc: "Choose your professional title and dynamically specify whether the system refers to 'Patients' or 'Clients' across your entire practice suite (supporting regulations, coaching, and clinical workflows).",
+  roleLabel: "Professional Title / Specialization",
+  roleArzt: "Physician / Medical Doctor",
+  roleArztDesc: "Uses standard medical terminology 'Patient' / 'Patient Directory'.",
+  roleHeilpraktiker: "Naturopath / Alternative Practitioner (Heilpraktiker)",
+  roleHeilpraktikerDesc: "Tailored for naturopathic healthcare practice according to health legislation.",
+  roleBerater: "Homeopathic Consultant / Wellness Coach",
+  roleBeraterDesc: "For advisory and preventive practices; legally prefers 'Client'.",
+  roleTherapeut: "Therapist (General)",
+  roleTherapeutDesc: "For general practitioners with flexible choice of terminology.",
+  roleTierheilpraktiker: "Veterinary Practitioner",
+  roleTierheilpraktikerDesc: "Focused on animals and animal owners; allows choosing 'Patient' or 'Client'.",
+  terminologyPreferenceLabel: "Preferred Term in Records & Management",
+  terminologyPatient: "Patient (Medical & Healthcare Standard)",
+  terminologyKlient: "Client (Advisory, Prevention & Coaching)",
+  terminologySavedSuccess: "Professional role & terminology preferences successfully saved!",
+  terminologyAutoHint: "Terminology in navigation, records, case files, and reports dynamically adapts to your selection.",
 };

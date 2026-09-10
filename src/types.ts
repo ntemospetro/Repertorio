@@ -74,6 +74,8 @@ export interface Therapist {
   stripeCustomerId?: string;
   lastDepositAt?: string;
   praxisName?: string;
+  professionalRole?: 'heilpraktiker' | 'arzt' | 'berater' | 'therapeut' | 'tierheilpraktiker';
+  terminologyPreference?: 'klient' | 'patient';
   notes?: string;
   preferredLanguage?: LanguageCode;
   previousEmails?: ContactHistoryItem[];
