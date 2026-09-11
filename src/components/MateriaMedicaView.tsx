@@ -37,6 +37,9 @@ import {
   getBogerSynopticEntry 
 } from '../data/bogerSynopticData';
 import { 
+  getAllenKeynoteEntry 
+} from '../data/allenKeynotesData';
+import { 
   matchSymptomsToRemedies, 
   SymptomMatchResult,
   performDifferentialDiagnosis,
@@ -199,7 +202,6 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedAuthor, setSelectedAuthor] = useState<ClassicalAuthorFilterKey>('all');
-  const [selectedLetter, setSelectedLetter] = useState<string>('all');
   const [selectedRemedyForModal, setSelectedRemedyForModal] = useState<LocalizedRemedy | null>(null);
   const [modalHistory, setModalHistory] = useState<LocalizedRemedy[]>([]);
 
@@ -448,22 +450,14 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = ({
       // Author filter (Hahnemann, Kent, Hering)
       const matchesAuthor = matchesAuthorFilter(remedy.id, selectedAuthor);
 
-      // Alphabet filter by Latin name first letter
-      const firstLetter = remedy.latinName[0].toUpperCase();
-      const matchesLetter = selectedLetter === 'all' || firstLetter === selectedLetter;
-
-      return matchesSearch && matchesCategory && matchesAuthor && matchesLetter;
+      return matchesSearch && matchesCategory && matchesAuthor;
     });
-  }, [localizedRemedies, searchQuery, selectedCategory, selectedAuthor, selectedLetter]);
-
-  const uniqueLetters = useMemo(() => {
-    return Array.from(new Set(localizedRemedies.map((r) => r.latinName[0].toUpperCase()))).sort();
-  }, [localizedRemedies]);
+  }, [localizedRemedies, searchQuery, selectedCategory, selectedAuthor]);
 
   // Reset pagination to page 1 whenever filters or search change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, selectedCategory, selectedAuthor, selectedLetter]);
+  }, [searchQuery, selectedCategory, selectedAuthor]);
 
   const totalPages = Math.max(1, Math.ceil(filteredRemedies.length / pageSize));
   const currentSafePage = Math.min(Math.max(1, currentPage), totalPages);
@@ -479,7 +473,8 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = ({
     { key: 'kent' as ClassicalAuthorFilterKey, label: t('filterAuthorKent') },
     { key: 'hering' as ClassicalAuthorFilterKey, label: t('filterAuthorHering') },
     { key: 'boericke' as ClassicalAuthorFilterKey, label: t('filterAuthorBoericke') },
-    { key: 'boger' as ClassicalAuthorFilterKey, label: t('filterAuthorBoger' as any) || 'Boger' }
+    { key: 'boger' as ClassicalAuthorFilterKey, label: t('filterAuthorBoger' as any) || 'Boger' },
+    { key: 'allen' as ClassicalAuthorFilterKey, label: t('filterAuthorAllen' as any) || 'H. C. Allen' }
   ];
 
   const categories = [
@@ -632,45 +627,8 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = ({
                   </div>
                 </div>
               </div>
-
-                {/* Alphabet Quick Jump */}
-                <div className="flex items-center gap-1 overflow-x-auto pt-2 border-t border-slate-100 pb-1">
-                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-1.5 shrink-0">
-                    {t('indexAlphabet')}:
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedLetter('all')}
-                    className={`px-2.5 py-1 rounded text-xs font-semibold cursor-pointer shrink-0 transition-colors ${
-                      selectedLetter === 'all' ? 'bg-teal-600 text-white shadow-2xs' : 'text-slate-600 hover:bg-slate-100'
-                    }`}
-                  >
-                    {t('filterAll')}
-                  </button>
-                  {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((l) => {
-                    const hasRemedies = uniqueLetters.includes(l);
-                    const isSelected = selectedLetter === l;
-                    return (
-                      <button
-                        key={l}
-                        type="button"
-                        disabled={!hasRemedies}
-                        onClick={() => setSelectedLetter(l)}
-                        className={`w-6 h-6 rounded text-xs font-semibold shrink-0 flex items-center justify-center transition-colors ${
-                          isSelected
-                            ? 'bg-teal-600 text-white shadow-2xs cursor-pointer'
-                            : hasRemedies
-                            ? 'text-slate-700 hover:bg-teal-50 hover:text-teal-700 cursor-pointer font-medium'
-                            : 'text-slate-300 cursor-not-allowed opacity-40'
-                        }`}
-                      >
-                        {l}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
             </div>
+          </div>
 
           {/* Results Summary */}
           <div className="flex items-center justify-between text-xs text-slate-500 px-1">
@@ -683,14 +641,13 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = ({
                 </span>
               )}
             </span>
-            {(searchQuery || selectedAuthor !== 'all' || selectedCategory !== 'all' || selectedLetter !== 'all') && (
+            {(searchQuery || selectedAuthor !== 'all' || selectedCategory !== 'all') && (
               <button
                 type="button"
                 onClick={() => {
                   setSearchQuery('');
                   setSelectedCategory('all');
                   setSelectedAuthor('all');
-                  setSelectedLetter('all');
                 }}
                 className="text-teal-700 hover:text-teal-900 font-semibold cursor-pointer flex items-center gap-1"
               >
@@ -719,33 +676,38 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = ({
                       </div>
                       {(() => {
                         const authorsInfo = getRemedyClassicalAuthors(remedy.id);
-                        const hasAny = authorsInfo.hahnemann || authorsInfo.kent || authorsInfo.hering || authorsInfo.boericke || authorsInfo.boger;
+                        const hasAny = authorsInfo.hahnemann || authorsInfo.kent || authorsInfo.hering || authorsInfo.boericke || authorsInfo.boger || authorsInfo.allen;
                         if (!hasAny) return null;
                         return (
                           <div className="flex flex-wrap items-center gap-1 mt-1.5">
                             {authorsInfo.hahnemann && (
                               <span className="text-[10px] font-medium px-1.5 py-0.2 rounded bg-amber-50 text-amber-800 border border-amber-200/60" title="Samuel Hahnemann">
-                                Hahnemann
+                                S. Hahnemann
                               </span>
                             )}
                             {authorsInfo.kent && (
                               <span className="text-[10px] font-medium px-1.5 py-0.2 rounded bg-indigo-50 text-indigo-800 border border-indigo-200/60" title="James Tyler Kent">
-                                Kent
+                                J. T. Kent
                               </span>
                             )}
                             {authorsInfo.hering && (
                               <span className="text-[10px] font-medium px-1.5 py-0.2 rounded bg-teal-50 text-teal-800 border border-teal-200/60" title="Constantine Hering">
-                                Hering
+                                C. Hering
                               </span>
                             )}
                             {authorsInfo.boericke && (
                               <span className="text-[10px] font-medium px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-800 border border-emerald-200/60" title="William Boericke">
-                                Boericke
+                                W. Boericke
                               </span>
                             )}
                             {authorsInfo.boger && (
                               <span className="text-[10px] font-medium px-1.5 py-0.2 rounded bg-purple-50 text-purple-800 border border-purple-200/60" title="Cyrus Maxwell Boger">
-                                Boger
+                                C. M. Boger
+                              </span>
+                            )}
+                            {authorsInfo.allen && (
+                              <span className="text-[10px] font-medium px-1.5 py-0.2 rounded bg-amber-50 text-amber-900 border border-amber-300/80" title="Henry C. Allen">
+                                H. C. Allen
                               </span>
                             )}
                           </div>
@@ -929,7 +891,7 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = ({
                 onClick={() => {
                   setSearchQuery('');
                   setSelectedCategory('all');
-                  setSelectedLetter('all');
+                  setSelectedAuthor('all');
                 }}
                 className="px-4 py-2 bg-teal-600 text-white text-xs font-semibold rounded-xl hover:bg-teal-700 cursor-pointer"
               >
@@ -1304,7 +1266,7 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = ({
                 </p>
                 {(() => {
                   const authorsInfo = getRemedyClassicalAuthors(selectedRemedyForModal.id);
-                  const hasAny = authorsInfo.hahnemann || authorsInfo.kent || authorsInfo.hering || authorsInfo.boericke || authorsInfo.boger;
+                  const hasAny = authorsInfo.hahnemann || authorsInfo.kent || authorsInfo.hering || authorsInfo.boericke || authorsInfo.boger || authorsInfo.allen;
                   if (!hasAny) return null;
                   return (
                     <div className="flex flex-wrap items-center gap-1.5 pt-1">
@@ -1332,6 +1294,11 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = ({
                       {authorsInfo.boger && (
                         <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
                           Cyrus Maxwell Boger
+                        </span>
+                      )}
+                      {authorsInfo.allen && (
+                        <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-200 border border-amber-500/40">
+                          Henry C. Allen
                         </span>
                       )}
                     </div>
@@ -1561,6 +1528,83 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = ({
                         ))}
                       </ul>
                     </div>
+                  </div>
+                );
+              })()}
+
+              {/* 10. H. C. Allen Keynotes & Charakteristika */}
+              {(() => {
+                const allenData = getAllenKeynoteEntry(selectedRemedyForModal.id);
+                if (!allenData) return null;
+                return (
+                  <div className="space-y-3 bg-amber-50/50 p-4 rounded-xl border border-amber-200/70 mt-4">
+                    <div className="flex items-center gap-2 text-amber-950 font-bold text-xs uppercase tracking-wider">
+                      <BookOpen className="w-4 h-4 text-amber-700" />
+                      <span>{t('secAllenKeynotesTitle')}</span>
+                    </div>
+
+                    {/* Allen Keynotes */}
+                    {allenData.keynotes.length > 0 && (
+                      <div className="space-y-1">
+                        <div className="text-[11px] font-bold text-amber-900 uppercase tracking-wider">
+                          {t('secAllenKeynotes')}:
+                        </div>
+                        <ul className="space-y-1.5 text-xs text-slate-800 list-disc list-inside bg-white/80 p-2.5 rounded-lg border border-amber-100">
+                          {allenData.keynotes.map((kn, kIdx) => (
+                            <li key={kIdx} className="leading-relaxed font-medium">
+                              {kn}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Modalities: Worse / Better */}
+                    {(allenData.modalitiesWorse.length > 0 || allenData.modalitiesBetter.length > 0) && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        {allenData.modalitiesWorse.length > 0 && (
+                          <div className="bg-white/80 p-2.5 rounded-lg border border-rose-100">
+                            <div className="flex items-center gap-1.5 text-rose-800 font-bold text-[11px] uppercase tracking-wider mb-1.5">
+                              <Flame className="w-3.5 h-3.5 text-rose-600" />
+                              <span>{t('secAllenWorse')}</span>
+                            </div>
+                            <ul className="space-y-1 text-xs text-slate-700 list-disc list-inside">
+                              {allenData.modalitiesWorse.map((w, wIdx) => (
+                                <li key={wIdx} className="leading-snug">{w}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {allenData.modalitiesBetter.length > 0 && (
+                          <div className="bg-white/80 p-2.5 rounded-lg border border-emerald-100">
+                            <div className="flex items-center gap-1.5 text-emerald-800 font-bold text-[11px] uppercase tracking-wider mb-1.5">
+                              <Snowflake className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>{t('secAllenBetter')}</span>
+                            </div>
+                            <ul className="space-y-1 text-xs text-slate-700 list-disc list-inside">
+                              {allenData.modalitiesBetter.map((b, bIdx) => (
+                                <li key={bIdx} className="leading-snug">{b}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Relationships & Comparisons */}
+                    {allenData.relations.length > 0 && (
+                      <div className="space-y-1">
+                        <div className="text-[11px] font-bold text-amber-900 uppercase tracking-wider">
+                          {t('secAllenRelations')}:
+                        </div>
+                        <ul className="space-y-1 text-xs text-slate-700 list-disc list-inside bg-white/70 p-2.5 rounded-lg border border-amber-100">
+                          {allenData.relations.map((rel, rIdx) => (
+                            <li key={rIdx} className="leading-snug">{rel}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
                 );
               })()}

@@ -7,9 +7,10 @@ export interface ClassicalAuthorInfo {
   hering: boolean;
   boericke?: boolean;
   boger?: boolean;
+  allen?: boolean;
 }
 
-export type ClassicalAuthorFilterKey = 'all' | 'hahnemann' | 'kent' | 'hering' | 'boericke' | 'boger';
+export type ClassicalAuthorFilterKey = 'all' | 'hahnemann' | 'kent' | 'hering' | 'boericke' | 'boger' | 'allen';
 
 export const CLASSICAL_AUTHORS_MAP: Record<string, ClassicalAuthorInfo> = {
   "abies-canadensis": {
@@ -3514,17 +3515,23 @@ export const CLASSICAL_AUTHORS_MAP: Record<string, ClassicalAuthorInfo> = {
   }
 };
 
-export function getRemedyClassicalAuthors(remedyId: string): { hahnemann: boolean; kent: boolean; hering: boolean; boericke: boolean; boger: boolean } {
+import { getBogerSynopticEntry } from './bogerSynopticData';
+import { getAllenKeynoteEntry } from './allenKeynotesData';
+
+export function getRemedyClassicalAuthors(remedyId: string): { hahnemann: boolean; kent: boolean; hering: boolean; boericke: boolean; boger: boolean; allen: boolean } {
   const info = CLASSICAL_AUTHORS_MAP[remedyId];
+  const hasBoger = getBogerSynopticEntry(remedyId) !== null;
+  const hasAllen = getAllenKeynoteEntry(remedyId) !== null;
   if (!info) {
-    return { hahnemann: false, kent: false, hering: false, boericke: true, boger: true };
+    return { hahnemann: false, kent: false, hering: false, boericke: true, boger: hasBoger, allen: hasAllen };
   }
   return {
     hahnemann: Boolean(info.hahnemann),
     kent: Boolean(info.kent),
     hering: Boolean(info.hering),
     boericke: info.boericke !== undefined ? Boolean(info.boericke) : true,
-    boger: info.boger !== undefined ? Boolean(info.boger) : true,
+    boger: info.boger !== undefined ? Boolean(info.boger) : hasBoger,
+    allen: info.allen !== undefined ? Boolean(info.allen) : hasAllen,
   };
 }
 

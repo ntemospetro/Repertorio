@@ -2,6 +2,7 @@ import React, { useRef, useEffect } from 'react';
 import { LocalizedRemedy, getLocalizedRemedies } from '../data/materiaMedicaData';
 import { getRemedyClassicalAuthors } from '../data/classicalAuthorsMap';
 import { getBogerSynopticEntry } from '../data/bogerSynopticData';
+import { getAllenKeynoteEntry } from '../data/allenKeynotesData';
 import { useTranslation } from '../i18n/LanguageContext';
 import { 
   X, 
@@ -162,7 +163,7 @@ export const RemedyMonographModal: React.FC<RemedyMonographModalProps> = ({
 
   const remediesList = allRemedies || getLocalizedRemedies(language);
   const authorsInfo = getRemedyClassicalAuthors(remedy.id);
-  const hasAnyAuthors = authorsInfo.hahnemann || authorsInfo.kent || authorsInfo.hering || authorsInfo.boericke || authorsInfo.boger;
+  const hasAnyAuthors = authorsInfo.hahnemann || authorsInfo.kent || authorsInfo.hering || authorsInfo.boericke || authorsInfo.boger || authorsInfo.allen;
 
   const handleSelectDifferentialRemedy = (diffString: string) => {
     const targetRemedy = resolveDifferentialRemedy(diffString, remediesList);
@@ -225,6 +226,11 @@ export const RemedyMonographModal: React.FC<RemedyMonographModalProps> = ({
                 {authorsInfo.boger && (
                   <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
                     Cyrus Maxwell Boger
+                  </span>
+                )}
+                {authorsInfo.allen && (
+                  <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-200 border border-amber-500/40" title="Henry C. Allen">
+                    Henry C. Allen
                   </span>
                 )}
               </div>
@@ -450,6 +456,83 @@ export const RemedyMonographModal: React.FC<RemedyMonographModalProps> = ({
                     ))}
                   </ul>
                 </div>
+              </div>
+            );
+          })()}
+
+          {/* 10. H. C. Allen Keynotes & Charakteristika */}
+          {(() => {
+            const allenData = getAllenKeynoteEntry(remedy.id);
+            if (!allenData) return null;
+            return (
+              <div className="space-y-3 bg-amber-50/50 p-4 rounded-xl border border-amber-200/70 mt-4">
+                <div className="flex items-center gap-2 text-amber-950 font-bold text-xs uppercase tracking-wider">
+                  <BookOpen className="w-4 h-4 text-amber-700" />
+                  <span>{t('secAllenKeynotesTitle')}</span>
+                </div>
+
+                {/* Allen Keynotes */}
+                {allenData.keynotes.length > 0 && (
+                  <div className="space-y-1">
+                    <div className="text-[11px] font-bold text-amber-900 uppercase tracking-wider">
+                      {t('secAllenKeynotes')}:
+                    </div>
+                    <ul className="space-y-1.5 text-xs text-slate-800 list-disc list-inside bg-white/80 p-2.5 rounded-lg border border-amber-100">
+                      {allenData.keynotes.map((kn, kIdx) => (
+                        <li key={kIdx} className="leading-relaxed font-medium">
+                          {kn}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Modalities: Worse / Better */}
+                {(allenData.modalitiesWorse.length > 0 || allenData.modalitiesBetter.length > 0) && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {allenData.modalitiesWorse.length > 0 && (
+                      <div className="bg-white/80 p-2.5 rounded-lg border border-rose-100">
+                        <div className="flex items-center gap-1.5 text-rose-800 font-bold text-[11px] uppercase tracking-wider mb-1.5">
+                          <Flame className="w-3.5 h-3.5 text-rose-600" />
+                          <span>{t('secAllenWorse')}</span>
+                        </div>
+                        <ul className="space-y-1 text-xs text-slate-700 list-disc list-inside">
+                          {allenData.modalitiesWorse.map((w, wIdx) => (
+                            <li key={wIdx} className="leading-snug">{w}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {allenData.modalitiesBetter.length > 0 && (
+                      <div className="bg-white/80 p-2.5 rounded-lg border border-emerald-100">
+                        <div className="flex items-center gap-1.5 text-emerald-800 font-bold text-[11px] uppercase tracking-wider mb-1.5">
+                          <Snowflake className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>{t('secAllenBetter')}</span>
+                        </div>
+                        <ul className="space-y-1 text-xs text-slate-700 list-disc list-inside">
+                          {allenData.modalitiesBetter.map((b, bIdx) => (
+                            <li key={bIdx} className="leading-snug">{b}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Relationships & Comparisons */}
+                {allenData.relations.length > 0 && (
+                  <div className="space-y-1">
+                    <div className="text-[11px] font-bold text-amber-900 uppercase tracking-wider">
+                      {t('secAllenRelations')}:
+                    </div>
+                    <ul className="space-y-1 text-xs text-slate-700 list-disc list-inside bg-white/70 p-2.5 rounded-lg border border-amber-100">
+                      {allenData.relations.map((rel, rIdx) => (
+                        <li key={rIdx} className="leading-snug">{rel}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             );
           })()}

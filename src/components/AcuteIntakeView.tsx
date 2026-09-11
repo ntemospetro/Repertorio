@@ -1189,7 +1189,7 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {displayedRemedies.map(({ remedy, rec, isRecommended, index, kentSummary }) => {
             const authorsInfo = getRemedyClassicalAuthors(remedy.id);
-            const hasAnyAuthors = authorsInfo.hahnemann || authorsInfo.kent || authorsInfo.hering;
+            const hasAnyAuthors = authorsInfo.hahnemann || authorsInfo.kent || authorsInfo.hering || authorsInfo.boericke || authorsInfo.boger || authorsInfo.allen;
 
             return (
               <div
@@ -1227,17 +1227,32 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
                         <div className="flex flex-wrap items-center gap-1 mt-1.5">
                           {authorsInfo.hahnemann && (
                             <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200/60" title="Samuel Hahnemann">
-                              Hahnemann
+                              S. Hahnemann
                             </span>
                           )}
                           {authorsInfo.kent && (
                             <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-800 border border-indigo-200/60" title="James Tyler Kent">
-                              Kent
+                              J. T. Kent
                             </span>
                           )}
                           {authorsInfo.hering && (
                             <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-teal-50 text-teal-800 border border-teal-200/60" title="Constantine Hering">
-                              Hering
+                              C. Hering
+                            </span>
+                          )}
+                          {authorsInfo.boericke && (
+                            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200/60" title="William Boericke">
+                              W. Boericke
+                            </span>
+                          )}
+                          {authorsInfo.boger && (
+                            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-purple-50 text-purple-800 border border-purple-200/60" title="Cyrus Maxwell Boger">
+                              C. M. Boger
+                            </span>
+                          )}
+                          {authorsInfo.allen && (
+                            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-50 text-amber-900 border border-amber-300/80" title="Henry C. Allen">
+                              H. C. Allen
                             </span>
                           )}
                         </div>
