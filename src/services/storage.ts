@@ -1411,13 +1411,17 @@ export function getTariffAccessForTherapist(therapistOrId?: Therapist | string):
   const isTrial = !plan || plan.id === 'free_trial' || plan.billingPeriod === 'free' || plan.price === 0;
 
   const resolvedPagePermissions: Required<TariffPagePermissions> = {
+    dashboard: plan?.pagePermissions?.dashboard !== undefined ? plan.pagePermissions.dashboard : true,
     patients: plan?.pagePermissions?.patients !== undefined ? plan.pagePermissions.patients : true,
     cases: plan?.pagePermissions?.cases !== undefined ? plan.pagePermissions.cases : true,
     quickintake: plan?.pagePermissions?.quickintake !== undefined ? plan.pagePermissions.quickintake : true,
+    quickIntake: plan?.pagePermissions?.quickIntake !== undefined ? plan.pagePermissions.quickIntake : true,
     materiamedica: plan?.pagePermissions?.materiamedica !== undefined ? plan.pagePermissions.materiamedica : true,
+    materiaMedica: plan?.pagePermissions?.materiaMedica !== undefined ? plan.pagePermissions.materiaMedica : true,
     repertorium: plan?.pagePermissions?.repertorium !== undefined ? plan.pagePermissions.repertorium : (isTrial ? false : true),
     medications: plan?.pagePermissions?.medications !== undefined ? plan.pagePermissions.medications : true,
     documentation: plan?.pagePermissions?.documentation !== undefined ? plan.pagePermissions.documentation : true,
+    pdfExport: plan?.pagePermissions?.pdfExport !== undefined ? plan.pagePermissions.pdfExport : true,
   };
 
   const unlimitedAll = plan?.featureLimits?.unlimitedAll ?? isUnlimitedPlan;
@@ -1425,11 +1429,17 @@ export function getTariffAccessForTherapist(therapistOrId?: Therapist | string):
   const resolvedFeatureLimits: Required<TariffFeatureLimits> = {
     unlimitedAll,
     maxPatients: unlimitedAll ? -1 : (plan?.featureLimits?.maxPatients ?? (plan?.maxAnalyses || (isTrial ? 3 : 25))),
+    unlimitedPatients: unlimitedAll ? true : (plan?.featureLimits?.unlimitedPatients ?? false),
     maxAnalyses: unlimitedAll ? -1 : (plan?.featureLimits?.maxAnalyses ?? (plan?.maxAnalyses || (isTrial ? 3 : 25))),
+    unlimitedAnalyses: unlimitedAll ? true : (plan?.featureLimits?.unlimitedAnalyses ?? isUnlimitedPlan ?? false),
     maxMedsPerCase: unlimitedAll ? -1 : (plan?.featureLimits?.maxMedsPerCase ?? (isTrial ? 3 : 15)),
+    unlimitedMedsPerCase: unlimitedAll ? true : (plan?.featureLimits?.unlimitedMedsPerCase ?? false),
     maxRiskAnalyses: unlimitedAll ? -1 : (plan?.featureLimits?.maxRiskAnalyses ?? (isTrial ? 3 : (plan?.maxAnalyses || 25))),
+    unlimitedRiskAnalyses: unlimitedAll ? true : (plan?.featureLimits?.unlimitedRiskAnalyses ?? false),
     maxReports: unlimitedAll ? -1 : (plan?.featureLimits?.maxReports ?? (isTrial ? 3 : (plan?.maxAnalyses || 25))),
+    unlimitedReports: unlimitedAll ? true : (plan?.featureLimits?.unlimitedReports ?? false),
     maxAiRequests: unlimitedAll ? -1 : (plan?.featureLimits?.maxAiRequests ?? (isTrial ? 5 : 50)),
+    unlimitedAiRequests: unlimitedAll ? true : (plan?.featureLimits?.unlimitedAiRequests ?? false),
   };
 
   return {

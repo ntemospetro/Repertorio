@@ -1516,6 +1516,10 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
 
   const handleExportRecommendationsPDF = () => {
     if (!currentCase) return;
+    if (tariffAccess.pagePermissions.pdfExport === false) {
+      setLockedPageAttempt({ key: 'pdfExport', name: t('tariffPagePdfExportLabel') || 'PDF-Fallexport & Berichte' });
+      return;
+    }
     const analysisToExport = clinicalAnalysis || {
       redFlags: { warnings: [], gesamtbewertung: '', empfohleneFachrichtung: '', dringlichkeit: '' },
       differentialdiagnostik: { items: [] },
@@ -1527,6 +1531,10 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
 
   const handleExportFullAnalysisPDF = () => {
     if (!currentCase) return;
+    if (tariffAccess.pagePermissions.pdfExport === false) {
+      setLockedPageAttempt({ key: 'pdfExport', name: t('tariffPagePdfExportLabel') || 'PDF-Fallexport & Berichte' });
+      return;
+    }
     const analysisToExport = clinicalAnalysis || {
       redFlags: { warnings: [], gesamtbewertung: '', empfohleneFachrichtung: '', dringlichkeit: '' },
       differentialdiagnostik: { items: [] },
@@ -1878,28 +1886,7 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
               )}
             </button>
 
-            {/* 2. Repertorisation */}
-            <button
-              type="button"
-              onClick={() => handleSelectTab('cases')}
-              className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center justify-between transition-colors cursor-pointer ${
-                panelTab === 'cases'
-                  ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/50'
-                  : 'text-slate-600 hover:bg-slate-200/50 hover:text-slate-900'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <LayoutDashboard className={`w-4 h-4 ${isTabAllowed('cases') ? 'text-teal-600' : 'text-slate-400'}`} />
-                <span className={!isTabAllowed('cases') ? 'text-slate-500' : ''}>{t('tabCaseManagement')}</span>
-              </div>
-              {!isTabAllowed('cases') && (
-                <span title={t('tariffPageLockedTooltip')}>
-                  <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                </span>
-              )}
-            </button>
-
-            {/* 3. Akutanalyse (unter Repertorisation) */}
+            {/* 2. Akutanalyse */}
             <button
               type="button"
               id="sidebar-nav-tab-quickintake"
@@ -1921,29 +1908,7 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
               )}
             </button>
 
-            {/* 4. Materia Medica */}
-            <button
-              type="button"
-              id="sidebar-nav-tab-materiamedica"
-              onClick={() => handleSelectTab('materiamedica')}
-              className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center justify-between transition-colors cursor-pointer ${
-                panelTab === 'materiamedica'
-                  ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/50'
-                  : 'text-slate-600 hover:bg-slate-200/50 hover:text-slate-900'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <BookOpen className={`w-4 h-4 ${isTabAllowed('materiamedica') ? 'text-teal-600' : 'text-slate-400'}`} />
-                <span className={!isTabAllowed('materiamedica') ? 'text-slate-500' : ''}>{t('tabMateriaMedica')}</span>
-              </div>
-              {!isTabAllowed('materiamedica') && (
-                <span title={t('tariffPageLockedTooltip')}>
-                  <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                </span>
-              )}
-            </button>
-
-            {/* 5. Repertorium */}
+            {/* 3. Repertorium */}
             <button
               type="button"
               id="sidebar-nav-tab-repertorium"
@@ -1959,6 +1924,49 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                 <span className={!isTabAllowed('repertorium') ? 'text-slate-500' : ''}>{t('tabRepertorium')}</span>
               </div>
               {!isTabAllowed('repertorium') && (
+                <span title={t('tariffPageLockedTooltip')}>
+                  <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                </span>
+              )}
+            </button>
+
+            {/* 4. Repertorisation */}
+            <button
+              type="button"
+              onClick={() => handleSelectTab('cases')}
+              className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center justify-between transition-colors cursor-pointer ${
+                panelTab === 'cases'
+                  ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/50'
+                  : 'text-slate-600 hover:bg-slate-200/50 hover:text-slate-900'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <LayoutDashboard className={`w-4 h-4 ${isTabAllowed('cases') ? 'text-teal-600' : 'text-slate-400'}`} />
+                <span className={!isTabAllowed('cases') ? 'text-slate-500' : ''}>{t('tabCaseManagement')}</span>
+              </div>
+              {!isTabAllowed('cases') && (
+                <span title={t('tariffPageLockedTooltip')}>
+                  <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                </span>
+              )}
+            </button>
+
+            {/* 5. Materia Medica */}
+            <button
+              type="button"
+              id="sidebar-nav-tab-materiamedica"
+              onClick={() => handleSelectTab('materiamedica')}
+              className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center justify-between transition-colors cursor-pointer ${
+                panelTab === 'materiamedica'
+                  ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/50'
+                  : 'text-slate-600 hover:bg-slate-200/50 hover:text-slate-900'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <BookOpen className={`w-4 h-4 ${isTabAllowed('materiamedica') ? 'text-teal-600' : 'text-slate-400'}`} />
+                <span className={!isTabAllowed('materiamedica') ? 'text-slate-500' : ''}>{t('tabMateriaMedica')}</span>
+              </div>
+              {!isTabAllowed('materiamedica') && (
                 <span title={t('tariffPageLockedTooltip')}>
                   <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                 </span>

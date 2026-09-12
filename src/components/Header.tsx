@@ -391,30 +391,7 @@ export const Header: React.FC<HeaderProps> = ({
                   <ChevronRight className="w-4 h-4 text-slate-400" />
                 </button>
 
-                {/* 2. Repertorisation */}
-                <button
-                  type="button"
-                  id="mobile-nav-tab-cases"
-                  onClick={() => {
-                    setActiveTherapistTab('cases');
-                    navigateTo('therapist', { therapistTab: 'cases' });
-                    window.dispatchEvent(new CustomEvent('homoeo_action_set_therapist_tab', { detail: 'cases' }));
-                    setMobileMenuOpen(false);
-                  }}
-                  className={`w-full px-3.5 py-2.5 rounded-xl text-sm font-medium flex items-center justify-between transition-colors cursor-pointer ${
-                    activeTherapistTab === 'cases'
-                      ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/70'
-                      : 'text-slate-700 hover:bg-slate-100'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <LayoutDashboard className="w-4 h-4 text-teal-600" />
-                    <span>{t('tabCaseManagement')}</span>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-slate-400" />
-                </button>
-
-                {/* 3. Akutanalyse */}
+                {/* 2. Akutanalyse */}
                 <button
                   type="button"
                   id="mobile-nav-tab-quickintake"
@@ -437,25 +414,48 @@ export const Header: React.FC<HeaderProps> = ({
                   <ChevronRight className="w-4 h-4 text-slate-400" />
                 </button>
 
-                {/* 4. Medikamente & Analyse */}
+                {/* 3. Repertorium */}
                 <button
                   type="button"
-                  id="mobile-nav-tab-medications"
+                  id="mobile-nav-tab-repertorium"
                   onClick={() => {
-                    setActiveTherapistTab('medications');
-                    navigateTo('therapist', { therapistTab: 'medications' });
-                    window.dispatchEvent(new CustomEvent('homoeo_action_set_therapist_tab', { detail: 'medications' }));
+                    setActiveTherapistTab('repertorium');
+                    navigateTo('therapist', { therapistTab: 'repertorium' });
+                    window.dispatchEvent(new CustomEvent('homoeo_action_set_therapist_tab', { detail: 'repertorium' }));
                     setMobileMenuOpen(false);
                   }}
                   className={`w-full px-3.5 py-2.5 rounded-xl text-sm font-medium flex items-center justify-between transition-colors cursor-pointer ${
-                    activeTherapistTab === 'medications'
+                    activeTherapistTab === 'repertorium'
                       ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/70'
                       : 'text-slate-700 hover:bg-slate-100'
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <Pill className="w-4 h-4 text-teal-600" />
-                    <span>{t('tabMedications')}</span>
+                    <Layers className="w-4 h-4 text-teal-600" />
+                    <span>{t('tabRepertorium')}</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-400" />
+                </button>
+
+                {/* 4. Repertorisation */}
+                <button
+                  type="button"
+                  id="mobile-nav-tab-cases"
+                  onClick={() => {
+                    setActiveTherapistTab('cases');
+                    navigateTo('therapist', { therapistTab: 'cases' });
+                    window.dispatchEvent(new CustomEvent('homoeo_action_set_therapist_tab', { detail: 'cases' }));
+                    setMobileMenuOpen(false);
+                  }}
+                  className={`w-full px-3.5 py-2.5 rounded-xl text-sm font-medium flex items-center justify-between transition-colors cursor-pointer ${
+                    activeTherapistTab === 'cases'
+                      ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/70'
+                      : 'text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <LayoutDashboard className="w-4 h-4 text-teal-600" />
+                    <span>{t('tabCaseManagement')}</span>
                   </div>
                   <ChevronRight className="w-4 h-4 text-slate-400" />
                 </button>
@@ -483,25 +483,25 @@ export const Header: React.FC<HeaderProps> = ({
                   <ChevronRight className="w-4 h-4 text-slate-400" />
                 </button>
 
-                {/* 6. Repertorium */}
+                {/* 6. Medikamente & Analyse */}
                 <button
                   type="button"
-                  id="mobile-nav-tab-repertorium"
+                  id="mobile-nav-tab-medications"
                   onClick={() => {
-                    setActiveTherapistTab('repertorium');
-                    navigateTo('therapist', { therapistTab: 'repertorium' });
-                    window.dispatchEvent(new CustomEvent('homoeo_action_set_therapist_tab', { detail: 'repertorium' }));
+                    setActiveTherapistTab('medications');
+                    navigateTo('therapist', { therapistTab: 'medications' });
+                    window.dispatchEvent(new CustomEvent('homoeo_action_set_therapist_tab', { detail: 'medications' }));
                     setMobileMenuOpen(false);
                   }}
                   className={`w-full px-3.5 py-2.5 rounded-xl text-sm font-medium flex items-center justify-between transition-colors cursor-pointer ${
-                    activeTherapistTab === 'repertorium'
+                    activeTherapistTab === 'medications'
                       ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/70'
                       : 'text-slate-700 hover:bg-slate-100'
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <Layers className="w-4 h-4 text-teal-600" />
-                    <span>{t('tabRepertorium')}</span>
+                    <Pill className="w-4 h-4 text-teal-600" />
+                    <span>{t('tabMedications')}</span>
                   </div>
                   <ChevronRight className="w-4 h-4 text-slate-400" />
                 </button>

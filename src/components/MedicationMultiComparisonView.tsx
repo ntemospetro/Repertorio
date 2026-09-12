@@ -12,7 +12,7 @@ import {
 import { exportMedicationRiskComparisonPDF } from '../services/pdfExportService';
 import { fetchTranslatedComparison } from '../services/medicationLocalization';
 import { evaluateAmtsMedications } from '../services/amtsDosageEngine';
-import { getPatientCases } from '../services/storage';
+import { getPatientCases, getTariffAccessForTherapist } from '../services/storage';
 import {
   Scale,
   ShieldAlert,
@@ -95,7 +95,9 @@ export const MedicationMultiComparisonView: React.FC<Props> = ({
   onOpenMedicationsModal,
 }) => {
   const { t, language } = useTranslation();
+  const tariffAccess = getTariffAccessForTherapist();
   const meds = currentCase.medikamenteList || [];
+  const [pdfBlockedError, setPdfBlockedError] = useState(false);
 
   // Parse birth year or age
   const patientAge = useMemo(() => {
@@ -392,6 +394,10 @@ export const MedicationMultiComparisonView: React.FC<Props> = ({
   };
 
   const handleExportPdf = async () => {
+    if (tariffAccess.pagePermissions.pdfExport === false) {
+      setPdfBlockedError(true);
+      return;
+    }
     setIsExportingPdf(true);
     try {
       await exportMedicationRiskComparisonPDF({
@@ -1527,6 +1533,35 @@ export const MedicationMultiComparisonView: React.FC<Props> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {pdfBlockedError && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl max-w-md w-full border border-slate-200 shadow-2xl overflow-hidden p-6 sm:p-7 text-center space-y-5 animate-in zoom-in-95 duration-200">
+            <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center mx-auto shadow-inner">
+              <ShieldAlert className="w-7 h-7" />
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="text-lg sm:text-xl font-bold text-slate-900 font-serif">
+                {t('tariffPdfLockedTitle')}
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed max-w-sm mx-auto">
+                {t('tariffPdfLockedDesc')}
+              </p>
+            </div>
+
+            <div className="pt-2 flex items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => setPdfBlockedError(false)}
+                className="w-full px-5 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-semibold transition-colors cursor-pointer"
+              >
+                {t('btnCancelModal')}
+              </button>
+            </div>
           </div>
         </div>
       )}

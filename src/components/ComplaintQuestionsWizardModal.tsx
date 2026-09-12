@@ -20,7 +20,8 @@ import {
   History,
   GitBranch,
   ShieldAlert,
-  Radio
+  Radio,
+  FileText
 } from 'lucide-react';
 import { useTranslation } from '../i18n/LanguageContext';
 import { VoiceInputButton } from './VoiceInputButton';
@@ -511,12 +512,12 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
         {/* 6-Pillar Stepper Progress Line */}
         <div className="px-6 py-2 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-1 overflow-x-auto text-[11px]">
           {[
-            { key: 'causa', label: t('hahnemannPillarCausa'), isFilled: Boolean(matrix.causa && matrix.causa !== 'Noch nicht genannt'), icon: Activity },
-            { key: 'lok', label: t('hahnemannPillarLokalisation'), isFilled: Boolean(matrix.lokalisierung && matrix.lokalisierung !== 'Noch nicht genannt'), icon: MapPin },
-            { key: 'empf', label: t('hahnemannPillarSensation'), isFilled: Boolean(matrix.empfindung && matrix.empfindung !== 'Noch nicht genannt'), icon: Flame },
-            { key: 'mod', label: t('hahnemannPillarModalitaeten'), isFilled: Boolean(matrix.modalitaeten && matrix.modalitaeten !== 'Noch nicht genannt'), icon: Sliders },
-            { key: 'begleit', label: t('hahnemannPillarBegleit'), isFilled: Boolean(matrix.begleitsymptome && matrix.begleitsymptome.length > 0), icon: HeartPulse },
-            { key: 'gemuet', label: t('hahnemannPillarGemuet'), isFilled: Boolean(matrix.gemuet && matrix.gemuet !== 'Noch nicht genannt'), icon: Brain },
+            { key: 'causa', label: t('hahnemannPillarShortCausa'), isFilled: Boolean(matrix.causa && matrix.causa !== 'Noch nicht genannt'), icon: Activity },
+            { key: 'lok', label: t('hahnemannPillarShortLokalisation'), isFilled: Boolean(matrix.lokalisierung && matrix.lokalisierung !== 'Noch nicht genannt'), icon: MapPin },
+            { key: 'empf', label: t('hahnemannPillarShortSensation'), isFilled: Boolean(matrix.empfindung && matrix.empfindung !== 'Noch nicht genannt'), icon: Flame },
+            { key: 'mod', label: t('hahnemannPillarShortModalitaeten'), isFilled: Boolean(matrix.modalitaeten && matrix.modalitaeten !== 'Noch nicht genannt'), icon: Sliders },
+            { key: 'begleit', label: t('hahnemannPillarShortBegleit'), isFilled: Boolean(matrix.begleitsymptome && matrix.begleitsymptome.length > 0), icon: HeartPulse },
+            { key: 'gemuet', label: t('hahnemannPillarShortGemuet'), isFilled: Boolean(matrix.gemuet && matrix.gemuet !== 'Noch nicht genannt'), icon: Brain },
           ].map((pillar, idx) => {
             const Icon = pillar.icon;
             return (
@@ -529,9 +530,9 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
                 }`}
               >
                 <Icon className={`w-3.5 h-3.5 ${pillar.isFilled ? 'text-teal-600' : 'text-slate-400'}`} />
-                <span>{idx + 1}. {pillar.label.split(' ')[0]}</span>
+                <span>{idx + 1}. {pillar.label}</span>
                 {pillar.isFilled ? (
-                  <CheckCircle2 className="w-3 h-3 text-teal-600 shrink-0" />
+                  <CheckCircle2 className="w-3.5 h-3.5 text-teal-600 shrink-0" />
                 ) : (
                   <span className="w-1.5 h-1.5 rounded-full bg-slate-300 shrink-0" />
                 )}
@@ -574,6 +575,21 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
                 {caseType === 'chronisch' ? t('hahnemannCaseTypeChronicShort') : t('hahnemannCaseTypeAcuteShort')}
               </span>
             </div>
+
+            {/* Separate Chief Complaint / Patient Spontaneous Report */}
+            {chiefComplaint && chiefComplaint.trim().length > 0 && (
+              <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-xl flex items-start gap-3 text-xs">
+                <FileText className="w-4.5 h-4.5 text-teal-700 shrink-0 mt-0.5" />
+                <div className="space-y-1.5 w-full">
+                  <span className="font-bold text-slate-700 block uppercase tracking-wider text-[10px]">
+                    {t('hahnemannPatientOTonTitle')}
+                  </span>
+                  <p className="text-slate-900 font-medium leading-relaxed italic bg-white p-3 rounded-xl border border-slate-200/60 shadow-3xs">
+                    „{chiefComplaint}“
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Prüfung auf ursächlichen Zusammenhang bei mehreren Beschwerden (§§ 83–104) */}
             {(analysisResult?.mehrere_symptome_erkannt || matrix.ursaechlicher_zusammenhang) && (

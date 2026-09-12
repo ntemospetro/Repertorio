@@ -15,6 +15,7 @@ export interface TariffPagePermissions {
   repertorium?: boolean;   // Repertorium (Boericke / Kent)
   medications?: boolean;   // Medikamente & Arzneimittelrecherche
   documentation?: boolean; // Dokumentation / Anleitungen
+  pdfExport?: boolean;     // PDF-Fallexport & Berichte
 }
 
 export interface TariffFeatureLimits {

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { PatientCase, FullClinicalAnalysis, DifferentialDiagnosisItem, RedFlagItem, MedicationAnalysisDetail, HomeoRemedyRecommendation } from '../types';
 import { exportCategoryPDF, PDFExportCategory } from '../services/pdfExportService';
 import { useTranslation } from '../i18n/LanguageContext';
+import { getTariffAccessForTherapist } from '../services/storage';
 import { MedicationResearchView } from './MedicationResearchView';
 import { getLocalizedPresetValue } from '../utils/remedyLocalization';
 import { 
@@ -52,9 +53,11 @@ export const ComprehensiveAnalysisView: React.FC<ComprehensiveAnalysisViewProps>
   onOpenMedicationsModal,
 }) => {
   const { t, language } = useTranslation();
+  const tariffAccess = getTariffAccessForTherapist();
   const [activeTab, setActiveTab] = useState<'redFlags' | 'falldaten' | 'differential' | 'homoeopathie' | 'medikamente' | 'gesamt'>('redFlags');
   const [isMedicationModalOpen, setIsMedicationModalOpen] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState<string | null>(null);
+  const [pdfBlockedError, setPdfBlockedError] = useState(false);
 
   // Close medication modal on Escape key
   useEffect(() => {
@@ -70,6 +73,10 @@ export const ComprehensiveAnalysisView: React.FC<ComprehensiveAnalysisViewProps>
   }, [isMedicationModalOpen]);
 
   const handleDownloadPDF = (cat: PDFExportCategory, label: string) => {
+    if (tariffAccess.pagePermissions.pdfExport === false) {
+      setPdfBlockedError(true);
+      return;
+    }
     try {
       exportCategoryPDF(cat, patientCase, analysis, (language as any) || 'de');
       setDownloadSuccess(`PDF "${label}" wurde erfolgreich heruntergeladen.`);
@@ -1083,6 +1090,35 @@ export const ComprehensiveAnalysisView: React.FC<ComprehensiveAnalysisViewProps>
           </div>
         </div>,
         document.body
+      )}
+
+      {pdfBlockedError && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl max-w-md w-full border border-slate-200 shadow-2xl overflow-hidden p-6 sm:p-7 text-center space-y-5 animate-in zoom-in-95 duration-200">
+            <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center mx-auto shadow-inner">
+              <ShieldAlert className="w-7 h-7" />
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="text-lg sm:text-xl font-bold text-slate-900 font-serif">
+                {t('tariffPdfLockedTitle')}
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed max-w-sm mx-auto">
+                {t('tariffPdfLockedDesc')}
+              </p>
+            </div>
+
+            <div className="pt-2 flex items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => setPdfBlockedError(false)}
+                className="w-full px-5 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-semibold transition-colors cursor-pointer"
+              >
+                {t('btnCancelModal')}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

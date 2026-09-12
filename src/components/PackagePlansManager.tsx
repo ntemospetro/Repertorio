@@ -34,7 +34,8 @@ import {
   FileText,
   BookOpen,
   Pill,
-  LayoutDashboard
+  LayoutDashboard,
+  Download
 } from 'lucide-react';
 
 interface PackagePlansManagerProps {
@@ -77,6 +78,7 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
       repertorium: true,
       medications: true,
       documentation: true,
+      pdfExport: true,
     } as TariffPagePermissions,
     featureLimits: {
       unlimitedAll: false,
@@ -143,6 +145,7 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
         repertorium: true,
         medications: true,
         documentation: true,
+        pdfExport: true,
       },
       featureLimits: {
         unlimitedAll: false,
@@ -191,6 +194,7 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
         repertorium: plan.pagePermissions?.repertorium ?? true,
         medications: plan.pagePermissions?.medications ?? true,
         documentation: plan.pagePermissions?.documentation ?? true,
+        pdfExport: plan.pagePermissions?.pdfExport ?? true,
       },
       featureLimits: {
         unlimitedAll: plan.featureLimits?.unlimitedAll ?? false,
@@ -603,7 +607,7 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
                       if (!perms) {
                         return <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">{t('tariffAllPagesUnlocked')}</span>;
                       }
-                      const pages = ['dashboard', 'patients', 'cases', 'quickIntake', 'materiaMedica', 'repertorium', 'medications', 'documentation'] as const;
+                      const pages = ['dashboard', 'patients', 'cases', 'quickIntake', 'materiaMedica', 'repertorium', 'medications', 'documentation', 'pdfExport'] as const;
                       const unlockedCount = pages.filter(p => perms[p] !== false).length;
                       return (
                         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${
@@ -1063,7 +1067,7 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <button
+                                    <button
                       type="button"
                       onClick={() => setFormData({
                         ...formData,
@@ -1076,6 +1080,7 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
                           repertorium: true,
                           medications: true,
                           documentation: true,
+                          pdfExport: true,
                         }
                       })}
                       className="text-[10px] text-indigo-700 font-semibold hover:underline cursor-pointer"
@@ -1087,7 +1092,7 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
                   {[
-                    { key: 'dashboard' as const, label: t('navDashboard'), icon: LayoutDashboard },
+                    { key: 'dashboard' as const, label: t('navHome' as any), icon: LayoutDashboard },
                     { key: 'patients' as const, label: t('tariffPagePatientsLabel'), icon: Users },
                     { key: 'cases' as const, label: t('tariffPageCasesLabel'), icon: FileText },
                     { key: 'quickIntake' as const, label: t('tariffPageQuickIntakeLabel'), icon: Sparkles },
@@ -1095,6 +1100,7 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
                     { key: 'repertorium' as const, label: t('tariffPageRepertoriumLabel'), icon: Layers },
                     { key: 'medications' as const, label: t('tariffPageMedicationsLabel'), icon: Pill },
                     { key: 'documentation' as const, label: t('tariffPageDocumentationLabel'), icon: FileCheck },
+                    { key: 'pdfExport' as const, label: t('tariffPagePdfExportLabel'), icon: Download },
                   ].map(page => {
                     const IconComp = page.icon;
                     const isAllowed = formData.pagePermissions[page.key] ?? true;
