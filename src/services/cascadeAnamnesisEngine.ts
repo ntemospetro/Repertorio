@@ -16,6 +16,7 @@ export interface CascadeTier3Option {
   timeframe?: string;
   grade?: number; // 1-4 Boericke grade
   remedyWeights?: Record<string, number>; // Specific remedy affinities
+  rubric?: string;
 }
 
 export interface CascadeTier2Option {
@@ -25,6 +26,7 @@ export interface CascadeTier2Option {
   direction?: 'better' | 'worse';
   remedyHints?: string[]; // e.g. ['staphisagria', 'chamomilla']
   grade?: number;
+  rubrics?: string[];
   tier3Options?: CascadeTier3Option[];
 }
 
@@ -33,6 +35,7 @@ export interface CascadeCategory {
   label: Record<string, string>;
   iconName?: string;
   description?: Record<string, string>;
+  remedyHints?: string[];
   tier2Options: CascadeTier2Option[];
 }
 
@@ -225,32 +228,72 @@ export const CASCADE_PILLAR_DEFINITIONS: Record<string, CascadePillarData> = {
       {
         id: 'loc-cat-head-neck',
         label: {
-          de: 'Kopf, Stirn & Nacken',
-          en: 'Head, Forehead & Neck',
-          es: 'Cabeza, frente y nuca',
-          fr: 'Tête, front et nuque',
-          it: 'Testa, fronte e nuca',
-          el: 'Κεφάλι, μέτωπο & αυχένας',
-          ru: 'Голова, лоб и затылок'
+          de: 'Kopf, Stirn, Schläfen & Nacken',
+          en: 'Head, Forehead, Temples & Neck',
+          es: 'Cabeza, frente, sienes y nuca',
+          fr: 'Tête, front, tempes et nuque',
+          it: 'Testa, fronte, tempie e nuca',
+          el: 'Κεφάλι, μέτωπο, κρόταφοι & αυχένας',
+          ru: 'Голова, лоб, виски и затылок'
         },
         tier2Options: [
           {
-            id: 'loc-forehead-temples',
+            id: 'loc-forehead-frontal',
             label: {
-              de: 'Stirn & Schläfen',
-              en: 'Forehead & Temples',
-              es: 'Frente y sienes',
-              fr: 'Front et tempes',
-              it: 'Fronte e tempie',
-              el: 'Μέτωπο & κρόταφοι',
-              ru: 'Лоб и виски'
+              de: 'Stirn (frontal / über den Augenbrauen)',
+              en: 'Forehead (frontal / above eyebrows)',
+              es: 'Frente (frontal / sobre las cejas)',
+              fr: 'Front (frontal / au-dessus des sourcils)',
+              it: 'Fronte (frontale / sopra le sopracciglia)',
+              el: 'Μέτωπο (μετωπιαία / πάνω από τα φρύδια)',
+              ru: 'Лоб (фронтально / над бровями)'
             },
-            remedyHints: ['belladonna', 'gelsemium', 'glonoinum', 'bryonia']
+            remedyHints: ['belladonna', 'bryonia-alba', 'gelsemium-sempervirens', 'glonoinum'],
+            tier3Options: [
+              { id: 'loc-rad-head-back-occiput', label: { de: 'Zieht von der Stirn nach hinten in den Hinterkopf & Nacken', en: 'Pulls from forehead back to occiput & neck', es: 'Tira de la frente hacia el occipucio y nuca', fr: 'Tire du front vers l\'occiput et la nuque', it: 'Tira dalla fronte verso l\'occipite e la nuca', el: 'Τραβά από το μέτωπο πίσω προς το ινίο & αυχένα', ru: 'Тянет со лба назад к затылку и шее' } },
+              { id: 'loc-rad-head-eyes-root', label: { de: 'Strahlt tief in die Augenhöhlen / Nasenwurzel aus', en: 'Radiates deep into orbits / root of nose', es: 'Irradia a las órbitas y raíz de la nariz', fr: 'Irradie dans les orbites et racine du nez', it: 'Irradia nelle orbite e radice del naso', el: 'Αντανακλά βαθιά στις κόγχες / ρίζα μύτης', ru: 'Иррадиирует в глазницы и корень носа' } },
+              { id: 'loc-rad-head-point-frontal', label: { de: 'Bleibt streng punktuell an der Stirn fixiert (abgrenzbar)', en: 'Remains strictly localized at the forehead', es: 'Permanece puntualmente fijo en la frente', fr: 'Reste strictement ponctuel au front', it: 'Resta strettamente puntuale alla fronte', el: 'Παραμένει αυστηρά σημειακό στο μέτωπο', ru: 'Остается строго точечным на лбу' } }
+            ]
+          },
+          {
+            id: 'loc-temple-right',
+            label: {
+              de: 'Rechte Schläfe (einseitig rechts)',
+              en: 'Right temple (one-sided right)',
+              es: 'Sien derecha (unilateral derecho)',
+              fr: 'Tempe droite (unilatéral droit)',
+              it: 'Tempia destra (unilaterale destro)',
+              el: 'Δεξιός κρόταφος (μονόπλευρα δεξιά)',
+              ru: 'Правый висок (односторонне справа)'
+            },
+            remedyHints: ['sanguinaria-canadensis', 'belladonna', 'lycopodium-clavatum', 'ignatia-amara'],
+            tier3Options: [
+              { id: 'loc-rad-temple-r-eye', label: { de: 'Beginnt im Nacken und setzt sich über dem rechten Auge fest (Sanguinaria)', en: 'Starts in neck and settles over right eye', es: 'Empieza en la nuca y se fija en el ojo derecho', fr: 'Débute à la nuque et se fixe sur l\'œil droit', it: 'Inizia alla nuca e si fissa sull\'occhio destro', el: 'Ξεκινά από τον αυχένα και κάθεται πάνω από το δεξί μάτι', ru: 'Начинается с затылка и фиксируется над правым глазом' } },
+              { id: 'loc-rad-temple-r-teeth', label: { de: 'Strahlt in Zähne, Wange oder rechten Kiefer aus', en: 'Radiates into teeth, cheek or right jaw', es: 'Irradia a dientes, mejilla o mandíbula derecha', fr: 'Irradie aux dents, joue ou mâchoire droite', it: 'Irradia a denti, guancia o mascella destra', el: 'Αντανακλά σε δόντια, μάγουλο ή δεξιά γνάθο', ru: 'Иррадиирует в зубы, щеку или правую челюсть' } },
+              { id: 'loc-rad-temple-r-fixed', label: { de: 'Bleibt scharf begrenzt in der rechten Schläfe (nagelartiger Schmerz)', en: 'Strictly localized in right temple (nail-like pain)', es: 'Estrictamente circunscrito en sien derecha (como un clavo)', fr: 'Strictement circonscrit à la tempe droite (comme un clou)', it: 'Strettamente circoscritto alla tempia destra (come un chiodo)', el: 'Αυστηρά περιορισμένος στον δεξιό κρόταφο (σαν καρφί)', ru: 'Строго ограничен в правом виске (как гвоздь)' } }
+            ]
+          },
+          {
+            id: 'loc-temple-left',
+            label: {
+              de: 'Linke Schläfe (einseitig links)',
+              en: 'Left temple (one-sided left)',
+              es: 'Sien izquierda (unilateral izquierdo)',
+              fr: 'Tempe gauche (unilatéral gauche)',
+              it: 'Tempia sinistra (unilaterale sinistro)',
+              el: 'Αριστερός κρόταφος (μονόπλευρα αριστερά)',
+              ru: 'Левый висок (односторонне слева)'
+            },
+            remedyHints: ['spigelia-anthelmia', 'lachesis-mutus', 'sepia-officinalis'],
+            tier3Options: [
+              { id: 'loc-rad-temple-l-eye', label: { de: 'Zieht vom Hinterkopf über die linke Schläfe ins linke Auge (Spigelia)', en: 'Pulls from occiput across left temple into left eye', es: 'Tira del occipucio por la sien al ojo izquierdo', fr: 'Tire de l\'occiput vers l\'œil gauche via la tempe', it: 'Tira dall\'occipite all\'occhio sinistro via tempia', el: 'Τραβά από το ινίο μέσω αριστερού κροτάφου στο αριστερό μάτι', ru: 'Тянет от затылка через левый висок в левый глаз' } },
+              { id: 'loc-rad-temple-l-fixed', label: { de: 'Bleibt streng punktuell in der linken Schläfe', en: 'Strictly localized in left temple', es: 'Permanece puntualmente fijo en la sien izquierda', fr: 'Reste strictement ponctuel à la tempe gauche', it: 'Resta strettamente puntuale alla tempia sinistra', el: 'Παραμένει αυστηρά σημειακό στον αριστερό κρόταφο', ru: 'Остается строго точечным в левом виске' } }
+            ]
           },
           {
             id: 'loc-occiput-neck',
             label: {
-              de: 'Hinterkopf & Nacken',
+              de: 'Hinterkopf (Okziput) & Nacken',
               en: 'Occiput & Nape of neck',
               es: 'Occipucio y nuca',
               fr: 'Occiput et nuque',
@@ -258,20 +301,46 @@ export const CASCADE_PILLAR_DEFINITIONS: Record<string, CascadePillarData> = {
               el: 'Ινίο & αυχένας',
               ru: 'Затылок и задняя часть шеи'
             },
-            remedyHints: ['gelsemium', 'silicea', 'cimicifuga', 'cocculus']
+            remedyHints: ['gelsemium-sempervirens', 'silicea', 'cimicifuga-racemosa', 'cocculus-indicus'],
+            tier3Options: [
+              { id: 'loc-rad-occiput-forward', label: { de: 'Steigt vom Nacken auf und zieht wie eine Kappe nach vorne zur Stirn', en: 'Ascends from nape and pulls forward like a cap over forehead', es: 'Sube de la nuca y tira hacia adelante como un casco', fr: 'Monte de la nuque vers l\'avant comme une calotte', it: 'Sale dalla nuca in avanti come una cuffia verso la fronte', el: 'Ανεβαίνει από τον αυχένα προς τα εμπρός σαν κάλυμμα στο μέτωπο', ru: 'Поднимается с затылка вперед на лоб как шлем' } },
+              { id: 'loc-rad-occiput-shoulders', label: { de: 'Strahlt nach unten in die Schultern & oberen Rücken aus', en: 'Radiates downwards into shoulders & upper back', es: 'Irradia hacia abajo a los hombros y espalda', fr: 'Irradie vers le bas dans les épaules et le haut du dos', it: 'Irradia verso il basso nelle spalle e dorso', el: 'Αντανακλά προς τα κάτω στους ώμους & άνω πλάτη', ru: 'Иррадиирует вниз в плечи и верхнюю часть спины' } },
+              { id: 'loc-rad-occiput-fixed', label: { de: 'Sitzt steif und unbeweglich fest am Hinterhauptsansatz', en: 'Strictly localized stiffness at occipital base', es: 'Fijo y rígido en la base del occipucio', fr: 'Bloqué et rigide à la base de l\'occiput', it: 'Bloccato e rigido alla base dell\'occipite', el: 'Αγκυλωμένο και ακίνητο στη βάση του ινίου', ru: 'Жестко фиксирован у основания затылка' } }
+            ]
           },
           {
             id: 'loc-vertex-crown',
             label: {
-              de: 'Scheitel (Vertex) / Kopfmitte',
-              en: 'Vertex / Top of head',
-              es: 'Vértice / Cima de la cabeza',
-              fr: 'Sommet du crâne (vertex)',
-              it: 'Vertice / Sommità del capo',
-              el: 'Κορυφή της κεφαλής (vertex)',
-              ru: 'Темечко / макушка головы'
+              de: 'Scheitel (Vertex) / Kopfmitte / Tief innen',
+              en: 'Vertex / Top of head / Deep inside',
+              es: 'Vértice / Cima de la cabeza / Profundo dentro',
+              fr: 'Sommet du crâne (vertex) / Au fond de la tête',
+              it: 'Vertice / Sommità del capo / Profondo all\'interno',
+              el: 'Κορυφή της κεφαλής (vertex) / Εν τω βάθει',
+              ru: 'Темечко / макушка головы / глубоко внутри'
             },
-            remedyHints: ['sulphur', 'lachesis', 'calcarea-carbonica']
+            remedyHints: ['sulphur', 'lachesis-mutus', 'calcarea-carbonica', 'actaea-racemosa'],
+            tier3Options: [
+              { id: 'loc-rad-vertex-diffuse', label: { de: 'Drückt von innen heraus, als würde der Schädel zersprengt', en: 'Presses from inside out as if skull would burst', es: 'Presiona de dentro afuera como si fuera a estallar', fr: 'Pousse de l\'intérieur comme si le crâne éclatait', it: 'Preme dall\'interno come se il cranio scoppiasse', el: 'Πιέζει από μέσα προς τα έξω σαν να σπάει το κρανίο', ru: 'Давит изнутри наружу, будто череп разорвется' } },
+              { id: 'loc-rad-vertex-fixed', label: { de: 'Streng auf einem zentimetergroßen Punkt am Scheitel fixiert', en: 'Strictly fixed on a tiny point on the crown', es: 'Fijado estrictamente en un punto de la coronilla', fr: 'Strictement fixé sur un point au sommet du crâne', it: 'Strettamente fissato su un punto della cima della testa', el: 'Αυστηρά εντοπισμένο σε ένα σημείο στην κορυφή', ru: 'Строго зафиксировано в одной точке на макушке' } }
+            ]
+          },
+          {
+            id: 'loc-wandering-sides',
+            label: {
+              de: 'Wandernder Schmerz / Wechselt die Seite (rechts ⇄ links)',
+              en: 'Wandering pain / Shifts sides (right ⇄ left)',
+              es: 'Dolor errático / Cambia de lado (derecha ⇄ izquierda)',
+              fr: 'Douleur erratique / Change de côté (droite ⇄ gauche)',
+              it: 'Dolore erratico / Cambia lato (destra ⇄ sinistra)',
+              el: 'Πλανώμενος πόνος / Αλλάζει πλευρά (δεξιά ⇄ αριστερά)',
+              ru: 'Блуждающая боль / меняет сторону (справа ⇄ слева)'
+            },
+            remedyHints: ['pulsatilla-pratensis', 'lac-caninum', 'phytolacca-decandra', 'berberis-vulgaris'],
+            tier3Options: [
+              { id: 'loc-rad-wandering-alternating', label: { de: 'Wechselt täglich oder stündlich von einer Seite zur anderen', en: 'Changes from one side to the other daily or hourly', es: 'Cambia de un lado a otro a diario o por horas', fr: 'Passe d\'un côté à l\'autre chaque jour ou heure', it: 'Passa da un lato all\'altro ogni giorno o ora', el: 'Αλλάζει πλευρά καθημερινά ή ανά ώρα', ru: 'Переходит с одной стороны на другую ежедневно или ежечасно' } },
+              { id: 'loc-rad-wandering-jumping', label: { de: 'Springt plötzlich an völlig andere Stellen', en: 'Jumps suddenly to entirely different locations', es: 'Salta súbitamente a lugares completamente distintos', fr: 'Saute brusquement vers d\'autres endroits', it: 'Salta improvvisamente in punti completamente diversi', el: 'Μεταπηδά ξαφνικά σε εντελώς διαφορετικά σημεία', ru: 'Внезапно перескакивает на совершенно другие места' } }
+            ]
           }
         ]
       }
@@ -1036,6 +1105,363 @@ export const CASCADE_PILLAR_DEFINITIONS: Record<string, CascadePillarData> = {
               ru: 'Плаксивый, кроткий, ищет утешения и ласки'
             },
             remedyHints: ['pulsatilla-pratensis', 'ignatia-amara']
+          }
+        ]
+      }
+    ]
+  },
+  // SÄULE 6: GEMÜT / PSYCHE (Ängste, Reizbarkeit, Stimmung, Trost & Erschöpfung)
+  mind: {
+    pillar: 'mind',
+    leadQuestion: {
+      de: 'Wie verändert sich Ihr seelisches Befinden, Ihre Stimmung oder Ihr Verhalten während der Beschwerden?',
+      en: 'How does your state of mind, mood, or behavior change during the complaints?',
+      es: '¿Cómo cambia su estado de ánimo, humor o comportamiento durante las molestias?',
+      fr: 'Comment votre état d\'esprit, votre humeur ou votre comportement changent-ils pendant les troubles ?',
+      it: 'Come cambia il suo stato d\'animo, l\'umore o il comportamento durante i disturbi?',
+      el: 'Πώς μεταβάλλεται η ψυχική σας διάθεση, το συναίσθημα ή η συμπεριφορά σας κατά τη διάρκεια των ενοχλήσεων;',
+      ru: 'Как изменяется ваше душевное состояние, настроение или поведение во время недомогания?'
+    },
+    categories: [
+      {
+        id: 'mind-cat-anxiety-fear',
+        label: {
+          de: 'Ängste, Panik & Rastlose Ruhelosigkeit',
+          en: 'Anxiety, Panic & Restless Agitation',
+          es: 'Ansiedad, pánico e inquietud agitada',
+          fr: 'Anxiété, panique et agitation sans repos',
+          it: 'Ansia, panico e irrequietezza agitata',
+          el: 'Άγχος, πανικός & ανήσυχη υπερκινητικότητα',
+          ru: 'Тревога, паника и беспокойная суетливость'
+        },
+        remedyHints: ['aconitum-napellus', 'arsenicum-album', 'phosphorus', 'argentum-nitricum'],
+        tier2Options: [
+          {
+            id: 'mind-t2-death-fear',
+            label: {
+              de: 'Todesangst & panische Unruhe (mit Todeszeitahnung)',
+              en: 'Fear of death & panic restlessness (predicts hour of death)',
+              es: 'Miedo a la muerte e inquietud con pánico (predice la hora)',
+              fr: 'Peur de la mort et agitation panique (prédit l\'heure)',
+              it: 'Paura della morte e agitazione da panico (predice l\'ora)',
+              el: 'Φόβος θανάτου & πανικός με ανησυχία (προβλέπει την ώρα)',
+              ru: 'Страх смерти и паническое беспокойство (предсказывает час)'
+            },
+            remedyHints: ['aconitum-napellus', 'arsenicum-album'],
+            rubrics: ['MIND - FEAR - death, of', 'MIND - RESTLESSNESS - anxious'],
+            tier3Options: [
+              {
+                id: 'mind-t3-death-acute-sudden',
+                label: {
+                  de: 'Plötzlich stürmisch auftretend mit panischem Herzrasen',
+                  en: 'Sudden violent onset with panic tachycardia',
+                  es: 'Aparición repentina y violenta con taquicardia de pánico',
+                  fr: 'Apparition soudaine et violente avec tachycardie panique',
+                  it: 'Insorgenza improvvisa e violenta con tachicardia da panico',
+                  el: 'Ξαφνική θυελλώδης έναρξη με ταχυκαρδία πανικού',
+                  ru: 'Внезапное бурное начало с панической тахикардией'
+                },
+                rubric: 'MIND - FEAR - death, of - sudden'
+              },
+              {
+                id: 'mind-t3-death-midnight-alone',
+                label: {
+                  de: 'Schlimmer nach Mitternacht (1-3 Uhr), treibt aus dem Bett, will nicht allein sein',
+                  en: 'Worse after midnight (1-3 am), drives out of bed, fears being alone',
+                  es: 'Peor pasada la medianoche (1-3 am), salta de la cama, teme estar solo',
+                  fr: 'Pire après minuit (1-3 h), pousse hors du lit, craint la solitude',
+                  it: 'Peggio dopo mezzanotte (1-3), scaccia dal letto, teme di stare solo',
+                  el: 'Χειρότερα μετά τα μεσάνυχτα (1-3 π.μ.), πετάγεται από το κρεβάτι, φοβάται τη μοναξιά',
+                  ru: 'Хуже после полуночи (1-3 ч), гонит из постели, боится оставаться один'
+                },
+                rubric: 'MIND - RESTLESSNESS - bed - out of bed, must get'
+              }
+            ]
+          },
+          {
+            id: 'mind-t2-alone-fear',
+            label: {
+              de: 'Furcht vor dem Alleinsein & im Dunkeln (sucht ständig Gesellschaft)',
+              en: 'Fear of being alone & in the dark (craves constant company)',
+              es: 'Miedo a estar solo y a la oscuridad (busca compañía continua)',
+              fr: 'Peur d\'être seul et de l\'obscurité (recherche compagnie constante)',
+              it: 'Paura di stare solo e del buio (cerca compagnia continua)',
+              el: 'Φόβος μοναξιάς & σκοταδιού (αναζητά συνεχώς παρέα)',
+              ru: 'Страх одиночества и темноты (постоянно ищет общества)'
+            },
+            remedyHints: ['phosphorus', 'arsenicum-album', 'pulsatilla-pratensis', 'lycopodium-clavatum'],
+            rubrics: ['MIND - FEAR - alone, of being', 'MIND - FEAR - dark, of']
+          },
+          {
+            id: 'mind-t2-health-anxiety',
+            label: {
+              de: 'Ständige Angst um die eigene Gesundheit & Unheilbarkeit',
+              en: 'Persistent anxiety about health & incurability',
+              es: 'Ansiedad persistente por la salud y la incurabilidad',
+              fr: 'Anxiété constante pour sa santé et incurabilité',
+              it: 'Ansia costante per la salute e incurabilità',
+              el: 'Συνεχής αγωνία για την υγεία & ανίατη νόσο',
+              ru: 'Постоянная тревога за здоровье и неизлечимость'
+            },
+            remedyHints: ['nitricum-acidum', 'arsenicum-album', 'phosphorus', 'calcarea-carbonica'],
+            rubrics: ['MIND - ANXIETY - health, about']
+          },
+          {
+            id: 'mind-t2-anticipation-claustro',
+            label: {
+              de: 'Erwartungsangst, Lampenfieber & Klaustrophobie in geschlossenen Räumen',
+              en: 'Anticipation anxiety, stage fright & claustrophobia in confined spaces',
+              es: 'Ansiedad de anticipación, miedo escénico y claustrofobia',
+              fr: 'Trac par anticipation et claustrophobie en lieux fermés',
+              it: 'Ansia di anticipazione, paura del pubblico e claustrofobia',
+              el: 'Άγχος προσμονής, τρακ & κλειστοφοβία σε κλειστούς χώρους',
+              ru: 'Тревожное предчувствие, страх сцены и клаустрофобия'
+            },
+            remedyHints: ['argentum-nitricum', 'gelsemium-sempervirens', 'lycopodium-clavatum'],
+            rubrics: ['MIND - ANXIETY - anticipating events', 'MIND - FEAR - narrow places']
+          }
+        ]
+      },
+      {
+        id: 'mind-cat-anger-irritability',
+        label: {
+          de: 'Reizbarkeit, Jähzorn & Ungeduld',
+          en: 'Irritability, Violent Anger & Impatience',
+          es: 'Irritabilidad, cólera violenta e impaciencia',
+          fr: 'Irritabilité, colère violente et impatience',
+          it: 'Irritabilità, collera violenta e impazienza',
+          el: 'Εκνευρισμός, έντονος θυμός & ανυπομονησία',
+          ru: 'Раздражительность, вспыльчивый гнев и нетерпение'
+        },
+        remedyHints: ['nux-vomica', 'chamomilla', 'bryonia-alba', 'colocynthis', 'staphisagria'],
+        tier2Options: [
+          {
+            id: 'mind-t2-anger-contradiction',
+            label: {
+              de: 'Extremer Jähzorn / Widerspruch & Unterbrechung absolut unerträglich',
+              en: 'Violent anger / cannot tolerate contradiction or interruption',
+              es: 'Cólera violenta / no tolera la contradicción ni interrupciones',
+              fr: 'Colère violente / ne supporte aucune contradiction ni interruption',
+              it: 'Collera violenta / intollerante a contraddizioni o interruzioni',
+              el: 'Έντονος θυμός / δεν ανέχεται καμία αντίρρηση ή διακοπή',
+              ru: 'Вспыльчивый гнев / совершенно не переносит возражений и помех'
+            },
+            remedyHints: ['nux-vomica', 'colocynthis', 'chamomilla', 'ignatia-amara'],
+            rubrics: ['MIND - IRRITABILITY - contradiction, from', 'MIND - ANGER - violent'],
+            tier3Options: [
+              {
+                id: 'mind-t3-anger-consequences-spasms',
+                label: {
+                  de: 'Krämpfe, Koliken oder Schüttelfrost als Folge des Zorns',
+                  en: 'Spasms, colic or chills as a consequence of anger',
+                  es: 'Espasmos, cólicos o escalofríos tras la cólera',
+                  fr: 'Spasmes, coliques ou frissons suite à la colère',
+                  it: 'Spasmi, coliche o brividi a seguito della collera',
+                  el: 'Σπασμοί, κολικοί ή ρίγη ως συνέπεια του θυμού',
+                  ru: 'Спазмы, колики или озноб как последствие гнева'
+                },
+                rubric: 'MIND - ANGER - ailments after'
+              },
+              {
+                id: 'mind-t3-anger-hypersensitive-senses',
+                label: {
+                  de: 'Überempfindlich gegen geringste Geräusche, Gerüche und Licht',
+                  en: 'Hypersensitive to slightest noise, odors and light',
+                  es: 'Hipersensible al menor ruido, olores y luz',
+                  fr: 'Hypersensible au moindre bruit, odeurs et lumière',
+                  it: 'Ipersensibile al minimo rumore, odori e luce',
+                  el: 'Υπερευαισθησία στον παραμικρό θόρυβο, οσμές και φως',
+                  ru: 'Гиперчувствительность к малейшему шуму, запахам и свету'
+                },
+                rubric: 'MIND - SENSITIVE - noise, to'
+              }
+            ]
+          },
+          {
+            id: 'mind-t2-unbearable-pain-snappy',
+            label: {
+              de: 'Schmerzen unerträglich, macht schnippisch, grob und bösartig',
+              en: 'Pains unbearable, becomes snappy, uncivil and spiteful',
+              es: 'Dolores insoportables, se vuelve hosco, grosero y mordaz',
+              fr: 'Douleurs insupportables, devient cassant, agressif et hargneux',
+              it: 'Dolori insopportabili, diventa sgarbato, aggressivo e dispettoso',
+              el: 'Ανυπόφοροι πόνοι, γίνεται απότομος, αγενής και επιθετικός',
+              ru: 'Невыносимые боли, становится резким, грубым и сварливым'
+            },
+            remedyHints: ['chamomilla', 'hepar-sulphuris', 'coffea-cruda'],
+            rubrics: ['MIND - PAIN - unbearable', 'MIND - SNAPPISH']
+          },
+          {
+            id: 'mind-t2-aversion-spoken-disturbed',
+            label: {
+              de: 'Will absolut seine Ruhe / Will weder angesprochen noch berührt werden',
+              en: 'Wants absolute quiet / averse to being spoken to or touched',
+              es: 'Desea calma absoluta / no quiere que le hablen ni toquen',
+              fr: 'Veut le calme absolu / refuse qu\'on lui parle ou qu\'on le touche',
+              it: 'Vuole calma assoluta / non vuole che gli si parli o tocchi',
+              el: 'Θέλει απόλυτη ησυχία / δεν θέλει να του μιλούν ή να τον αγγίζουν',
+              ru: 'Хочет полного покоя / не переносит, когда с ним говорят или трогают'
+            },
+            remedyHints: ['bryonia-alba', 'antimonium-crudum', 'arnica-montana'],
+            rubrics: ['MIND - QUIET - wants to be', 'MIND - SPOKEN TO, averse to being']
+          },
+          {
+            id: 'mind-t2-suppressed-mortification',
+            label: {
+              de: 'Stille Kränkung, Demütigung & unterdrückte Entrüstung',
+              en: 'Silent mortification, humiliation & suppressed indignation',
+              es: 'Resentimiento silencioso, humillación e indignación reprimida',
+              fr: 'Mortification silencieuse, humiliation et indignation contenue',
+              it: 'Risentimento silenzioso, umiliazione e indignazione repressa',
+              el: 'Βουβή προσβολή, ταπείνωση & καταπιεσμένη αγανάκτηση',
+              ru: 'Молчаливая обида, унижение и подавленное негодование'
+            },
+            remedyHints: ['staphisagria', 'ignatia-amara', 'natrium-muriaticum', 'colocynthis'],
+            rubrics: ['MIND - MORTIFICATION, ailments after', 'MIND - INDIGNATION']
+          }
+        ]
+      },
+      {
+        id: 'mind-cat-grief-consolation',
+        label: {
+          de: 'Stimmung, Trauer, Weinen & Trostverlangen',
+          en: 'Mood, Grief, Weeping & Desire for Consolation',
+          es: 'Humor, duelo, llanto y deseo de consuelo',
+          fr: 'Humeur, chagrin, pleurs et désir de consolation',
+          it: 'Umore, lutto, pianto e desiderio di consolazione',
+          el: 'Διάθεση, πένθος, κλάμα & ανάγκη για παρηγοριά',
+          ru: 'Настроение, печаль, плач и потребность в утешении'
+        },
+        remedyHints: ['pulsatilla-pratensis', 'natrium-muriaticum', 'ignatia-amara', 'sepia-officinalis'],
+        tier2Options: [
+          {
+            id: 'mind-t2-weepy-craves-consolation',
+            label: {
+              de: 'Weinerlich, sanftmütig, klammernd – Trost bessert spürbar (> Trost)',
+              en: 'Weepy, gentle, clingy – consolation noticeably relieves (> consolation)',
+              es: 'Lloroso, dulce, apegado – el consuelo alivia notablemente (> consuelo)',
+              fr: 'Larmoyant, doux, affectueux – la consolation soulage nettement (> consolation)',
+              it: 'Piagnucoloso, dolce, affettuoso – la consolazione migliora (> consolazione)',
+              el: 'Κλαψιάρης, πράος, αναζητά αγκαλιά – η παρηγοριά ανακουφίζει αισθητά (> παρηγοριά)',
+              ru: 'Плаксивый, мягкий, ласковый – утешение заметно облегчает (> утешение)'
+            },
+            remedyHints: ['pulsatilla-pratensis'],
+            rubrics: ['MIND - WEEPING - tearful mood', 'MIND - CONSOLATION - amel.'],
+            tier3Options: [
+              {
+                id: 'mind-t3-weepy-fresh-air',
+                label: {
+                  de: 'Gleichzeitig Verlangen nach offener, kühler Luft (> frische Luft)',
+                  en: 'Simultaneous craving for cool open air (> open air)',
+                  es: 'Deseo simultáneo de aire fresco y libre (> aire libre)',
+                  fr: 'Désir simultané d\'air frais et ouvert (> grand air)',
+                  it: 'Desiderio simultaneo di aria fresca aperta (> aria aperta)',
+                  el: 'Ταυτόχρονη έντονη ανάγκη για δροσερό καθαρό αέρα (> καθαρός αέρας)',
+                  ru: 'Одновременная тяга к прохладному свежему воздуху (> свежий воздух)'
+                },
+                rubric: 'GENERALS - AIR - open - amel.'
+              }
+            ]
+          },
+          {
+            id: 'mind-t2-silent-grief-consolation-agg',
+            label: {
+              de: 'Verschlossene Traurigkeit, weint heimlich – Trost verschlimmert (< Trost)',
+              en: 'Closed sadness, weeps in secret – consolation worsens (< consolation)',
+              es: 'Tristeza cerrada, llora a solas – el consuelo empeora (< consuelo)',
+              fr: 'Tristesse renfermée, pleure en secret – la consolation aggrave (< consolation)',
+              it: 'Tristezza chiusa, piange in segreto – la consolazione peggiora (< consolazione)',
+              el: 'Κλειστή θλίψη, κλαίει κρυφά – η παρηγοριά επιδεινώνει (< παρηγοριά)',
+              ru: 'Замкнутая печаль, плачет тайком – утешение ухудшает (< утешение)'
+            },
+            remedyHints: ['natrium-muriaticum', 'sepia-officinalis', 'ignatia-amara'],
+            rubrics: ['MIND - CONSOLATION - agg.', 'MIND - GRIEF - silent', 'MIND - WEEPING - alone, when'],
+            tier3Options: [
+              {
+                id: 'mind-t3-grief-solitude',
+                label: {
+                  de: 'Zieht sich völlig zurück, will allein mit dem Schmerz sein',
+                  en: 'Withdraws completely, insists on being alone with the pain',
+                  es: 'Se aísla por completo, quiere estar solo con su dolor',
+                  fr: 'S\'isole totalement, tient à être seul avec sa souffrance',
+                  it: 'Si isola del tutto, vuole stare da solo con il suo dolore',
+                  el: 'Απομονώνεται πλήρως, απαιτεί να μείνει μόνος με τον πόνο',
+                  ru: 'Полностью уходит в себя, хочет быть наедине со своей болью'
+                },
+                rubric: 'MIND - SOLITUDE - desire for'
+              }
+            ]
+          },
+          {
+            id: 'mind-t2-hysterical-sighing-alternating',
+            label: {
+              de: 'Tiefes Seufzen, Kloßgefühl im Hals, rascher Stimmungswechsel (Lachen / Weinen)',
+              en: 'Frequent deep sighing, lump in throat, rapid mood swings (laughing / weeping)',
+              es: 'Suspiros profundos, nudo en la garganta, cambios de humor bruscos',
+              fr: 'Soupirs profonds, boule dans la gorge, sautes d\'humeur rapides',
+              it: 'Sospiri profondi, nodo alla gola, repentini sbalzi d\'umore',
+              el: 'Βαθείς αναστεναγμοί, κόμπος στον λαιμό, γρήγορη εναλλαγή γέλιου / κλάματος',
+              ru: 'Глубокие вздохи, ком в горле, быстрая смена смеха и слез'
+            },
+            remedyHints: ['ignatia-amara', 'crocus-sativus', 'pulsatilla-pratensis'],
+            rubrics: ['MIND - SIGHING', 'MIND - MOOD - alternating', 'THROAT - GLOBUS HYSTERICUS']
+          }
+        ]
+      },
+      {
+        id: 'mind-cat-exhaustion-indifference',
+        label: {
+          de: 'Geistige Erschöpfung, Apathie & Gleichgültigkeit',
+          en: 'Mental Exhaustion, Apathy & Indifference',
+          es: 'Agotamiento mental, apatía e indiferencia',
+          fr: 'Épuisement mental, apathie et indifférence',
+          it: 'Esaurimento mentale, apatia e indifferenza',
+          el: 'Πνευματική εξάντληση, απάθεια & αδιαφορία',
+          ru: 'Умственное истощение, апатия и безразличие'
+        },
+        remedyHints: ['sepia-officinalis', 'phosphoricum-acidum', 'gelsemium-sempervirens', 'baryta-carbonica'],
+        tier2Options: [
+          {
+            id: 'mind-t2-indifference-loved-ones',
+            label: {
+              de: 'Gleichgültigkeit gegen die nächsten Angehörigen, Beruf & Pflichten',
+              en: 'Indifference towards closest relatives, work & daily duties',
+              es: 'Indiferencia hacia los seres queridos, el trabajo y las obligaciones',
+              fr: 'Indifférence envers ses proches, son travail et ses devoirs',
+              it: 'Indifferenza verso i propri cari, il lavoro e i doveri quotidiani',
+              el: 'Αδιαφορία προς τους κοντινούς συγγενείς, την εργασία & τα καθήκοντα',
+              ru: 'Безразличие к самым близким людям, работе и обязанностям'
+            },
+            remedyHints: ['sepia-officinalis', 'phosphoricum-acidum'],
+            rubrics: ['MIND - INDIFFERENCE - loved ones, to', 'MIND - INDIFFERENCE - duties, to']
+          },
+          {
+            id: 'mind-t2-dullness-sluggish-paralyzed',
+            label: {
+              de: 'Benommenheit, wie betäubt / Denken erfordert immense Überwindung',
+              en: 'Drowsiness, as if stunned / thinking requires immense effort',
+              es: 'Embotamiento, como aturdido / pensar requiere un esfuerzo inmenso',
+              fr: 'Engourdissement mental, comme hébété / réfléchir demande un effort immense',
+              it: 'Ottundimento, come stordito / pensare richiede uno sforzo immenso',
+              el: 'Θόλωση, σαν ναρκωμένος / η σκέψη απαιτεί τεράστια προσπάθεια',
+              ru: 'Заторможенность, как оглушенный / мысли требуют огромных усилий'
+            },
+            remedyHints: ['gelsemium-sempervirens', 'opium', 'helleborus-niger', 'baptisia-tinctoria'],
+            rubrics: ['MIND - DULLNESS - sluggishness', 'MIND - THOUGHTS - difficult']
+          },
+          {
+            id: 'mind-t2-burnout-grief-exhaustion',
+            label: {
+              de: 'Erschöpfung durch Kummer, Schlafmangel oder Überarbeitung (Apathie)',
+              en: 'Burnout from grief, sleeplessness or overworked state (apathetic silence)',
+              es: 'Agotamiento por pena, falta de sueño o exceso de trabajo (apatía)',
+              fr: 'Épuisement par chagrin, manque de sommeil ou surmenage (silence apathique)',
+              it: 'Esaurimento da dispiacere, insonnia o sovraccarico di lavoro (apatia)',
+              el: 'Εξάντληση από πένθος, στέρηση ύπνου ή υπερκόπωση (απαθής σιωπή)',
+              ru: 'Истощение от горя, недосыпания или переутомления (апатичное молчание)'
+            },
+            remedyHints: ['phosphoricum-acidum', 'cocculus-indicus', 'kali-phosphoricum'],
+            rubrics: ['MIND - PROSTRATION of mind', 'MIND - INDIFFERENCE - everything, to']
           }
         ]
       }

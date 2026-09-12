@@ -556,9 +556,9 @@ export function getAdaptiveQuestionsForPillar(
     };
 
     if (modalitySubTab === 'better') {
-      questions.push(qBetter, qWorse, qPosture, qTime);
+      questions.push(qBetter, qPosture);
     } else if (modalitySubTab === 'worse') {
-      questions.push(qWorse, qBetter, qTime, qPosture);
+      questions.push(qWorse, qTime);
     } else {
       questions.push({
         id: 'q-mod-general',

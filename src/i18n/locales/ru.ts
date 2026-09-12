@@ -3029,6 +3029,10 @@ export const ru = {
   anamnesisCausaTriggerTitle: "3. ПРИЧИНА (Кауза и триггеры)",
   anamnesisCausaEventShort: "Кауза и триггеры",
   anamnesisModalitiesTitle: "4. КОГДА (Модальности (< / >) (Лучше / Хуже))",
+  anamnesisModalitiesBetterTitle: "4.1 КОГДА: Улучшение (> Облегчение)",
+  anamnesisModalitiesWorseTitle: "4.2 КОГДА: Ухудшение (< Обострение)",
+  anamnesisStepModalitiesBetterShort: "4.1 Улучшение (>)",
+  anamnesisStepModalitiesWorseShort: "4.2 Ухудшение (<)",
   anamnesisConcomitantsTitle: "5. ЧТО ЕЩЕ (Физические сопутствующие симптомы)",
   anamnesisMindTitle: "6. ПСИХИКА (Психика и душевное состояние)",
   anamnesisPillarMindShort: "6. ПСИХИКА",
@@ -3102,5 +3106,10 @@ export const ru = {
   cascadeFunnelLocationLead2: "2. Вопрос об иррадиации и границах:",
   cascadeFunnelLocationLevel2Title: "2. Точная локализация и сторона (множественный выбор)",
   cascadeFunnelLocationLevel3Title: "3. Иррадиация и распространение боли",
-  cascadeFunnelLocationLevel3Hint: "Выберите, куда иррадиирует боль или остается строго точечной"
+  cascadeFunnelLocationLevel3Hint: "Выберите, куда иррадиирует боль или остается строго точечной",
+  cascadeFunnelMindLevel2Title: "2. Душевное состояние и поведение (множественный выбор)",
+  cascadeFunnelMindLevel3Title: "3. Точное проявление и сопутствующая эмоциональная реакция",
+  cascadeFunnelMindLevel3Hint: "Выберите конкретную душевную реакцию или модальность",
+  cascadeFunnelModalitiesLeadBetter: "При каких условиях жалоба заметно облегчается (>) или улучшается? (напр., тепло, покой, положение лежа)",
+  cascadeFunnelModalitiesLeadWorse: "При каких условиях жалоба заметно ухудшается (<) или усиливается? (напр., холод, движение, время суток)"
 };

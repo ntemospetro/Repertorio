@@ -3035,6 +3035,10 @@ export const de = {
   anamnesisCausaTriggerTitle: "3. WODURCH (Causa & Auslöser)",
   anamnesisCausaEventShort: "Causa & Auslöser",
   anamnesisModalitiesTitle: "4. WANN (Modalitäten (< / >) (Besser / Schlechter))",
+  anamnesisModalitiesBetterTitle: "4.1 WANN: Besserung (> Linderung)",
+  anamnesisModalitiesWorseTitle: "4.2 WANN: Verschlimmerung (< Verschlechterung)",
+  anamnesisStepModalitiesBetterShort: "4.1 Besserung (>)",
+  anamnesisStepModalitiesWorseShort: "4.2 Verschlimmerung (<)",
   anamnesisConcomitantsTitle: "5. WAS NOCH (Körperliche Begleitsymptome)",
   anamnesisMindTitle: "6. GEMÜT (Gemüt & Psyche)",
   anamnesisPillarMindShort: "6. GEMÜT",
@@ -3108,5 +3112,10 @@ export const de = {
   cascadeFunnelLocationLead2: "2. Frage zur Ausstrahlung & Begrenzung:",
   cascadeFunnelLocationLevel2Title: "2. Exakte Lokalisation & Seitigkeit (Mehrfachauswahl möglich)",
   cascadeFunnelLocationLevel3Title: "3. Ausstrahlung & Begrenzung des Schmerzes",
-  cascadeFunnelLocationLevel3Hint: "Wählen Sie, wohin der Schmerz ausstrahlt oder ob er streng fixiert bleibt"
+  cascadeFunnelLocationLevel3Hint: "Wählen Sie, wohin der Schmerz ausstrahlt oder ob er streng fixiert bleibt",
+  cascadeFunnelMindLevel2Title: "2. Gemütszustand & Verhaltensweise (Mehrfachauswahl möglich)",
+  cascadeFunnelMindLevel3Title: "3. Genaue Ausprägung & Begleitreaktion des Gemüts",
+  cascadeFunnelMindLevel3Hint: "Wählen Sie die spezifische seelische Reaktion oder Modalität",
+  cascadeFunnelModalitiesLeadBetter: "Unter welchen Bedingungen verbessert (>) oder erleichtert sich die Beschwerde spürbar? (z. B. Wärme, Ruhe, Liegen)",
+  cascadeFunnelModalitiesLeadWorse: "Unter welchen Bedingungen verschlimmert (<) oder verstärkt sich die Beschwerde spürbar? (z. B. Kälte, Bewegung, Tageszeit)"
 };

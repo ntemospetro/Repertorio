@@ -503,68 +503,25 @@ export const RepertoriumView: React.FC<RepertoriumViewProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Column: Symptom Input (5 cols on lg) */}
         <div className="lg:col-span-5 space-y-4">
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                  <Layers className="w-4 h-4 text-teal-600" />
-                  <span>{t('repertoriumSymptomsHeading')}</span>
-                </h2>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  {t('repertoriumBoerickeGuidance')}
-                </p>
-              </div>
-              {hasAnyEnteredSymptom && (
-                <span className="text-xs font-semibold px-2.5 py-1 bg-teal-50 text-teal-800 border border-teal-200/80 rounded-full">
-                  {symptoms.filter(s => s.text.trim().length > 0).length} {t('repertoriumStepNumber')}
-                </span>
-              )}
-            </div>
-
-            {/* 4 Pillars Case-Taking Standards Notice */}
-            <div className="mb-4 p-3 bg-gradient-to-r from-teal-50/70 via-slate-50 to-emerald-50/40 rounded-xl border border-teal-200/70">
-              <div className="flex items-center gap-2 text-xs font-bold text-teal-900 mb-1">
-                <Sparkles className="w-3.5 h-3.5 text-teal-700" />
-                <span>{t('repertoriumEngineGuideTitle')}</span>
-              </div>
-              <p className="text-[11px] text-slate-600 leading-relaxed">
-                {t('repertoriumEngineGuideDesc')}
-              </p>
-            </div>
-
-            {/* Symptoms List with Adaptive Symptom Architect */}
-            <div className="space-y-4">
-              {symptoms.map((symptom, index) => (
-                <AdaptiveSymptomArchitect
-                  key={symptom.id}
-                  symptom={symptom}
-                  onChange={(updated) => handleUpdateSymptom(symptom.id, updated)}
-                  onRemove={() => handleRemoveSymptom(symptom.id)}
-                  index={index}
-                  isSingle={symptoms.length <= 1}
-                  language={language}
-                />
-              ))}
-            </div>
-
-            {/* Add Symptom Button styled in Hahnemann Anamnese style */}
-            <div className="pt-2">
-              <button
-                type="button"
-                id="repertorium-add-symptom-btn"
-                onClick={handleAddSymptom}
-                className="w-full relative overflow-hidden py-3 px-4 rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 shadow-xs transition-all border border-[#005544] bg-[#006655] hover:bg-[#005544] text-white cursor-pointer group"
-              >
-                <Plus className="w-4 h-4 text-teal-200 group-hover:scale-110 transition-transform shrink-0" />
-                <span>{t('repertoriumAddSymptom')}</span>
-              </button>
-            </div>
+          {/* Symptoms List with Adaptive Symptom Architect */}
+          <div className="space-y-4">
+            {symptoms.map((symptom, index) => (
+              <AdaptiveSymptomArchitect
+                key={symptom.id}
+                symptom={symptom}
+                onChange={(updated) => handleUpdateSymptom(symptom.id, updated)}
+                onRemove={() => handleRemoveSymptom(symptom.id)}
+                index={index}
+                isSingle={symptoms.length <= 1}
+                language={language}
+              />
+            ))}
           </div>
 
           {/* Classical Authors Guidance Card */}
-          <div className="bg-gradient-to-br from-teal-50/80 to-slate-50 rounded-2xl border border-teal-200/70 p-4 text-xs text-slate-600 space-y-1.5 shadow-2xs">
-            <div className="flex items-center gap-2 font-bold text-teal-900">
-              <Award className="w-4 h-4 text-teal-700" />
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-4 text-xs text-slate-600 space-y-1.5 shadow-2xs">
+            <div className="flex items-center gap-2 font-bold text-slate-900">
+              <Award className="w-4 h-4 text-teal-600" />
               <span>
                 {selectedAuthor === 'all' 
                   ? t('repertoriumBoerickeNotice') 

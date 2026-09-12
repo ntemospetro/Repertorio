@@ -93,9 +93,6 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
 
-  // Full-width dropdown overlay toggle (default open so therapist has immediate access)
-  const [isOverlayOpen, setIsOverlayOpen] = useState(true);
-
   // Current active question per step
   const [customQuestion, setCustomQuestion] = useState('');
   const [additionalQuestions, setAdditionalQuestions] = useState<string[]>([]);
@@ -119,6 +116,19 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
   const [selectedPrimaryComplaint, setSelectedPrimaryComplaint] = useState<string | null>(null);
   const [isStep0Recording, setIsStep0Recording] = useState(false);
   const step0SpeechRef = React.useRef<SpeechRecognitionSession | null>(null);
+  const activeStepBtnRef = React.useRef<HTMLButtonElement | null>(null);
+  const stepperContainerRef = React.useRef<HTMLDivElement | null>(null);
+
+  // Auto-scroll stepper roll bar so active pillar is always in view
+  React.useEffect(() => {
+    if (activeStepBtnRef.current) {
+      activeStepBtnRef.current.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+        inline: 'center'
+      });
+    }
+  }, [currentStep]);
 
   React.useEffect(() => {
     return () => {
@@ -215,7 +225,7 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
       }
       initialSnapshotRef.current = serializeForDirtyCheck(symptom, initStep0);
 
-      if (initialStep !== undefined && initialStep >= 0 && initialStep <= 7) {
+      if (initialStep !== undefined && initialStep >= 0 && initialStep <= 8) {
         setCurrentStep(initialStep);
       } else {
         setCurrentStep(symptom.chiefComplaint ? 1 : 0);
@@ -227,7 +237,6 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
       setCustomQuestion('');
       setAdditionalQuestions([]);
       setDeepenings([]);
-      setIsOverlayOpen(true);
       setShowCancelConfirm(false);
       setShowMustAdoptWarning(false);
     }
@@ -244,20 +253,30 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
   }, [draft, step0Input, patientQuote, selectedOptions, customQuestion, additionalQuestions]);
 
   // Derive target pillar from current step:
-  // 1 = location, 2 = sensation, 3 = causa, 4 = modalities, 5 = concomitants, 6 = mind
+  // 1 = location, 2 = sensation, 3 = causa, 4 = modalities (better >), 5 = modalities (worse <), 6 = concomitants, 7 = mind, 8 = review
   const getPillarForStep = (step: number): 'location' | 'sensation' | 'causa' | 'modalities' | 'concomitants' | 'mind' => {
     switch (step) {
       case 1: return 'location';
       case 2: return 'sensation';
       case 3: return 'causa';
       case 4: return 'modalities';
-      case 5: return 'concomitants';
-      case 6: return 'mind';
+      case 5: return 'modalities';
+      case 6: return 'concomitants';
+      case 7: return 'mind';
       default: return 'location';
     }
   };
 
   const currentPillar = getPillarForStep(currentStep);
+
+  // Synchronisiere modalitySubTab mit den getrennten Schritten 4.1 (better) und 4.2 (worse)
+  React.useEffect(() => {
+    if (currentStep === 4) {
+      setModalitySubTab('better');
+    } else if (currentStep === 5) {
+      setModalitySubTab('worse');
+    }
+  }, [currentStep]);
 
   // Dynamic Bedarfsanalyse der Patientenangaben nach Hahnemann & Bönninghausen
   const needsAnalysis = useMemo(() => {
@@ -271,9 +290,10 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
     if (symptom.location) s.add(1);
     if (symptom.sensation) s.add(2);
     if (symptom.causaEvent) s.add(3);
-    if (symptom.modalities) s.add(4);
-    if (symptom.concomitants) s.add(5);
-    if (symptom.mind) s.add(6);
+    if (symptom.modalities?.includes('>')) s.add(4);
+    if (symptom.modalities?.includes('<')) s.add(5);
+    if (symptom.concomitants) s.add(6);
+    if (symptom.mind) s.add(7);
     return s;
   });
 
@@ -285,9 +305,10 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
       if (symptom.location) s.add(1);
       if (symptom.sensation) s.add(2);
       if (symptom.causaEvent) s.add(3);
-      if (symptom.modalities) s.add(4);
-      if (symptom.concomitants) s.add(5);
-      if (symptom.mind) s.add(6);
+      if (symptom.modalities?.includes('>')) s.add(4);
+      if (symptom.modalities?.includes('<')) s.add(5);
+      if (symptom.concomitants) s.add(6);
+      if (symptom.mind) s.add(7);
       setAdoptedSteps(s);
     }
   }, [isOpen, symptom]);
@@ -295,7 +316,7 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
   // Is current step ready for forward navigation?
   const isCurrentStepAdopted = useMemo(() => {
     if (currentStep === 0) return !!(step0Input.trim() || draft.chiefComplaint);
-    if (currentStep === 7) return true;
+    if (currentStep === 8) return true;
     if (adoptedSteps.has(currentStep)) return true;
     const field: keyof RepertoriumSymptomInput = 
       currentPillar === 'causa' ? 'causaEvent' :
@@ -327,12 +348,14 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
   if (!isOpen) return null;
 
   // Suggested questions specifically for the current pillar (adapts directly to complaint and modality tab!)
+  const stepModalityDirection = currentStep === 4 ? 'better' : currentStep === 5 ? 'worse' : undefined;
+
   const suggestedQuestions = getAdaptiveQuestionsForPillar(
     draft,
     currentPillar,
     draft.anamnesisDialogueSteps || [],
     language,
-    currentStep === 4 ? modalitySubTab : undefined
+    stepModalityDirection || (currentPillar === 'modalities' ? modalitySubTab : undefined)
   );
 
   const activeQuestionItem = suggestedQuestions.find(q => q.id === selectedQuestionId) || suggestedQuestions[0];
@@ -347,7 +370,7 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
     activeQuestionText,
     draft.chiefComplaint || '',
     language,
-    currentStep === 4 ? modalitySubTab : undefined
+    stepModalityDirection || (currentPillar === 'modalities' ? modalitySubTab : undefined)
   );
 
   // Target field for AI analysis
@@ -474,7 +497,8 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
         if (!currentVal) updated.sensation = quoteVal;
       } else if (currentPillar === 'modalities') {
         updated.modalitiesQuote = quoteVal;
-        const formattedQuote = modalitySubTab === 'better'
+        const dir = currentStep === 4 ? 'better' : currentStep === 5 ? 'worse' : modalitySubTab;
+        const formattedQuote = dir === 'better'
           ? (quoteVal.startsWith('>') ? quoteVal : `> ${quoteVal}`)
           : (quoteVal.startsWith('<') ? quoteVal : `< ${quoteVal}`);
         if (!currentVal) {
@@ -689,7 +713,8 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
       
       let itemLabel = opt.label;
       if (currentPillar === 'modalities') {
-        const dir = opt.direction || modalitySubTab;
+        const stepDir = currentStep === 4 ? 'better' : currentStep === 5 ? 'worse' : undefined;
+        const dir = opt.direction || stepDir || modalitySubTab;
         if (dir === 'better' && !itemLabel.startsWith('>')) {
           itemLabel = `> ${itemLabel}`;
         } else if (dir === 'worse' && !itemLabel.startsWith('<')) {
@@ -770,9 +795,25 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
     }
 
     setDraft(prev => {
+      let fieldValue = combinedSynthesizedText;
+      if (currentPillar === 'modalities') {
+        const prevMods = (prev.modalities || '').split(',').map(m => m.trim()).filter(Boolean);
+        if (currentStep === 4) {
+          // Keep existing '<' items, replace '>' items with new selection
+          const existingWorse = prevMods.filter(m => m.startsWith('<'));
+          const newBetter = combinedSynthesizedText.split(',').map(m => m.trim()).filter(Boolean);
+          fieldValue = [...existingWorse, ...newBetter].join(', ');
+        } else if (currentStep === 5) {
+          // Keep existing '>' items, replace '<' items with new selection
+          const existingBetter = prevMods.filter(m => m.startsWith('>'));
+          const newWorse = combinedSynthesizedText.split(',').map(m => m.trim()).filter(Boolean);
+          fieldValue = [...existingBetter, ...newWorse].join(', ');
+        }
+      }
+
       const updated = {
         ...prev,
-        [field]: combinedSynthesizedText,
+        [field]: fieldValue,
         anamnesisDialogueSteps: [...otherSteps, ...newCascadeSteps]
       };
       if (currentPillar === 'causa') {
@@ -877,16 +918,17 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
     setShowDiscardConfirm(false);
   };
 
-  // Tab definitions: 7-Schritte-Modell (Hauptbeschwerde + 6 Fenster + Abschluss)
+  // Tab definitions: 9-Schritte-Modell (Hauptbeschwerde + WO + WAS + WODURCH + 4.1 Besserung + 4.2 Verschlimmerung + Begleitsymptome + Gemüt + Abschluss)
   const steps = [
-    { idx: 0, label: t('anamnesisStepChief'), short: t('anamnesisStepChief'), hasData: !!draft.chiefComplaint },
-    { idx: 1, label: t('anamnesisStepPillar1Short'), short: t('anamnesisPillarLocationShort'), hasData: !!draft.location },
-    { idx: 2, label: t('anamnesisStepPillar2Short'), short: t('anamnesisPillarSensationShort'), hasData: !!draft.sensation },
-    { idx: 3, label: t('anamnesisCausaTriggerTitle'), short: t('anamnesisCausaEventShort'), hasData: !!draft.causaEvent },
-    { idx: 4, label: t('anamnesisModalitiesTitle'), short: t('anamnesisPillarModalitiesShort'), hasData: !!draft.modalities },
-    { idx: 5, label: t('anamnesisConcomitantsTitle'), short: t('anamnesisPillarConcomitantsShort'), hasData: !!draft.concomitants },
-    { idx: 6, label: t('anamnesisMindTitle'), short: t('anamnesisPillarMindShort'), hasData: !!draft.mind },
-    { idx: 7, label: t('anamnesisStepReviewAndDeepen'), short: t('anamnesisStepReviewAndConclusion'), hasData: !!(draft.location && draft.sensation && draft.modalities && draft.concomitants) },
+    { idx: 0, stepNumber: '0', label: t('anamnesisStepChief'), short: t('anamnesisStepChief'), hasData: !!draft.chiefComplaint },
+    { idx: 1, stepNumber: '1', label: t('anamnesisStepPillar1Short'), short: t('anamnesisPillarLocationShort'), hasData: !!draft.location },
+    { idx: 2, stepNumber: '2', label: t('anamnesisStepPillar2Short'), short: t('anamnesisPillarSensationShort'), hasData: !!draft.sensation },
+    { idx: 3, stepNumber: '3', label: t('anamnesisCausaTriggerTitle'), short: t('anamnesisCausaEventShort'), hasData: !!draft.causaEvent },
+    { idx: 4, stepNumber: '4.1', label: t('anamnesisModalitiesBetterTitle'), short: t('anamnesisStepModalitiesBetterShort'), hasData: !!(draft.modalities && draft.modalities.includes('>')) },
+    { idx: 5, stepNumber: '4.2', label: t('anamnesisModalitiesWorseTitle'), short: t('anamnesisStepModalitiesWorseShort'), hasData: !!(draft.modalities && draft.modalities.includes('<')) },
+    { idx: 6, stepNumber: '5', label: t('anamnesisConcomitantsTitle'), short: t('anamnesisPillarConcomitantsShort'), hasData: !!draft.concomitants },
+    { idx: 7, stepNumber: '6', label: t('anamnesisMindTitle'), short: t('anamnesisPillarMindShort'), hasData: !!draft.mind },
+    { idx: 8, stepNumber: '7', label: t('anamnesisStepReviewAndDeepen'), short: t('anamnesisStepReviewAndConclusion'), hasData: !!(draft.location && draft.sensation && draft.modalities && draft.concomitants) },
   ];
 
   return (
@@ -922,13 +964,17 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
         </div>
 
         {/* WIZARD STEPPER NAVIGATION BAR */}
-        <div className="bg-slate-100 border-b border-slate-200 px-3 sm:px-6 py-2 shrink-0 overflow-x-auto">
+        <div 
+          ref={stepperContainerRef}
+          className="bg-slate-100 border-b border-slate-200 px-3 sm:px-6 py-2 shrink-0 overflow-x-auto scroll-smooth"
+        >
           <div className="flex items-center gap-1.5 sm:gap-2 min-w-max">
             {steps.map((step) => {
               const isActive = currentStep === step.idx;
               return (
                 <button
                   key={step.idx}
+                  ref={isActive ? activeStepBtnRef : null}
                   type="button"
                   onClick={() => {
                     if (step.idx > 0 && !draft.chiefComplaint && !step0Input.trim()) {
@@ -948,16 +994,24 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
                   }}
                   className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
                     isActive
-                      ? 'bg-teal-700 text-white shadow-xs'
+                      ? step.idx === 4
+                        ? 'bg-emerald-700 text-white shadow-sm ring-2 ring-emerald-400/40'
+                        : step.idx === 5
+                        ? 'bg-rose-700 text-white shadow-sm ring-2 ring-rose-400/40'
+                        : 'bg-teal-700 text-white shadow-xs ring-2 ring-teal-400/40'
                       : step.hasData
                       ? 'bg-white text-teal-900 border border-teal-200 hover:bg-teal-50/70'
                       : 'bg-slate-200/70 text-slate-600 hover:bg-slate-200'
                   }`}
                 >
-                  <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                    isActive ? 'bg-white text-teal-800' : step.hasData ? 'bg-teal-100 text-teal-800' : 'bg-slate-300 text-slate-700'
+                  <span className={`px-1.5 min-w-[20px] h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                    isActive
+                      ? 'bg-white text-slate-900'
+                      : step.hasData
+                      ? 'bg-teal-100 text-teal-800'
+                      : 'bg-slate-300 text-slate-700'
                   }`}>
-                    {step.hasData ? <Check className="w-2.5 h-2.5" /> : step.idx}
+                    {step.hasData ? <Check className="w-2.5 h-2.5" /> : step.stepNumber}
                   </span>
                   <span>{step.label}</span>
                 </button>
@@ -1131,8 +1185,8 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
             </div>
           )}
 
-          {/* STEP 1 TO 6: DIE SÄULEN NACH HAHNEMANN & BÖNNINGHAUSEN */}
-          {currentStep >= 1 && currentStep <= 6 && (
+          {/* STEP 1 TO 7: DIE SÄULEN NACH HAHNEMANN & BÖNNINGHAUSEN */}
+          {currentStep >= 1 && currentStep <= 7 && (
             <div className="space-y-4 animate-in fade-in duration-150">
               
               {/* PILLAR CARD HEADER */}
@@ -1142,13 +1196,15 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
                     currentPillar === 'location' ? 'bg-sky-600' :
                     currentPillar === 'sensation' ? 'bg-amber-600' :
                     currentPillar === 'causa' ? 'bg-indigo-600' :
-                    currentPillar === 'modalities' ? 'bg-emerald-600' :
-                    currentPillar === 'concomitants' ? 'bg-purple-600' : 'bg-rose-600'
+                    currentStep === 4 ? 'bg-emerald-600' :
+                    currentStep === 5 ? 'bg-rose-600' :
+                    currentPillar === 'concomitants' ? 'bg-purple-600' : 'bg-pink-600'
                   }`}>
                     {currentPillar === 'location' && <MapPin className="w-4 h-4" />}
                     {currentPillar === 'sensation' && <Flame className="w-4 h-4" />}
                     {currentPillar === 'causa' && <Zap className="w-4 h-4" />}
-                    {currentPillar === 'modalities' && <Sliders className="w-4 h-4" />}
+                    {currentStep === 4 && <Sliders className="w-4 h-4" />}
+                    {currentStep === 5 && <Sliders className="w-4 h-4" />}
                     {currentPillar === 'concomitants' && <Award className="w-4 h-4" />}
                     {currentPillar === 'mind' && <Heart className="w-4 h-4" />}
                   </div>
@@ -1157,7 +1213,8 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
                       {currentPillar === 'location' && t('anamnesisStepPillar1Short')}
                       {currentPillar === 'sensation' && t('anamnesisStepPillar2Short')}
                       {currentPillar === 'causa' && t('anamnesisCausaTriggerTitle')}
-                      {currentPillar === 'modalities' && t('anamnesisModalitiesTitle')}
+                      {currentStep === 4 && t('anamnesisModalitiesBetterTitle')}
+                      {currentStep === 5 && t('anamnesisModalitiesWorseTitle')}
                       {currentPillar === 'concomitants' && t('anamnesisConcomitantsTitle')}
                       {currentPillar === 'mind' && t('anamnesisMindTitle')}
                     </h3>
@@ -1185,8 +1242,21 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
                     </span>
                   )}
                   {currentPillar === 'modalities' && draft.modalities && (
-                    <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-200">
-                      {draft.modalities}
+                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-lg border ${
+                      currentStep === 4
+                        ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                        : 'bg-rose-100 text-rose-800 border-rose-200'
+                    }`}>
+                      {(() => {
+                        const allMods = (draft.modalities || '').split(',').map(m => m.trim()).filter(Boolean);
+                        if (currentStep === 4) {
+                          return allMods.filter(m => m.startsWith('>')).join(', ') || draft.modalities;
+                        }
+                        if (currentStep === 5) {
+                          return allMods.filter(m => m.startsWith('<')).join(', ') || draft.modalities;
+                        }
+                        return draft.modalities;
+                      })()}
                     </span>
                   )}
                   {currentPillar === 'concomitants' && draft.concomitants && (
@@ -1202,313 +1272,38 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
                 </div>
               </div>
 
-              {/* DYNAMISCHE KI-BEDARFSANALYSE DER PATIENTENANGABEN */}
-              {needsAnalysis.missingNeeds.length > 0 ? (
-                <div className="p-3 bg-gradient-to-r from-teal-950 via-slate-900 to-teal-900 text-white rounded-xl border border-teal-500/40 shadow-xs space-y-1.5">
-                  <div className="flex items-center justify-between flex-wrap gap-2">
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-teal-300">
-                      <Sparkles className="w-3.5 h-3.5 text-teal-300" />
-                      <span>{t('anamnesisNeedsTitle')}</span>
-                    </div>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/40">
-                      {needsAnalysis.missingNeeds.length} {t('anamnesisNeedsMissingTitle')}
-                    </span>
-                  </div>
-                  {needsAnalysis.highestPriorityNeed && (
-                    <div className="flex items-center justify-between gap-2 flex-wrap pt-0.5">
-                      <div className="space-y-0.5">
-                        <span className="text-[10.5px] font-medium text-teal-200 block">
-                          {needsAnalysis.highestPriorityNeed.title}
-                        </span>
-                        <p className="text-xs text-slate-200 italic">
-                          &bdquo;{needsAnalysis.nextRecommendedQuestionText}&ldquo;
-                        </p>
-                      </div>
-                      {needsAnalysis.highestPriorityNeed.pillar !== currentPillar && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const targetPillar = needsAnalysis.highestPriorityNeed!.pillar;
-                            const targetStep = 
-                              targetPillar === 'location' ? 1 :
-                              targetPillar === 'sensation' ? 2 :
-                              targetPillar === 'causa' ? 3 :
-                              targetPillar === 'modalities' ? 4 :
-                              targetPillar === 'concomitants' ? 5 : 6;
-                            setCurrentStep(targetStep);
-                            setSelectedQuestionId('');
-                            setPatientQuote('');
-                            setSelectedOptions([]);
-                            setDeepenings([]);
-                          }}
-                          className="px-2.5 py-1 rounded-lg bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-[11px] flex items-center gap-1 cursor-pointer transition-all shadow-xs"
-                        >
-                          <span>{t('anamnesisNeedsAdoptQuestionBtn')}</span>
-                          <ArrowRight className="w-3 h-3" />
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="p-2 bg-emerald-50/90 border border-emerald-200 text-emerald-950 rounded-xl flex items-center justify-between gap-2 text-xs font-medium">
-                  <div className="flex items-center gap-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                    <span>{t('repertoriumAllPillarsAuditNotice')}</span>
-                  </div>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-200/80 text-emerald-900">
-                    {t('repertoriumStatusComplete')}
-                  </span>
-                </div>
-              )}
-
-              {/* ACTIVE QUESTION BANNER */}
-              <div className="p-3.5 rounded-xl bg-teal-50/70 border border-teal-200/90 flex items-start justify-between gap-3">
-                <div className="space-y-1.5 flex-1">
-                  <div className="flex items-center gap-2">
-                    <HelpCircle className="w-4 h-4 text-teal-700 shrink-0" />
-                    <span className="text-xs font-bold text-teal-950 uppercase tracking-wide">
-                      {t('anamnesisDepthInvestigationTitle')}
-                    </span>
-                  </div>
-                  <p className="text-xs sm:text-sm font-semibold text-slate-800 pl-6 leading-snug">
-                    &bdquo;{activeQuestionText}&ldquo;
-                  </p>
-
-                  {/* Alternative suggested questions selector for current pillar */}
-                  {suggestedQuestions.length > 1 && !isCustomQuestionMode && (
-                    <div className="pl-6 pt-1 flex flex-wrap items-center gap-1.5">
-                      {suggestedQuestions.map((q) => {
-                        const isCurrent = (activeQuestionItem && activeQuestionItem.id === q.id);
-                        return (
-                          <button
-                            key={q.id}
-                            type="button"
-                            onClick={() => {
-                              setSelectedQuestionId(q.id);
-                              setCustomQuestion('');
-                            }}
-                            className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
-                              isCurrent
-                                ? 'bg-teal-700 text-white shadow-xs'
-                                : 'bg-white/80 hover:bg-white text-teal-900 border border-teal-300/80'
-                            }`}
-                          >
-                            {q.pillarLabel}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setIsCustomQuestionMode(!isCustomQuestionMode)}
-                  className="text-xs text-teal-800 hover:text-teal-950 font-semibold underline cursor-pointer shrink-0"
-                >
-                  {isCustomQuestionMode ? t('geniusClose') : t('anamnesisActionCustomQuestion')}
-                </button>
-              </div>
-
-              {/* CUSTOM QUESTION INPUT WITH SEMANTIC AI ANALYSIS (MULTIPLE QUESTIONS SUPPORT) */}
-              {isCustomQuestionMode && (
-                <div className="p-4 rounded-xl bg-white border border-teal-300 shadow-xs space-y-3">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                      <MessageSquare className="w-3.5 h-3.5 text-teal-700" />
-                      <span>{t('anamnesisCustomQuestionLabel')}</span>
-                    </label>
-                    <span className="text-[11px] font-semibold text-teal-700">
-                      {1 + additionalQuestions.length} {t('anamnesisAddedQuestionsCount')}
-                    </span>
-                  </div>
-
-                  {/* Primary Therapist Question */}
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between text-[11px] text-slate-500 font-medium">
-                      <span>{t('anamnesisCustomQuestionNumber', { num: 1 })}</span>
-                    </div>
-                    <input
-                      type="text"
-                      value={customQuestion}
-                      onChange={(e) => setCustomQuestion(e.target.value)}
-                      placeholder={t('anamnesisCustomQuestionPlaceholder')}
-                      className="w-full px-3 py-2 text-xs bg-slate-50 rounded-lg border border-slate-300 focus:bg-white focus:border-teal-600 text-slate-900 outline-none"
-                    />
-                  </div>
-
-                  {/* Additional Therapist Questions */}
-                  {additionalQuestions.map((addQ, qIdx) => (
-                    <div key={qIdx} className="space-y-1 pt-1">
-                      <div className="flex items-center justify-between text-[11px] text-slate-500 font-medium">
-                        <span>{t('anamnesisCustomQuestionNumber', { number: qIdx + 2 })}</span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setAdditionalQuestions(prev => prev.filter((_, i) => i !== qIdx));
-                          }}
-                          className="text-slate-400 hover:text-rose-600 p-0.5 rounded cursor-pointer transition-colors"
-                          title={t('anamnesisDeleteStep')}
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      </div>
-                      <input
-                        type="text"
-                        value={addQ}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setAdditionalQuestions(prev => prev.map((item, i) => i === qIdx ? val : item));
-                        }}
-                        placeholder={t('anamnesisCustomQuestionPlaceholder')}
-                        className="w-full px-3 py-2 text-xs bg-slate-50 rounded-lg border border-slate-300 focus:bg-white focus:border-teal-600 text-slate-900 outline-none"
-                      />
-                    </div>
-                  ))}
-
-                  {/* Button to add another therapist question */}
-                  <div className="pt-1">
-                    <button
-                      type="button"
-                      onClick={() => setAdditionalQuestions(prev => [...prev, ''])}
-                      className="text-xs px-2.5 py-1.5 rounded-lg border border-dashed border-teal-400 text-teal-800 hover:bg-teal-50 flex items-center gap-1.5 font-semibold cursor-pointer transition-colors"
-                    >
-                      <Plus className="w-3.5 h-3.5 text-teal-600" />
-                      <span>{t('anamnesisAddAnotherQuestionBtn')}</span>
-                    </button>
-                  </div>
-
-                  {questionAnalysis && (
-                    <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 text-xs space-y-1.5">
-                      <div className="font-bold text-slate-700 flex items-center gap-1.5">
-                        <Sparkles className="w-3.5 h-3.5 text-teal-600" />
-                        <span>{t('anamnesisCustomQuestionAnalysisTitle')}</span>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 text-[11px]">
-                        <div>
-                          <span className="text-slate-500">{t('anamnesisQuestionTarget')}: </span>
-                          <span className="font-semibold text-slate-800">{questionAnalysis.target}</span>
-                        </div>
-                        <div>
-                          <span className="text-slate-500">{t('anamnesisQuestionSuggestivity')}: </span>
-                          <span className={`font-semibold ${
-                            questionAnalysis.suggestivity === 'high' ? 'text-rose-700' :
-                            questionAnalysis.suggestivity === 'medium' ? 'text-amber-700' : 'text-emerald-700'
-                          }`}>
-                            {questionAnalysis.suggestivity === 'high' ? t('anamnesisQuestionSuggestivityHigh') :
-                             questionAnalysis.suggestivity === 'medium' ? t('anamnesisQuestionSuggestivityMedium') : t('anamnesisQuestionSuggestivityLow')}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-slate-500">{t('anamnesisQuestionRepertoryRelevance')}: </span>
-                          <span className="font-semibold text-teal-800">
-                            {questionAnalysis.repertoryRelevance === 'likely' ? t('anamnesisRelevanceLikely') :
-                             questionAnalysis.repertoryRelevance === 'possible' ? t('anamnesisRelevancePossible') : t('anamnesisRelevanceUnclear')}
-                          </span>
-                        </div>
-                      </div>
-                      {questionAnalysis.suggestivityAdvice && (
-                        <p className="text-[11px] text-amber-800 font-medium bg-amber-50 p-2 rounded border border-amber-200 mt-1">
-                          {t('anamnesisQuestionSuggestivityAdvice')} {questionAnalysis.suggestivityAdvice}
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* VOLLBREITES ANTWORT-DROPDOWN-OVERLAY */}
-              <div className="space-y-2">
-                {/* DEDICATED DIRECTION SWITCHER FOR STEP 4 (MODALITÄTEN) */}
-                {currentStep === 4 && (
-                  <div className="p-3 bg-white rounded-2xl border border-teal-200 shadow-2xs space-y-2">
-                    <div className="flex items-center justify-between">
-                      <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                        <Sparkles className="w-3.5 h-3.5 text-teal-600" />
-                        <span>{t('anamnesisModalitiesDirectionLabel')}</span>
-                      </label>
-                      <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md ${
-                        modalitySubTab === 'better'
-                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                          : 'bg-rose-100 text-rose-800 border border-rose-300'
-                      }`}>
-                        {modalitySubTab === 'better' ? t('anamnesisDirectionBetter') : t('anamnesisDirectionWorse')}
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleSetModalityDirection('better')}
-                        className={`py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition-all ${
-                          modalitySubTab === 'better'
-                            ? 'bg-emerald-700 text-white shadow-xs ring-2 ring-emerald-500/30'
-                            : 'bg-slate-50 text-slate-700 border border-slate-200 hover:bg-emerald-50 hover:border-emerald-300'
-                        }`}
-                      >
-                        <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-black text-xs">
-                          &gt;
-                        </span>
-                        <span>{t('anamnesisModalitiesImprovementLong')}</span>
-                        {modalitySubTab === 'better' && <Check className="w-4 h-4 text-emerald-200 ml-auto" />}
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => handleSetModalityDirection('worse')}
-                        className={`py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition-all ${
-                          modalitySubTab === 'worse'
-                            ? 'bg-rose-700 text-white shadow-xs ring-2 ring-rose-500/30'
-                            : 'bg-slate-50 text-slate-700 border border-slate-200 hover:bg-rose-50 hover:border-rose-300'
-                        }`}
-                      >
-                        <span className="w-5 h-5 rounded-full bg-rose-100 text-rose-800 flex items-center justify-center font-black text-xs">
-                          &lt;
-                        </span>
-                        <span>{t('anamnesisModalitiesWorseningLong')}</span>
-                        {modalitySubTab === 'worse' && <Check className="w-4 h-4 text-rose-200 ml-auto" />}
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                    <Layers className="w-4 h-4 text-teal-700" />
-                    <span>{t('anamnesisFullWidthOverlayTitle')}</span>
-                  </span>
-
-                  <button
-                    type="button"
-                    onClick={() => setIsOverlayOpen(!isOverlayOpen)}
-                    className="text-xs font-semibold text-teal-700 hover:text-teal-900 flex items-center gap-1 cursor-pointer"
-                  >
-                    <span>{isOverlayOpen ? t('anamnesisHideAnswerBtn') : t('anamnesisSelectAnswerBtn')}</span>
-                    {isOverlayOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                  </button>
-                </div>
-
-                {isOverlayOpen && (
-                  <div className="w-full bg-slate-50/90 border border-teal-200 rounded-2xl p-4 sm:p-5 shadow-inner space-y-4">
-                    
-                    {/* SECTION 1: ECHTE 3-STUFIGE TRICHTER-BEFRAGUNG FÜR JEDE SÄULE */}
-                    <div className="space-y-2">
-                      <CascadeFunnelPillarSelector
-                        pillar={currentPillar}
-                        language={language}
-                        chiefComplaint={draft.chiefComplaint || step0Input}
-                        existingValue={(draft[
+              {/* ECHTE 3-STUFIGE TRICHTER-BEFRAGUNG FÜR JEDE SÄULE */}
+              <div className="w-full bg-slate-50/90 border border-teal-200 rounded-2xl p-4 sm:p-5 shadow-inner space-y-4">
+                <div className="space-y-2">
+                  <CascadeFunnelPillarSelector
+                    key={`funnel-${currentStep}-${currentPillar}`}
+                    pillar={currentPillar}
+                    language={language}
+                    chiefComplaint={draft.chiefComplaint || step0Input}
+                    existingValue={(() => {
+                      if (currentPillar !== 'modalities') {
+                        return (draft[
                           currentPillar === 'causa' ? 'causaEvent' :
                           currentPillar === 'location' ? 'location' :
                           currentPillar === 'sensation' ? 'sensation' :
-                          currentPillar === 'modalities' ? 'modalities' :
                           currentPillar === 'mind' ? 'mind' : 'concomitants'
-                        ] as string) || ''}
-                        activeDirection={currentPillar === 'modalities' ? modalitySubTab : undefined}
-                        onDirectionChange={currentPillar === 'modalities' ? handleSetModalityDirection : undefined}
-                        onSelectionChange={handleCascadeSelectionChange}
-                      />
-                    </div>
+                        ] as string) || '';
+                      }
+                      // For modalities, filter existingValue to only items matching the current step's direction
+                      const allMods = (draft.modalities || '').split(',').map(m => m.trim()).filter(Boolean);
+                      if (currentStep === 4) {
+                        return allMods.filter(m => m.startsWith('>')).join(', ');
+                      }
+                      if (currentStep === 5) {
+                        return allMods.filter(m => m.startsWith('<')).join(', ');
+                      }
+                      return draft.modalities || '';
+                    })()}
+                    activeDirection={currentStep === 4 ? 'better' : currentStep === 5 ? 'worse' : undefined}
+                    onDirectionChange={currentPillar === 'modalities' ? handleSetModalityDirection : undefined}
+                    onSelectionChange={handleCascadeSelectionChange}
+                  />
+                </div>
 
                     {/* STANDARD OPTIONS (Weiß nicht, Nicht beobachtet, etc.) */}
                     <div className="pt-1 flex flex-wrap gap-1.5">
@@ -1625,55 +1420,62 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
                           </div>
                           <div>
                             <span className="text-slate-400 block mb-0.5">{t('anamnesisAiDirection')}</span>
-                            <div className="flex items-center gap-1">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  if (currentPillar === 'modalities') {
-                                    handleSetModalityDirection('worse');
-                                  } else if (currentPillar === 'causa') {
-                                    handleToggleCausaEffect('worse');
-                                  }
-                                }}
-                                className={`px-1.5 py-0.5 rounded text-[10.5px] font-bold border transition-all cursor-pointer ${
-                                  (currentPillar === 'modalities' ? modalitySubTab === 'worse' : (causaEffectState === 'worse' || aiAnalysis.direction === 'worse'))
-                                    ? 'bg-rose-100 text-rose-800 border-rose-400 ring-1 ring-rose-300'
-                                    : 'bg-white text-slate-600 border-slate-200 hover:bg-rose-50'
-                                }`}
-                              >
-                                &lt;
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  if (currentPillar === 'modalities') {
-                                    handleSetModalityDirection('better');
-                                  } else if (currentPillar === 'causa') {
-                                    handleToggleCausaEffect('better');
-                                  }
-                                }}
-                                className={`px-1.5 py-0.5 rounded text-[10.5px] font-bold border transition-all cursor-pointer ${
-                                  (currentPillar === 'modalities' ? modalitySubTab === 'better' : (causaEffectState === 'better' || aiAnalysis.direction === 'better'))
-                                    ? 'bg-emerald-100 text-emerald-800 border-emerald-400 ring-1 ring-emerald-300'
-                                    : 'bg-white text-slate-600 border-slate-200 hover:bg-emerald-50'
-                                }`}
-                              >
-                                &gt;
-                              </button>
-                              <span className={`font-semibold ml-0.5 ${
-                                (currentPillar === 'modalities' ? modalitySubTab === 'worse' : (causaEffectState === 'worse' || aiAnalysis.direction === 'worse'))
-                                  ? 'text-rose-700'
-                                  : (currentPillar === 'modalities' ? modalitySubTab === 'better' : (causaEffectState === 'better' || aiAnalysis.direction === 'better'))
-                                  ? 'text-emerald-700'
-                                  : 'text-slate-700'
+                            {currentPillar === 'modalities' ? (
+                              <span className={`inline-flex items-center gap-1 font-bold text-xs px-2 py-0.5 rounded-lg border ${
+                                currentStep === 4 || modalitySubTab === 'better'
+                                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                                  : 'bg-rose-50 text-rose-800 border-rose-300'
                               }`}>
-                                {(currentPillar === 'modalities' ? modalitySubTab === 'worse' : (causaEffectState === 'worse' || aiAnalysis.direction === 'worse'))
-                                  ? t('anamnesisDirectionWorse')
-                                  : (currentPillar === 'modalities' ? modalitySubTab === 'better' : (causaEffectState === 'better' || aiAnalysis.direction === 'better'))
-                                  ? t('anamnesisDirectionBetter')
-                                  : t('anamnesisDirectionNeutral')}
+                                <span>{currentStep === 4 || modalitySubTab === 'better' ? '>' : '<'}</span>
+                                <span>{currentStep === 4 || modalitySubTab === 'better' ? t('anamnesisDirectionBetter') : t('anamnesisDirectionWorse')}</span>
                               </span>
-                            </div>
+                            ) : (
+                              <div className="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (currentPillar === 'causa') {
+                                      handleToggleCausaEffect('worse');
+                                    }
+                                  }}
+                                  className={`px-1.5 py-0.5 rounded text-[10.5px] font-bold border transition-all cursor-pointer ${
+                                    (causaEffectState === 'worse' || aiAnalysis.direction === 'worse')
+                                      ? 'bg-rose-100 text-rose-800 border-rose-400 ring-1 ring-rose-300'
+                                      : 'bg-white text-slate-600 border-slate-200 hover:bg-rose-50'
+                                  }`}
+                                >
+                                  &lt;
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (currentPillar === 'causa') {
+                                      handleToggleCausaEffect('better');
+                                    }
+                                  }}
+                                  className={`px-1.5 py-0.5 rounded text-[10.5px] font-bold border transition-all cursor-pointer ${
+                                    (causaEffectState === 'better' || aiAnalysis.direction === 'better')
+                                      ? 'bg-emerald-100 text-emerald-800 border-emerald-400 ring-1 ring-emerald-300'
+                                      : 'bg-white text-slate-600 border-slate-200 hover:bg-emerald-50'
+                                  }`}
+                                >
+                                  &gt;
+                                </button>
+                                <span className={`font-semibold ml-0.5 ${
+                                  (causaEffectState === 'worse' || aiAnalysis.direction === 'worse')
+                                    ? 'text-rose-700'
+                                    : (causaEffectState === 'better' || aiAnalysis.direction === 'better')
+                                    ? 'text-emerald-700'
+                                    : 'text-slate-700'
+                                }`}>
+                                  {(causaEffectState === 'worse' || aiAnalysis.direction === 'worse')
+                                    ? t('anamnesisDirectionWorse')
+                                    : (causaEffectState === 'better' || aiAnalysis.direction === 'better')
+                                    ? t('anamnesisDirectionBetter')
+                                    : t('anamnesisDirectionNeutral')}
+                                </span>
+                              </div>
+                            )}
                           </div>
                           <div>
                             <span className="text-slate-400 block">{t('anamnesisAiStatus')}</span>
@@ -1759,8 +1561,6 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
                       </button>
                     </div>
                   </div>
-                )}
-              </div>
 
               {/* BEREITS ERFASSTE DIALOGSCHRITTE DIESER SÄULE */}
               <div className="space-y-2 pt-2">
@@ -1768,7 +1568,18 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
                   {t('anamnesisRecordedStatementsTitle')}:
                 </label>
                 {(() => {
-                  const pillarSteps = (draft.anamnesisDialogueSteps || []).filter(s => s.pillar === currentPillar);
+                  const pillarSteps = (draft.anamnesisDialogueSteps || []).filter(s => {
+                    if (s.pillar !== currentPillar) return false;
+                    if (currentPillar === 'modalities') {
+                      if (currentStep === 4) {
+                        return s.direction === 'better' || s.answer.startsWith('>');
+                      }
+                      if (currentStep === 5) {
+                        return s.direction === 'worse' || s.answer.startsWith('<');
+                      }
+                    }
+                    return true;
+                  });
                   if (pillarSteps.length === 0) {
                     return (
                       <p className="text-xs text-slate-400 italic py-1">
@@ -1805,8 +1616,8 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
             </div>
           )}
 
-          {/* STEP 7: ADAPTIVE SYNTHESE, 6-SÄULEN-REVIEW & ABSCHLUSS */}
-          {currentStep === 7 && (
+          {/* STEP 8: ADAPTIVE SYNTHESE, 6-SÄULEN-REVIEW & ABSCHLUSS */}
+          {currentStep === 8 && (
             <div className="space-y-6 animate-in fade-in duration-200">
               {/* Header banner */}
               <div className="p-4 rounded-2xl bg-gradient-to-r from-teal-800 to-emerald-850 text-white shadow-xs">
@@ -1925,12 +1736,12 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
                     )}
                   </div>
 
-                  {/* Säule 4 - WANN (Modalitäten: Besser > / Schlechter <) */}
+                  {/* Säule 4.1 - WANN: Besserung (>) */}
                   <div className="p-3 rounded-xl border border-emerald-200 bg-emerald-50/40 text-xs space-y-1">
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-emerald-950 flex items-center gap-1">
                         <Sliders className="w-3.5 h-3.5 text-emerald-600" />
-                        {t('anamnesisModalitiesTitle')}
+                        {t('anamnesisModalitiesBetterTitle')}
                       </span>
                       <button
                         type="button"
@@ -1941,11 +1752,31 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
                       </button>
                     </div>
                     <p className="font-semibold text-slate-900">
-                      {draft.modalities || <span className="italic text-slate-400 font-normal">{t('anamnesisPillarEmptyNotice')}</span>}
+                      {(draft.modalities && draft.modalities.includes('>')) ? draft.modalities : <span className="italic text-slate-400 font-normal">{t('anamnesisPillarEmptyNotice')}</span>}
                     </p>
                     {draft.modalitiesQuote && (
                       <p className="text-[11px] text-amber-800 italic">&bdquo;{draft.modalitiesQuote}&ldquo;</p>
                     )}
+                  </div>
+
+                  {/* Säule 4.2 - WANN: Verschlimmerung (<) */}
+                  <div className="p-3 rounded-xl border border-teal-200 bg-teal-50/40 text-xs space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-teal-950 flex items-center gap-1">
+                        <Sliders className="w-3.5 h-3.5 text-teal-700" />
+                        {t('anamnesisModalitiesWorseTitle')}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setCurrentStep(5)}
+                        className="text-[10.5px] font-semibold text-teal-700 hover:text-teal-900 cursor-pointer"
+                      >
+                        {t('anamnesisEditInWizard')}
+                      </button>
+                    </div>
+                    <p className="font-semibold text-slate-900">
+                      {(draft.modalities && draft.modalities.includes('<')) ? draft.modalities : <span className="italic text-slate-400 font-normal">{t('anamnesisPillarEmptyNotice')}</span>}
+                    </p>
                   </div>
 
                   {/* Säule 5 - WAS NOCH (Körperliche Begleitsymptome) */}
@@ -1957,7 +1788,7 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
                       </span>
                       <button
                         type="button"
-                        onClick={() => setCurrentStep(5)}
+                        onClick={() => setCurrentStep(6)}
                         className="text-[10.5px] font-semibold text-purple-700 hover:text-purple-900 cursor-pointer"
                       >
                         {t('anamnesisEditInWizard')}
@@ -1980,7 +1811,7 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
                       </span>
                       <button
                         type="button"
-                        onClick={() => setCurrentStep(6)}
+                        onClick={() => setCurrentStep(7)}
                         className="text-[10.5px] font-semibold text-rose-700 hover:text-rose-900 cursor-pointer"
                       >
                         {t('anamnesisEditInWizard')}
@@ -2047,7 +1878,7 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
               </button>
             )}
 
-            {currentStep < 7 ? (
+            {currentStep < 8 ? (
               <div className="inline-flex">
                 <button
                   type="button"
@@ -2075,7 +1906,7 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
                       : 'bg-slate-200 text-slate-400 border border-slate-300 cursor-not-allowed opacity-60'
                   }`}
                 >
-                  <span>{currentStep === 6 ? t('anamnesisStepReviewAndDeepen') : t('anamnesisNavNext')}</span>
+                  <span>{currentStep === 7 ? t('anamnesisStepReviewAndDeepen') : t('anamnesisNavNext')}</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
               </div>

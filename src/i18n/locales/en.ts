@@ -3035,6 +3035,10 @@ export const en = {
   anamnesisCausaTriggerTitle: "3. TRIGGER (Causa & Triggers)",
   anamnesisCausaEventShort: "Causa & Triggers",
   anamnesisModalitiesTitle: "4. WHEN (Modalities (< / >) (Better / Worse))",
+  anamnesisModalitiesBetterTitle: "4.1 WHEN: Improvement (> Relief)",
+  anamnesisModalitiesWorseTitle: "4.2 WHEN: Aggravation (< Worsening)",
+  anamnesisStepModalitiesBetterShort: "4.1 Improvement (>)",
+  anamnesisStepModalitiesWorseShort: "4.2 Aggravation (<)",
   anamnesisConcomitantsTitle: "5. WHAT ELSE (Physical Concomitants)",
   anamnesisMindTitle: "6. MIND (Mind & Emotions)",
   anamnesisPillarMindShort: "6. MIND",
@@ -3108,5 +3112,10 @@ export const en = {
   cascadeFunnelLocationLead2: "2. Question on Radiation & Extent:",
   cascadeFunnelLocationLevel2Title: "2. Exact Location & Laterality (Multi-select enabled)",
   cascadeFunnelLocationLevel3Title: "3. Radiation & Demarcation of Pain",
-  cascadeFunnelLocationLevel3Hint: "Select where the pain radiates or whether it remains strictly localized"
+  cascadeFunnelLocationLevel3Hint: "Select where the pain radiates or whether it remains strictly localized",
+  cascadeFunnelMindLevel2Title: "2. State of Mind & Disposition (Multi-select enabled)",
+  cascadeFunnelMindLevel3Title: "3. Specific Nuance & Concomitant Emotional Reaction",
+  cascadeFunnelMindLevel3Hint: "Select the specific emotional reaction or modality",
+  cascadeFunnelModalitiesLeadBetter: "Under which conditions does the complaint noticeably improve (>) or feel relieved? (e.g., warmth, rest, lying down)",
+  cascadeFunnelModalitiesLeadWorse: "Under which conditions does the complaint noticeably worsen (<) or aggravate? (e.g., cold, motion, time of day)"
 };

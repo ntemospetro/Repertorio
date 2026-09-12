@@ -3029,6 +3029,10 @@ export const el = {
   anamnesisCausaTriggerTitle: "3. ΑΙΤΙΑ (Causa & Εκλυτικοί παράγοντες)",
   anamnesisCausaEventShort: "Causa & Εκλυτικοί παράγοντες",
   anamnesisModalitiesTitle: "4. ΠΟΤΕ (Τροποποιητικοί παράγοντες (< / >) (Καλύτερα / Χειρότερα))",
+  anamnesisModalitiesBetterTitle: "4.1 ΠΟΤΕ: Βελτίωση (> Ανακούφιση)",
+  anamnesisModalitiesWorseTitle: "4.2 ΠΟΤΕ: Επιδείνωση (< Χειροτέρευση)",
+  anamnesisStepModalitiesBetterShort: "4.1 Βελτίωση (>)",
+  anamnesisStepModalitiesWorseShort: "4.2 Επιδείνωση (<)",
   anamnesisConcomitantsTitle: "5. ΤΙ ΑΛΛΟ (Σωματικά συνοδά συμπτώματα)",
   anamnesisMindTitle: "6. ΨΥΧΗ (Ψυχική διάθεση & Νους)",
   anamnesisPillarMindShort: "6. ΨΥΧΗ",
@@ -3102,5 +3106,10 @@ export const el = {
   cascadeFunnelLocationLead2: "2. Ερώτηση για την αντανάκλαση & έκταση:",
   cascadeFunnelLocationLevel2Title: "2. Ακριβής εντοπισμός & πλευρά (πολλαπλή επιλογή)",
   cascadeFunnelLocationLevel3Title: "3. Αντανάκλαση & οριοθέτηση του πόνου",
-  cascadeFunnelLocationLevel3Hint: "Επιλέξτε προς τα πού αντανακλά ο πόνος ή εάν παραμένει αυστηρά εντοπισμένος"
+  cascadeFunnelLocationLevel3Hint: "Επιλέξτε προς τα πού αντανακλά ο πόνος ή εάν παραμένει αυστηρά εντοπισμένος",
+  cascadeFunnelMindLevel2Title: "2. Ψυχική διάθεση & συμπεριφορά (πολλαπλή επιλογή)",
+  cascadeFunnelMindLevel3Title: "3. Ακριβής διαβάθμιση & συνοδός συναισθηματική αντίδραση",
+  cascadeFunnelMindLevel3Hint: "Επιλέξτε τη συγκεκριμένη ψυχική αντίδραση ή τροποποιητικό παράγοντα",
+  cascadeFunnelModalitiesLeadBetter: "Υπό ποιες συνθήκες η ενόχληση βελτιώνεται (>) ή ανακουφίζεται αισθητά; (π.χ. ζέστη, ανάπαυση, κατάκλιση)",
+  cascadeFunnelModalitiesLeadWorse: "Υπό ποιες συνθήκες η ενόχληση επιδεινώνεται (<) ή εντείνεται αισθητά; (π.χ. κρύο, κίνηση, ώρα της ημέρας)"
 };

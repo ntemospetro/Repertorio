@@ -3029,6 +3029,10 @@ export const es = {
   anamnesisCausaTriggerTitle: "3. CAUSA (Causa y desencadenantes)",
   anamnesisCausaEventShort: "Causa y desencadenantes",
   anamnesisModalitiesTitle: "4. CUÁNDO (Modalidades (< / >) (Mejor / Peor))",
+  anamnesisModalitiesBetterTitle: "4.1 CUÁNDO: Mejoría (> Alivio)",
+  anamnesisModalitiesWorseTitle: "4.2 CUÁNDO: Empeoramiento (< Agravación)",
+  anamnesisStepModalitiesBetterShort: "4.1 Mejoría (>)",
+  anamnesisStepModalitiesWorseShort: "4.2 Empeoramiento (<)",
   anamnesisConcomitantsTitle: "5. QUÉ MÁS (Síntomas físicos concomitantes)",
   anamnesisMindTitle: "6. MENTE (Mente y estado anímico)",
   anamnesisPillarMindShort: "6. MENTE",
@@ -3102,5 +3106,10 @@ export const es = {
   cascadeFunnelLocationLead2: "2. Pregunta sobre irradiación y extensión:",
   cascadeFunnelLocationLevel2Title: "2. Localización exacta y lateralidad (selección múltiple)",
   cascadeFunnelLocationLevel3Title: "3. Irradiación y delimitación del dolor",
-  cascadeFunnelLocationLevel3Hint: "Seleccione hacia dónde se irradia el dolor o si permanece fijo"
+  cascadeFunnelLocationLevel3Hint: "Seleccione hacia dónde se irradia el dolor o si permanece fijo",
+  cascadeFunnelMindLevel2Title: "2. Estado de ánimo y comportamiento (selección múltiple)",
+  cascadeFunnelMindLevel3Title: "3. Matiz específico y reacción emocional concomitante",
+  cascadeFunnelMindLevel3Hint: "Seleccione la reacción emocional específica o modalidad",
+  cascadeFunnelModalitiesLeadBetter: "¿Bajo qué condiciones mejora (>) o se alivia notablemente la molestia? (ej. calor, reposo, acostarse)",
+  cascadeFunnelModalitiesLeadWorse: "¿Bajo qué condiciones empeora (<) o se agrava notablemente la molestia? (ej. frío, movimiento, hora del día)"
 };

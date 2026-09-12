@@ -310,6 +310,14 @@ export const CascadeFunnelPillarSelector: React.FC<CascadeFunnelPillarSelectorPr
                   </p>
                 </div>
               </div>
+            ) : pillar === 'modalities' && activeDirection === 'better' ? (
+              <p className="text-xs font-semibold text-emerald-950 leading-snug mt-0.5">
+                {t('cascadeFunnelModalitiesLeadBetter')}
+              </p>
+            ) : pillar === 'modalities' && activeDirection === 'worse' ? (
+              <p className="text-xs font-semibold text-rose-950 leading-snug mt-0.5">
+                {t('cascadeFunnelModalitiesLeadWorse')}
+              </p>
             ) : (
               <p className="text-xs font-semibold text-slate-800 leading-snug mt-0.5">
                 {getLoc(pillarDef.leadQuestion)}
@@ -319,8 +327,8 @@ export const CascadeFunnelPillarSelector: React.FC<CascadeFunnelPillarSelectorPr
         </div>
       </div>
 
-      {/* DIRECTION BANNER FOR MODALITIES */}
-      {pillar === 'modalities' && onDirectionChange && (
+      {/* DIRECTION BANNER FOR MODALITIES (nur anzeigen, wenn nicht fest durch activeDirection fixiert) */}
+      {pillar === 'modalities' && onDirectionChange && !activeDirection && (
         <div className="p-3 bg-white rounded-xl border border-teal-200 shadow-2xs space-y-2">
           <div className="flex items-center justify-between">
             <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
@@ -416,7 +424,11 @@ export const CascadeFunnelPillarSelector: React.FC<CascadeFunnelPillarSelectorPr
             <div className="flex items-center gap-1.5">
               <span className="w-4 h-4 rounded-full bg-teal-700 text-white text-[10px] flex items-center justify-center font-bold">2</span>
               <label className="text-xs font-bold text-slate-800">
-                {pillar === 'location' ? t('cascadeFunnelLocationLevel2Title') : t('cascadeFunnelLevel2Title')}
+                {pillar === 'location'
+                  ? t('cascadeFunnelLocationLevel2Title')
+                  : pillar === 'mind'
+                  ? t('cascadeFunnelMindLevel2Title')
+                  : t('cascadeFunnelLevel2Title')}
               </label>
               <span className="text-[10px] bg-teal-100 text-teal-800 px-2 py-0.5 rounded-md font-semibold border border-teal-200">
                 {t('cascadeFunnelMultiSelectBadge')}
@@ -502,8 +514,8 @@ export const CascadeFunnelPillarSelector: React.FC<CascadeFunnelPillarSelectorPr
                         </div>
                       )}
 
-                      {/* INLINE DIRECTION SWITCHER FOR MODALITIES */}
-                      {pillar === 'modalities' && isSelected && (
+                      {/* INLINE DIRECTION SWITCHER FOR MODALITIES (nur anzeigen, wenn nicht fest vorgegeben) */}
+                      {pillar === 'modalities' && isSelected && !activeDirection && (
                         <div
                           className="flex items-center gap-1.5 mt-2 pt-1.5 border-t border-teal-200/60"
                           onClick={(e) => e.stopPropagation()}
@@ -544,11 +556,19 @@ export const CascadeFunnelPillarSelector: React.FC<CascadeFunnelPillarSelectorPr
                       <div className="flex items-center gap-1 text-[11px] font-bold text-teal-900">
                         <span className="w-3.5 h-3.5 rounded-full bg-teal-800 text-white text-[9px] flex items-center justify-center font-bold">3</span>
                         <span>
-                          {pillar === 'location' ? t('cascadeFunnelLocationLevel3Title') : t('cascadeFunnelLevel3Title')}
+                          {pillar === 'location'
+                            ? t('cascadeFunnelLocationLevel3Title')
+                            : pillar === 'mind'
+                            ? t('cascadeFunnelMindLevel3Title')
+                            : t('cascadeFunnelLevel3Title')}
                         </span>
                       </div>
                       <p className="text-[10px] text-slate-500">
-                        {pillar === 'location' ? t('cascadeFunnelLocationLevel3Hint') : t('cascadeFunnelLevel3Hint')}
+                        {pillar === 'location'
+                          ? t('cascadeFunnelLocationLevel3Hint')
+                          : pillar === 'mind'
+                          ? t('cascadeFunnelMindLevel3Hint')
+                          : t('cascadeFunnelLevel3Hint')}
                       </p>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1">

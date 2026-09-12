@@ -3029,6 +3029,10 @@ export const fr = {
   anamnesisCausaTriggerTitle: "3. CAUSE (Causa & Déclencheurs)",
   anamnesisCausaEventShort: "Causa & Déclencheurs",
   anamnesisModalitiesTitle: "4. QUAND (Modalités (< / >) (Amélioration / Aggravation))",
+  anamnesisModalitiesBetterTitle: "4.1 QUAND: Amélioration (> Soulagement)",
+  anamnesisModalitiesWorseTitle: "4.2 QUAND: Aggravation (< Détérioration)",
+  anamnesisStepModalitiesBetterShort: "4.1 Amélioration (>)",
+  anamnesisStepModalitiesWorseShort: "4.2 Aggravation (<)",
   anamnesisConcomitantsTitle: "5. QUOI D'AUTRE (Symptômes physiques concomitants)",
   anamnesisMindTitle: "6. MENTAL (Mental & Disposition)",
   anamnesisPillarMindShort: "6. MENTAL",
@@ -3102,5 +3106,10 @@ export const fr = {
   cascadeFunnelLocationLead2: "2. Question sur l'irradiation & la délimitation :",
   cascadeFunnelLocationLevel2Title: "2. Localisation exacte & latéralité (sélection multiple)",
   cascadeFunnelLocationLevel3Title: "3. Irradiation & délimitation de la douleur",
-  cascadeFunnelLocationLevel3Hint: "Sélectionnez où la douleur irradie ou si elle reste ponctuellement fixée"
+  cascadeFunnelLocationLevel3Hint: "Sélectionnez où la douleur irradie ou si elle reste ponctuellement fixée",
+  cascadeFunnelMindLevel2Title: "2. État d'esprit & comportement (sélection multiple)",
+  cascadeFunnelMindLevel3Title: "3. Nuance précise & réaction émotionnelle concomitante",
+  cascadeFunnelMindLevel3Hint: "Sélectionnez la réaction émotionnelle spécifique ou la modalité",
+  cascadeFunnelModalitiesLeadBetter: "Dans quelles circonstances la douleur s'améliore-t-elle (>) ou est-elle soulagée ? (ex. chaleur, repos, position allongée)",
+  cascadeFunnelModalitiesLeadWorse: "Dans quelles circonstances la douleur s'aggrave-t-elle (<) ou s'intensifie-t-elle ? (ex. froid, mouvement, moment de la journée)"
 };
