@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { 
   MapPin, 
   Flame, 
@@ -18,11 +18,17 @@ import {
   Zap,
   ArrowRight,
   AlertCircle,
-  CheckCircle2
+  CheckCircle2,
+  Mic,
+  MicOff,
+  HelpCircle,
+  Check
 } from 'lucide-react';
 import { useTranslation } from '../i18n/LanguageContext';
 import { LanguageCode } from '../types';
 import { RepertoriumSymptomInput } from '../services/boerickeRepertoryService';
+import { analyzeChiefComplaint } from '../services/chiefComplaintAnalysisService';
+import { startSpeechRecognition, SpeechRecognitionSession } from '../services/speechService';
 import { 
   extractCuesFromInitialComplaint, 
   buildSynthesizedSymptomText,
@@ -51,6 +57,61 @@ export const AdaptiveSymptomArchitect: React.FC<AdaptiveSymptomArchitectProps> =
 
   // Starting open complaint input (Was führt Sie heute zu mir?)
   const [initialInput, setInitialInput] = useState('');
+  const [selectedPrimaryComplaint, setSelectedPrimaryComplaint] = useState<string | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const speechSessionRef = useRef<SpeechRecognitionSession | null>(null);
+
+  useEffect(() => {
+    return () => {
+      speechSessionRef.current?.stop();
+    };
+  }, []);
+
+  const toggleSpeechRecognition = () => {
+    if (isRecording) {
+      speechSessionRef.current?.stop();
+      setIsRecording(false);
+      return;
+    }
+
+    try {
+      setIsRecording(true);
+      speechSessionRef.current = startSpeechRecognition({
+        language,
+        continuous: true,
+        interimResults: true,
+        onResult: (transcript) => {
+          if (transcript?.trim()) {
+            setInitialInput(transcript);
+          }
+        },
+        onError: (err) => {
+          console.warn('Speech recognition error:', err);
+          setIsRecording(false);
+        },
+        onEnd: () => {
+          setIsRecording(false);
+        }
+      });
+    } catch (err) {
+      console.error('Failed to start speech recognition:', err);
+      setIsRecording(false);
+    }
+  };
+
+  const multiAnalysis = useMemo(() => {
+    return analyzeChiefComplaint(initialInput, language);
+  }, [initialInput, language]);
+
+  const chiefAnalysis = useMemo(() => {
+    const activeText = selectedPrimaryComplaint || initialInput;
+    const res = analyzeChiefComplaint(activeText, language);
+    return {
+      ...res,
+      detectedComplaints: multiAnalysis.detectedComplaints,
+      hasMultipleComplaints: multiAnalysis.hasMultipleComplaints
+    };
+  }, [initialInput, selectedPrimaryComplaint, language, multiAnalysis]);
 
   // Direct manual pillar edit toggle
   const [expandedPillar, setExpandedPillar] = useState<string | null>(null);
@@ -73,14 +134,27 @@ export const AdaptiveSymptomArchitect: React.FC<AdaptiveSymptomArchitectProps> =
     const text = initialInput.trim();
     if (!text) return;
 
-    const cues = extractCuesFromInitialComplaint(text);
+    const chosenPrimary = selectedPrimaryComplaint || text;
+    const cues = extractCuesFromInitialComplaint(chosenPrimary);
+
+    let initialConcomitants = cues.concomitants || symptom.concomitants || '';
+    if (selectedPrimaryComplaint && chiefAnalysis.hasMultipleComplaints) {
+      const others = chiefAnalysis.detectedComplaints
+        .filter(c => c.toLowerCase() !== selectedPrimaryComplaint.toLowerCase())
+        .join(', ');
+      if (others) {
+        initialConcomitants = initialConcomitants ? `${initialConcomitants}, ${others}` : others;
+      }
+    }
+
     const updated: RepertoriumSymptomInput = {
       ...symptom,
-      chiefComplaint: cues.chiefComplaint,
+      chiefComplaint: chosenPrimary,
       chiefQuote: text,
       location: cues.location || symptom.location || '',
       sensation: cues.sensation || symptom.sensation || '',
       modalities: cues.modalities || symptom.modalities || '',
+      concomitants: initialConcomitants,
       causaEvent: cues.causaEvent || symptom.causaEvent || '',
       causaTemporal: cues.causaTemporal || symptom.causaTemporal || '',
       causaEffect: cues.causaEvent ? 'worse' : symptom.causaEffect || '',
@@ -99,6 +173,7 @@ export const AdaptiveSymptomArchitect: React.FC<AdaptiveSymptomArchitectProps> =
     updated.text = buildSynthesizedSymptomText(updated);
     onChange(updated);
     setInitialInput('');
+    setSelectedPrimaryComplaint(null);
 
     // Immediately open wizard popup for the pillars
     handleOpenWizard(1);
@@ -171,23 +246,113 @@ export const AdaptiveSymptomArchitect: React.FC<AdaptiveSymptomArchitectProps> =
             <span>{t('repertoriumPillarChiefComplaint')}</span>
           </div>
           <form onSubmit={handleStartAnamnesis} className="space-y-2">
-            <input
-              type="text"
-              id={`initial-complaint-input-${symptom.id}`}
-              value={initialInput}
-              onChange={(e) => setInitialInput(e.target.value)}
-              placeholder={t('repertoriumSymptomPlaceholder')}
-              className="w-full px-3 py-2 text-xs bg-slate-50/70 rounded-lg border border-slate-200 focus:bg-white focus:border-teal-600 focus:ring-1 focus:ring-teal-500 text-slate-900 placeholder:text-slate-400 outline-none transition-all font-medium shadow-2xs"
-            />
+            <div className="relative flex items-center">
+              <input
+                type="text"
+                id={`initial-complaint-input-${symptom.id}`}
+                value={initialInput}
+                onChange={(e) => setInitialInput(e.target.value)}
+                placeholder={t('repertoriumSymptomPlaceholder')}
+                className="w-full pl-3 pr-10 py-2 text-xs bg-slate-50/70 rounded-lg border border-slate-200 focus:bg-white focus:border-teal-600 focus:ring-1 focus:ring-teal-500 text-slate-900 placeholder:text-slate-400 outline-none transition-all font-medium shadow-2xs"
+              />
+              <button
+                type="button"
+                onClick={toggleSpeechRecognition}
+                className={`absolute right-1.5 p-1.5 rounded-md transition-colors cursor-pointer ${
+                  isRecording 
+                    ? 'bg-rose-500 text-white animate-pulse' 
+                    : 'text-slate-400 hover:text-teal-700 hover:bg-slate-100'
+                }`}
+                title={isRecording ? t('chiefComplaintListening') : t('chiefComplaintVoiceBtn')}
+              >
+                {isRecording ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+              </button>
+            </div>
+
+            {/* Live voice listening state */}
+            {isRecording && (
+              <div className="flex items-center gap-1.5 text-xs text-rose-600 font-semibold animate-pulse px-1">
+                <span className="w-2 h-2 rounded-full bg-rose-600"></span>
+                <span>{t('chiefComplaintListening')}</span>
+              </div>
+            )}
+
+            {/* Multiple Complaints Disambiguation / Clarification Card */}
+            {initialInput.trim() && chiefAnalysis.hasMultipleComplaints && chiefAnalysis.detectedComplaints.length > 1 && (
+              <div className="p-2.5 rounded-xl bg-amber-50/90 border border-amber-300 space-y-2 text-xs animate-in fade-in duration-150">
+                <div className="flex items-center gap-1.5 text-amber-900 font-bold">
+                  <HelpCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                  <span>{t('chiefComplaintMultipleDetectedTitle')}</span>
+                </div>
+                <p className="text-[11px] text-amber-950 font-medium leading-relaxed">
+                  {t('chiefComplaintMultipleDetectedPrompt')}
+                </p>
+                <div className="flex flex-wrap gap-1.5 pt-0.5">
+                  {chiefAnalysis.detectedComplaints.map((complaint, idx) => {
+                    const isSelected = selectedPrimaryComplaint === complaint;
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setSelectedPrimaryComplaint(complaint)}
+                        className={`px-2.5 py-1 text-xs rounded-lg font-semibold border transition-all cursor-pointer flex items-center gap-1 shadow-2xs ${
+                          isSelected
+                            ? 'bg-amber-600 text-white border-amber-700 ring-1 ring-amber-400'
+                            : 'bg-white text-slate-800 border-amber-200 hover:bg-amber-100 hover:border-amber-400'
+                        }`}
+                      >
+                        {isSelected && <Check className="w-3 h-3 text-white" />}
+                        <span>{complaint}</span>
+                        {isSelected && (
+                          <span className="text-[9px] bg-amber-700/70 px-1 py-0.5 rounded text-amber-100">
+                            {t('chiefComplaintSelectPrimaryBadge')}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPrimaryComplaint(null)}
+                    className={`px-2 py-1 text-xs rounded-lg font-medium border transition-colors cursor-pointer ${
+                      selectedPrimaryComplaint === null
+                        ? 'bg-slate-700 text-white border-slate-800'
+                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    <span>{t('chiefComplaintKeepCombinedOption')}</span>
+                  </button>
+                </div>
+                {selectedPrimaryComplaint && (
+                  <p className="text-[10px] text-amber-900 font-medium pt-0.5 flex items-center gap-1">
+                    <Sparkles className="w-3 h-3 text-amber-600 shrink-0" />
+                    <span>{t('chiefComplaintOtherAsConcomitants')}</span>
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Real-time domain verification */}
             {initialInput.trim() && (
-              <div className="flex justify-end pt-0.5">
-                <button
-                  type="submit"
-                  className="px-3 py-1.5 rounded-lg bg-teal-700 hover:bg-teal-800 text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-teal-200" />
-                  <span>{t('anamnesisStartBtn')}</span>
-                </button>
+              <div className="space-y-2 pt-1">
+                {chiefAnalysis.isRecognized && chiefAnalysis.organDomain && (
+                  <div className="p-2 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-between text-xs text-emerald-950 font-medium">
+                    <div className="flex items-center gap-1.5">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span>{t('chiefComplaintVerified')}: <strong className="text-emerald-800">{chiefAnalysis.organDomain}</strong></span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex justify-end pt-1">
+                  <button
+                    type="submit"
+                    className="px-3 py-1.5 rounded-lg bg-teal-700 hover:bg-teal-800 text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-teal-200" />
+                    <span>{t('anamnesisStartBtn')}</span>
+                  </button>
+                </div>
               </div>
             )}
           </form>

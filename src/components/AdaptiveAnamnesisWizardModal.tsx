@@ -25,11 +25,15 @@ import {
   CheckCircle2,
   Target,
   Plus,
-  Heart
+  Heart,
+  Mic,
+  MicOff
 } from 'lucide-react';
 import { useTranslation } from '../i18n/LanguageContext';
 import { LanguageCode } from '../types';
 import { RepertoriumSymptomInput } from '../services/boerickeRepertoryService';
+import { analyzeChiefComplaint } from '../services/chiefComplaintAnalysisService';
+import { startSpeechRecognition, SpeechRecognitionSession } from '../services/speechService';
 import { 
   extractCuesFromInitialComplaint, 
   generateAdaptiveQuestions, 
@@ -108,6 +112,61 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
 
   // Step 0 initial free text
   const [step0Input, setStep0Input] = useState(draft.chiefComplaint || '');
+  const [selectedPrimaryComplaint, setSelectedPrimaryComplaint] = useState<string | null>(null);
+  const [isStep0Recording, setIsStep0Recording] = useState(false);
+  const step0SpeechRef = React.useRef<SpeechRecognitionSession | null>(null);
+
+  React.useEffect(() => {
+    return () => {
+      step0SpeechRef.current?.stop();
+    };
+  }, []);
+
+  const toggleStep0Speech = () => {
+    if (isStep0Recording) {
+      step0SpeechRef.current?.stop();
+      setIsStep0Recording(false);
+      return;
+    }
+
+    try {
+      setIsStep0Recording(true);
+      step0SpeechRef.current = startSpeechRecognition({
+        language,
+        continuous: true,
+        interimResults: true,
+        onResult: (transcript) => {
+          if (transcript?.trim()) {
+            setStep0Input(transcript);
+          }
+        },
+        onError: (err) => {
+          console.warn('Speech error:', err);
+          setIsStep0Recording(false);
+        },
+        onEnd: () => {
+          setIsStep0Recording(false);
+        }
+      });
+    } catch (err) {
+      console.error('Speech recognition failed to start:', err);
+      setIsStep0Recording(false);
+    }
+  };
+
+  const multiAnalysis = useMemo(() => {
+    return analyzeChiefComplaint(step0Input, language);
+  }, [step0Input, language]);
+
+  const step0Analysis = useMemo(() => {
+    const activeText = selectedPrimaryComplaint || step0Input;
+    const res = analyzeChiefComplaint(activeText, language);
+    return {
+      ...res,
+      detectedComplaints: multiAnalysis.detectedComplaints,
+      hasMultipleComplaints: multiAnalysis.hasMultipleComplaints
+    };
+  }, [step0Input, selectedPrimaryComplaint, language, multiAnalysis]);
 
   // Causa specific controls
   const [causaTemporalInput, setCausaTemporalInput] = useState(draft.causaTemporal || '');
@@ -226,8 +285,16 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
   const isCurrentStepAdopted = useMemo(() => {
     if (currentStep === 0) return !!(step0Input.trim() || draft.chiefComplaint);
     if (currentStep === 7) return true;
-    return adoptedSteps.has(currentStep);
-  }, [currentStep, step0Input, draft.chiefComplaint, adoptedSteps]);
+    if (adoptedSteps.has(currentStep)) return true;
+    const field: keyof RepertoriumSymptomInput = 
+      currentPillar === 'causa' ? 'causaEvent' :
+      currentPillar === 'location' ? 'location' :
+      currentPillar === 'sensation' ? 'sensation' :
+      currentPillar === 'modalities' ? 'modalities' :
+      currentPillar === 'mind' ? 'mind' : 'concomitants';
+    const val = (draft[field] as string || '').trim();
+    return val.length > 0 || patientQuote.trim().length > 0 || selectedOptions.length > 0;
+  }, [currentStep, step0Input, draft, adoptedSteps, currentPillar, patientQuote, selectedOptions]);
 
   // Can the user click "Antwort übernehmen" right now?
   const canAdopt = useMemo(() => {
@@ -297,10 +364,24 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
   const handleStep0Next = () => {
     if (!step0Input.trim()) return;
 
-    const cues = extractCuesFromInitialComplaint(step0Input);
+    const chosenPrimary = selectedPrimaryComplaint || step0Input.trim();
+    const cues = extractCuesFromInitialComplaint(chosenPrimary);
+
+    let initialConcomitants = draft.concomitants || cues.concomitants || '';
+    if (selectedPrimaryComplaint && step0Analysis.hasMultipleComplaints) {
+      const otherComplaints = step0Analysis.detectedComplaints
+        .filter(c => c.toLowerCase() !== selectedPrimaryComplaint.toLowerCase())
+        .join(', ');
+      if (otherComplaints) {
+        initialConcomitants = initialConcomitants
+          ? `${initialConcomitants}, ${otherComplaints}`
+          : otherComplaints;
+      }
+    }
+
     const updated: RepertoriumSymptomInput = {
       ...draft,
-      chiefComplaint: step0Input.trim(),
+      chiefComplaint: chosenPrimary,
       chiefQuote: step0Input.trim(),
       location: draft.location || cues.location || '',
       locationQuote: draft.locationQuote || (cues.location ? step0Input.trim() : ''),
@@ -308,8 +389,8 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
       sensationQuote: draft.sensationQuote || (cues.sensation ? step0Input.trim() : ''),
       modalities: draft.modalities || cues.modalities || '',
       modalitiesQuote: draft.modalitiesQuote || (cues.modalities ? step0Input.trim() : ''),
-      concomitants: draft.concomitants || cues.concomitants || '',
-      concomitantsQuote: draft.concomitantsQuote || (cues.concomitants ? step0Input.trim() : ''),
+      concomitants: initialConcomitants,
+      concomitantsQuote: draft.concomitantsQuote || (initialConcomitants ? step0Input.trim() : ''),
       causaEvent: draft.causaEvent || cues.causaEvent || '',
       causaTemporal: draft.causaTemporal || cues.causaTemporal || '',
       causaEffect: draft.causaEffect || (cues.causaEffect as '' | 'worse' | 'better' | 'unchanged' | 'uncertain') || '',
@@ -730,15 +811,19 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
                   key={step.idx}
                   type="button"
                   onClick={() => {
-                    if (step.idx > currentStep && !isCurrentStepAdopted) {
-                      setShowMustAdoptWarning(true);
+                    if (step.idx > 0 && !draft.chiefComplaint && !step0Input.trim()) {
                       return;
+                    }
+                    if (canAdopt && currentStep > 0) {
+                      handleAdoptAnswer();
                     }
                     setShowMustAdoptWarning(false);
                     setCurrentStep(step.idx);
                     setSelectedQuestionId('');
                     setSelectedOptions([]);
                     setPatientQuote('');
+                    setCustomQuestion('');
+                    setAdditionalQuestions([]);
                     setDeepenings([]);
                   }}
                   className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
@@ -797,22 +882,112 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
               </div>
 
               <div className="space-y-3">
-                <label className="text-xs font-bold text-slate-700 block">
-                  {t('anamnesisOriginalQuoteTitle')}
-                </label>
-                <textarea
-                  rows={4}
-                  value={step0Input}
-                  onChange={(e) => setStep0Input(e.target.value)}
-                  placeholder={t('anamnesisOpeningPlaceholder')}
-                  className="w-full px-4 py-3 text-sm bg-slate-50/70 rounded-xl border border-slate-300 focus:bg-white focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 text-slate-900 placeholder:text-slate-400 outline-none transition-all resize-none font-medium leading-relaxed shadow-inner"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleStep0Next();
-                    }
-                  }}
-                />
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-700 block">
+                    {t('anamnesisOriginalQuoteTitle')}
+                  </label>
+                  <button
+                    type="button"
+                    onClick={toggleStep0Speech}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                      isStep0Recording
+                        ? 'bg-rose-500 text-white animate-pulse'
+                        : 'bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200'
+                    }`}
+                    title={isStep0Recording ? t('chiefComplaintListening') : t('chiefComplaintVoiceBtn')}
+                  >
+                    {isStep0Recording ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+                    <span>{isStep0Recording ? t('chiefComplaintListening') : t('chiefComplaintVoiceBtn')}</span>
+                  </button>
+                </div>
+
+                <div className="relative">
+                  <textarea
+                    rows={4}
+                    value={step0Input}
+                    onChange={(e) => {
+                      setStep0Input(e.target.value);
+                      setSelectedPrimaryComplaint(null);
+                    }}
+                    placeholder={t('anamnesisOpeningPlaceholder')}
+                    className="w-full px-4 py-3 text-sm bg-slate-50/70 rounded-xl border border-slate-300 focus:bg-white focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 text-slate-900 placeholder:text-slate-400 outline-none transition-all resize-none font-medium leading-relaxed shadow-inner"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleStep0Next();
+                      }
+                    }}
+                  />
+                </div>
+
+                {/* Multiple Complaints Disambiguation / Clarification Card */}
+                {step0Input.trim() && step0Analysis.hasMultipleComplaints && step0Analysis.detectedComplaints.length > 1 && (
+                  <div className="p-3.5 rounded-xl bg-amber-50/90 border-2 border-amber-300 space-y-2.5 shadow-xs animate-in fade-in duration-150">
+                    <div className="flex items-center gap-2 text-amber-900 font-bold text-xs">
+                      <HelpCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                      <span>{t('chiefComplaintMultipleDetectedTitle')}</span>
+                    </div>
+                    <p className="text-xs text-amber-950 leading-relaxed font-medium">
+                      {t('chiefComplaintMultipleDetectedPrompt')}
+                    </p>
+                    <div className="flex flex-wrap gap-2 pt-0.5">
+                      {step0Analysis.detectedComplaints.map((complaint, idx) => {
+                        const isSelected = selectedPrimaryComplaint === complaint;
+                        return (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => {
+                              setSelectedPrimaryComplaint(complaint);
+                            }}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs ${
+                              isSelected
+                                ? 'bg-amber-600 text-white border-amber-700 ring-2 ring-amber-400'
+                                : 'bg-white text-slate-800 border-amber-200 hover:bg-amber-100/70 hover:border-amber-400'
+                            }`}
+                          >
+                            {isSelected && <Check className="w-3.5 h-3.5 text-white" />}
+                            <span>{complaint}</span>
+                            {isSelected && (
+                              <span className="text-[10px] bg-amber-700/70 px-1.5 py-0.5 rounded text-amber-100">
+                                {t('chiefComplaintSelectPrimaryBadge')}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPrimaryComplaint(null)}
+                        className={`px-2.5 py-1.5 rounded-xl text-xs font-medium border transition-colors cursor-pointer ${
+                          selectedPrimaryComplaint === null
+                            ? 'bg-slate-700 text-white border-slate-800'
+                            : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        <span>{t('chiefComplaintKeepCombinedOption')}</span>
+                      </button>
+                    </div>
+
+                    {selectedPrimaryComplaint && (
+                      <p className="text-[11px] text-amber-900 font-medium pt-0.5 flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                        <span>{t('chiefComplaintOtherAsConcomitants')}</span>
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Domain verification badge */}
+                {step0Input.trim() && step0Analysis.isRecognized && step0Analysis.organDomain && (
+                  <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-between text-xs text-emerald-950 font-medium">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span>{t('chiefComplaintVerified')}: <strong className="text-emerald-800 font-bold">{step0Analysis.organDomain}</strong></span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="p-3.5 bg-teal-50/60 rounded-xl border border-teal-200 text-xs text-teal-900 flex items-start gap-2.5">
@@ -1722,25 +1897,17 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
             )}
 
             {currentStep < 7 ? (
-              <div
-                className="inline-flex"
-                onClick={() => {
-                  if (!isCurrentStepAdopted && currentStep > 0) {
-                    setShowMustAdoptWarning(true);
-                  }
-                }}
-              >
+              <div className="inline-flex">
                 <button
                   type="button"
-                  disabled={!isCurrentStepAdopted && currentStep > 0}
+                  disabled={currentStep === 0 && !step0Input.trim() && !draft.chiefComplaint}
                   onClick={() => {
                     if (currentStep === 0) {
                       handleStep0Next();
                       return;
                     }
-                    if (!isCurrentStepAdopted) {
-                      setShowMustAdoptWarning(true);
-                      return;
+                    if (canAdopt) {
+                      handleAdoptAnswer();
                     }
                     setShowMustAdoptWarning(false);
                     setCurrentStep(currentStep + 1);
@@ -1752,11 +1919,10 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
                     setDeepenings([]);
                   }}
                   className={`py-2 px-5 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all ${
-                    isCurrentStepAdopted || currentStep === 0
+                    currentStep > 0 || step0Input.trim() || draft.chiefComplaint
                       ? 'bg-teal-700 hover:bg-teal-800 text-white cursor-pointer'
                       : 'bg-slate-200 text-slate-400 border border-slate-300 cursor-not-allowed opacity-60'
                   }`}
-                  title={!isCurrentStepAdopted && currentStep > 0 ? t('anamnesisMustAdoptAnswerNotice') : undefined}
                 >
                   <span>{currentStep === 6 ? t('anamnesisStepReviewAndDeepen') : t('anamnesisNavNext')}</span>
                   <ArrowRight className="w-4 h-4" />

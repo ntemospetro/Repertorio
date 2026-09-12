@@ -1,5 +1,6 @@
 import { LanguageCode } from '../types';
-import { RepertoriumSymptomInput } from './boerickeRepertoryService';
+import { RepertoriumSymptomInput, normalizeQuery } from './boerickeRepertoryService';
+import { getLocalizedRemedies } from '../data/materiaMedicaData';
 
 export interface AnamnesisDialogueStep {
   id: string;
@@ -1044,6 +1045,197 @@ export interface StructuredOptionItem {
 }
 
 /**
+ * Anatomical and clinical relevance filter:
+ * Prevents inappropriate organ systems (e.g. skin, warts, hair, brain, bladder, anus)
+ * from appearing under abdominal complaints, and vice versa.
+ */
+function isAnatomicallyRelevantForComplaint(
+  pillar: 'location' | 'sensation' | 'modalities' | 'concomitants' | 'causa' | 'mind',
+  label: string,
+  chiefComplaint: string
+): boolean {
+  if (!label || label.trim().length < 2) return false;
+  const lText = label.toLowerCase();
+  const cText = (chiefComplaint || '').toLowerCase();
+
+  // 1. ABDOMEN / MAGEN / DARM / BAUCH
+  const isAbdomenComplaint =
+    cText.includes('bauch') || cText.includes('magen') || cText.includes('darm') ||
+    cText.includes('abdomen') || cText.includes('belly') || cText.includes('ventre') ||
+    cText.includes('stomach') || cText.includes('addom') || cText.includes('κοιλ') ||
+    cText.includes('στομαχ') || cText.includes('живот') || cText.includes('желуд') ||
+    cText.includes('kolik') || cText.includes('colic') || cText.includes('krampf');
+
+  if (isAbdomenComplaint) {
+    // Exclude completely unrelated organs/regions
+    const forbiddenForAbdomen = [
+      'after', 'anus', 'harnblase', 'blase', 'harnweg', 'haut', 'warzen', 'warze',
+      'haare', 'haar', 'gehirn', 'nervensystem', 'meatus', 'schleimhautgrenzen',
+      'schleimhaut-grenzen', 'schläfe', 'stirn', 'hinterkopf', 'okziput', 'vertex',
+      'scheitel', 'auge', 'augen', 'ohr', 'ohren', 'zahn', 'zähne', 'knie',
+      'knöchel', 'zehen', 'finger', 'extremitäten', 'hws', 'cervical', 'lunge', 'bronchien'
+    ];
+
+    // Check if the label contains any forbidden terms
+    for (const term of forbiddenForAbdomen) {
+      // If user specifically asked about e.g. Anus/Hämorrhoiden, do not forbid it
+      if (cText.includes(term)) continue;
+
+      // Word-boundary or substring check
+      const regex = new RegExp(`\\b${term}\\b|${term}`, 'i');
+      if (regex.test(lText)) {
+        return false;
+      }
+    }
+  }
+
+  // 2. KOPF / HEAD / MIGRÄNE
+  const isHeadComplaint =
+    cText.includes('kopf') || cText.includes('head') || cText.includes('tête') ||
+    cText.includes('cabeza') || cText.includes('testa') || cText.includes('κεφάλ') ||
+    cText.includes('голов') || cText.includes('migräne') || cText.includes('migraine');
+
+  if (isHeadComplaint) {
+    const forbiddenForHead = [
+      'bauch', 'magen', 'darm', 'abdomen', 'belly', 'after', 'anus', 'harnblase',
+      'blase', 'harnweg', 'warzen', 'unterbauch', 'oberbauch', 'nabel', 'knie', 'ferse', 'zehen'
+    ];
+    for (const term of forbiddenForHead) {
+      if (cText.includes(term)) continue;
+      const regex = new RegExp(`\\b${term}\\b|${term}`, 'i');
+      if (regex.test(lText)) return false;
+    }
+  }
+
+  // 3. RÜCKEN / BACK / WIRBELSÄULE
+  const isBackComplaint =
+    cText.includes('rücken') || cText.includes('back') || cText.includes('dos') ||
+    cText.includes('schiena') || cText.includes('πλάτη') || cText.includes('спин') ||
+    cText.includes('lws') || cText.includes('hws') || cText.includes('bws') || cText.includes('kreuzbein');
+
+  if (isBackComplaint) {
+    const forbiddenForBack = [
+      'stirn', 'schläfe', 'zahn', 'zähne', 'augen', 'ohren', 'magen', 'darm', 'after', 'anus', 'warzen'
+    ];
+    for (const term of forbiddenForBack) {
+      if (cText.includes(term)) continue;
+      const regex = new RegExp(`\\b${term}\\b|${term}`, 'i');
+      if (regex.test(lText)) return false;
+    }
+  }
+
+  return true;
+}
+
+/**
+ * Extracts specific 4-pillar options from classical Polychrests in Materia Medica
+ * matching the patient's chief complaint and domain, strictly filtered by anatomical relevance.
+ */
+export function getMateriaMedicaPolychrestOptions(
+  pillar: 'location' | 'sensation' | 'modalities' | 'concomitants' | 'causa' | 'mind',
+  chiefComplaint: string,
+  lang: LanguageCode,
+  modalitySubTab?: 'better' | 'worse'
+): StructuredOptionItem[] {
+  const trimmed = (chiefComplaint || '').trim();
+  const allRemedies = getLocalizedRemedies(lang);
+  const polychrests = allRemedies.filter(r => Boolean(r.isPolychrest || r.ist_polychrest));
+
+  // Find Polychrests whose spheres, indications or keynotes correlate with the complaint
+  const normChief = normalizeQuery(trimmed);
+  const tokens = normChief.split(/\s+/).filter(w => w.length >= 3);
+
+  const scoredRemedies = polychrests.map(r => {
+    let score = 0;
+    const textBlob = normalizeQuery(
+      [
+        ...(r.sphereOfAction || []),
+        ...(r.mainIndications || []),
+        ...(r.keynotes || []),
+        ...(r.searchKeywords || [])
+      ].join(' ')
+    );
+    for (const tok of tokens) {
+      if (textBlob.includes(tok)) score += 2;
+    }
+    return { remedy: r, score };
+  });
+
+  // Only take remedies that actually score for this complaint, or fallback to domain remedies
+  let relevant = scoredRemedies.filter(sr => sr.score > 0).sort((a, b) => b.score - a.score).map(sr => sr.remedy);
+  if (relevant.length === 0) {
+    relevant = polychrests.slice(0, 8);
+  }
+
+  const items: StructuredOptionItem[] = [];
+  const seenLabels = new Set<string>();
+
+  const addOption = (label: string, direction?: 'better' | 'worse') => {
+    const clean = label.trim();
+    if (!clean || clean.length < 3 || clean.length > 80) return;
+
+    // Strict clinical and anatomical filter: reject unrelated organ systems!
+    if (!isAnatomicallyRelevantForComplaint(pillar, clean, trimmed)) {
+      return;
+    }
+
+    const key = normalizeQuery(clean).slice(0, 35);
+    if (!seenLabels.has(key)) {
+      seenLabels.add(key);
+      items.push({
+        id: `poly-${pillar}-${items.length}-${key.slice(0, 10)}`,
+        label: clean,
+        direction
+      });
+    }
+  };
+
+  for (const rem of relevant.slice(0, 8)) {
+    if (pillar === 'modalities') {
+      if (modalitySubTab === 'better') {
+        for (const m of (rem.modalitiesBetter || [])) {
+          addOption(m, 'better');
+        }
+      } else if (modalitySubTab === 'worse') {
+        for (const m of (rem.modalitiesWorse || [])) {
+          addOption(m, 'worse');
+        }
+      } else {
+        for (const m of (rem.modalitiesBetter || []).slice(0, 2)) addOption(m, 'better');
+        for (const m of (rem.modalitiesWorse || []).slice(0, 2)) addOption(m, 'worse');
+      }
+    } else if (pillar === 'location') {
+      // Split compound sphere entries (e.g. "Harnwege, Blase, Haut" -> individual items)
+      for (const sp of (rem.sphereOfAction || [])) {
+        const subParts = sp.split(/[,;/+]+/).map(s => s.trim()).filter(Boolean);
+        for (const p of subParts) {
+          addOption(p);
+        }
+      }
+    } else if (pillar === 'sensation') {
+      for (const kn of (rem.keynotes || [])) {
+        addOption(kn);
+      }
+    } else if (pillar === 'concomitants') {
+      for (const kn of (rem.keynotes || [])) {
+        addOption(kn);
+      }
+    } else if (pillar === 'causa') {
+      if (rem.essence) {
+        addOption(rem.essence);
+      }
+    } else if (pillar === 'mind') {
+      if (rem.mindEmotional) {
+        addOption(rem.mindEmotional);
+      }
+    }
+    if (items.length >= 8) break;
+  }
+
+  return items;
+}
+
+/**
  * Returns context-aware structured answer options tailored to the current pillar and question
  * fully localized across all 7 languages (de, en, es, fr, it, el, ru).
  */
@@ -1216,7 +1408,29 @@ export function getStructuredAnswerOptions(
     { id: 'std-other', label: l({ de: 'Andere', en: 'Other', es: 'Otro', fr: 'Autre', it: 'Altro', el: 'Άλλο', ru: 'Другое' }), statusCode: 'OTHER' },
   ];
 
-  return { options, standardOptions };
+  const polychrestOptions = getMateriaMedicaPolychrestOptions(
+    pillar,
+    chiefComplaint,
+    lang,
+    modalitySubTab
+  );
+
+  const mergedOptions: StructuredOptionItem[] = [];
+  const seenLabels = new Set<string>();
+
+  // Prioritize primary domain-specific options first, followed by relevant Materia Medica suggestions
+  for (const item of [...options, ...polychrestOptions]) {
+    if (!isAnatomicallyRelevantForComplaint(pillar, item.label, chiefComplaint)) {
+      continue;
+    }
+    const key = normalizeQuery(item.label).slice(0, 30);
+    if (!seenLabels.has(key)) {
+      seenLabels.add(key);
+      mergedOptions.push(item);
+    }
+  }
+
+  return { options: mergedOptions, standardOptions };
 }
 
 export interface StatementAiAnalysis {

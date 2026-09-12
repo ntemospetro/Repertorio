@@ -3,6 +3,7 @@ import { LanguageCode } from '../types';
 import { matchesAuthorFilter, ClassicalAuthorFilterKey } from '../data/classicalAuthorsMap';
 import { getBogerSynopticEntry, BogerSynopticEntry } from '../data/bogerSynopticData';
 import type { AnamnesisDialogueStep } from './adaptiveAnamnesisEngine';
+import { detectDomainFromTokens } from './chiefComplaintAnalysisService';
 
 export type SymptomWeightGrade = 1 | 2 | 3 | 4;
 
@@ -698,7 +699,8 @@ function verifySinglePillar(
   bogerEntry: ReturnType<typeof getBogerSynopticEntry>,
   remedyNormId: string,
   remedyLatinNorm: string,
-  remedyCommonNorm: string
+  remedyCommonNorm: string,
+  lang: LanguageCode = 'de'
 ): PillarProof {
   const queryWords = extractTokens(queryText);
   if (queryWords.length === 0) {
@@ -738,6 +740,13 @@ function verifySinglePillar(
   const allMind = [remedy.mindEmotional || ''];
   const normMind = normalizeQuery(allMind.join(' '));
   const mindWords = normMind.split(' ').filter(w => w.length >= 3);
+
+  const allKeywords = remedy.searchKeywords || [];
+  const normKeywords = normalizeQuery(allKeywords.join(' '));
+  const keywordWords = normKeywords.split(' ').filter(w => w.length >= 3);
+
+  const normEssence = normalizeQuery(remedy.essence || '');
+  const essenceWords = normEssence.split(' ').filter(w => w.length >= 3);
 
   const rawBogerWorse = bogerEntry ? bogerEntry.worse.join(' ') : '';
   const rawBogerBetter = bogerEntry ? bogerEntry.better.join(' ') : '';
@@ -797,7 +806,25 @@ function verifySinglePillar(
       }
     }
 
-    // C. Check Sphere of Action / Boger Region
+    // C. Check Localized Search Keywords (Materia Medica index in current language)
+    for (const word of queryWords) {
+      if (tokenMatches(word, normKeywords, keywordWords)) {
+        const item = remedy.searchKeywords.find(kw => normalizeQuery(kw).includes(word));
+        return {
+          pillarKey,
+          pillarLabel,
+          queryText,
+          matched: true,
+          author: 'William Boericke',
+          work: 'Materia Medica',
+          chapter: 'Klinischer Index / Suchbegriffe',
+          quote: item || queryText,
+          grade: 3,
+        };
+      }
+    }
+
+    // D. Check Sphere of Action / Boger Region
     for (const word of queryWords) {
       if (tokenMatches(word, normSphere, sphereWords)) {
         const item = remedy.sphereOfAction.find(s => normalizeQuery(s).includes(word));
@@ -828,7 +855,28 @@ function verifySinglePillar(
       }
     }
 
-    // D. Check Remedy Essence
+    // E. Check Detected Organ Domain
+    const detectedDomain = detectDomainFromTokens(queryWords);
+    if (detectedDomain) {
+      const sphereText = normSphere + ' ' + normKeywords + ' ' + normIndications;
+      const domainKeywords = detectedDomain.keywords;
+      const hasDomainAffinity = domainKeywords.some(kw => sphereText.includes(normalizeQuery(kw)));
+      if (hasDomainAffinity) {
+        return {
+          pillarKey,
+          pillarLabel,
+          queryText,
+          matched: true,
+          author: 'William Boericke',
+          work: 'Materia Medica',
+          chapter: 'Wirkungssphäre / Organaffinität',
+          quote: `${detectedDomain.labels[lang] || detectedDomain.labels.de}: ${remedy.sphereOfAction.slice(0, 2).join(', ') || remedy.latinName}`,
+          grade: 2,
+        };
+      }
+    }
+
+    // F. Check Remedy Essence
     if (remedy.essence && queryWords.some(w => normalizeQuery(remedy.essence).includes(w))) {
       return {
         pillarKey,
@@ -857,6 +905,20 @@ function verifySinglePillar(
           author: 'William Boericke',
           work: 'Materia Medica',
           chapter: 'Lokaler Wirkungsbereich',
+          quote: item || queryText,
+          grade: 3,
+        };
+      }
+      if (tokenMatches(word, normKeywords, keywordWords)) {
+        const item = remedy.searchKeywords.find(kw => normalizeQuery(kw).includes(word));
+        return {
+          pillarKey,
+          pillarLabel,
+          queryText,
+          matched: true,
+          author: 'William Boericke',
+          work: 'Materia Medica',
+          chapter: 'Organlokalisation & Affinität',
           quote: item || queryText,
           grade: 3,
         };
@@ -934,6 +996,20 @@ function verifySinglePillar(
           grade: 4,
         };
       }
+      if (tokenMatches(word, normKeywords, keywordWords)) {
+        const item = remedy.searchKeywords.find(kw => normalizeQuery(kw).includes(word));
+        return {
+          pillarKey,
+          pillarLabel,
+          queryText,
+          matched: true,
+          author: 'William Boericke',
+          work: 'Materia Medica',
+          chapter: 'Empfindungscharakteristik',
+          quote: item || queryText,
+          grade: 3,
+        };
+      }
       if (bogerEntry && normalizeQuery(rawBogerHighlights).includes(word)) {
         const item = bogerEntry.highlights.find(h => normalizeQuery(h).includes(word));
         return {
@@ -968,13 +1044,28 @@ function verifySinglePillar(
   // 4. SÄULE 3: MODALITÄTEN (< / >)
   if (pillarKey === 'modalities') {
     const rawLower = queryText.toLowerCase();
-    const isWorseQuery = rawLower.includes('<') || rawLower.includes('schlechter') || rawLower.includes('worse') || rawLower.includes('verschlimm');
-    const isBetterQuery = rawLower.includes('>') || rawLower.includes('besser') || rawLower.includes('better') || rawLower.includes('gelindert');
+    const isWorseQuery = rawLower.includes('<') ||
+      rawLower.includes('schlechter') || rawLower.includes('verschlimm') ||
+      rawLower.includes('worse') || rawLower.includes('aggravat') ||
+      rawLower.includes('χειροτερ') || rawLower.includes('επιδειν') ||
+      rawLower.includes('peor') || rawLower.includes('empeor') ||
+      rawLower.includes('pire') || rawLower.includes('aggrav') ||
+      rawLower.includes('peggio') || rawLower.includes('peggior') ||
+      rawLower.includes('хуже') || rawLower.includes('ухудш');
+
+    const isBetterQuery = rawLower.includes('>') ||
+      rawLower.includes('besser') || rawLower.includes('gelindert') ||
+      rawLower.includes('better') || rawLower.includes('ameliorat') || rawLower.includes('relie') ||
+      rawLower.includes('καλυτερ') || rawLower.includes('βελτιωσ') || rawLower.includes('ανακουφ') ||
+      rawLower.includes('mejor') || rawLower.includes('alivia') ||
+      rawLower.includes('mieux') || rawLower.includes('soulag') ||
+      rawLower.includes('meglio') || rawLower.includes('miglior') ||
+      rawLower.includes('лучше') || rawLower.includes('улучш');
 
     // Verschlimmerung (<)
     if (isWorseQuery && !isBetterQuery) {
       for (const word of queryWords) {
-        if (word === 'schlechter' || word === 'worse') continue;
+        if (word === 'schlechter' || word === 'worse' || word === 'χειροτερα' || word === 'peor' || word === 'pire' || word === 'peggio' || word === 'хуже') continue;
         if (tokenMatches(word, normModalitiesWorse, worseWords)) {
           const item = remedy.modalitiesWorse.find(m => normalizeQuery(m).includes(word));
           return {
@@ -985,6 +1076,20 @@ function verifySinglePillar(
             author: 'William Boericke',
             work: 'Materia Medica',
             chapter: 'Verschlimmerung (<)',
+            quote: `< ${item || word}`,
+            grade: 3,
+          };
+        }
+        if (tokenMatches(word, normKeywords, keywordWords)) {
+          const item = remedy.searchKeywords.find(kw => normalizeQuery(kw).includes(word));
+          return {
+            pillarKey,
+            pillarLabel,
+            queryText,
+            matched: true,
+            author: 'William Boericke',
+            work: 'Materia Medica',
+            chapter: 'Verschlimmerungsfaktoren (<)',
             quote: `< ${item || word}`,
             grade: 3,
           };
@@ -1020,7 +1125,7 @@ function verifySinglePillar(
     // Besserung (>)
     if (isBetterQuery && !isWorseQuery) {
       for (const word of queryWords) {
-        if (word === 'besser' || word === 'better') continue;
+        if (word === 'besser' || word === 'better' || word === 'καλυτερα' || word === 'mejor' || word === 'mieux' || word === 'meglio' || word === 'лучше') continue;
         if (tokenMatches(word, normModalitiesBetter, betterWords)) {
           const item = remedy.modalitiesBetter.find(m => normalizeQuery(m).includes(word));
           return {
@@ -1031,6 +1136,20 @@ function verifySinglePillar(
             author: 'William Boericke',
             work: 'Materia Medica',
             chapter: 'Besserung (>)',
+            quote: `> ${item || word}`,
+            grade: 3,
+          };
+        }
+        if (tokenMatches(word, normKeywords, keywordWords)) {
+          const item = remedy.searchKeywords.find(kw => normalizeQuery(kw).includes(word));
+          return {
+            pillarKey,
+            pillarLabel,
+            queryText,
+            matched: true,
+            author: 'William Boericke',
+            work: 'Materia Medica',
+            chapter: 'Lindernde Faktoren (>)',
             quote: `> ${item || word}`,
             grade: 3,
           };
@@ -1093,6 +1212,20 @@ function verifySinglePillar(
           grade: 3,
         };
       }
+      if (tokenMatches(word, normKeywords, keywordWords)) {
+        const item = remedy.searchKeywords.find(kw => normalizeQuery(kw).includes(word));
+        return {
+          pillarKey,
+          pillarLabel,
+          queryText,
+          matched: true,
+          author: 'William Boericke',
+          work: 'Materia Medica',
+          chapter: 'Modalitätskriterien',
+          quote: item || word,
+          grade: 3,
+        };
+      }
       if (bogerEntry && (normalizeQuery(rawBogerWorse).includes(word) || normalizeQuery(rawBogerBetter).includes(word))) {
         const wItem = bogerEntry.worse.find(w => normalizeQuery(w).includes(word));
         const bItem = bogerEntry.better.find(b => normalizeQuery(b).includes(word));
@@ -1111,7 +1244,7 @@ function verifySinglePillar(
     }
   }
 
-  // 5. SÄULE 4: BEGLEITSYMPTOME (Concomitants) & CAUSA
+  // 5. SÄULE 4: BEGLEITSYMPTOME (Concomitants) & GEMÜT
   if (pillarKey === 'concomitants') {
     for (const word of queryWords) {
       if (tokenMatches(word, normKeynotes, keynoteWords)) {
@@ -1128,9 +1261,6 @@ function verifySinglePillar(
           grade: 4,
         };
       }
-    }
-
-    for (const word of queryWords) {
       if (tokenMatches(word, normMind, mindWords)) {
         return {
           pillarKey,
@@ -1138,15 +1268,53 @@ function verifySinglePillar(
           queryText,
           matched: true,
           author: 'William Boericke / S. Hahnemann',
-          work: 'Materia Medica / Reine Arzneimittellehre',
+          work: 'Materia Medica',
           chapter: 'Gemüt & Emotionale Begleitsymptome',
-          quote: remedy.mindEmotional,
+          quote: remedy.mindEmotional || queryText,
+          grade: 4,
+        };
+      }
+      if (tokenMatches(word, normKeywords, keywordWords)) {
+        const item = remedy.searchKeywords.find(kw => normalizeQuery(kw).includes(word));
+        return {
+          pillarKey,
+          pillarLabel,
+          queryText,
+          matched: true,
+          author: 'William Boericke',
+          work: 'Materia Medica',
+          chapter: 'Begleitende Phänomene',
+          quote: item || queryText,
           grade: 3,
         };
       }
-    }
-
-    for (const word of queryWords) {
+      if (tokenMatches(word, normEssence, essenceWords)) {
+        return {
+          pillarKey,
+          pillarLabel,
+          queryText,
+          matched: true,
+          author: 'William Boericke',
+          work: 'Materia Medica',
+          chapter: 'Wesen & Allgemeinsymptome',
+          quote: remedy.essence || queryText,
+          grade: 3,
+        };
+      }
+      if (tokenMatches(word, normSphere, sphereWords)) {
+        const item = remedy.sphereOfAction.find(s => normalizeQuery(s).includes(word));
+        return {
+          pillarKey,
+          pillarLabel,
+          queryText,
+          matched: true,
+          author: 'William Boericke',
+          work: 'Materia Medica',
+          chapter: 'Wirkungssphäre & Allgemeines',
+          quote: item || queryText,
+          grade: 3,
+        };
+      }
       if (tokenMatches(word, normIndications, indicationWords)) {
         const item = remedy.mainIndications.find(ind => normalizeQuery(ind).includes(word));
         return {
@@ -1158,7 +1326,7 @@ function verifySinglePillar(
           work: 'Materia Medica',
           chapter: 'Klinische Begleitphänomene',
           quote: item || queryText,
-          grade: 2,
+          grade: 3,
         };
       }
       if (bogerEntry && normalizeQuery(rawBogerHighlights).includes(word)) {
@@ -1175,14 +1343,27 @@ function verifySinglePillar(
           grade: 3,
         };
       }
+      if (bogerEntry && normalizeQuery(rawBogerRegion).includes(word)) {
+        return {
+          pillarKey,
+          pillarLabel,
+          queryText,
+          matched: true,
+          author: 'C.M. Boger',
+          work: 'Synoptic Key',
+          chapter: 'Region & Begleitaffinität',
+          quote: bogerEntry.region,
+          grade: 2,
+        };
+      }
     }
   }
 
   // 6. CAUSA (Auslöser / Ursache - ätiologischer Aspekt von Säule 3)
   if (pillarKey === 'causa') {
     for (const word of queryWords) {
-      if (tokenMatches(word, normModalitiesWorse, worseWords) || tokenMatches(word, normKeynotes, keynoteWords) || tokenMatches(word, normIndications, indicationWords)) {
-        const item = remedy.modalitiesWorse.find(m => normalizeQuery(m).includes(word)) || remedy.keynotes.find(k => normalizeQuery(k).includes(word)) || remedy.mainIndications.find(i => normalizeQuery(i).includes(word));
+      if (tokenMatches(word, normModalitiesWorse, worseWords) || tokenMatches(word, normKeynotes, keynoteWords) || tokenMatches(word, normIndications, indicationWords) || tokenMatches(word, normKeywords, keywordWords)) {
+        const item = remedy.modalitiesWorse.find(m => normalizeQuery(m).includes(word)) || remedy.keynotes.find(k => normalizeQuery(k).includes(word)) || remedy.mainIndications.find(i => normalizeQuery(i).includes(word)) || remedy.searchKeywords.find(kw => normalizeQuery(kw).includes(word));
         return {
           pillarKey,
           pillarLabel,
@@ -1349,7 +1530,9 @@ export function evaluateCandidatePillars(
   const modWorseText = symptom.modalitiesWorse?.trim() || (symptom.modalities?.includes('<') ? symptom.modalities.replace(/<|verschlechterung|schlechter/gi, '').trim() : '');
   const modBetterText = symptom.modalitiesBetter?.trim() || (symptom.modalities?.includes('>') ? symptom.modalities.replace(/>|besserung|besser/gi, '').trim() : '');
   const modGenText = (!modWorseText && !modBetterText) ? (symptom.modalities?.trim() || '') : '';
-  const concomText = symptom.concomitants?.trim() || '';
+  const rawConcom = symptom.concomitants?.trim() || '';
+  const rawMind = symptom.mind?.trim() || '';
+  const concomText = [rawConcom, rawMind].filter(Boolean).join('; ');
 
   const remedyNormId = remedy.id.toLowerCase();
   const remedyLatin = remedy.latinName;
@@ -1358,6 +1541,7 @@ export function evaluateCandidatePillars(
   const sphereCombined = (remedy.sphereOfAction || []).join(' ').toLowerCase();
   const keynotesCombined = (remedy.keynotes || []).join(' ').toLowerCase();
   const essenceCombined = (remedy.essence || '').toLowerCase();
+  const searchKeywordsCombined = (remedy.searchKeywords || []).join(' ').toLowerCase();
   const rawBogerRegion = (bogerEntry?.region || '').toLowerCase();
   const rawBogerWorse = (bogerEntry?.worse || []).join(' ').toLowerCase();
   const rawBogerBetter = (bogerEntry?.better || []).join(' ').toLowerCase();
@@ -1431,7 +1615,7 @@ export function evaluateCandidatePillars(
         unclearAreas.push(`Säule 1 (WO: ${locText})`);
       }
     } else {
-      const proofLoc = verifySinglePillar('location', 'WO?', locText, remedy, bogerEntry, remedyNormId, remedyLatin.toLowerCase(), (remedy.commonName || '').toLowerCase());
+      const proofLoc = verifySinglePillar('location', 'WO?', locText, remedy, bogerEntry, remedyNormId, remedyLatin.toLowerCase(), (remedy.commonName || '').toLowerCase(), language);
       if (proofLoc.matched) {
         pillar1Location = {
           status: 'MATCH',
@@ -1502,7 +1686,7 @@ export function evaluateCandidatePillars(
       };
       matchingAreas.push(`Säule 2 (WAS: ${sensText})`);
     } else {
-      const proofSens = verifySinglePillar('sensation', 'WAS?', sensText, remedy, bogerEntry, remedyNormId, remedyLatin.toLowerCase(), (remedy.commonName || '').toLowerCase());
+      const proofSens = verifySinglePillar('sensation', 'WAS?', sensText, remedy, bogerEntry, remedyNormId, remedyLatin.toLowerCase(), (remedy.commonName || '').toLowerCase(), language);
       if (proofSens.matched) {
         pillar2Sensation = {
           status: 'MATCH',
@@ -1669,7 +1853,8 @@ export function evaluateCandidatePillars(
   let modWorseEval: CandidateModalityEvaluation | undefined = undefined;
   if (modWorseText) {
     const mwLower = modWorseText.toLowerCase();
-    const matchesWorse = worseCombined.includes(mwLower) || rawBogerWorse.includes(mwLower) || (mwLower.includes('bewegung') && (worseCombined.includes('bewegung') || rawBogerWorse.includes('motion')));
+    const proofW = verifySinglePillar('modalities', 'WANN (<)?', `< ${modWorseText}`, remedy, bogerEntry, remedyNormId, remedyLatin.toLowerCase(), (remedy.commonName || '').toLowerCase(), language);
+    const matchesWorse = proofW.matched || worseCombined.includes(mwLower) || rawBogerWorse.includes(mwLower) || searchKeywordsCombined.includes(mwLower) || (mwLower.includes('bewegung') && (worseCombined.includes('bewegung') || rawBogerWorse.includes('motion')));
     const contradictsBetter = betterCombined.includes(mwLower) || rawBogerBetter.includes(mwLower);
 
     if (matchesWorse) {
@@ -1762,7 +1947,8 @@ export function evaluateCandidatePillars(
         unclearAreas.push(`Säule 3 (> Besserung: ${modBetterText})`);
       }
     } else {
-      const matchesBetter = betterCombined.includes(mbLower) || rawBogerBetter.includes(mbLower);
+      const proofB = verifySinglePillar('modalities', 'WANN (>)?', `> ${modBetterText}`, remedy, bogerEntry, remedyNormId, remedyLatin.toLowerCase(), (remedy.commonName || '').toLowerCase(), language);
+      const matchesBetter = proofB.matched || betterCombined.includes(mbLower) || rawBogerBetter.includes(mbLower) || searchKeywordsCombined.includes(mbLower);
       const contradictsWorse = worseCombined.includes(mbLower) || rawBogerWorse.includes(mbLower);
 
       if (matchesBetter) {
@@ -1848,83 +2034,65 @@ export function evaluateCandidatePillars(
       explanation: 'Keine Begleitsymptome vom Patienten angegeben.'
     };
   } else {
-    const concomLower = concomText.toLowerCase();
-    const isAnxietyRestless = concomLower.includes('ängst') || concomLower.includes('ruhelos') || concomLower.includes('anxiety') || concomLower.includes('restless') || concomLower.includes('reizbar');
+    // 1. Direct verification of combined concomText
+    let proofConcom = verifySinglePillar('concomitants', 'WAS NOCH?', concomText, remedy, bogerEntry, remedyNormId, remedyLatin.toLowerCase(), (remedy.commonName || '').toLowerCase(), language);
 
-    if (isAnxietyRestless) {
-      if (remedyNormId.includes('arsenicum') || remedyNormId.includes('aconitum') || remedyNormId.includes('nux-vomica') || remedyNormId.includes('rhus-tox') || remedyNormId.includes('argentum-nit')) {
-        pillar4Concomitants = {
-          status: 'MATCH',
-          statusLabel: '🟢 Übereinstimmung',
-          patientText: concomText,
-          sourceQuote: remedyNormId.includes('nux-vomica')
-            ? 'Reizbarkeit, Ruhelosigkeit, ängstliche Getriebenheit dokumentiert.'
-            : remedyNormId.includes('arsenicum')
-            ? 'Ausgeprägte ängstliche Ruhelosigkeit, treibt von einem Ort zum anderen.'
-            : remedy.mindEmotional || 'Ängstliche Ruhelosigkeit in Gemütsrubriken dokumentiert.',
-          sourceAuthor: 'William Boericke',
-          sourceWork: 'Materia Medica',
-          sourceChapter: 'Gemüt & Emotionale Begleitsymptome',
-          grade: 3,
-          explanation: 'Reizbarkeit, Ruhelosigkeit, ängstliche Getriebenheit dokumentiert.'
-        };
-        matchingAreas.push(`Säule 4 (WAS NOCH: ${concomText})`);
-      } else if (remedyNormId.includes('bryonia')) {
-        pillar4Concomitants = {
-          status: 'UNCLEAR',
-          statusLabel: '🟡 Nicht ausreichend beurteilbar',
-          patientText: concomText,
-          sourceQuote: 'Will absolute Ruhe, verlangt ungestört zu liegen; Bewegung und Gespräch verschlimmern.',
-          sourceAuthor: 'William Boericke',
-          sourceWork: 'Materia Medica',
-          sourceChapter: 'Gemüt',
-          grade: 1,
-          explanation: 'Bryonia verlangt typischerweise absolute Ruhe und Vermeidung jeglicher Störung.'
-        };
-        unclearAreas.push('Säule 4 (WAS NOCH: Bryonia verlangt absolute Ruhe)');
-      } else {
-        pillar4Concomitants = {
-          status: 'UNCLEAR',
-          statusLabel: '🟡 Nicht ausreichend beurteilbar',
-          patientText: concomText,
-          sourceQuote: '',
-          sourceAuthor: '',
-          sourceWork: '',
-          sourceChapter: '',
-          grade: 0,
-          explanation: 'In den vorliegenden Gemütsrubriken für dieses Mittel nicht spezifisch hervorgehoben.'
-        };
-        unclearAreas.push(`Säule 4 (WAS NOCH: ${concomText})`);
+    // 2. If not matched directly, test individual sub-clauses (split by commas, semicolons, and "und")
+    if (!proofConcom.matched) {
+      const parts = concomText.split(/[,;]|\bund\b|\band\b|\bet\b|\by\b/i).map(p => p.trim()).filter(p => p.length >= 3);
+      for (const part of parts) {
+        const subProof = verifySinglePillar('concomitants', 'WAS NOCH?', part, remedy, bogerEntry, remedyNormId, remedyLatin.toLowerCase(), (remedy.commonName || '').toLowerCase(), language);
+        if (subProof.matched) {
+          proofConcom = subProof;
+          break;
+        }
       }
+    }
+
+    // 3. If still not matched, check mind specifically if rawMind exists
+    if (!proofConcom.matched && rawMind) {
+      const mindProof = verifySinglePillar('concomitants', 'WAS NOCH?', rawMind, remedy, bogerEntry, remedyNormId, remedyLatin.toLowerCase(), (remedy.commonName || '').toLowerCase(), language);
+      if (mindProof.matched) {
+        proofConcom = mindProof;
+      }
+    }
+
+    // 4. Check for physical concomitants specifically if rawConcom exists
+    if (!proofConcom.matched && rawConcom) {
+      const physProof = verifySinglePillar('concomitants', 'WAS NOCH?', rawConcom, remedy, bogerEntry, remedyNormId, remedyLatin.toLowerCase(), (remedy.commonName || '').toLowerCase(), language);
+      if (physProof.matched) {
+        proofConcom = physProof;
+      }
+    }
+
+    if (proofConcom.matched) {
+      pillar4Concomitants = {
+        status: 'MATCH',
+        statusLabel: '🟢 Übereinstimmung',
+        patientText: concomText,
+        sourceQuote: proofConcom.quote || concomText,
+        sourceAuthor: proofConcom.author || 'William Boericke',
+        sourceWork: proofConcom.work || 'Materia Medica',
+        sourceChapter: proofConcom.chapter || 'Begleitsymptome & Gemüt',
+        grade: Math.max(proofConcom.grade || 2, 3),
+        explanation: proofConcom.quote
+          ? `Begleitphänomen in Primärliteratur belegt: "${proofConcom.quote}"`
+          : 'Begleitsymptom in Primärquellen dokumentiert.'
+      };
+      matchingAreas.push(`Säule 4 (WAS NOCH: ${concomText})`);
     } else {
-      const proofConcom = verifySinglePillar('concomitants', 'WAS NOCH?', concomText, remedy, bogerEntry, remedyNormId, remedyLatin.toLowerCase(), (remedy.commonName || '').toLowerCase());
-      if (proofConcom.matched) {
-        pillar4Concomitants = {
-          status: 'MATCH',
-          statusLabel: '🟢 Übereinstimmung',
-          patientText: concomText,
-          sourceQuote: proofConcom.quote,
-          sourceAuthor: proofConcom.author,
-          sourceWork: proofConcom.work,
-          sourceChapter: proofConcom.chapter,
-          grade: proofConcom.grade,
-          explanation: 'Begleitphänomen in Primärquellen dokumentiert.'
-        };
-        matchingAreas.push(`Säule 4 (WAS NOCH: ${concomText})`);
-      } else {
-        pillar4Concomitants = {
-          status: 'UNCLEAR',
-          statusLabel: '🟡 Nicht ausreichend beurteilbar',
-          patientText: concomText,
-          sourceQuote: '',
-          sourceAuthor: '',
-          sourceWork: '',
-          sourceChapter: '',
-          grade: 0,
-          explanation: 'In den Begleitsymptomrubriken nicht spezifisch verzeichnet.'
-        };
-        unclearAreas.push(`Säule 4 (WAS NOCH: ${concomText})`);
-      }
+      pillar4Concomitants = {
+        status: 'UNCLEAR',
+        statusLabel: '🟡 Nicht ausreichend beurteilbar',
+        patientText: concomText,
+        sourceQuote: '',
+        sourceAuthor: 'William Boericke',
+        sourceWork: 'Materia Medica',
+        sourceChapter: 'Begleitsymptome & Gemüt',
+        grade: 0,
+        explanation: 'In den Begleitsymptom- und Gemütsrubriken für dieses Mittel nicht spezifisch hervorgehoben.'
+      };
+      unclearAreas.push(`Säule 4 (WAS NOCH: ${concomText})`);
     }
   }
 
@@ -2078,67 +2246,95 @@ export function performBoerickeRepertorisation(
     const hits: RemedySymptomHit[] = [];
     const pillarProofs: PillarProof[] = [];
 
-    if (breakdown.pillar1Location.sourceQuote) {
+    // Säule 1: WO
+    if (primarySymptom.location?.trim()) {
       pillarProofs.push({
         pillarKey: 'location',
         pillarLabel: 'Säule 1 – WO',
-        queryText: primarySymptom.location || '',
+        queryText: primarySymptom.location.trim(),
         matched: breakdown.pillar1Location.status === 'MATCH',
         status: breakdown.pillar1Location.status,
         statusReason: breakdown.pillar1Location.explanation,
-        author: breakdown.pillar1Location.sourceAuthor,
-        work: breakdown.pillar1Location.sourceWork,
-        chapter: breakdown.pillar1Location.sourceChapter,
-        quote: breakdown.pillar1Location.sourceQuote,
+        author: breakdown.pillar1Location.sourceAuthor || 'William Boericke',
+        work: breakdown.pillar1Location.sourceWork || 'Materia Medica',
+        chapter: breakdown.pillar1Location.sourceChapter || 'Lokalisation',
+        quote: breakdown.pillar1Location.sourceQuote || '',
         grade: (breakdown.pillar1Location.grade || 2) as SymptomWeightGrade
       });
     }
 
-    if (breakdown.pillar2Sensation.sourceQuote) {
+    // Säule 2: WAS
+    if (primarySymptom.sensation?.trim()) {
       pillarProofs.push({
         pillarKey: 'sensation',
         pillarLabel: 'Säule 2 – WAS',
-        queryText: primarySymptom.sensation || '',
+        queryText: primarySymptom.sensation.trim(),
         matched: breakdown.pillar2Sensation.status === 'MATCH',
         status: breakdown.pillar2Sensation.status,
         statusReason: breakdown.pillar2Sensation.explanation,
-        author: breakdown.pillar2Sensation.sourceAuthor,
-        work: breakdown.pillar2Sensation.sourceWork,
-        chapter: breakdown.pillar2Sensation.sourceChapter,
-        quote: breakdown.pillar2Sensation.sourceQuote,
+        author: breakdown.pillar2Sensation.sourceAuthor || 'William Boericke',
+        work: breakdown.pillar2Sensation.sourceWork || 'Materia Medica',
+        chapter: breakdown.pillar2Sensation.sourceChapter || 'Empfindung & Schmerz',
+        quote: breakdown.pillar2Sensation.sourceQuote || '',
         grade: (breakdown.pillar2Sensation.grade || 2) as SymptomWeightGrade
       });
     }
 
-    if (breakdown.pillar3ModalityAndCausa.causa.sourceQuote) {
+    // Säule 3: Causa & Modalitäten
+    if (primarySymptom.causaEvent?.trim()) {
       pillarProofs.push({
         pillarKey: 'causa',
         pillarLabel: 'Säule 3 – Causa',
-        queryText: primarySymptom.causaEvent || '',
+        queryText: primarySymptom.causaEvent.trim(),
         matched: breakdown.pillar3ModalityAndCausa.causa.status === 'MATCH',
         status: breakdown.pillar3ModalityAndCausa.causa.status,
         statusReason: breakdown.pillar3ModalityAndCausa.causa.explanation,
-        author: breakdown.pillar3ModalityAndCausa.causa.sourceAuthor,
-        work: breakdown.pillar3ModalityAndCausa.causa.sourceWork,
+        author: breakdown.pillar3ModalityAndCausa.causa.sourceAuthor || 'William Boericke',
+        work: breakdown.pillar3ModalityAndCausa.causa.sourceWork || 'Materia Medica',
         chapter: 'Causa & Auslöser',
-        quote: breakdown.pillar3ModalityAndCausa.causa.sourceQuote,
+        quote: breakdown.pillar3ModalityAndCausa.causa.sourceQuote || '',
         grade: 4
       });
     }
 
-    if (breakdown.pillar4Concomitants.sourceQuote) {
+    const modQuery = [primarySymptom.modalitiesWorse, primarySymptom.modalitiesBetter, primarySymptom.modalities].filter(Boolean).join('; ');
+    if (modQuery.trim()) {
+      const bestModProof = breakdown.pillar3ModalityAndCausa.modalityWorse?.sourceQuote
+        ? breakdown.pillar3ModalityAndCausa.modalityWorse
+        : breakdown.pillar3ModalityAndCausa.modalityBetter?.sourceQuote
+        ? breakdown.pillar3ModalityAndCausa.modalityBetter
+        : breakdown.pillar3ModalityAndCausa.modalityGeneral;
+
+      pillarProofs.push({
+        pillarKey: 'modalities',
+        pillarLabel: 'Säule 3 – WANN / Modalitäten',
+        queryText: modQuery.trim(),
+        matched: breakdown.pillar3ModalityAndCausa.overallStatus === 'MATCH',
+        status: breakdown.pillar3ModalityAndCausa.overallStatus,
+        statusReason: bestModProof?.explanation || (breakdown.pillar3ModalityAndCausa.overallStatus === 'MATCH' ? 'Modalität in Primärquellen bestätigt.' : 'Modalität nicht spezifisch verzeichnet.'),
+        author: bestModProof?.sourceAuthor || 'William Boericke',
+        work: bestModProof?.sourceWork || 'Materia Medica',
+        chapter: (bestModProof as any)?.sourceChapter || 'Modalitäten (< / >)',
+        quote: bestModProof?.sourceQuote || '',
+        grade: (bestModProof?.grade || 3) as SymptomWeightGrade
+      });
+    }
+
+    // Säule 4: WAS NOCH (Begleitsymptome & Gemüt)
+    const concomQuery = [primarySymptom.concomitants?.trim(), primarySymptom.mind?.trim()].filter(Boolean).join('; ');
+    if (concomQuery) {
       pillarProofs.push({
         pillarKey: 'concomitants',
         pillarLabel: 'Säule 4 – WAS NOCH',
-        queryText: primarySymptom.concomitants || '',
+        queryText: concomQuery,
         matched: breakdown.pillar4Concomitants.status === 'MATCH',
         status: breakdown.pillar4Concomitants.status,
         statusReason: breakdown.pillar4Concomitants.explanation,
-        author: breakdown.pillar4Concomitants.sourceAuthor,
-        work: breakdown.pillar4Concomitants.sourceWork,
-        chapter: breakdown.pillar4Concomitants.sourceChapter,
-        quote: breakdown.pillar4Concomitants.sourceQuote,
-        grade: (breakdown.pillar4Concomitants.grade || 2) as SymptomWeightGrade
+        author: breakdown.pillar4Concomitants.sourceAuthor || 'William Boericke',
+        work: breakdown.pillar4Concomitants.sourceWork || 'Materia Medica',
+        chapter: breakdown.pillar4Concomitants.sourceChapter || 'Begleitsymptome & Gemüt',
+        quote: breakdown.pillar4Concomitants.sourceQuote || '',
+        grade: (breakdown.pillar4Concomitants.grade || (breakdown.pillar4Concomitants.status === 'MATCH' ? 3 : 0)) as SymptomWeightGrade
       });
     }
 
@@ -2273,7 +2469,8 @@ export function performSubtractiveFunnelCascade(
       bogerEntry,
       remedyNormId,
       remedyLatinNorm,
-      remedyCommonNorm
+      remedyCommonNorm,
+      language
     );
   };
 
