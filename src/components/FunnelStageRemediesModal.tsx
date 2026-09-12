@@ -88,6 +88,17 @@ export const FunnelStageRemediesModal: React.FC<FunnelStageRemediesModalProps> =
     return filteredRemedies.slice(start, start + ITEMS_PER_PAGE);
   }, [filteredRemedies, validCurrentPage]);
 
+  const getStageTitle = (stepNumber: number, fallbackTitle: string) => {
+    switch (stepNumber) {
+      case 1: return t('repertoriumFunnelStage1Title');
+      case 2: return t('repertoriumFunnelStage2Title');
+      case 3: return t('repertoriumFunnelStage3Title');
+      case 4: return t('repertoriumFunnelStage4Title');
+      case 5: return t('repertoriumFunnelStage5Title');
+      default: return fallbackTitle;
+    }
+  };
+
   if (!isOpen || !step) return null;
 
   const eliminatedCount = Math.max(0, step.countBefore - step.countAfter);
@@ -109,7 +120,7 @@ export const FunnelStageRemediesModal: React.FC<FunnelStageRemediesModalProps> =
                 {step.stepNumber}
               </span>
               <h2 className="text-sm md:text-base font-bold text-slate-900 truncate">
-                {step.title}
+                {getStageTitle(step.stepNumber, step.title)}
               </h2>
               <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-300 shrink-0">
                 {t('repertoriumFunnelStageModalRemediesCount', { count: step.countAfter })}
@@ -121,7 +132,7 @@ export const FunnelStageRemediesModal: React.FC<FunnelStageRemediesModalProps> =
               )}
             </div>
             <p className="text-xs text-slate-500 truncate mt-0.5">
-              <span className="font-semibold text-slate-700">Kriterium: </span>
+              <span className="font-semibold text-slate-700">{t('repertoriumCriterionLabel')}: </span>
               <span className="italic text-teal-900 font-medium">„{step.inputCriterion}“</span>
             </p>
           </div>

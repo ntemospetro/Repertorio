@@ -51,6 +51,7 @@ export interface MateriaMedicaEntry {
   latinName: string;
   categoryKey: RemedyCategoryKey;
   isPolychrest?: boolean;
+  ist_polychrest?: boolean;
   importanceTier?: number;
   translations: Record<LanguageCode, LocalizedRemedyContent>;
 }
@@ -60,7 +61,122 @@ export interface LocalizedRemedy extends LocalizedRemedyContent {
   latinName: string;
   categoryKey: RemedyCategoryKey;
   isPolychrest?: boolean;
+  ist_polychrest?: boolean;
   importanceTier?: number;
+}
+
+/**
+ * Kanonische Liste der 64 klassischen Polychreste nach Hahnemann, Kent, Bönninghausen & Boericke
+ */
+export const CLASSICAL_POLYCHREST_NAMES: string[] = [
+  'Aconitum napellus',
+  'Agaricus muscarius',
+  'Ailanthus glandulosa',
+  'Allium cepa',
+  'Aloe socotrina',
+  'Alumina',
+  'Ammonium carbonicum',
+  'Anacardium orientale',
+  'Antimonium crudum',
+  'Antimonium tartaricum',
+  'Apis mellifica',
+  'Argentum nitricum',
+  'Arnica montana',
+  'Arsenicum album',
+  'Aurum metallicum',
+  'Baryta carbonica',
+  'Belladonna',
+  'Borax veneta',
+  'Bryonia cretica',
+  'Caladium seguinum',
+  'Calcium carbonicum',
+  'Calcium fluoricum',
+  'Calcium phosphoricum',
+  'Calendula officinalis',
+  'Camphora',
+  'Cannabis sativa',
+  'Cantharis vesicatoria',
+  'Carbo vegetabilis',
+  'Causticum',
+  'Chamomilla',
+  'Chelidonium majus',
+  'Cinchona pubescens',
+  'Cicuta virosa',
+  'Cina maritima',
+  'Cocculus indicus',
+  'Coffea cruda',
+  'Colchicum autumnale',
+  'Colocynthis',
+  'Conium maculatum',
+  'Crotalus horridus',
+  'Cuprum metallicum',
+  'Digitalis purpurea',
+  'Drosera rotundifolia',
+  'Dulcamara',
+  'Ferrum metallicum',
+  'Gelsemium sempervirens',
+  'Graphites',
+  'Helleborus niger',
+  'Hepar sulfuris',
+  'Hyoscyamus niger',
+  'Ignatia amara',
+  'Ipecacuanha',
+  'Kali carbonicum',
+  'Kreosotum',
+  'Lachesis muta',
+  'Ledum palustre',
+  'Lycopodium clavatum',
+  'Magnesium carbonicum',
+  'Magnesium phosphoricum',
+  'Mercurius solubilis',
+  'Natrium muriaticum',
+  'Natrium sulfuricum',
+  'Nitricum acidum',
+  'Nux vomica',
+  // Weitere klassische Haupt-Polychreste
+  'Phosphorus',
+  'Pulsatilla pratensis',
+  'Rhus toxicodendron',
+  'Sepia officinalis',
+  'Silicea',
+  'Sulfur',
+  'Thuja occidentalis',
+  'Veratrum album',
+  'Staphysagria',
+  'Opium'
+];
+
+export function isClassicalPolychrest(id: string, latinName?: string): boolean {
+  if (!id && !latinName) return false;
+  const normId = (id || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const normLatin = (latinName || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+  for (const name of CLASSICAL_POLYCHREST_NAMES) {
+    const normName = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const firstWord = name.toLowerCase().split(/\s+/)[0];
+    const normFirst = firstWord.replace(/[^a-z0-9]/g, '');
+
+    if (normId === normName || normLatin === normName) return true;
+    if (normId.startsWith(normName) || normLatin.startsWith(normName)) return true;
+
+    // Synonyme & Abkürzungen
+    if (name.includes('Cinchona') && (normId.includes('china') || normId.includes('cinchona') || normLatin.includes('china') || normLatin.includes('cinchona'))) return true;
+    if (name.includes('Calcium carbonicum') && (normId.includes('calcarea') || normLatin.includes('calcarea') || normId.includes('calciumcarb') || normLatin.includes('calciumcarb'))) return true;
+    if (name.includes('Hepar') && (normId.includes('hepar') || normLatin.includes('hepar'))) return true;
+    if (name.includes('Mercurius') && (normId.includes('mercurius') || normLatin.includes('mercurius'))) return true;
+    if (name.includes('Sulfur') && (normId.includes('sulfur') || normId.includes('sulphur') || normLatin.includes('sulfur') || normLatin.includes('sulphur'))) return true;
+    if (name.includes('Nitricum') && (normId.includes('nitricum') || normLatin.includes('nitricum') || normId.includes('nitac'))) return true;
+    if (name.includes('Bryonia') && (normId.includes('bryonia') || normLatin.includes('bryonia'))) return true;
+    if (name.includes('Rhus') && (normId.includes('rhus') || normLatin.includes('rhus'))) return true;
+    if (name.includes('Antimonium') && (normId.includes('antimonium') || normLatin.includes('antimonium'))) return true;
+    if (name.includes('Baryta') && (normId.includes('baryta') || normLatin.includes('baryta'))) return true;
+    if (name.includes('Magnesium') && (normId.includes('magnesium') || normLatin.includes('magnesium') || normId.includes('magnesia') || normLatin.includes('magnesia'))) return true;
+
+    if (normFirst.length >= 4 && (normId.startsWith(normFirst) || normLatin.startsWith(normFirst))) {
+      return true;
+    }
+  }
+  return false;
 }
 
 export const MATERIA_MEDICA_ENTRIES: MateriaMedicaEntry[] = [
@@ -96,11 +212,13 @@ export const ALL_REMEDIES_DATABASE = MATERIA_MEDICA_ENTRIES;
 
 export function getLocalizedRemedy(entry: MateriaMedicaEntry, lang: LanguageCode): LocalizedRemedy {
   const content = entry.translations[lang] || entry.translations.en || entry.translations.de;
+  const isPoly = Boolean(entry.isPolychrest || entry.ist_polychrest || isClassicalPolychrest(entry.id, entry.latinName));
   return {
     id: entry.id,
     latinName: entry.latinName,
     categoryKey: entry.categoryKey,
-    isPolychrest: entry.isPolychrest,
+    isPolychrest: isPoly,
+    ist_polychrest: isPoly,
     importanceTier: entry.importanceTier,
     ...content
   };

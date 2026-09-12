@@ -2045,6 +2045,8 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
       {panelTab === 'repertorium' && (
         <RepertoriumView
           therapist={therapist}
+          currentCase={currentCase}
+          onSaveCase={(saved) => setCurrentCase(saved)}
           onSelectRemedyForCase={(remedyName, potency) => {
             handleSelectTab('cases');
             setCurrentCase(prev => ({

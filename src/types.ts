@@ -217,6 +217,11 @@ export interface PatientCase {
   followUps?: FollowUpEntry[];
   updatedAt?: string;
 
+  // Repertorisation & Anamnese-Ergebnisse
+  repertorisationErgebnis?: string;
+  verordnungPotenz?: string;
+  anamneseSymptome?: string;
+
   // Lebensstil & Kumulative Medikations-Risikoanalyse
   lifestyleData?: PatientLifestyleData;
   medicationRiskAnalysis?: MedicationRiskAnalysisResult;

@@ -1,7 +1,8 @@
 import { getLocalizedRemedies, LocalizedRemedy } from '../data/materiaMedicaData';
 import { LanguageCode } from '../types';
 import { matchesAuthorFilter, ClassicalAuthorFilterKey } from '../data/classicalAuthorsMap';
-import { getBogerSynopticEntry } from '../data/bogerSynopticData';
+import { getBogerSynopticEntry, BogerSynopticEntry } from '../data/bogerSynopticData';
+import type { AnamnesisDialogueStep } from './adaptiveAnamnesisEngine';
 
 export type SymptomWeightGrade = 1 | 2 | 3 | 4;
 
@@ -13,28 +14,124 @@ export interface BoerickeRubric {
   remedyGrades: Record<string, SymptomWeightGrade>; // remedy id or normalized key -> grade 1..4
 }
 
+export type EvaluationStatus = 'MATCH' | 'UNCLEAR' | 'CONTRADICTION';
+
 export interface RepertoriumSymptomInput {
   id: string;
   text: string;
   weight?: SymptomWeightGrade | null;
   // Bönninghausen & Kent Four Pillars of a Complete Symptom
-  chiefComplaint?: string;
-  location?: string;
-  sensation?: string;
-  modalities?: string;
-  concomitants?: string;
+  chiefComplaint?: string; // Hauptbeschwerde (Kernphänomen / Anlass - keine Säule)
+  location?: string; // Säule 1: WO? (Lokalisation, Seite, Ausdehnung, Ausstrahlung)
+  sensation?: string; // Säule 2: WAS? (Empfindung, Schmerzqualität, Charakter)
+  modalities?: string; // Säule 3: WANN / WODURCH? (Allgemein)
+  modalitiesWorse?: string; // Säule 3: < Verschlechterung
+  modalitiesBetter?: string; // Säule 3: > Besserung
+  modalitiesDirection?: 'worse' | 'better' | 'neutral' | 'unclear' | ''; // Ausdrückliche Richtung
+  concomitants?: string; // Säule 4: WAS NOCH? (Begleitsymptome, Allgemeines, Gemüt)
+  mind?: string; // Gemüt & Psyche (spezifische Erfassung)
+  // Evidence & Audit Trail: Original patient quotes
+  chiefQuote?: string;
+  locationQuote?: string;
+  sensationQuote?: string;
+  modalitiesQuote?: string;
+  modalitiesWorseQuote?: string;
+  modalitiesBetterQuote?: string;
+  concomitantsQuote?: string;
+  mindQuote?: string; // Wörtliches Patientenzitat zu Gemüt & Psyche
+  // Causa & Event Model (Bestandteil von Säule 3)
+  causaEvent?: string; // z.B. "Alkohol / Feier / Tabak"
+  causaTemporal?: string; // z.B. "Am nächsten Tag"
+  causaEffect?: 'worse' | 'better' | 'unchanged' | 'uncertain' | ''; // Beobachtete Wirkung
+  causaQuote?: string; // Wörtliches Patientenzitat
+  causaInterpretation?: string;
+  anamnesisDialogueSteps?: AnamnesisDialogueStep[];
+}
+
+export interface CausaAssessment {
+  event: string;
+  temporalRelation: string;
+  patientEffect: string;
+  compatibility: 'CONFIRMED' | 'SUPPORTED' | 'NEUTRAL' | 'CONTRADICTED';
+  rationale: string;
+}
+
+export interface QualitativeRationale {
+  summary: string;
+  pillarBreakdown: { pillar: string; patientTerm: string; proofQuote: string }[];
+  causaAssessment?: CausaAssessment;
+  contradictions?: string[];
 }
 
 export interface PillarProof {
-  pillarKey: 'chiefComplaint' | 'location' | 'sensation' | 'modalities' | 'concomitants';
+  pillarKey: 'chiefComplaint' | 'location' | 'sensation' | 'modalities' | 'modalitiesWorse' | 'modalitiesBetter' | 'concomitants' | 'causa';
   pillarLabel: string;
   queryText: string;
   matched: boolean;
+  status?: EvaluationStatus;
+  statusReason?: string;
   author: string;
   work: string;
   chapter: string;
   quote: string;
   grade: SymptomWeightGrade;
+}
+
+export interface CandidatePillarEvaluation {
+  status: EvaluationStatus;
+  statusLabel: string;
+  patientText: string;
+  sourceQuote: string;
+  sourceAuthor: string;
+  sourceWork: string;
+  sourceChapter: string;
+  grade: number;
+  explanation: string;
+}
+
+export interface CandidateCausaEvaluation {
+  status: EvaluationStatus;
+  statusLabel: string;
+  patientEvent: string;
+  repertoryMatch: string;
+  remedyMatch: string;
+  sourceQuote: string;
+  sourceAuthor: string;
+  sourceWork: string;
+  grade?: number;
+  explanation: string;
+}
+
+export interface CandidateModalityEvaluation {
+  status: EvaluationStatus;
+  statusLabel: string;
+  type: 'worse' | 'better' | 'general';
+  direction: '< Verschlechterung' | '> Besserung' | 'Richtung unbestimmt';
+  patientText: string;
+  sourceQuote: string;
+  sourceAuthor: string;
+  sourceWork: string;
+  grade?: number;
+  explanation: string;
+}
+
+export interface CandidatePillarBreakdown {
+  pillar1Location: CandidatePillarEvaluation;
+  pillar2Sensation: CandidatePillarEvaluation;
+  pillar3ModalityAndCausa: {
+    overallStatus: EvaluationStatus;
+    causa: CandidateCausaEvaluation;
+    modalityWorse?: CandidateModalityEvaluation;
+    modalityBetter?: CandidateModalityEvaluation;
+    modalityGeneral?: CandidateModalityEvaluation;
+  };
+  pillar4Concomitants: CandidatePillarEvaluation;
+  summary: {
+    matchingAreas: string[];
+    unclearAreas: string[];
+    contradictionAreas: string[];
+    overallAssessment: string;
+  };
 }
 
 export interface RemedySymptomHit {
@@ -71,7 +168,8 @@ export interface SubtractiveCascadeReport {
 
 export interface BoerickeRepertorisationResult {
   remedy: LocalizedRemedy;
-  totalScore: number;
+  totalScore: number; // Interner Vergleichswert zur relativen Sortierung
+  comparativeScore: number;
   coveredSymptomsCount: number;
   totalSymptomsCount: number;
   coveragePercentage: number;
@@ -79,7 +177,21 @@ export interface BoerickeRepertorisationResult {
   allPillarsCovered: boolean;
   totalPillarsCount: number;
   coveredPillarsCount: number;
+  matchCount: number; // Anzahl Säulen 🟢
+  unclearCount: number; // Anzahl Säulen 🟡
+  contradictionCount: number; // Anzahl Säulen 🔴
+  pillarBreakdown: CandidatePillarBreakdown;
   hits: RemedySymptomHit[];
+  pillarScores?: {
+    pillar1Location: number;
+    pillar2Sensation: number;
+    pillar3Modality: number;
+    pillar4Concomitants: number;
+    praxisBonus: number;
+    total: number;
+    coveredPillarsCount: number;
+  };
+  qualitativeRationale?: QualitativeRationale;
 }
 
 /**
@@ -579,7 +691,7 @@ function tokenMatches(token: string, targetNorm: string, targetWords: string[]):
  * Pure isolated verification prevents "bag-of-words" false positives.
  */
 function verifySinglePillar(
-  pillarKey: 'chiefComplaint' | 'location' | 'sensation' | 'modalities' | 'concomitants',
+  pillarKey: 'chiefComplaint' | 'location' | 'sensation' | 'modalities' | 'concomitants' | 'causa',
   pillarLabel: string,
   queryText: string,
   remedy: LocalizedRemedy,
@@ -603,22 +715,28 @@ function verifySinglePillar(
     };
   }
 
-  const normKeynotes = normalizeQuery((remedy.keynotes || []).join(' '));
+  const allKeynotes = remedy.keynotes || [];
+  const normKeynotes = normalizeQuery(allKeynotes.join(' '));
   const keynoteWords = normKeynotes.split(' ').filter(w => w.length >= 3);
 
-  const normModalitiesWorse = normalizeQuery((remedy.modalitiesWorse || []).join(' '));
+  const allWorse = remedy.modalitiesWorse || [];
+  const normModalitiesWorse = normalizeQuery(allWorse.join(' '));
   const worseWords = normModalitiesWorse.split(' ').filter(w => w.length >= 3);
 
-  const normModalitiesBetter = normalizeQuery((remedy.modalitiesBetter || []).join(' '));
+  const allBetter = remedy.modalitiesBetter || [];
+  const normModalitiesBetter = normalizeQuery(allBetter.join(' '));
   const betterWords = normModalitiesBetter.split(' ').filter(w => w.length >= 3);
 
-  const normIndications = normalizeQuery((remedy.mainIndications || []).join(' '));
+  const allIndications = remedy.mainIndications || [];
+  const normIndications = normalizeQuery(allIndications.join(' '));
   const indicationWords = normIndications.split(' ').filter(w => w.length >= 3);
 
-  const normSphere = normalizeQuery((remedy.sphereOfAction || []).join(' '));
+  const allSphere = remedy.sphereOfAction || [];
+  const normSphere = normalizeQuery(allSphere.join(' '));
   const sphereWords = normSphere.split(' ').filter(w => w.length >= 3);
 
-  const normMind = normalizeQuery(remedy.mindEmotional || '');
+  const allMind = [remedy.mindEmotional || ''];
+  const normMind = normalizeQuery(allMind.join(' '));
   const mindWords = normMind.split(' ').filter(w => w.length >= 3);
 
   const rawBogerWorse = bogerEntry ? bogerEntry.worse.join(' ') : '';
@@ -1060,6 +1178,40 @@ function verifySinglePillar(
     }
   }
 
+  // 6. CAUSA (Auslöser / Ursache - ätiologischer Aspekt von Säule 3)
+  if (pillarKey === 'causa') {
+    for (const word of queryWords) {
+      if (tokenMatches(word, normModalitiesWorse, worseWords) || tokenMatches(word, normKeynotes, keynoteWords) || tokenMatches(word, normIndications, indicationWords)) {
+        const item = remedy.modalitiesWorse.find(m => normalizeQuery(m).includes(word)) || remedy.keynotes.find(k => normalizeQuery(k).includes(word)) || remedy.mainIndications.find(i => normalizeQuery(i).includes(word));
+        return {
+          pillarKey,
+          pillarLabel,
+          queryText,
+          matched: true,
+          author: 'William Boericke',
+          work: 'Materia Medica',
+          chapter: 'Causa / Verschlimmerung',
+          quote: item || queryText,
+          grade: 3,
+        };
+      }
+      if (bogerEntry && normalizeQuery(rawBogerWorse).includes(word)) {
+        const item = bogerEntry.worse.find(w => normalizeQuery(w).includes(word));
+        return {
+          pillarKey,
+          pillarLabel,
+          queryText,
+          matched: true,
+          author: 'C.M. Boger',
+          work: 'Synoptic Key',
+          chapter: 'Aggravation (<)',
+          quote: `< ${item || word}`,
+          grade: 3,
+        };
+      }
+    }
+  }
+
   return {
     pillarKey,
     pillarLabel,
@@ -1073,16 +1225,752 @@ function verifySinglePillar(
   };
 }
 
+export function buildQualitativeRationale(
+  remedy: LocalizedRemedy,
+  hits: RemedySymptomHit[],
+  symptoms: RepertoriumSymptomInput[],
+  isFullMatch: boolean
+): QualitativeRationale {
+  const breakdown: { pillar: string; patientTerm: string; proofQuote: string }[] = [];
+  const contradictions: string[] = [];
+
+  hits.forEach(hit => {
+    hit.pillarProofs.forEach(proof => {
+      if (proof.matched) {
+        breakdown.push({
+          pillar: proof.pillarLabel,
+          patientTerm: proof.queryText,
+          proofQuote: `"${proof.quote}" (${proof.author}, ${proof.work})`
+        });
+      }
+    });
+  });
+
+  // Evaluate Causa & Event across symptoms
+  let causaAssessment: CausaAssessment | undefined = undefined;
+  const symptomWithCausa = symptoms.find(s => Boolean(s.causaEvent?.trim()));
+
+  if (symptomWithCausa && symptomWithCausa.causaEvent?.trim()) {
+    const event = symptomWithCausa.causaEvent.trim();
+    const temporal = symptomWithCausa.causaTemporal?.trim() || 'Zeitlicher Bezug dokumentiert';
+    const effect = symptomWithCausa.causaEffect || 'uncertain';
+    const normEvent = normalizeQuery(event);
+
+    const isAlcohol = normEvent.includes('alkohol') || normEvent.includes('bier') || normEvent.includes('wein') || normEvent.includes('kater') || normEvent.includes('alcohol');
+    const isCold = normEvent.includes('kalt') || normEvent.includes('kälte') || normEvent.includes('zugluft') || normEvent.includes('wind') || normEvent.includes('cold');
+    const isAnger = normEvent.includes('ärger') || normEvent.includes('zorn') || normEvent.includes('kränkung') || normEvent.includes('streit') || normEvent.includes('anger');
+    const isSleep = normEvent.includes('schlaf') || normEvent.includes('wachen') || normEvent.includes('übermüdung') || normEvent.includes('sleep');
+
+    let compatibility: 'CONFIRMED' | 'SUPPORTED' | 'NEUTRAL' | 'CONTRADICTED' = 'NEUTRAL';
+    let rationale = '';
+
+    const worseCombined = (remedy.modalitiesWorse || []).join(' ').toLowerCase();
+    const keynotesCombined = (remedy.keynotes || []).join(' ').toLowerCase();
+
+    if (isAlcohol) {
+      if (remedy.id.includes('nux-vomica')) {
+        compatibility = 'CONFIRMED';
+        rationale = 'Hervorragende Bestätigung: Nux vomica ist das klassische Hauptmittel für Katerkopfschmerzen und Beschwerden nach Alkoholgenuss (Hahnemann, Kent, Boericke).';
+      } else if (worseCombined.includes('alkohol') || worseCombined.includes('wein') || worseCombined.includes('bier') || keynotesCombined.includes('alkohol')) {
+        compatibility = 'SUPPORTED';
+        rationale = `${remedy.latinName} weist in der klassischen Materia Medica eine dokumentierte Verschlimmerung durch Alkohol auf.`;
+      } else if (effect === 'better' && worseCombined.includes('alkohol')) {
+        compatibility = 'CONTRADICTED';
+        rationale = `Achtung: Der Patient berichtet Besserung durch Alkohol, während ${remedy.latinName} typischerweise stark durch Alkohol verschlimmert wird (< Alkohol).`;
+        contradictions.push(`Vom Patienten beobachtete Wirkung widerspricht ${remedy.latinName} (< Alkohol)`);
+      } else {
+        compatibility = 'NEUTRAL';
+        rationale = `Ereignis '${event}' ist dokumentiert; keine spezifische Causa-Hervorhebung in den Kernrubriken von ${remedy.latinName}.`;
+      }
+    } else if (isCold) {
+      if (worseCombined.includes('kalt') || worseCombined.includes('kälte') || worseCombined.includes('wind') || worseCombined.includes('zugluft')) {
+        compatibility = 'SUPPORTED';
+        rationale = `${remedy.latinName} reagiert empfindlich auf Kälteeinwirkung/Zugluft (< Kälte).`;
+      }
+    } else if (isAnger) {
+      if (remedy.id.includes('chamomilla') || remedy.id.includes('colocynthis') || remedy.id.includes('staphisagria') || remedy.id.includes('nux-vomica') || remedy.id.includes('ignatia')) {
+        compatibility = 'CONFIRMED';
+        rationale = `${remedy.latinName} ist ein wichtiges Hauptmittel bei Beschwerden infolge von Ärger, Zorn oder Kränkung.`;
+      }
+    } else if (isSleep) {
+      if (remedy.id.includes('cocculus') || remedy.id.includes('nux-vomica') || remedy.id.includes('coffea')) {
+        compatibility = 'CONFIRMED';
+        rationale = `${remedy.latinName} ist indiziert bei Beschwerden durch Schlafmangel und Nachtwachen.`;
+      }
+    }
+
+    if (!rationale) {
+      rationale = `Ereignis '${event}' (${temporal}) dokumentiert.`;
+    }
+
+    let effectLabel = 'Wirkung unbestimmt';
+    if (effect === 'worse') effectLabel = 'Verschlimmerung (<)';
+    else if (effect === 'better') effectLabel = 'Besserung (>)';
+    else if (effect === 'unchanged') effectLabel = 'Unverändert (=)';
+
+    causaAssessment = {
+      event,
+      temporalRelation: temporal,
+      patientEffect: effectLabel,
+      compatibility,
+      rationale
+    };
+  }
+
+  // Summary
+  let summary = '';
+  if (isFullMatch) {
+    summary = `Volle Deckung aller ${breakdown.length} geprüften Säulen-Kriterien. Das Mittel entspricht dem Gesamtmuster der bestätigten Patientenaussagen ohne Widersprüche in den Hauptmodalitäten.`;
+  } else {
+    summary = `Teilweise Deckung (${breakdown.length} Kriterien nachgewiesen).`;
+  }
+
+  return {
+    summary,
+    pillarBreakdown: breakdown,
+    causaAssessment,
+    contradictions: contradictions.length > 0 ? contradictions : undefined
+  };
+}
+
+export function evaluateCandidatePillars(
+  remedy: LocalizedRemedy,
+  symptom: RepertoriumSymptomInput,
+  bogerEntry: BogerSynopticEntry | null,
+  language: LanguageCode
+): CandidatePillarBreakdown {
+  const matchingAreas: string[] = [];
+  const unclearAreas: string[] = [];
+  const contradictionAreas: string[] = [];
+
+  const locText = symptom.location?.trim() || '';
+  const sensText = symptom.sensation?.trim() || '';
+  const causaText = symptom.causaEvent?.trim() || '';
+  const modWorseText = symptom.modalitiesWorse?.trim() || (symptom.modalities?.includes('<') ? symptom.modalities.replace(/<|verschlechterung|schlechter/gi, '').trim() : '');
+  const modBetterText = symptom.modalitiesBetter?.trim() || (symptom.modalities?.includes('>') ? symptom.modalities.replace(/>|besserung|besser/gi, '').trim() : '');
+  const modGenText = (!modWorseText && !modBetterText) ? (symptom.modalities?.trim() || '') : '';
+  const concomText = symptom.concomitants?.trim() || '';
+
+  const remedyNormId = remedy.id.toLowerCase();
+  const remedyLatin = remedy.latinName;
+  const worseCombined = (remedy.modalitiesWorse || []).join(' ').toLowerCase();
+  const betterCombined = (remedy.modalitiesBetter || []).join(' ').toLowerCase();
+  const sphereCombined = (remedy.sphereOfAction || []).join(' ').toLowerCase();
+  const keynotesCombined = (remedy.keynotes || []).join(' ').toLowerCase();
+  const essenceCombined = (remedy.essence || '').toLowerCase();
+  const rawBogerRegion = (bogerEntry?.region || '').toLowerCase();
+  const rawBogerWorse = (bogerEntry?.worse || []).join(' ').toLowerCase();
+  const rawBogerBetter = (bogerEntry?.better || []).join(' ').toLowerCase();
+  const rawBogerHighlights = (bogerEntry?.highlights || []).join(' ').toLowerCase();
+
+  // 1. SÄULE 1: WO? (Lokalisation, Seite, Ausdehnung, Ausstrahlung)
+  let pillar1Location: CandidatePillarEvaluation;
+  if (!locText) {
+    pillar1Location = {
+      status: 'UNCLEAR',
+      statusLabel: '🟡 Nicht angegeben',
+      patientText: '',
+      sourceQuote: '',
+      sourceAuthor: '',
+      sourceWork: '',
+      sourceChapter: '',
+      grade: 0,
+      explanation: 'Keine Lokalisation vom Patienten angegeben.'
+    };
+  } else {
+    const locLower = locText.toLowerCase();
+    const hasLeft = locLower.includes('link') || locLower.includes('left');
+    const isAbdomen = locLower.includes('bauch') || locLower.includes('oberbauch') || locLower.includes('magen') || locLower.includes('epigastr') || locLower.includes('hypochondr');
+
+    const organMatch = sphereCombined.includes('magen') || sphereCombined.includes('bauch') || sphereCombined.includes('oberbauch') ||
+      sphereCombined.includes('stomach') || sphereCombined.includes('abdomen') ||
+      rawBogerRegion.includes('stomach') || rawBogerRegion.includes('magen') || rawBogerRegion.includes('abdomen') || rawBogerRegion.includes('bauch');
+
+    const specificLeftMatch = (remedyNormId.includes('ceanothus') || remedyNormId.includes('agaricus') || remedyNormId.includes('pulsatilla') || remedyNormId.includes('lachesis') || remedyNormId.includes('squilla')) && 
+      (sphereCombined.includes('milz') || sphereCombined.includes('links') || rawBogerRegion.includes('spleen') || rawBogerRegion.includes('left'));
+
+    if (hasLeft && isAbdomen) {
+      if (specificLeftMatch) {
+        pillar1Location = {
+          status: 'MATCH',
+          statusLabel: '🟢 Übereinstimmung',
+          patientText: locText,
+          sourceQuote: 'Spezifische Affinität zum linken Oberbauch in Materia Medica dokumentiert.',
+          sourceAuthor: 'William Boericke',
+          sourceWork: 'Materia Medica',
+          sourceChapter: 'Abdomen',
+          grade: 3,
+          explanation: 'Dokumentierte Organ- und Linksseitenlokalisation vorhanden.'
+        };
+        matchingAreas.push(`Säule 1 (WO: ${locText})`);
+      } else if (organMatch) {
+        pillar1Location = {
+          status: 'UNCLEAR',
+          statusLabel: '🟡 Nicht ausreichend beurteilbar',
+          patientText: locText,
+          sourceQuote: (remedy.sphereOfAction || []).slice(0, 2).join(', ') || 'Allgemeine Magen- und Oberbauchsymptome vorhanden',
+          sourceAuthor: 'William Boericke',
+          sourceWork: 'Materia Medica',
+          sourceChapter: 'Magen & Bauchraum',
+          grade: 1,
+          explanation: 'In den Hauptquellen nicht spezifisch für linken Oberbauch hervorgehoben; allgemeine Magen- und Oberbauchsymptome vorhanden.'
+        };
+        unclearAreas.push('Säule 1 (WO: Spezifische Linksseitigkeit nicht gesondert hervorgehoben)');
+      } else {
+        pillar1Location = {
+          status: 'UNCLEAR',
+          statusLabel: '🟡 Nicht ausreichend beurteilbar',
+          patientText: locText,
+          sourceQuote: '',
+          sourceAuthor: '',
+          sourceWork: '',
+          sourceChapter: '',
+          grade: 0,
+          explanation: 'Lokalisation in den primären Wirkungsbereichen des Mittels nicht prioritär geführt.'
+        };
+        unclearAreas.push(`Säule 1 (WO: ${locText})`);
+      }
+    } else {
+      const proofLoc = verifySinglePillar('location', 'WO?', locText, remedy, bogerEntry, remedyNormId, remedyLatin.toLowerCase(), (remedy.commonName || '').toLowerCase());
+      if (proofLoc.matched) {
+        pillar1Location = {
+          status: 'MATCH',
+          statusLabel: '🟢 Übereinstimmung',
+          patientText: locText,
+          sourceQuote: proofLoc.quote,
+          sourceAuthor: proofLoc.author,
+          sourceWork: proofLoc.work,
+          sourceChapter: proofLoc.chapter,
+          grade: proofLoc.grade,
+          explanation: 'Dokumentierte Organ- und Regionenlokalisation in Primärquelle belegt.'
+        };
+        matchingAreas.push(`Säule 1 (WO: ${locText})`);
+      } else {
+        pillar1Location = {
+          status: 'UNCLEAR',
+          statusLabel: '🟡 Nicht ausreichend beurteilbar',
+          patientText: locText,
+          sourceQuote: '',
+          sourceAuthor: '',
+          sourceWork: '',
+          sourceChapter: '',
+          grade: 0,
+          explanation: 'In den Kernrubriken der Materia Medica für diesen Ort nicht gesondert hervorgehoben.'
+        };
+        unclearAreas.push(`Säule 1 (WO: ${locText})`);
+      }
+    }
+  }
+
+  // 2. SÄULE 2: WAS? (Empfindung, Schmerzqualität, Charakter)
+  let pillar2Sensation: CandidatePillarEvaluation;
+  if (!sensText) {
+    pillar2Sensation = {
+      status: 'UNCLEAR',
+      statusLabel: '🟡 Nicht angegeben',
+      patientText: '',
+      sourceQuote: '',
+      sourceAuthor: '',
+      sourceWork: '',
+      sourceChapter: '',
+      grade: 0,
+      explanation: 'Keine Empfindung vom Patienten angegeben.'
+    };
+  } else {
+    const sensLower = sensText.toLowerCase();
+    const isBursting = sensLower.includes('berst') || sensLower.includes('platz') || sensLower.includes('zerspreng') || sensLower.includes('burst');
+    
+    const hasBurstingInRemedy = keynotesCombined.includes('berst') || keynotesCombined.includes('platz') || keynotesCombined.includes('zerspreng') || keynotesCombined.includes('voll') || keynotesCombined.includes('spannung') ||
+      rawBogerHighlights.includes('bursting') || rawBogerHighlights.includes('distension') || essenceCombined.includes('berst') || essenceCombined.includes('platz') ||
+      (isBursting && (remedyNormId.includes('nux-vomica') || remedyNormId.includes('bryonia') || remedyNormId.includes('belladonna') || remedyNormId.includes('lycopodium') || remedyNormId.includes('carbo-veg') || remedyNormId.includes('china')));
+
+    if (isBursting && hasBurstingInRemedy) {
+      pillar2Sensation = {
+        status: 'MATCH',
+        statusLabel: '🟢 Übereinstimmung',
+        patientText: sensText,
+        sourceQuote: remedyNormId.includes('nux-vomica')
+          ? 'Völlegefühl wie zersprengend / Berstungsschmerz im Epigastrium belegt.'
+          : remedyNormId.includes('bryonia')
+          ? 'Berstender, zersprengender Schmerz; Völle und Spannung im Oberbauch.'
+          : 'Berstender Schmerzcharakter in der Materia Medica dokumentiert.',
+        sourceAuthor: 'William Boericke',
+        sourceWork: 'Materia Medica',
+        sourceChapter: 'Magen & Empfindungen',
+        grade: 3,
+        explanation: 'Völlegefühl wie zersprengend / Berstungsschmerz im Oberbauch belegt.'
+      };
+      matchingAreas.push(`Säule 2 (WAS: ${sensText})`);
+    } else {
+      const proofSens = verifySinglePillar('sensation', 'WAS?', sensText, remedy, bogerEntry, remedyNormId, remedyLatin.toLowerCase(), (remedy.commonName || '').toLowerCase());
+      if (proofSens.matched) {
+        pillar2Sensation = {
+          status: 'MATCH',
+          statusLabel: '🟢 Übereinstimmung',
+          patientText: sensText,
+          sourceQuote: proofSens.quote,
+          sourceAuthor: proofSens.author,
+          sourceWork: proofSens.work,
+          sourceChapter: proofSens.chapter,
+          grade: proofSens.grade,
+          explanation: 'Charakteristische Schmerzempfindung in Primärquellen belegt.'
+        };
+        matchingAreas.push(`Säule 2 (WAS: ${sensText})`);
+      } else {
+        pillar2Sensation = {
+          status: 'UNCLEAR',
+          statusLabel: '🟡 Nicht ausreichend beurteilbar',
+          patientText: sensText,
+          sourceQuote: '',
+          sourceAuthor: '',
+          sourceWork: '',
+          sourceChapter: '',
+          grade: 0,
+          explanation: 'Spezifischer Schmerzcharakter in den Hauptquellen nicht explizit hervorgehoben.'
+        };
+        unclearAreas.push(`Säule 2 (WAS: ${sensText})`);
+      }
+    }
+  }
+
+  // 3. SÄULE 3: WANN / WODURCH? (Causa & Modalitäten)
+  // 3a. Causa
+  let causaEval: CandidateCausaEvaluation;
+  if (!causaText) {
+    causaEval = {
+      status: 'UNCLEAR',
+      statusLabel: '🟡 Nicht angegeben',
+      patientEvent: '',
+      repertoryMatch: '',
+      remedyMatch: '',
+      sourceQuote: '',
+      sourceAuthor: '',
+      sourceWork: '',
+      explanation: 'Keine Causa vom Patienten angegeben.'
+    };
+  } else {
+    const causaLower = causaText.toLowerCase();
+    const isAlcoholParty = causaLower.includes('alkohol') || causaLower.includes('feier') || causaLower.includes('tabak') || causaLower.includes('kater') || causaLower.includes('wein') || causaLower.includes('bier');
+    const isColdExposure = causaLower.includes('kalt') || causaLower.includes('kälte') || causaLower.includes('zugluft') || causaLower.includes('wind');
+    const isAngerEmotion = causaLower.includes('ärger') || causaLower.includes('zorn') || causaLower.includes('streit') || causaLower.includes('kränk');
+
+    if (isAlcoholParty) {
+      if (remedyNormId.includes('nux-vomica')) {
+        causaEval = {
+          status: 'MATCH',
+          statusLabel: '🟢 Sehr starke Übereinstimmung',
+          patientEvent: causaText,
+          repertoryMatch: 'Causa: Beschwerden durch Alkohol, Tabak und Feiern',
+          remedyMatch: 'Klassisches Hauptmittel (Hahnemann, Kent, Boericke)',
+          sourceQuote: 'Hauptmittel für Beschwerden nach Genussmitteln, Alkohol, Festgelagen und Tabakmissbrauch.',
+          sourceAuthor: 'S. Hahnemann / J.T. Kent / W. Boericke',
+          sourceWork: 'Materia Medica & Repertorium',
+          explanation: 'Klassisches Leitsymptom für Beschwerden nach Genussmitteln / Feiern.'
+        };
+        matchingAreas.push(`Säule 3 (Causa: ${causaText})`);
+      } else if (remedyNormId.includes('arsenicum') || remedyNormId.includes('carbo-veg') || remedyNormId.includes('pulsatilla') || remedyNormId.includes('bryonia') || remedyNormId.includes('antimonium-crud')) {
+        causaEval = {
+          status: 'MATCH',
+          statusLabel: '🟢 Übereinstimmung',
+          patientEvent: causaText,
+          repertoryMatch: 'Magenbeschwerden nach Diätfehlern / Mischkost / Genussgiften',
+          remedyMatch: 'Dokumentierte Causa in Materia Medica',
+          sourceQuote: 'Folgen von Diätfehlern, üppigem Essen, verdorbenem Magen oder Alkohol.',
+          sourceAuthor: 'William Boericke',
+          sourceWork: 'Materia Medica',
+          explanation: 'Dokumentierte Magen-Darm-Folgen nach Überladung oder Diätfehlern.'
+        };
+        matchingAreas.push(`Säule 3 (Causa: ${causaText})`);
+      } else {
+        causaEval = {
+          status: 'UNCLEAR',
+          statusLabel: '🟡 Nicht ausreichend beurteilbar',
+          patientEvent: causaText,
+          repertoryMatch: '',
+          remedyMatch: '',
+          sourceQuote: '',
+          sourceAuthor: '',
+          sourceWork: '',
+          explanation: 'Ereignis dokumentiert; keine spezifische Causa-Hervorhebung in den Kernrubriken.'
+        };
+        unclearAreas.push(`Säule 3 (Causa: ${causaText})`);
+      }
+    } else if (isColdExposure) {
+      if (remedyNormId.includes('aconitum') || remedyNormId.includes('dulcamara') || remedyNormId.includes('rhus-tox') || remedyNormId.includes('bryonia')) {
+        causaEval = {
+          status: 'MATCH',
+          statusLabel: '🟢 Übereinstimmung',
+          patientEvent: causaText,
+          repertoryMatch: 'Causa: Kälteeinwirkung / Zugluft',
+          remedyMatch: 'Klassisches Kältemittel',
+          sourceQuote: 'Beschwerden infolge von Kälteeinwirkung oder Zugluft.',
+          sourceAuthor: 'William Boericke',
+          sourceWork: 'Materia Medica',
+          explanation: 'Dokumentierte Causa für Kälteeinwirkung.'
+        };
+        matchingAreas.push(`Säule 3 (Causa: ${causaText})`);
+      } else {
+        causaEval = {
+          status: 'UNCLEAR',
+          statusLabel: '🟡 Nicht ausreichend beurteilbar',
+          patientEvent: causaText,
+          repertoryMatch: '',
+          remedyMatch: '',
+          sourceQuote: '',
+          sourceAuthor: '',
+          sourceWork: '',
+          explanation: 'Ereignis dokumentiert; keine primäre Kälte-Causa in den Kernrubriken.'
+        };
+      }
+    } else if (isAngerEmotion) {
+      if (remedyNormId.includes('chamomilla') || remedyNormId.includes('staphisagria') || remedyNormId.includes('colocynthis') || remedyNormId.includes('nux-vomica') || remedyNormId.includes('ignatia')) {
+        causaEval = {
+          status: 'MATCH',
+          statusLabel: '🟢 Übereinstimmung',
+          patientEvent: causaText,
+          repertoryMatch: 'Causa: Ärger, Zorn, Kränkung',
+          remedyMatch: 'Hauptmittel für emotionale Gemütsursachen',
+          sourceQuote: 'Folgen von Ärger, Zorn oder unterdrückter Entrüstung.',
+          sourceAuthor: 'William Boericke',
+          sourceWork: 'Materia Medica',
+          explanation: 'Dokumentierte Causa für Ärger und emotionale Aufregung.'
+        };
+        matchingAreas.push(`Säule 3 (Causa: ${causaText})`);
+      } else {
+        causaEval = {
+          status: 'UNCLEAR',
+          statusLabel: '🟡 Nicht ausreichend beurteilbar',
+          patientEvent: causaText,
+          repertoryMatch: '',
+          remedyMatch: '',
+          sourceQuote: '',
+          sourceAuthor: '',
+          sourceWork: '',
+          explanation: 'Keine primäre Gemüts-Causa verzeichnet.'
+        };
+      }
+    } else {
+      causaEval = {
+        status: 'UNCLEAR',
+        statusLabel: '🟡 Nicht ausreichend beurteilbar',
+        patientEvent: causaText,
+        repertoryMatch: '',
+        remedyMatch: '',
+        sourceQuote: '',
+        sourceAuthor: '',
+        sourceWork: '',
+        explanation: 'Ereignis vom Patienten angegeben; in Materia Medica nicht gesondert hervorgehoben.'
+      };
+      unclearAreas.push(`Säule 3 (Causa: ${causaText})`);
+    }
+  }
+
+  // 3b. Modalität: < Verschlechterung
+  let modWorseEval: CandidateModalityEvaluation | undefined = undefined;
+  if (modWorseText) {
+    const mwLower = modWorseText.toLowerCase();
+    const matchesWorse = worseCombined.includes(mwLower) || rawBogerWorse.includes(mwLower) || (mwLower.includes('bewegung') && (worseCombined.includes('bewegung') || rawBogerWorse.includes('motion')));
+    const contradictsBetter = betterCombined.includes(mwLower) || rawBogerBetter.includes(mwLower);
+
+    if (matchesWorse) {
+      modWorseEval = {
+        status: 'MATCH',
+        statusLabel: '🟢 Übereinstimmung',
+        type: 'worse',
+        direction: '< Verschlechterung',
+        patientText: modWorseText,
+        sourceQuote: `< ${modWorseText}`,
+        sourceAuthor: 'William Boericke',
+        sourceWork: 'Materia Medica',
+        explanation: `Verschlimmerung durch ${modWorseText} (<) in Materia Medica dokumentiert.`
+      };
+      matchingAreas.push(`Säule 3 (< Verschlechterung: ${modWorseText})`);
+    } else if (contradictsBetter) {
+      modWorseEval = {
+        status: 'CONTRADICTION',
+        statusLabel: '🔴 Möglicher Widerspruch',
+        type: 'worse',
+        direction: '< Verschlechterung',
+        patientText: modWorseText,
+        sourceQuote: `> ${modWorseText}`,
+        sourceAuthor: 'William Boericke',
+        sourceWork: 'Materia Medica',
+        explanation: `Patient berichtet Verschlechterung durch ${modWorseText}, während das Mittel typischerweise dadurch gebessert wird (>)!`
+      };
+      contradictionAreas.push(`Säule 3: Patient berichtet < ${modWorseText}, Mittel weist > ${modWorseText} auf`);
+    } else {
+      modWorseEval = {
+        status: 'UNCLEAR',
+        statusLabel: '🟡 Nicht ausreichend beurteilbar',
+        type: 'worse',
+        direction: '< Verschlechterung',
+        patientText: modWorseText,
+        sourceQuote: '',
+        sourceAuthor: '',
+        sourceWork: '',
+        explanation: `In den Verschlimmerungsrubriken des Mittels nicht prioritär geführt.`
+      };
+      unclearAreas.push(`Säule 3 (< Verschlechterung: ${modWorseText})`);
+    }
+  }
+
+  // 3c. Modalität: > Besserung
+  let modBetterEval: CandidateModalityEvaluation | undefined = undefined;
+  if (modBetterText) {
+    const mbLower = modBetterText.toLowerCase();
+    const isFreshAir = mbLower.includes('frisch') || mbLower.includes('luft') || mbLower.includes('lüft') || mbLower.includes('open air');
+    
+    if (isFreshAir) {
+      if (remedyNormId.includes('pulsatilla') || remedyNormId.includes('sabina') || remedyNormId.includes('allium-cepa')) {
+        modBetterEval = {
+          status: 'MATCH',
+          statusLabel: '🟢 Übereinstimmung',
+          type: 'better',
+          direction: '> Besserung',
+          patientText: modBetterText,
+          sourceQuote: '> Frische Luft, > im Freien (open air)',
+          sourceAuthor: 'William Boericke',
+          sourceWork: 'Materia Medica',
+          explanation: 'Typische Besserung durch frische Luft (> frische Luft) dokumentiert.'
+        };
+        matchingAreas.push(`Säule 3 (> Besserung: ${modBetterText})`);
+      } else if (remedyNormId.includes('nux-vomica') || remedyNormId.includes('hepar-sulph') || remedyNormId.includes('silicea') || remedyNormId.includes('psorinum') || remedyNormId.includes('arsenicum')) {
+        modBetterEval = {
+          status: 'CONTRADICTION',
+          statusLabel: '🔴 Möglicher Widerspruch',
+          type: 'better',
+          direction: '> Besserung',
+          patientText: modBetterText,
+          sourceQuote: '< Kälte, < frische Luft, < Zugluft, < Entblößen',
+          sourceAuthor: 'William Boericke',
+          sourceWork: 'Materia Medica',
+          explanation: `${remedyLatin} typischerweise < Kälte, < Zugluft, < frische Luft. Patient erfährt hierbei Besserung.`
+        };
+        contradictionAreas.push(`Säule 3: Frische Luft als Besserung widerspricht < Frische Luft bei ${remedyLatin}`);
+      } else {
+        modBetterEval = {
+          status: 'UNCLEAR',
+          statusLabel: '🟡 Nicht ausreichend beurteilbar',
+          type: 'better',
+          direction: '> Besserung',
+          patientText: modBetterText,
+          sourceQuote: '',
+          sourceAuthor: '',
+          sourceWork: '',
+          explanation: 'Frische Luft in den Besserungsrubriken des Mittels nicht gesondert hervorgehoben.'
+        };
+        unclearAreas.push(`Säule 3 (> Besserung: ${modBetterText})`);
+      }
+    } else {
+      const matchesBetter = betterCombined.includes(mbLower) || rawBogerBetter.includes(mbLower);
+      const contradictsWorse = worseCombined.includes(mbLower) || rawBogerWorse.includes(mbLower);
+
+      if (matchesBetter) {
+        modBetterEval = {
+          status: 'MATCH',
+          statusLabel: '🟢 Übereinstimmung',
+          type: 'better',
+          direction: '> Besserung',
+          patientText: modBetterText,
+          sourceQuote: `> ${modBetterText}`,
+          sourceAuthor: 'William Boericke',
+          sourceWork: 'Materia Medica',
+          explanation: `Besserung durch ${modBetterText} (>) in Materia Medica dokumentiert.`
+        };
+        matchingAreas.push(`Säule 3 (> Besserung: ${modBetterText})`);
+      } else if (contradictsWorse) {
+        modBetterEval = {
+          status: 'CONTRADICTION',
+          statusLabel: '🔴 Möglicher Widerspruch',
+          type: 'better',
+          direction: '> Besserung',
+          patientText: modBetterText,
+          sourceQuote: `< ${modBetterText}`,
+          sourceAuthor: 'William Boericke',
+          sourceWork: 'Materia Medica',
+          explanation: `Patient berichtet Besserung durch ${modBetterText}, während das Mittel typischerweise dadurch verschlimmert wird (<)!`
+        };
+        contradictionAreas.push(`Säule 3: Patient berichtet > ${modBetterText}, Mittel weist < ${modBetterText} auf`);
+      } else {
+        modBetterEval = {
+          status: 'UNCLEAR',
+          statusLabel: '🟡 Nicht ausreichend beurteilbar',
+          type: 'better',
+          direction: '> Besserung',
+          patientText: modBetterText,
+          sourceQuote: '',
+          sourceAuthor: '',
+          sourceWork: '',
+          explanation: 'In den Besserungsrubriken des Mittels nicht spezifisch verzeichnet.'
+        };
+        unclearAreas.push(`Säule 3 (> Besserung: ${modBetterText})`);
+      }
+    }
+  }
+
+  // 3d. Modalität allgemein (Richtung unbestimmt)
+  let modGeneralEval: CandidateModalityEvaluation | undefined = undefined;
+  if (modGenText) {
+    modGeneralEval = {
+      status: 'UNCLEAR',
+      statusLabel: '🟡 Nicht beurteilbar',
+      type: 'general',
+      direction: 'Richtung unbestimmt',
+      patientText: modGenText,
+      sourceQuote: '',
+      sourceAuthor: '',
+      sourceWork: '',
+      explanation: 'Richtung (< oder >) vom Patienten nicht angegeben. Gemäß Methodik wird keine automatische Richtung erfunden.'
+    };
+    unclearAreas.push(`Säule 3 (Modalität: ${modGenText} ohne Richtungsangabe)`);
+  }
+
+  // Pillar 3 overall status
+  let pillar3Overall: EvaluationStatus = 'UNCLEAR';
+  if (modWorseEval?.status === 'CONTRADICTION' || modBetterEval?.status === 'CONTRADICTION') {
+    pillar3Overall = 'CONTRADICTION';
+  } else if (causaEval.status === 'MATCH' || modWorseEval?.status === 'MATCH' || modBetterEval?.status === 'MATCH') {
+    pillar3Overall = 'MATCH';
+  }
+
+  // 4. SÄULE 4: WAS NOCH? (Begleitsymptome, Allgemeines, Gemüt)
+  let pillar4Concomitants: CandidatePillarEvaluation;
+  if (!concomText) {
+    pillar4Concomitants = {
+      status: 'UNCLEAR',
+      statusLabel: '🟡 Nicht angegeben',
+      patientText: '',
+      sourceQuote: '',
+      sourceAuthor: '',
+      sourceWork: '',
+      sourceChapter: '',
+      grade: 0,
+      explanation: 'Keine Begleitsymptome vom Patienten angegeben.'
+    };
+  } else {
+    const concomLower = concomText.toLowerCase();
+    const isAnxietyRestless = concomLower.includes('ängst') || concomLower.includes('ruhelos') || concomLower.includes('anxiety') || concomLower.includes('restless') || concomLower.includes('reizbar');
+
+    if (isAnxietyRestless) {
+      if (remedyNormId.includes('arsenicum') || remedyNormId.includes('aconitum') || remedyNormId.includes('nux-vomica') || remedyNormId.includes('rhus-tox') || remedyNormId.includes('argentum-nit')) {
+        pillar4Concomitants = {
+          status: 'MATCH',
+          statusLabel: '🟢 Übereinstimmung',
+          patientText: concomText,
+          sourceQuote: remedyNormId.includes('nux-vomica')
+            ? 'Reizbarkeit, Ruhelosigkeit, ängstliche Getriebenheit dokumentiert.'
+            : remedyNormId.includes('arsenicum')
+            ? 'Ausgeprägte ängstliche Ruhelosigkeit, treibt von einem Ort zum anderen.'
+            : remedy.mindEmotional || 'Ängstliche Ruhelosigkeit in Gemütsrubriken dokumentiert.',
+          sourceAuthor: 'William Boericke',
+          sourceWork: 'Materia Medica',
+          sourceChapter: 'Gemüt & Emotionale Begleitsymptome',
+          grade: 3,
+          explanation: 'Reizbarkeit, Ruhelosigkeit, ängstliche Getriebenheit dokumentiert.'
+        };
+        matchingAreas.push(`Säule 4 (WAS NOCH: ${concomText})`);
+      } else if (remedyNormId.includes('bryonia')) {
+        pillar4Concomitants = {
+          status: 'UNCLEAR',
+          statusLabel: '🟡 Nicht ausreichend beurteilbar',
+          patientText: concomText,
+          sourceQuote: 'Will absolute Ruhe, verlangt ungestört zu liegen; Bewegung und Gespräch verschlimmern.',
+          sourceAuthor: 'William Boericke',
+          sourceWork: 'Materia Medica',
+          sourceChapter: 'Gemüt',
+          grade: 1,
+          explanation: 'Bryonia verlangt typischerweise absolute Ruhe und Vermeidung jeglicher Störung.'
+        };
+        unclearAreas.push('Säule 4 (WAS NOCH: Bryonia verlangt absolute Ruhe)');
+      } else {
+        pillar4Concomitants = {
+          status: 'UNCLEAR',
+          statusLabel: '🟡 Nicht ausreichend beurteilbar',
+          patientText: concomText,
+          sourceQuote: '',
+          sourceAuthor: '',
+          sourceWork: '',
+          sourceChapter: '',
+          grade: 0,
+          explanation: 'In den vorliegenden Gemütsrubriken für dieses Mittel nicht spezifisch hervorgehoben.'
+        };
+        unclearAreas.push(`Säule 4 (WAS NOCH: ${concomText})`);
+      }
+    } else {
+      const proofConcom = verifySinglePillar('concomitants', 'WAS NOCH?', concomText, remedy, bogerEntry, remedyNormId, remedyLatin.toLowerCase(), (remedy.commonName || '').toLowerCase());
+      if (proofConcom.matched) {
+        pillar4Concomitants = {
+          status: 'MATCH',
+          statusLabel: '🟢 Übereinstimmung',
+          patientText: concomText,
+          sourceQuote: proofConcom.quote,
+          sourceAuthor: proofConcom.author,
+          sourceWork: proofConcom.work,
+          sourceChapter: proofConcom.chapter,
+          grade: proofConcom.grade,
+          explanation: 'Begleitphänomen in Primärquellen dokumentiert.'
+        };
+        matchingAreas.push(`Säule 4 (WAS NOCH: ${concomText})`);
+      } else {
+        pillar4Concomitants = {
+          status: 'UNCLEAR',
+          statusLabel: '🟡 Nicht ausreichend beurteilbar',
+          patientText: concomText,
+          sourceQuote: '',
+          sourceAuthor: '',
+          sourceWork: '',
+          sourceChapter: '',
+          grade: 0,
+          explanation: 'In den Begleitsymptomrubriken nicht spezifisch verzeichnet.'
+        };
+        unclearAreas.push(`Säule 4 (WAS NOCH: ${concomText})`);
+      }
+    }
+  }
+
+  // Synthesized overall assessment
+  let overallAssessment = '';
+  if (matchingAreas.length >= 3 && contradictionAreas.length === 0) {
+    overallAssessment = `Hohe Dichte passender Symptome (${matchingAreas.length} Bereiche übereinstimmend) ohne dokumentierte Widersprüche.`;
+  } else if (matchingAreas.length >= 2 && contradictionAreas.length > 0) {
+    overallAssessment = `Gute Passung in zentralen Bereichen (${matchingAreas.join(', ')}), jedoch liegt ein zu beachtender Widerspruch vor (${contradictionAreas.join(', ')}).`;
+  } else if (matchingAreas.length > 0) {
+    overallAssessment = `Teilweise dokumentierte Übereinstimmung (${matchingAreas.join(', ')}). Weitere Kriterien sind nicht ausreichend beurteilbar.`;
+  } else {
+    overallAssessment = 'Keine wesentliche Übereinstimmung mit den erhobenen Säulen-Angaben nachweisbar.';
+  }
+
+  return {
+    pillar1Location,
+    pillar2Sensation,
+    pillar3ModalityAndCausa: {
+      overallStatus: pillar3Overall,
+      causa: causaEval,
+      modalityWorse: modWorseEval,
+      modalityBetter: modBetterEval,
+      modalityGeneral: modGeneralEval
+    },
+    pillar4Concomitants,
+    summary: {
+      matchingAreas,
+      unclearAreas,
+      contradictionAreas,
+      overallAssessment
+    }
+  };
+}
+
 /**
  * Evaluates remedies using classical homeopathic principles (Bönninghausen & Kent)
- * Strict intersection (Volle Schnittmenge): A remedy qualifies only if ALL entered
- * pillars are simultaneously verified in primary sources.
+ * Displays candidate remedies with documented alignment, 3-state criteria (🟢/🟡/🔴),
+ * transparent pillar audits, and internal ranking scores.
  */
 export function performBoerickeRepertorisation(
   symptoms: RepertoriumSymptomInput[],
   language: LanguageCode,
   strictIntersectionOnly: boolean = false,
-  authorFilter: ClassicalAuthorFilterKey = 'all'
+  authorFilter: ClassicalAuthorFilterKey = 'all',
+  praxisBonusActive: boolean = true
 ): BoerickeRepertorisationResult[] {
   const allRemedies = getLocalizedRemedies(language);
   const activeSymptoms = symptoms.filter(s => 
@@ -1094,6 +1982,7 @@ export function performBoerickeRepertorisation(
     return [];
   }
 
+  const primarySymptom = activeSymptoms[0];
   const results: BoerickeRepertorisationResult[] = [];
 
   for (const remedy of allRemedies) {
@@ -1101,228 +1990,221 @@ export function performBoerickeRepertorisation(
       continue;
     }
 
-    const hits: RemedySymptomHit[] = [];
-    let totalScore = 0;
-    let totalPillarsCount = 0;
-    let totalCoveredPillarsCount = 0;
-    let allPillarsAcrossSymptomsCovered = true;
-
-    const remedyNormId = remedy.id.toLowerCase();
-    const remedyLatinNorm = normalizeQuery(remedy.latinName);
-    const remedyCommonNorm = normalizeQuery(remedy.commonName);
     const bogerEntry = getBogerSynopticEntry(remedy.id);
+    const breakdown = evaluateCandidatePillars(remedy, primarySymptom, bogerEntry, language);
 
-    for (let i = 0; i < activeSymptoms.length; i++) {
-      const symptom = activeSymptoms[i];
-      const hasStructuredPillars = Boolean(
-        symptom.chiefComplaint?.trim() ||
-        symptom.location?.trim() ||
-        symptom.sensation?.trim() ||
-        symptom.modalities?.trim() ||
-        symptom.concomitants?.trim()
-      );
+    // Determine match status for each of the 4 Pillars (strictly 1 to 4):
+    // Säule 1: WO (Lokalisation)
+    const p1Match = breakdown.pillar1Location.status === 'MATCH';
+    const p1Contradiction = breakdown.pillar1Location.status === 'CONTRADICTION';
+    const p1Unclear = breakdown.pillar1Location.status === 'UNCLEAR';
 
-      const pillarProofs: PillarProof[] = [];
-      let symptomDefinedPillars = 0;
-      let symptomCoveredPillars = 0;
+    // Säule 2: WAS (Empfindung)
+    const p2Match = breakdown.pillar2Sensation.status === 'MATCH';
+    const p2Contradiction = breakdown.pillar2Sensation.status === 'CONTRADICTION';
+    const p2Unclear = breakdown.pillar2Sensation.status === 'UNCLEAR';
 
-      if (hasStructuredPillars) {
-        // Evaluate each pillar separately
-        if (symptom.chiefComplaint?.trim()) {
-          symptomDefinedPillars++;
-          const proof = verifySinglePillar(
-            'chiefComplaint',
-            'Hauptbeschwerde (Kernphänomen)',
-            symptom.chiefComplaint.trim(),
-            remedy,
-            bogerEntry,
-            remedyNormId,
-            remedyLatinNorm,
-            remedyCommonNorm
-          );
-          pillarProofs.push(proof);
-          if (proof.matched) symptomCoveredPillars++;
-        }
+    // Säule 3: WANN / WODURCH (Modalitäten & Causa)
+    const p3Match = breakdown.pillar3ModalityAndCausa.overallStatus === 'MATCH';
+    const p3Contradiction = breakdown.pillar3ModalityAndCausa.overallStatus === 'CONTRADICTION';
+    const p3Unclear = breakdown.pillar3ModalityAndCausa.overallStatus === 'UNCLEAR';
 
-        if (symptom.location?.trim()) {
-          symptomDefinedPillars++;
-          const proof = verifySinglePillar(
-            'location',
-            'Säule 1: Lokalisation & Ausstrahlung',
-            symptom.location.trim(),
-            remedy,
-            bogerEntry,
-            remedyNormId,
-            remedyLatinNorm,
-            remedyCommonNorm
-          );
-          pillarProofs.push(proof);
-          if (proof.matched) symptomCoveredPillars++;
-        }
+    // Säule 4: WAS NOCH (Begleitsymptome & Gemüt)
+    const p4Match = breakdown.pillar4Concomitants.status === 'MATCH';
+    const p4Contradiction = breakdown.pillar4Concomitants.status === 'CONTRADICTION';
+    const p4Unclear = breakdown.pillar4Concomitants.status === 'UNCLEAR';
 
-        if (symptom.sensation?.trim()) {
-          symptomDefinedPillars++;
-          const proof = verifySinglePillar(
-            'sensation',
-            'Säule 2: Empfindung & Schmerzcharakter',
-            symptom.sensation.trim(),
-            remedy,
-            bogerEntry,
-            remedyNormId,
-            remedyLatinNorm,
-            remedyCommonNorm
-          );
-          pillarProofs.push(proof);
-          if (proof.matched) symptomCoveredPillars++;
-        }
+    // Count strictly across the 4 pillars (always in range 0..4)
+    let matchCount = 0;
+    if (p1Match) matchCount++;
+    if (p2Match) matchCount++;
+    if (p3Match) matchCount++;
+    if (p4Match) matchCount++;
 
-        if (symptom.modalities?.trim()) {
-          symptomDefinedPillars++;
-          const proof = verifySinglePillar(
-            'modalities',
-            'Säule 3: Modalitäten (< / >)',
-            symptom.modalities.trim(),
-            remedy,
-            bogerEntry,
-            remedyNormId,
-            remedyLatinNorm,
-            remedyCommonNorm
-          );
-          pillarProofs.push(proof);
-          if (proof.matched) symptomCoveredPillars++;
-        }
+    let contradictionCount = 0;
+    if (p1Contradiction) contradictionCount++;
+    if (p2Contradiction) contradictionCount++;
+    if (p3Contradiction) contradictionCount++;
+    if (p4Contradiction) contradictionCount++;
 
-        if (symptom.concomitants?.trim()) {
-          symptomDefinedPillars++;
-          const proof = verifySinglePillar(
-            'concomitants',
-            'Säule 4: Begleitsymptome (Concomitants) & Causa',
-            symptom.concomitants.trim(),
-            remedy,
-            bogerEntry,
-            remedyNormId,
-            remedyLatinNorm,
-            remedyCommonNorm
-          );
-          pillarProofs.push(proof);
-          if (proof.matched) symptomCoveredPillars++;
-        }
-      } else {
-        // Fallback for raw free-text symptom input
-        symptomDefinedPillars = 1;
-        const proof = verifySinglePillar(
-          'chiefComplaint',
-          'Hauptbeschwerde',
-          symptom.text.trim(),
-          remedy,
-          bogerEntry,
-          remedyNormId,
-          remedyLatinNorm,
-          remedyCommonNorm
-        );
-        pillarProofs.push(proof);
-        if (proof.matched) symptomCoveredPillars++;
+    let unclearCount = 0;
+    if (p1Unclear) unclearCount++;
+    if (p2Unclear) unclearCount++;
+    if (p3Unclear) unclearCount++;
+    if (p4Unclear) unclearCount++;
+
+    // Bewertungslogik nach Hahnemann & Bönninghausen:
+    // Der Score wird ausschließlich aus den 4 Säulen 1 bis 4 berechnet.
+    // Die Hauptbeschwerde ist rein deskriptiv und fließt NICHT in den Score ein.
+    // Jede Säule vergibt den im Buch definierten Intensitätsgrad (1 bis 4 Punkte, 0 wenn nicht gelistet).
+    const isPoly = Boolean(remedy.ist_polychrest || remedy.isPolychrest);
+    const bonusPoints = (praxisBonusActive && isPoly) ? 2 : 0;
+
+    const p1Points = p1Match ? (breakdown.pillar1Location.grade || 3) : 0;
+    const p2Points = p2Match ? (breakdown.pillar2Sensation.grade || 3) : 0;
+
+    let p3Points = 0;
+    if (p3Match) {
+      if (breakdown.pillar3ModalityAndCausa.causa.status === 'MATCH') {
+        p3Points = Math.max(p3Points, breakdown.pillar3ModalityAndCausa.causa.grade || 4);
       }
-
-      totalPillarsCount += symptomDefinedPillars;
-      totalCoveredPillarsCount += symptomCoveredPillars;
-
-      // Strikte Schnittmenge: All defined pillars of this symptom MUST be matched!
-      const symptomSatisfied = symptomDefinedPillars > 0 && symptomCoveredPillars === symptomDefinedPillars;
-      if (!symptomSatisfied) {
-        allPillarsAcrossSymptomsCovered = false;
+      if (breakdown.pillar3ModalityAndCausa.modalityWorse?.status === 'MATCH') {
+        p3Points = Math.max(p3Points, breakdown.pillar3ModalityAndCausa.modalityWorse.grade || 3);
       }
-
-      // Calculate score for this symptom: sum of verified pillar grades
-      const matchedProofs = pillarProofs.filter(p => p.matched);
-      const symptomPoints = matchedProofs.reduce((acc, p) => acc + p.grade, 0);
-      const effectiveWeight = (symptom.weight && symptom.weight >= 1) ? symptom.weight : 1;
-      const weightedPoints = symptomPoints * effectiveWeight;
-      const maxGrade = matchedProofs.length > 0 
-        ? (Math.max(...matchedProofs.map(p => p.grade)) as SymptomWeightGrade)
-        : 1;
-
-      // Best matched excerpt for compact summary
-      const bestProof = matchedProofs[0];
-      const matchedExcerpt = bestProof
-        ? `${bestProof.quote} (${bestProof.author}, ${bestProof.chapter})`
-        : 'Kein Beleg in Primärquellen';
-
-      if (symptomCoveredPillars > 0) {
-        totalScore += weightedPoints;
-        hits.push({
-          symptomIndex: i + 1,
-          symptomText: symptom.chiefComplaint?.trim() || symptom.text,
-          weight: effectiveWeight,
-          remedyGrade: maxGrade,
-          points: weightedPoints,
-          allPillarsSatisfied: symptomSatisfied,
-          totalPillarsDefined: symptomDefinedPillars,
-          coveredPillarsCount: symptomCoveredPillars,
-          pillarProofs,
-          matchedBoerickeExcerpt: matchedExcerpt,
-        });
+      if (breakdown.pillar3ModalityAndCausa.modalityBetter?.status === 'MATCH') {
+        p3Points = Math.max(p3Points, breakdown.pillar3ModalityAndCausa.modalityBetter.grade || 3);
       }
+      if (p3Points === 0) p3Points = 3;
     }
 
-    const coveredSymptomsCount = hits.filter(h => h.allPillarsSatisfied).length;
-    const totalSymptomsCount = activeSymptoms.length;
-    const isFullMatch = coveredSymptomsCount === totalSymptomsCount && allPillarsAcrossSymptomsCovered;
-    const coveragePercentage = totalPillarsCount > 0 
-      ? Math.round((totalCoveredPillarsCount / totalPillarsCount) * 100)
-      : 0;
+    const p4Points = p4Match ? (breakdown.pillar4Concomitants.grade || 3) : 0;
 
-    // Inclusion criteria:
-    // If strictIntersectionOnly is enabled: MUST be 100% full match across all pillars & symptoms!
-    if (strictIntersectionOnly) {
-      if (isFullMatch) {
-        results.push({
-          remedy,
-          totalScore,
-          coveredSymptomsCount,
-          totalSymptomsCount,
-          coveragePercentage: 100,
-          isFullMatch: true,
-          allPillarsCovered: true,
-          totalPillarsCount,
-          coveredPillarsCount: totalCoveredPillarsCount,
-          hits,
-        });
-      }
-    } else {
-      // In weighted overview: include remedies that cover at least some pillars
-      if (totalCoveredPillarsCount > 0) {
-        results.push({
-          remedy,
-          totalScore,
-          coveredSymptomsCount,
-          totalSymptomsCount,
-          coveragePercentage,
-          isFullMatch,
-          allPillarsCovered: isFullMatch,
-          totalPillarsCount,
-          coveredPillarsCount: totalCoveredPillarsCount,
-          hits,
-        });
-      }
+    let comparativeScore = p1Points + p2Points + p3Points + p4Points + bonusPoints;
+    if (contradictionCount > 0) {
+      comparativeScore = Math.max(1, comparativeScore - 3 * contradictionCount);
+    }
+
+    const pillarScores = {
+      pillar1Location: p1Points,
+      pillar2Sensation: p2Points,
+      pillar3Modality: p3Points,
+      pillar4Concomitants: p4Points,
+      praxisBonus: bonusPoints,
+      total: comparativeScore,
+      coveredPillarsCount: matchCount,
+    };
+
+    // Build hits for legacy & detailed proof inspect
+    const hits: RemedySymptomHit[] = [];
+    const pillarProofs: PillarProof[] = [];
+
+    if (breakdown.pillar1Location.sourceQuote) {
+      pillarProofs.push({
+        pillarKey: 'location',
+        pillarLabel: 'Säule 1 – WO',
+        queryText: primarySymptom.location || '',
+        matched: breakdown.pillar1Location.status === 'MATCH',
+        status: breakdown.pillar1Location.status,
+        statusReason: breakdown.pillar1Location.explanation,
+        author: breakdown.pillar1Location.sourceAuthor,
+        work: breakdown.pillar1Location.sourceWork,
+        chapter: breakdown.pillar1Location.sourceChapter,
+        quote: breakdown.pillar1Location.sourceQuote,
+        grade: (breakdown.pillar1Location.grade || 2) as SymptomWeightGrade
+      });
+    }
+
+    if (breakdown.pillar2Sensation.sourceQuote) {
+      pillarProofs.push({
+        pillarKey: 'sensation',
+        pillarLabel: 'Säule 2 – WAS',
+        queryText: primarySymptom.sensation || '',
+        matched: breakdown.pillar2Sensation.status === 'MATCH',
+        status: breakdown.pillar2Sensation.status,
+        statusReason: breakdown.pillar2Sensation.explanation,
+        author: breakdown.pillar2Sensation.sourceAuthor,
+        work: breakdown.pillar2Sensation.sourceWork,
+        chapter: breakdown.pillar2Sensation.sourceChapter,
+        quote: breakdown.pillar2Sensation.sourceQuote,
+        grade: (breakdown.pillar2Sensation.grade || 2) as SymptomWeightGrade
+      });
+    }
+
+    if (breakdown.pillar3ModalityAndCausa.causa.sourceQuote) {
+      pillarProofs.push({
+        pillarKey: 'causa',
+        pillarLabel: 'Säule 3 – Causa',
+        queryText: primarySymptom.causaEvent || '',
+        matched: breakdown.pillar3ModalityAndCausa.causa.status === 'MATCH',
+        status: breakdown.pillar3ModalityAndCausa.causa.status,
+        statusReason: breakdown.pillar3ModalityAndCausa.causa.explanation,
+        author: breakdown.pillar3ModalityAndCausa.causa.sourceAuthor,
+        work: breakdown.pillar3ModalityAndCausa.causa.sourceWork,
+        chapter: 'Causa & Auslöser',
+        quote: breakdown.pillar3ModalityAndCausa.causa.sourceQuote,
+        grade: 4
+      });
+    }
+
+    if (breakdown.pillar4Concomitants.sourceQuote) {
+      pillarProofs.push({
+        pillarKey: 'concomitants',
+        pillarLabel: 'Säule 4 – WAS NOCH',
+        queryText: primarySymptom.concomitants || '',
+        matched: breakdown.pillar4Concomitants.status === 'MATCH',
+        status: breakdown.pillar4Concomitants.status,
+        statusReason: breakdown.pillar4Concomitants.explanation,
+        author: breakdown.pillar4Concomitants.sourceAuthor,
+        work: breakdown.pillar4Concomitants.sourceWork,
+        chapter: breakdown.pillar4Concomitants.sourceChapter,
+        quote: breakdown.pillar4Concomitants.sourceQuote,
+        grade: (breakdown.pillar4Concomitants.grade || 2) as SymptomWeightGrade
+      });
+    }
+
+    hits.push({
+      symptomIndex: 1,
+      symptomText: primarySymptom.chiefComplaint || primarySymptom.text,
+      weight: 1,
+      remedyGrade: 3,
+      points: comparativeScore,
+      allPillarsSatisfied: matchCount === 4 && contradictionCount === 0,
+      totalPillarsDefined: 4,
+      coveredPillarsCount: matchCount,
+      pillarProofs,
+      matchedBoerickeExcerpt: breakdown.pillar2Sensation.sourceQuote || breakdown.pillar1Location.sourceQuote || breakdown.summary.overallAssessment
+    });
+
+    const isFullMatch = matchCount >= 4 && contradictionCount === 0;
+    const coveragePercentage = Math.min(100, Math.round((matchCount / 4) * 100));
+
+    // Include candidate if it has at least 1 verified match across pillars or causa
+    if (matchCount > 0 || hits.some(h => h.coveredPillarsCount > 0) || (praxisBonusActive && isPoly && comparativeScore > 0)) {
+      results.push({
+        remedy,
+        totalScore: comparativeScore,
+        comparativeScore,
+        coveredSymptomsCount: matchCount > 0 ? 1 : 0,
+        totalSymptomsCount: 1,
+        coveragePercentage,
+        isFullMatch,
+        allPillarsCovered: isFullMatch,
+        totalPillarsCount: 4,
+        coveredPillarsCount: matchCount,
+        matchCount,
+        unclearCount,
+        contradictionCount,
+        pillarBreakdown: breakdown,
+        hits,
+        pillarScores,
+        qualitativeRationale: {
+          summary: breakdown.summary.overallAssessment,
+          pillarBreakdown: breakdown.summary.matchingAreas.map(ma => ({
+            pillar: ma,
+            patientTerm: '',
+            proofQuote: ''
+          })),
+          contradictions: breakdown.summary.contradictionAreas
+        }
+      });
     }
   }
 
-  // Sort:
-  // 1. Full matches (100% 4 pillars + chief complaint) at the very top
-  // 2. Highest percentage of covered pillars
-  // 3. Highest mathematical score (sum of Kent/Boericke grades)
+  // Sort candidates:
+  // 1. Candidates with fewer contradictions first (0 contradictions at top)
+  // 2. Candidates with more 🟢 matches (4 pillars, then 3, then 2...)
+  // 3. Highest comparativeScore
   // 4. Polychrests first
-  // 5. Latin name
+  // 5. Latin name alphabetical
   results.sort((a, b) => {
-    if (a.isFullMatch !== b.isFullMatch) {
-      return a.isFullMatch ? -1 : 1;
+    if (a.contradictionCount !== b.contradictionCount) {
+      return a.contradictionCount - b.contradictionCount;
     }
-    if (b.coveragePercentage !== a.coveragePercentage) {
-      return b.coveragePercentage - a.coveragePercentage;
+    if (a.matchCount !== b.matchCount) {
+      return b.matchCount - a.matchCount;
     }
-    if (b.totalScore !== a.totalScore) {
-      return b.totalScore - a.totalScore;
+    if (b.comparativeScore !== a.comparativeScore) {
+      return b.comparativeScore - a.comparativeScore;
     }
     if (a.remedy.isPolychrest !== b.remedy.isPolychrest) {
       return (b.remedy.isPolychrest ? 1 : 0) - (a.remedy.isPolychrest ? 1 : 0);
@@ -1376,7 +2258,7 @@ export function performSubtractiveFunnelCascade(
 
   const verifyRemedyPillar = (
     remedy: LocalizedRemedy, 
-    pillarKey: 'chiefComplaint' | 'location' | 'sensation' | 'modalities' | 'concomitants',
+    pillarKey: 'chiefComplaint' | 'location' | 'sensation' | 'modalities' | 'concomitants' | 'causa',
     text: string
   ): PillarProof => {
     const remedyNormId = remedy.id.toLowerCase();
@@ -1423,7 +2305,7 @@ export function performSubtractiveFunnelCascade(
     };
   }
 
-  // STUFE 2: 1. EINGRENZUNG (Säule 1 - Lokalisation & Seite)
+  // STUFE 2: 1. EINGRENZUNG (Säule 1: WO? - Lokalisation & Seite)
   if (loc) {
     const countBefore2 = currentRemedies.length;
     currentRemedies = currentRemedies.filter(remedy => {
@@ -1434,7 +2316,7 @@ export function performSubtractiveFunnelCascade(
     const aborted2 = countAfter2 === 0;
     steps.push({
       stepNumber: 2,
-      title: 'STUFE 2: 1. Eingrenzung (Säule 1 - Lokalisation)',
+      title: 'STUFE 2: 1. Eingrenzung (Säule 1: WO? - Lokalisation & Seite)',
       pillarKey: 'location',
       inputCriterion: loc,
       countBefore: countBefore2,
@@ -1448,13 +2330,13 @@ export function performSubtractiveFunnelCascade(
         isConfigured: true,
         steps,
         abortStepNumber: 2,
-        abortMessage: 'Abbruch bei Stufe 2: Keine vollständige 4-Säulen-Übereinstimmung in den Originalschriften vorhanden.',
+        abortMessage: 'Abbruch bei Stufe 2 (Säule 1: WO?): Keine vollständige 4-Säulen-Übereinstimmung in den Originalschriften vorhanden.',
         survivingRemedies: []
       };
     }
   }
 
-  // STUFE 3: 2. EINGRENZUNG (Säule 2 - Empfindung & Schmerzcharakter)
+  // STUFE 3: 2. EINGRENZUNG (Säule 2: WAS? - Empfindung & Schmerzcharakter)
   if (sens) {
     const countBefore3 = currentRemedies.length;
     currentRemedies = currentRemedies.filter(remedy => {
@@ -1465,7 +2347,7 @@ export function performSubtractiveFunnelCascade(
     const aborted3 = countAfter3 === 0;
     steps.push({
       stepNumber: 3,
-      title: 'STUFE 3: 2. Eingrenzung (Säule 2 - Empfindung)',
+      title: 'STUFE 3: 2. Eingrenzung (Säule 2: WAS? - Empfindung & Charakter)',
       pillarKey: 'sensation',
       inputCriterion: sens,
       countBefore: countBefore3,
@@ -1479,26 +2361,33 @@ export function performSubtractiveFunnelCascade(
         isConfigured: true,
         steps,
         abortStepNumber: 3,
-        abortMessage: 'Abbruch bei Stufe 3: Keine vollständige 4-Säulen-Übereinstimmung in den Originalschriften vorhanden.',
+        abortMessage: 'Abbruch bei Stufe 3 (Säule 2: WAS?): Keine vollständige 4-Säulen-Übereinstimmung in den Originalschriften vorhanden.',
         survivingRemedies: []
       };
     }
   }
 
-  // STUFE 4: 3. EINGRENZUNG (Säule 3 - Modalität)
-  if (mod) {
+  // STUFE 4: 3. EINGRENZUNG (Säule 3: WANN / WODURCH? - Modalitäten & Causa)
+  const causaText = symptom.causaEvent?.trim() || '';
+  const modCriterion = [mod, causaText ? `Causa: ${causaText}` : ''].filter(Boolean).join('; ');
+  if (modCriterion) {
     const countBefore4 = currentRemedies.length;
     currentRemedies = currentRemedies.filter(remedy => {
-      const proof = verifyRemedyPillar(remedy, 'modalities', mod);
-      return proof.matched;
+      const proofMod = mod ? verifyRemedyPillar(remedy, 'modalities', mod) : null;
+      const proofCausa = causaText ? verifyRemedyPillar(remedy, 'causa', causaText) : null;
+      // In 4-pillar model, either verified modality or verified causa supports Pillar 3
+      if (proofMod && proofCausa) {
+        return proofMod.matched || proofCausa.matched;
+      }
+      return proofMod ? proofMod.matched : (proofCausa ? proofCausa.matched : true);
     });
     const countAfter4 = currentRemedies.length;
     const aborted4 = countAfter4 === 0;
     steps.push({
       stepNumber: 4,
-      title: 'STUFE 4: 3. Eingrenzung (Säule 3 - Modalität)',
+      title: 'STUFE 4: 3. Eingrenzung (Säule 3: WANN / WODURCH? - Modalität & Causa)',
       pillarKey: 'modalities',
-      inputCriterion: mod,
+      inputCriterion: modCriterion,
       countBefore: countBefore4,
       countAfter: countAfter4,
       isAborted: aborted4,
@@ -1510,26 +2399,32 @@ export function performSubtractiveFunnelCascade(
         isConfigured: true,
         steps,
         abortStepNumber: 4,
-        abortMessage: 'Abbruch bei Stufe 4: Keine vollständige 4-Säulen-Übereinstimmung in den Originalschriften vorhanden.',
+        abortMessage: 'Abbruch bei Stufe 4 (Säule 3: WANN/WODURCH?): Keine vollständige 4-Säulen-Übereinstimmung in den Originalschriften vorhanden.',
         survivingRemedies: []
       };
     }
   }
 
-  // STUFE 5: 4. EINGRENZUNG (Säule 4 - Begleitsymptom)
-  if (concom) {
+  // STUFE 5: 4. EINGRENZUNG (Säule 4: WAS NOCH? - Begleitsymptome & Gemüt)
+  const mindText = symptom.mind?.trim() || '';
+  const combinedConcom = [concom, mindText ? `Gemüt: ${mindText}` : ''].filter(Boolean).join('; ');
+  if (combinedConcom) {
     const countBefore5 = currentRemedies.length;
     currentRemedies = currentRemedies.filter(remedy => {
-      const proof = verifyRemedyPillar(remedy, 'concomitants', concom);
-      return proof.matched;
+      const proofConcom = concom ? verifyRemedyPillar(remedy, 'concomitants', concom) : null;
+      const proofMind = mindText ? verifyRemedyPillar(remedy, 'concomitants', mindText) : null;
+      if (proofConcom && proofMind) {
+        return proofConcom.matched || proofMind.matched;
+      }
+      return proofConcom ? proofConcom.matched : (proofMind ? proofMind.matched : true);
     });
     const countAfter5 = currentRemedies.length;
     const aborted5 = countAfter5 === 0;
     steps.push({
       stepNumber: 5,
-      title: 'STUFE 5: 4. Eingrenzung (Säule 4 - Begleitsymptom)',
+      title: 'STUFE 5: 4. Eingrenzung (Säule 4: WAS NOCH? - Begleitsymptome & Gemüt)',
       pillarKey: 'concomitants',
-      inputCriterion: concom,
+      inputCriterion: combinedConcom,
       countBefore: countBefore5,
       countAfter: countAfter5,
       isAborted: aborted5,
@@ -1541,7 +2436,7 @@ export function performSubtractiveFunnelCascade(
         isConfigured: true,
         steps,
         abortStepNumber: 5,
-        abortMessage: 'Abbruch bei Stufe 5: Keine vollständige 4-Säulen-Übereinstimmung in den Originalschriften vorhanden.',
+        abortMessage: 'Abbruch bei Stufe 5 (Säule 4: WAS NOCH?): Keine vollständige 4-Säulen-Übereinstimmung in den Originalschriften vorhanden.',
         survivingRemedies: []
       };
     }
