@@ -9,7 +9,8 @@ import {
   checkTherapistLimit,
   getStoredTherapistTab,
   setStoredTherapistTab,
-  getRecentlyEditedPatientNames
+  getRecentlyEditedPatientNames,
+  getTariffAccessForTherapist
 } from '../services/storage';
 import { navigateTo, openModal, closeModal } from '../services/navigation';
 import { runHomeopathyAnalysis, HomeoRemedyResult } from '../services/homeopathyEngine';
@@ -178,11 +179,77 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
   const [panelTab, setPanelTab] = useState<'cases' | 'patients' | 'materiamedica' | 'repertorium' | 'quickintake' | 'medications' | 'documentation' | 'profile' | 'tariff'>(() => getStoredTherapistTab());
   const [patientDirectoryAction, setPatientDirectoryAction] = useState<'new_patient' | 'select_patient' | null>(null);
   const [currentStep, setCurrentStep] = useState<number>(1);
+  const [lockedPageAttempt, setLockedPageAttempt] = useState<{ key: string; name: string } | null>(null);
+
+  // Compute tariff access permissions & feature quotas
+  const tariffAccess = useMemo(() => {
+    return getTariffAccessForTherapist(therapist);
+  }, [therapist]);
+
+  const getPagePermissionKeyForTab = (tab: string): keyof import('../types').TariffPagePermissions | null => {
+    switch (tab) {
+      case 'cases':
+        return 'cases';
+      case 'patients':
+        return 'patients';
+      case 'quickintake':
+        return 'quickintake';
+      case 'materiamedica':
+        return 'materiamedica';
+      case 'repertorium':
+        return 'repertorium';
+      case 'medications':
+        return 'medications';
+      case 'documentation':
+        return 'documentation';
+      default:
+        return null;
+    }
+  };
+
+  const getPageDisplayName = (tab: string): string => {
+    switch (tab) {
+      case 'cases':
+        return t('tabCaseManagement');
+      case 'patients':
+        return termPatientenkartei;
+      case 'quickintake':
+        return t('tabQuickIntake');
+      case 'materiamedica':
+        return t('tabMateriaMedica');
+      case 'repertorium':
+        return t('tabRepertorium');
+      case 'medications':
+        return t('tabMedications');
+      case 'documentation':
+        return t('tabDocumentation');
+      default:
+        return tab;
+    }
+  };
+
+  const isTabAllowed = (tab: string): boolean => {
+    const pageKey = getPagePermissionKeyForTab(tab);
+    if (!pageKey) return true; // Profile, tariff always allowed
+    return tariffAccess.isPageAllowed(pageKey);
+  };
 
   const handleSelectTab = (tab: 'cases' | 'patients' | 'materiamedica' | 'repertorium' | 'quickintake' | 'medications' | 'documentation' | 'profile' | 'tariff') => {
+    if (!isTabAllowed(tab)) {
+      setLockedPageAttempt({ key: tab, name: getPageDisplayName(tab) });
+      return;
+    }
     setPanelTab(tab);
     navigateTo('therapist', { therapistTab: tab });
   };
+
+  // Fallback if current active tab gets locked
+  useEffect(() => {
+    if (!isTabAllowed(panelTab)) {
+      const allowedFallback = (['patients', 'cases', 'tariff', 'profile'] as const).find(t => isTabAllowed(t)) || 'tariff';
+      setPanelTab(allowedFallback);
+    }
+  }, [tariffAccess, panelTab]);
 
   const handleForwardToNewPatient = () => {
     setPatientDirectoryAction('new_patient');
@@ -1794,28 +1861,42 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
             <button
               type="button"
               onClick={() => handleSelectTab('patients')}
-              className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-3 transition-colors cursor-pointer ${
+              className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center justify-between transition-colors cursor-pointer ${
                 panelTab === 'patients'
                   ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/50'
                   : 'text-slate-600 hover:bg-slate-200/50 hover:text-slate-900'
               }`}
             >
-              <Users className="w-4 h-4 text-teal-600" />
-              <span>{termPatientenkartei}</span>
+              <div className="flex items-center gap-3">
+                <Users className={`w-4 h-4 ${isTabAllowed('patients') ? 'text-teal-600' : 'text-slate-400'}`} />
+                <span className={!isTabAllowed('patients') ? 'text-slate-500' : ''}>{termPatientenkartei}</span>
+              </div>
+              {!isTabAllowed('patients') && (
+                <span title={t('tariffPageLockedTooltip')}>
+                  <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                </span>
+              )}
             </button>
 
             {/* 2. Repertorisation */}
             <button
               type="button"
               onClick={() => handleSelectTab('cases')}
-              className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-3 transition-colors cursor-pointer ${
+              className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center justify-between transition-colors cursor-pointer ${
                 panelTab === 'cases'
                   ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/50'
                   : 'text-slate-600 hover:bg-slate-200/50 hover:text-slate-900'
               }`}
             >
-              <LayoutDashboard className="w-4 h-4 text-teal-600" />
-              <span>{t('tabCaseManagement')}</span>
+              <div className="flex items-center gap-3">
+                <LayoutDashboard className={`w-4 h-4 ${isTabAllowed('cases') ? 'text-teal-600' : 'text-slate-400'}`} />
+                <span className={!isTabAllowed('cases') ? 'text-slate-500' : ''}>{t('tabCaseManagement')}</span>
+              </div>
+              {!isTabAllowed('cases') && (
+                <span title={t('tariffPageLockedTooltip')}>
+                  <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                </span>
+              )}
             </button>
 
             {/* 3. Akutanalyse (unter Repertorisation) */}
@@ -1823,14 +1904,21 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
               type="button"
               id="sidebar-nav-tab-quickintake"
               onClick={() => handleSelectTab('quickintake')}
-              className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-3 transition-colors cursor-pointer ${
+              className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center justify-between transition-colors cursor-pointer ${
                 panelTab === 'quickintake'
                   ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/50'
                   : 'text-slate-600 hover:bg-slate-200/50 hover:text-slate-900'
               }`}
             >
-              <Mic className="w-4 h-4 text-teal-600" />
-              <span>{t('tabQuickIntake')}</span>
+              <div className="flex items-center gap-3">
+                <Mic className={`w-4 h-4 ${isTabAllowed('quickintake') ? 'text-teal-600' : 'text-slate-400'}`} />
+                <span className={!isTabAllowed('quickintake') ? 'text-slate-500' : ''}>{t('tabQuickIntake')}</span>
+              </div>
+              {!isTabAllowed('quickintake') && (
+                <span title={t('tariffPageLockedTooltip')}>
+                  <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                </span>
+              )}
             </button>
 
             {/* 4. Materia Medica */}
@@ -1838,14 +1926,21 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
               type="button"
               id="sidebar-nav-tab-materiamedica"
               onClick={() => handleSelectTab('materiamedica')}
-              className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-3 transition-colors cursor-pointer ${
+              className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center justify-between transition-colors cursor-pointer ${
                 panelTab === 'materiamedica'
                   ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/50'
                   : 'text-slate-600 hover:bg-slate-200/50 hover:text-slate-900'
               }`}
             >
-              <BookOpen className="w-4 h-4 text-teal-600" />
-              <span>{t('tabMateriaMedica')}</span>
+              <div className="flex items-center gap-3">
+                <BookOpen className={`w-4 h-4 ${isTabAllowed('materiamedica') ? 'text-teal-600' : 'text-slate-400'}`} />
+                <span className={!isTabAllowed('materiamedica') ? 'text-slate-500' : ''}>{t('tabMateriaMedica')}</span>
+              </div>
+              {!isTabAllowed('materiamedica') && (
+                <span title={t('tariffPageLockedTooltip')}>
+                  <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                </span>
+              )}
             </button>
 
             {/* 5. Repertorium */}
@@ -1853,14 +1948,21 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
               type="button"
               id="sidebar-nav-tab-repertorium"
               onClick={() => handleSelectTab('repertorium')}
-              className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-3 transition-colors cursor-pointer ${
+              className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center justify-between transition-colors cursor-pointer ${
                 panelTab === 'repertorium'
                   ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/50'
                   : 'text-slate-600 hover:bg-slate-200/50 hover:text-slate-900'
               }`}
             >
-              <Layers className="w-4 h-4 text-teal-600" />
-              <span>{t('tabRepertorium')}</span>
+              <div className="flex items-center gap-3">
+                <Layers className={`w-4 h-4 ${isTabAllowed('repertorium') ? 'text-teal-600' : 'text-slate-400'}`} />
+                <span className={!isTabAllowed('repertorium') ? 'text-slate-500' : ''}>{t('tabRepertorium')}</span>
+              </div>
+              {!isTabAllowed('repertorium') && (
+                <span title={t('tariffPageLockedTooltip')}>
+                  <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                </span>
+              )}
             </button>
 
             {/* 6. Medikamente & Analyse */}
@@ -1868,14 +1970,21 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
               type="button"
               id="sidebar-nav-tab-medications"
               onClick={() => handleSelectTab('medications')}
-              className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-3 transition-colors cursor-pointer ${
+              className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center justify-between transition-colors cursor-pointer ${
                 panelTab === 'medications'
                   ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/50'
                   : 'text-slate-600 hover:bg-slate-200/50 hover:text-slate-900'
               }`}
             >
-              <Pill className="w-4 h-4 text-teal-600" />
-              <span>{t('tabMedications')}</span>
+              <div className="flex items-center gap-3">
+                <Pill className={`w-4 h-4 ${isTabAllowed('medications') ? 'text-teal-600' : 'text-slate-400'}`} />
+                <span className={!isTabAllowed('medications') ? 'text-slate-500' : ''}>{t('tabMedications')}</span>
+              </div>
+              {!isTabAllowed('medications') && (
+                <span title={t('tariffPageLockedTooltip')}>
+                  <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                </span>
+              )}
             </button>
           </div>
         </div>
@@ -1954,14 +2063,21 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
               type="button"
               id="sidebar-nav-tab-documentation"
               onClick={() => handleSelectTab('documentation')}
-              className={`w-full text-left px-3.5 py-2 rounded-xl text-xs sm:text-sm font-medium flex items-center gap-3 transition-colors cursor-pointer ${
+              className={`w-full text-left px-3.5 py-2 rounded-xl text-xs sm:text-sm font-medium flex items-center justify-between transition-colors cursor-pointer ${
                 panelTab === 'documentation'
                   ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/50'
                   : 'text-slate-600 hover:bg-slate-200/50 hover:text-slate-900'
               }`}
             >
-              <FileText className="w-4 h-4 text-teal-600" />
-              <span>{t('tabDocumentation')}</span>
+              <div className="flex items-center gap-3">
+                <FileText className={`w-4 h-4 ${isTabAllowed('documentation') ? 'text-teal-600' : 'text-slate-400'}`} />
+                <span className={!isTabAllowed('documentation') ? 'text-slate-500' : ''}>{t('tabDocumentation')}</span>
+              </div>
+              {!isTabAllowed('documentation') && (
+                <span title={t('tariffPageLockedTooltip')}>
+                  <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                </span>
+              )}
             </button>
             
             <button 
@@ -2771,6 +2887,7 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                             onChange={(val) => handleUpdateHauptbeschwerde(val)}
                             size="card"
                             mode="append"
+                            context="main_complaint"
                             id="btn-voice-hauptbeschwerde"
                             className="w-full h-full"
                           />
@@ -3750,6 +3867,15 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
                         analysis={clinicalAnalysis}
                         onEditSection={(stepIdx) => setCurrentStep(stepIdx)}
                         isAnalyzing={isAnalyzing}
+                        allCases={cases}
+                        onOpenMedicationsModal={(autoAddNew) => {
+                          setMedicationsModalAutoAddNew(Boolean(autoAddNew));
+                          setIsMedicationsModalOpen(true);
+                        }}
+                        onUpdateCase={(updatedCase) => {
+                          setCurrentCase(updatedCase);
+                          refreshCases();
+                        }}
                       />
                     ) : (
                       <div className="bg-white p-12 rounded-2xl shadow-2xs border border-slate-200/90 text-center space-y-4">
@@ -4487,6 +4613,53 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
           }));
         }}
       />
+
+      {/* MODAL: SEITE IN DIESEM TARIF GESPERRT */}
+      {lockedPageAttempt && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl max-w-md w-full border border-slate-200 shadow-2xl overflow-hidden p-6 sm:p-7 text-center space-y-5 animate-in zoom-in-95 duration-200">
+            <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center mx-auto shadow-inner">
+              <Lock className="w-7 h-7" />
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="text-lg sm:text-xl font-bold text-slate-900 font-serif">
+                {t('tariffPageLockedModalTitle')}
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed max-w-sm mx-auto">
+                {t('tariffPageLockedModalDesc', { page: lockedPageAttempt.name, tariff: therapist.tarifLabel || therapist.tarif || 'Standard' })}
+              </p>
+            </div>
+
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-700 flex items-center justify-between">
+              <span className="text-slate-500 font-medium">Aktueller Tarif:</span>
+              <span className="font-bold text-slate-900">{therapist.tarifLabel || therapist.tarif || 'Standard'}</span>
+            </div>
+
+            <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => setLockedPageAttempt(null)}
+                className="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-semibold transition-colors cursor-pointer"
+              >
+                {t('btnCancelModal')}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setLockedPageAttempt(null);
+                  setPanelTab('tariff');
+                }}
+                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all shadow-md cursor-pointer"
+              >
+                <span>{t('tariffUpgradeNowBtn')}</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
         </div>
       </div>
     </div>

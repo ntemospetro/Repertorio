@@ -185,6 +185,7 @@ export const FindingsWizardModal: React.FC<Props> = ({
                         onChange={(val) => setDetails({ ...details, [f.key]: val })}
                         mode="append"
                         size="xs"
+                        context="question_answer"
                       />
                     </div>
                   </div>
@@ -243,6 +244,7 @@ export const FindingsWizardModal: React.FC<Props> = ({
                           }}
                           mode="append"
                           size="xs"
+                          context="question_answer"
                         />
                       </div>
                     </div>

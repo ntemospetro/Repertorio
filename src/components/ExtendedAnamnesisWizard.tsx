@@ -690,6 +690,7 @@ const FieldRenderer: React.FC<{
                               }}
                               size="xs"
                               mode="append"
+                              context="question_answer"
                               id={`btn-voice-sub-${field.id}-${i}-${sub.id}`}
                             />
                           </div>
@@ -718,6 +719,7 @@ const FieldRenderer: React.FC<{
                             }}
                             size="xs"
                             mode="append"
+                            context="question_answer"
                             id={`btn-voice-sub-${field.id}-${i}-${sub.id}`}
                           />
                         </div>
@@ -941,6 +943,7 @@ const FieldRenderer: React.FC<{
                 onChange={(val) => onChange(val)}
                 size="xs"
                 mode="append"
+                context="question_answer"
                 id={`btn-voice-f-${field.id}`}
               />
             </div>
@@ -961,6 +964,7 @@ const FieldRenderer: React.FC<{
                 onChange={(val) => onChange(val)}
                 size="xs"
                 mode="append"
+                context="question_answer"
                 id={`btn-voice-f-${field.id}`}
               />
             </div>

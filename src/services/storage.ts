@@ -1,4 +1,4 @@
-import { Therapist, PatientCase, PackagePlan, LanguageCode, AdminCredentials, SiteConfig, EmailConfig, NameChangeRequest, FollowUpEntry, InitialPrescription, ActiveView, TermsPdfArchiveItem, FreeTrialLimitConfig, TrialLimitMode } from '../types';
+import { Therapist, PatientCase, PackagePlan, LanguageCode, AdminCredentials, SiteConfig, EmailConfig, NameChangeRequest, FollowUpEntry, InitialPrescription, ActiveView, TermsPdfArchiveItem, FreeTrialLimitConfig, TrialLimitMode, TariffPagePermissions, TariffFeatureLimits } from '../types';
 import { DEFAULT_TERMS, DEFAULT_TERMS_BY_LANG, getDefaultTermsForLanguage, TermsAndConditions } from '../data/defaultTerms';
 import {
   cloudSaveTherapist,
@@ -519,6 +519,27 @@ export const INITIAL_PACKAGE_PLANS: PackagePlan[] = [
     isDefault: true,
     isActive: true,
     createdAt: '2025-01-01T00:00:00Z',
+    maxVoiceMainComplaintSeconds: 60,
+    maxVoiceQuestionAnswerSeconds: 0,
+    allowVoiceQuestionAnswer: false,
+    pagePermissions: {
+      patients: true,
+      cases: true,
+      quickintake: true,
+      materiamedica: true,
+      repertorium: false,
+      medications: true,
+      documentation: true,
+    },
+    featureLimits: {
+      unlimitedAll: false,
+      maxPatients: 3,
+      maxAnalyses: 3,
+      maxMedsPerCase: 3,
+      maxRiskAnalyses: 3,
+      maxReports: 3,
+      maxAiRequests: 5,
+    },
   },
   {
     id: 'starter_10',
@@ -538,6 +559,27 @@ export const INITIAL_PACKAGE_PLANS: PackagePlan[] = [
     isDefault: false,
     isActive: true,
     createdAt: '2025-01-10T00:00:00Z',
+    maxVoiceMainComplaintSeconds: 120,
+    maxVoiceQuestionAnswerSeconds: 45,
+    allowVoiceQuestionAnswer: true,
+    pagePermissions: {
+      patients: true,
+      cases: true,
+      quickintake: true,
+      materiamedica: true,
+      repertorium: true,
+      medications: true,
+      documentation: true,
+    },
+    featureLimits: {
+      unlimitedAll: false,
+      maxPatients: 10,
+      maxAnalyses: 10,
+      maxMedsPerCase: 8,
+      maxRiskAnalyses: 10,
+      maxReports: 10,
+      maxAiRequests: 25,
+    },
   },
   {
     id: 'praxis_50',
@@ -557,6 +599,27 @@ export const INITIAL_PACKAGE_PLANS: PackagePlan[] = [
     isDefault: false,
     isActive: true,
     createdAt: '2025-01-15T00:00:00Z',
+    maxVoiceMainComplaintSeconds: 180,
+    maxVoiceQuestionAnswerSeconds: 60,
+    allowVoiceQuestionAnswer: true,
+    pagePermissions: {
+      patients: true,
+      cases: true,
+      quickintake: true,
+      materiamedica: true,
+      repertorium: true,
+      medications: true,
+      documentation: true,
+    },
+    featureLimits: {
+      unlimitedAll: false,
+      maxPatients: 50,
+      maxAnalyses: 50,
+      maxMedsPerCase: 20,
+      maxRiskAnalyses: 50,
+      maxReports: 50,
+      maxAiRequests: 100,
+    },
   },
   {
     id: 'pro_unlimited',
@@ -577,6 +640,27 @@ export const INITIAL_PACKAGE_PLANS: PackagePlan[] = [
     isDefault: false,
     isActive: true,
     createdAt: '2025-01-20T00:00:00Z',
+    maxVoiceMainComplaintSeconds: 300,
+    maxVoiceQuestionAnswerSeconds: 120,
+    allowVoiceQuestionAnswer: true,
+    pagePermissions: {
+      patients: true,
+      cases: true,
+      quickintake: true,
+      materiamedica: true,
+      repertorium: true,
+      medications: true,
+      documentation: true,
+    },
+    featureLimits: {
+      unlimitedAll: true,
+      maxPatients: -1,
+      maxAnalyses: -1,
+      maxMedsPerCase: -1,
+      maxRiskAnalyses: -1,
+      maxReports: -1,
+      maxAiRequests: -1,
+    },
   },
 ];
 
@@ -967,7 +1051,55 @@ export function getPackagePlans(): PackagePlan[] {
       safeLocalStorageSetItem(STORAGE_KEYS.PACKAGES, JSON.stringify(INITIAL_PACKAGE_PLANS));
       return INITIAL_PACKAGE_PLANS;
     }
-    return JSON.parse(raw);
+    const parsed: PackagePlan[] = JSON.parse(raw);
+    // Ensure all plans have voice limit settings and permission/quota settings (backward compatibility migration)
+    return parsed.map((p) => {
+      const isTrial = p.id === 'free_trial' || p.billingPeriod === 'free' || p.price === 0;
+      const isUnlimitedPlan = p.isUnlimited || p.id === 'pro_unlimited';
+      
+      const defaultPermissions = {
+        patients: true,
+        cases: true,
+        quickintake: true,
+        materiamedica: true,
+        repertorium: isTrial ? false : true,
+        medications: true,
+        documentation: true,
+      };
+
+      const defaultLimits = isUnlimitedPlan ? {
+        unlimitedAll: true,
+        maxPatients: -1,
+        maxAnalyses: -1,
+        maxMedsPerCase: -1,
+        maxRiskAnalyses: -1,
+        maxReports: -1,
+        maxAiRequests: -1,
+      } : {
+        unlimitedAll: false,
+        maxPatients: p.maxAnalyses || (isTrial ? 3 : 25),
+        maxAnalyses: p.maxAnalyses || (isTrial ? 3 : 25),
+        maxMedsPerCase: isTrial ? 3 : 15,
+        maxRiskAnalyses: isTrial ? 3 : (p.maxAnalyses || 25),
+        maxReports: isTrial ? 3 : (p.maxAnalyses || 25),
+        maxAiRequests: isTrial ? 5 : 50,
+      };
+
+      return {
+        ...p,
+        maxVoiceMainComplaintSeconds: p.maxVoiceMainComplaintSeconds !== undefined 
+          ? p.maxVoiceMainComplaintSeconds 
+          : (isTrial ? 60 : (p.id === 'pro_unlimited' ? 300 : (p.id === 'praxis_50' ? 180 : 120))),
+        maxVoiceQuestionAnswerSeconds: p.maxVoiceQuestionAnswerSeconds !== undefined
+          ? p.maxVoiceQuestionAnswerSeconds
+          : (isTrial ? 0 : (p.id === 'pro_unlimited' ? 120 : (p.id === 'praxis_50' ? 60 : 45))),
+        allowVoiceQuestionAnswer: p.allowVoiceQuestionAnswer !== undefined
+          ? p.allowVoiceQuestionAnswer
+          : !isTrial,
+        pagePermissions: p.pagePermissions ? { ...defaultPermissions, ...p.pagePermissions } : defaultPermissions,
+        featureLimits: p.featureLimits ? { ...defaultLimits, ...p.featureLimits } : defaultLimits,
+      };
+    });
   } catch {
     return INITIAL_PACKAGE_PLANS;
   }
@@ -1206,6 +1338,107 @@ export function getActiveTherapist(): Therapist | null {
   if (!id) return null;
   const list = getTherapists();
   return list.find(t => t.id === id) || null;
+}
+
+export interface VoiceRecordingLimits {
+  maxMainComplaintSeconds: number;
+  maxQuestionAnswerSeconds: number;
+  allowQuestionAnswer: boolean;
+  tariffName: string;
+  tariffId: string;
+}
+
+export function getVoiceRecordingLimitsForTherapist(therapistId?: string): VoiceRecordingLimits {
+  const currentTherapists = getTherapists();
+  const therapist = therapistId 
+    ? currentTherapists.find(t => t.id === therapistId) 
+    : getActiveTherapist();
+
+  const packages = getPackagePlans();
+  const planId = therapist?.tarifId || therapist?.tarif;
+  const plan = (planId ? packages.find(p => p.id === planId) : null) 
+    || packages.find(p => p.id === 'free_trial') 
+    || packages[0];
+
+  const isTrial = !plan || plan.id === 'free_trial' || plan.billingPeriod === 'free' || plan.price === 0;
+
+  const maxMain = plan?.maxVoiceMainComplaintSeconds !== undefined 
+    ? plan.maxVoiceMainComplaintSeconds 
+    : (isTrial ? 60 : 180);
+
+  const allowQ = plan?.allowVoiceQuestionAnswer !== undefined 
+    ? plan.allowVoiceQuestionAnswer 
+    : !isTrial;
+
+  const maxQ = !allowQ 
+    ? 0 
+    : (plan?.maxVoiceQuestionAnswerSeconds !== undefined 
+        ? plan.maxVoiceQuestionAnswerSeconds 
+        : (isTrial ? 0 : 60));
+
+  return {
+    maxMainComplaintSeconds: Math.max(5, maxMain),
+    maxQuestionAnswerSeconds: maxQ,
+    allowQuestionAnswer: allowQ,
+    tariffName: plan?.name || therapist?.tarifLabel || 'Kostenloser Test-Tarif',
+    tariffId: plan?.id || 'free_trial',
+  };
+}
+
+export interface TherapistTariffAccess {
+  plan: PackagePlan;
+  pagePermissions: Required<TariffPagePermissions>;
+  featureLimits: Required<TariffFeatureLimits>;
+  isPageAllowed: (pageKey: keyof TariffPagePermissions) => boolean;
+  isUnlimitedAll: boolean;
+}
+
+export function getTariffAccessForTherapist(therapistOrId?: Therapist | string): TherapistTariffAccess {
+  const currentTherapists = getTherapists();
+  const therapist = typeof therapistOrId === 'object' && therapistOrId !== null
+    ? therapistOrId
+    : (typeof therapistOrId === 'string'
+        ? currentTherapists.find(t => t.id === therapistOrId) 
+        : getActiveTherapist());
+
+  const packages = getPackagePlans();
+  const planId = therapist?.tarifId || therapist?.tarif;
+  const plan = (planId ? packages.find(p => p.id === planId) : null) 
+    || packages.find(p => p.id === 'free_trial') 
+    || packages[0];
+
+  const isUnlimitedPlan = plan?.isUnlimited || plan?.id === 'pro_unlimited' || (therapist?.maxAnalyses ?? 0) >= 900000;
+  const isTrial = !plan || plan.id === 'free_trial' || plan.billingPeriod === 'free' || plan.price === 0;
+
+  const resolvedPagePermissions: Required<TariffPagePermissions> = {
+    patients: plan?.pagePermissions?.patients !== undefined ? plan.pagePermissions.patients : true,
+    cases: plan?.pagePermissions?.cases !== undefined ? plan.pagePermissions.cases : true,
+    quickintake: plan?.pagePermissions?.quickintake !== undefined ? plan.pagePermissions.quickintake : true,
+    materiamedica: plan?.pagePermissions?.materiamedica !== undefined ? plan.pagePermissions.materiamedica : true,
+    repertorium: plan?.pagePermissions?.repertorium !== undefined ? plan.pagePermissions.repertorium : (isTrial ? false : true),
+    medications: plan?.pagePermissions?.medications !== undefined ? plan.pagePermissions.medications : true,
+    documentation: plan?.pagePermissions?.documentation !== undefined ? plan.pagePermissions.documentation : true,
+  };
+
+  const unlimitedAll = plan?.featureLimits?.unlimitedAll ?? isUnlimitedPlan;
+
+  const resolvedFeatureLimits: Required<TariffFeatureLimits> = {
+    unlimitedAll,
+    maxPatients: unlimitedAll ? -1 : (plan?.featureLimits?.maxPatients ?? (plan?.maxAnalyses || (isTrial ? 3 : 25))),
+    maxAnalyses: unlimitedAll ? -1 : (plan?.featureLimits?.maxAnalyses ?? (plan?.maxAnalyses || (isTrial ? 3 : 25))),
+    maxMedsPerCase: unlimitedAll ? -1 : (plan?.featureLimits?.maxMedsPerCase ?? (isTrial ? 3 : 15)),
+    maxRiskAnalyses: unlimitedAll ? -1 : (plan?.featureLimits?.maxRiskAnalyses ?? (isTrial ? 3 : (plan?.maxAnalyses || 25))),
+    maxReports: unlimitedAll ? -1 : (plan?.featureLimits?.maxReports ?? (isTrial ? 3 : (plan?.maxAnalyses || 25))),
+    maxAiRequests: unlimitedAll ? -1 : (plan?.featureLimits?.maxAiRequests ?? (isTrial ? 5 : 50)),
+  };
+
+  return {
+    plan,
+    pagePermissions: resolvedPagePermissions,
+    featureLimits: resolvedFeatureLimits,
+    isPageAllowed: (pageKey: keyof TariffPagePermissions) => resolvedPagePermissions[pageKey] !== false,
+    isUnlimitedAll: unlimitedAll,
+  };
 }
 
 export function authenticateTherapist(email: string, password: string): {

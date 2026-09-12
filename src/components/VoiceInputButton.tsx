@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Mic, MicOff, Loader2, AlertCircle, X, ShieldAlert, AlertTriangle } from 'lucide-react';
+import { Mic, MicOff, Loader2, AlertCircle, X, ShieldAlert, AlertTriangle, Clock, ArrowUpRight, Sparkles } from 'lucide-react';
 import { useTranslation } from '../i18n/LanguageContext';
 import { TranslationKey } from '../i18n/translations';
 import { 
@@ -10,6 +10,9 @@ import {
   LANGUAGE_SPEECH_MAP
 } from '../services/speechService';
 import { checkMedicalRelevance } from '../services/medicalRelevanceService';
+import { getVoiceRecordingLimitsForTherapist, VoiceRecordingLimits } from '../services/storage';
+
+export type VoiceFieldContext = 'main_complaint' | 'question_answer' | 'general';
 
 interface VoiceInputButtonProps {
   value: string;
@@ -20,6 +23,7 @@ interface VoiceInputButtonProps {
   title?: string;
   id?: string;
   disabled?: boolean;
+  context?: VoiceFieldContext;
 }
 
 export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
@@ -31,6 +35,7 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
   title,
   id,
   disabled = false,
+  context = 'general',
 }) => {
   const { language, t } = useTranslation();
   const [isListening, setIsListening] = useState(false);
@@ -39,6 +44,12 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
   const [showRejectionNotice, setShowRejectionNotice] = useState(false);
   const [showAcceptedFeedback, setShowAcceptedFeedback] = useState(false);
   const [showPermissionModal, setShowPermissionModal] = useState(false);
+  const [showTimeLimitModal, setShowTimeLimitModal] = useState(false);
+  const [showNotAllowedModal, setShowNotAllowedModal] = useState(false);
+
+  const [voiceLimits, setVoiceLimits] = useState<VoiceRecordingLimits>(() => getVoiceRecordingLimitsForTherapist());
+  const [secondsElapsed, setSecondsElapsed] = useState(0);
+  const [activeLimitSeconds, setActiveLimitSeconds] = useState(60);
 
   const sessionRef = useRef<SpeechRecognitionSession | null>(null);
   const valueRef = useRef(value);
@@ -48,11 +59,39 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
   const rejectionTimerRef = useRef<number | null>(null);
   const acceptedTimerRef = useRef<number | null>(null);
   const maxDurationTimerRef = useRef<number | null>(null);
+  const countdownIntervalRef = useRef<number | null>(null);
+  const secondsElapsedRef = useRef<number>(0);
 
   // Keep valueRef updated for closures
   useEffect(() => {
     valueRef.current = value;
   }, [value]);
+
+  // Keep tariff limits updated when packages or active therapist change
+  useEffect(() => {
+    const handleUpdate = () => {
+      setVoiceLimits(getVoiceRecordingLimitsForTherapist());
+    };
+    window.addEventListener('homoeo_packages_updated', handleUpdate);
+    window.addEventListener('homoeo_active_therapist_changed', handleUpdate);
+    return () => {
+      window.removeEventListener('homoeo_packages_updated', handleUpdate);
+      window.removeEventListener('homoeo_active_therapist_changed', handleUpdate);
+    };
+  }, []);
+
+  const clearTimersAndCountdown = useCallback(() => {
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null;
+    }
+    if (maxDurationTimerRef.current) {
+      clearTimeout(maxDurationTimerRef.current);
+      maxDurationTimerRef.current = null;
+    }
+    secondsElapsedRef.current = 0;
+    setSecondsElapsed(0);
+  }, []);
 
   // Clean up recording session and timers on unmount
   useEffect(() => {
@@ -61,9 +100,7 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
         sessionRef.current.abort();
         sessionRef.current = null;
       }
-      if (maxDurationTimerRef.current) {
-        clearTimeout(maxDurationTimerRef.current);
-      }
+      clearTimersAndCountdown();
       if (rejectionTimerRef.current) {
         clearTimeout(rejectionTimerRef.current);
       }
@@ -71,7 +108,19 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
         clearTimeout(acceptedTimerRef.current);
       }
     };
-  }, [language]);
+  }, [clearTimersAndCountdown]);
+
+  const handleOpenUpgrade = () => {
+    setShowTimeLimitModal(false);
+    setShowNotAllowedModal(false);
+    window.dispatchEvent(new CustomEvent('homoeo_action_set_modal', { detail: 'upgrade' }));
+  };
+
+  const formatSeconds = (sec: number) => {
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
+  };
 
   /**
    * Process the completed voice transcript after speech has ended.
@@ -112,15 +161,32 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
     }
   }, [mode, onChange]);
 
+  const handleLimitReached = useCallback((limitSec: number) => {
+    if (sessionRef.current) {
+      sessionRef.current.stop();
+      sessionRef.current = null;
+    }
+    clearTimersAndCountdown();
+    setIsListening(false);
+    setIsStarting(false);
+
+    // Process spoken text immediately
+    const textToProcess = recordedTranscriptRef.current;
+    recordedTranscriptRef.current = '';
+    if (textToProcess && textToProcess.trim() && !isProcessingRef.current) {
+      processCompletedVoiceInput(textToProcess);
+    }
+
+    setActiveLimitSeconds(limitSec);
+    setShowTimeLimitModal(true);
+  }, [clearTimersAndCountdown, processCompletedVoiceInput]);
+
   const stopListening = useCallback(() => {
     if (sessionRef.current) {
       sessionRef.current.stop();
       sessionRef.current = null;
     }
-    if (maxDurationTimerRef.current) {
-      clearTimeout(maxDurationTimerRef.current);
-      maxDurationTimerRef.current = null;
-    }
+    clearTimersAndCountdown();
     setIsListening(false);
     setIsStarting(false);
 
@@ -130,7 +196,7 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
     if (textToProcess && textToProcess.trim() && !isProcessingRef.current) {
       processCompletedVoiceInput(textToProcess);
     }
-  }, [processCompletedVoiceInput]);
+  }, [clearTimersAndCountdown, processCompletedVoiceInput]);
 
   const startListening = useCallback(() => {
     if (disabled || isEvaluating) return;
@@ -143,20 +209,38 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
       return;
     }
 
+    const currentLimits = getVoiceRecordingLimitsForTherapist();
+    setVoiceLimits(currentLimits);
+
+    // Check if voice is forbidden for questions in this tariff
+    if (context === 'question_answer' && !currentLimits.allowQuestionAnswer) {
+      setShowNotAllowedModal(true);
+      return;
+    }
+
+    // Determine limit based on context
+    let limitSec = 60;
+    if (context === 'main_complaint') {
+      limitSec = currentLimits.maxMainComplaintSeconds || 180;
+    } else if (context === 'question_answer') {
+      limitSec = currentLimits.maxQuestionAnswerSeconds || 60;
+    } else {
+      limitSec = currentLimits.maxMainComplaintSeconds || 120;
+    }
+
+    setActiveLimitSeconds(limitSec);
     setIsStarting(true);
     setShowRejectionNotice(false);
     setShowPermissionModal(false);
+    setShowTimeLimitModal(false);
+    setShowNotAllowedModal(false);
     sessionInitialTextRef.current = valueRef.current || '';
     recordedTranscriptRef.current = '';
     isProcessingRef.current = false;
+    secondsElapsedRef.current = 0;
+    setSecondsElapsed(0);
 
-    // Maximum 60 seconds recording duration
-    if (maxDurationTimerRef.current) {
-      clearTimeout(maxDurationTimerRef.current);
-    }
-    maxDurationTimerRef.current = window.setTimeout(() => {
-      stopListening();
-    }, 60000);
+    clearTimersAndCountdown();
 
     const session = startSpeechRecognition({
       language,
@@ -165,6 +249,20 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
       onStart: () => {
         setIsStarting(false);
         setIsListening(true);
+        secondsElapsedRef.current = 0;
+        setSecondsElapsed(0);
+
+        countdownIntervalRef.current = window.setInterval(() => {
+          secondsElapsedRef.current += 1;
+          setSecondsElapsed(secondsElapsedRef.current);
+          if (secondsElapsedRef.current >= limitSec) {
+            handleLimitReached(limitSec);
+          }
+        }, 1000);
+
+        maxDurationTimerRef.current = window.setTimeout(() => {
+          handleLimitReached(limitSec);
+        }, limitSec * 1000);
       },
       onResult: (transcript) => {
         if (transcript && transcript.trim()) {
@@ -179,10 +277,7 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
         setIsStarting(false);
         setIsListening(false);
         sessionRef.current = null;
-        if (maxDurationTimerRef.current) {
-          clearTimeout(maxDurationTimerRef.current);
-          maxDurationTimerRef.current = null;
-        }
+        clearTimersAndCountdown();
 
         if (err === 'not-allowed' || err === 'permission-denied') {
           // Open custom modal with Cancel and Retry options instead of un-cancelable browser alert
@@ -193,10 +288,7 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
         setIsStarting(false);
         setIsListening(false);
         sessionRef.current = null;
-        if (maxDurationTimerRef.current) {
-          clearTimeout(maxDurationTimerRef.current);
-          maxDurationTimerRef.current = null;
-        }
+        clearTimersAndCountdown();
 
         // Process collected speech text if not already processing
         const textToProcess = recordedTranscriptRef.current;
@@ -208,7 +300,7 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
     });
 
     sessionRef.current = session;
-  }, [disabled, isEvaluating, language, mode, onChange, processCompletedVoiceInput, stopListening, t]);
+  }, [clearTimersAndCountdown, context, disabled, handleLimitReached, isEvaluating, language, mode, onChange, processCompletedVoiceInput, t]);
 
   const toggleListening = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -305,9 +397,13 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
                     ? (t('medicalRelevanceFilterChecking' as TranslationKey) || 'Prüfe...')
                     : (t('voiceRecordCardLabel' as TranslationKey) || 'Aufnahme')}
                 </span>
-                {isListening && (
-                  <span className="text-[10px] font-normal text-rose-100 animate-pulse">
-                    {t('voiceDictationListening' as TranslationKey) || 'Hört zu...'}
+                {isListening ? (
+                  <span className="text-[10px] font-mono font-bold text-rose-100 bg-rose-700/60 px-2 py-0.5 rounded-full border border-rose-400/40 animate-pulse mt-0.5">
+                    {formatSeconds(secondsElapsed)} / {formatSeconds(activeLimitSeconds)}
+                  </span>
+                ) : (
+                  <span className="text-[9px] text-white/80 font-mono mt-0.5">
+                    max. {activeLimitSeconds}s
                   </span>
                 )}
               </div>
@@ -329,6 +425,12 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
           )}
         </button>
 
+        {isListening && !isCard && (
+          <span className="absolute -top-6 -right-2 bg-slate-900/90 text-white font-mono text-[9px] px-1.5 py-0.5 rounded shadow-md border border-slate-700 pointer-events-none whitespace-nowrap z-50 animate-pulse">
+            {formatSeconds(Math.max(0, activeLimitSeconds - secondsElapsed))}
+          </span>
+        )}
+
         {isListening && (
           <span className="sr-only">
             Sprachaufnahme aktiv in {currentLangLabel}
@@ -336,7 +438,7 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
         )}
       </div>
 
-      {/* Floating Medical Relevance Rejection Notification (rendered in Portal for guaranteed visibility) */}
+      {/* Floating Medical Relevance Rejection Notification */}
       {showRejectionNotice && typeof document !== 'undefined' && createPortal(
         <div 
           className="fixed bottom-6 right-6 z-[99999] max-w-md w-[calc(100vw-3rem)] bg-white rounded-2xl shadow-2xl border-2 border-rose-400 p-4 sm:p-5 animate-in slide-in-from-bottom-5 duration-300 backdrop-blur-md"
@@ -373,6 +475,150 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
                   {t('btnOk')}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Time Limit Reached Upgrade Prompt Modal */}
+      {showTimeLimitModal && typeof document !== 'undefined' && createPortal(
+        <div
+          className="fixed inset-0 z-[999999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="voice-limit-title"
+        >
+          <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-amber-200 p-6 space-y-4 animate-in zoom-in-95 duration-200">
+            <div className="flex items-start gap-3.5">
+              <div className="p-3 bg-amber-100 text-amber-700 rounded-xl shrink-0 mt-0.5 border border-amber-200">
+                <Clock className="w-6 h-6" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <h3 id="voice-limit-title" className="text-base font-bold text-slate-900 leading-tight">
+                    {t('voiceLimitReachedTitle')}
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => setShowTimeLimitModal(false)}
+                    className="p-1 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                    aria-label="Schließen"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="mt-3 p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5 text-xs text-slate-700">
+                  <div className="flex items-center justify-between font-medium">
+                    <span className="text-slate-500">{t('voiceLimitCurrentTariff', { tariff: '' }).replace(': ', '')}:</span>
+                    <span className="font-bold text-slate-900 bg-white px-2 py-0.5 rounded border border-slate-200">{voiceLimits.tariffName}</span>
+                  </div>
+                  <div className="flex items-center justify-between font-medium">
+                    <span className="text-slate-500">{t('adminVoiceLimitsTitle')}:</span>
+                    <span className="font-mono font-bold text-amber-700">{activeLimitSeconds}s</span>
+                  </div>
+                </div>
+
+                <p className="text-xs sm:text-sm text-slate-700 leading-relaxed font-medium mt-3">
+                  {t('voiceLimitMaxReachedMsg', { seconds: activeLimitSeconds })}
+                </p>
+
+                <div className="mt-3 p-2.5 bg-amber-50/80 rounded-lg border border-amber-200/70 text-xs font-semibold text-amber-900 flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>{t('voiceLimitUpgradeHint')}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setShowTimeLimitModal(false)}
+                className="px-3.5 py-2 text-xs sm:text-sm font-semibold text-slate-600 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
+              >
+                {t('voiceLimitOkBtn')}
+              </button>
+              <button
+                type="button"
+                onClick={handleOpenUpgrade}
+                className="px-4 py-2 text-xs sm:text-sm font-bold text-white bg-teal-600 hover:bg-teal-700 rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+              >
+                <span>{t('voiceLimitChooseHigherPlanBtn')}</span>
+                <ArrowUpRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Voice Not Allowed in Current Tariff Modal */}
+      {showNotAllowedModal && typeof document !== 'undefined' && createPortal(
+        <div
+          className="fixed inset-0 z-[999999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="voice-not-allowed-title"
+        >
+          <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-rose-200 p-6 space-y-4 animate-in zoom-in-95 duration-200">
+            <div className="flex items-start gap-3.5">
+              <div className="p-3 bg-rose-100 text-rose-700 rounded-xl shrink-0 mt-0.5 border border-rose-200">
+                <MicOff className="w-6 h-6" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <h3 id="voice-not-allowed-title" className="text-base font-bold text-slate-900 leading-tight">
+                    {t('voiceNotAllowedTitle')}
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => setShowNotAllowedModal(false)}
+                    className="p-1 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                    aria-label="Schließen"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="mt-3 p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5 text-xs text-slate-700">
+                  <div className="flex items-center justify-between font-medium">
+                    <span className="text-slate-500">{t('voiceLimitCurrentTariff', { tariff: '' }).replace(': ', '')}:</span>
+                    <span className="font-bold text-slate-900 bg-white px-2 py-0.5 rounded border border-slate-200">{voiceLimits.tariffName}</span>
+                  </div>
+                  <div className="flex items-center justify-between font-medium">
+                    <span className="text-slate-500">{t('adminVoiceQuestionAnswerLimitLabel')}:</span>
+                    <span className="font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">{t('adminVoiceNotPermitted')}</span>
+                  </div>
+                </div>
+
+                <p className="text-xs sm:text-sm text-slate-700 leading-relaxed font-medium mt-3">
+                  {t('voiceNotAllowedDesc', { tariff: voiceLimits.tariffName })}
+                </p>
+
+                <div className="mt-3 p-2.5 bg-amber-50/80 rounded-lg border border-amber-200/70 text-xs font-semibold text-amber-900 flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>{t('voiceNotAllowedUpgradeHint')}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setShowNotAllowedModal(false)}
+                className="px-3.5 py-2 text-xs sm:text-sm font-semibold text-slate-600 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
+              >
+                {t('cancel')}
+              </button>
+              <button
+                type="button"
+                onClick={handleOpenUpgrade}
+                className="px-4 py-2 text-xs sm:text-sm font-bold text-white bg-teal-600 hover:bg-teal-700 rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+              >
+                <span>{t('voiceLimitChooseHigherPlanBtn')}</span>
+                <ArrowUpRight className="w-4 h-4" />
+              </button>
             </div>
           </div>
         </div>,

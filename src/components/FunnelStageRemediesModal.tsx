@@ -257,7 +257,7 @@ export const FunnelStageRemediesModal: React.FC<FunnelStageRemediesModalProps> =
                       </div>
                       {remedy.isPolychrest && (
                         <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-indigo-50 text-indigo-700 border border-indigo-200 shrink-0">
-                          Polychrest
+                          {t('repertoriumPraxisBonusBadgeSimple')}
                         </span>
                       )}
                     </div>
@@ -303,7 +303,7 @@ export const FunnelStageRemediesModal: React.FC<FunnelStageRemediesModalProps> =
                     {/* Main Indications preview */}
                     {remedy.mainIndications && remedy.mainIndications.length > 0 && (
                       <div className="text-[11px] text-slate-600 line-clamp-2 pt-1 border-t border-slate-100">
-                        <span className="font-semibold text-slate-700">Leitsymptome: </span>
+                        <span className="font-semibold text-slate-700">{t('secKeynotesTitle')}: </span>
                         {remedy.mainIndications.slice(0, 2).join(', ')}
                       </div>
                     )}
@@ -343,11 +343,11 @@ export const FunnelStageRemediesModal: React.FC<FunnelStageRemediesModalProps> =
       {/* Bottom Footer Bar */}
       <div className="shrink-0 bg-white border-t border-slate-200/90 px-4 md:px-8 py-2.5 flex items-center justify-between text-xs text-slate-500">
         <div className="flex items-center gap-2">
-          <span>Gesamt in dieser Stufe: </span>
-          <span className="font-bold text-slate-900">{step.countAfter} Arzneimittel</span>
+          <span>{t('repertoriumFunnelStageModalTotalInStage')} </span>
+          <span className="font-bold text-slate-900">{step?.countAfter} {t('repertoriumFunnelStageModalRemediesSuffix')}</span>
         </div>
         <div className="flex items-center gap-3">
-          <span className="hidden sm:inline text-slate-400">ESC zum Schließen</span>
+          <span className="hidden sm:inline text-slate-400">{t('repertoriumFunnelStageModalEscToClose')}</span>
           <button
             type="button"
             onClick={onClose}

@@ -142,7 +142,7 @@ export interface RemedyMonographModalProps {
 
 export const RemedyMonographModal: React.FC<RemedyMonographModalProps> = ({
   isOpen,
-  remedy,
+  remedy: passedRemedy,
   onClose,
   allRemedies,
   modalHistory = [],
@@ -157,11 +157,13 @@ export const RemedyMonographModal: React.FC<RemedyMonographModalProps> = ({
     if (modalBodyRef.current) {
       modalBodyRef.current.scrollTop = 0;
     }
-  }, [remedy]);
+  }, [passedRemedy]);
 
-  if (isOpen === false || !remedy) return null;
+  if (isOpen === false || !passedRemedy) return null;
 
   const remediesList = allRemedies || getLocalizedRemedies(language);
+  const remedy = remediesList.find(r => r.id === passedRemedy.id) || passedRemedy;
+
   const authorsInfo = getRemedyClassicalAuthors(remedy.id);
   const hasAnyAuthors = authorsInfo.hahnemann || authorsInfo.kent || authorsInfo.hering || authorsInfo.boericke || authorsInfo.boger || authorsInfo.allen;
 

@@ -786,6 +786,7 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
                   <div className="shrink-0 pb-0.5">
                     <VoiceInputButton
                       size="sm"
+                      context="question_answer"
                       value={currentAnswer}
                       onChange={(spokenText) => {
                         setCurrentAnswer(spokenText);
@@ -1017,6 +1018,7 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
                                   />
                                   <VoiceInputButton
                                     size="sm"
+                                    context="question_answer"
                                     value={customText}
                                     onChange={(val) => setCustomClarifyingInput(prev => ({ ...prev, [q.id]: val }))}
                                   />

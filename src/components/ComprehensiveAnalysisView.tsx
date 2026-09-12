@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { PatientCase, FullClinicalAnalysis, DifferentialDiagnosisItem, RedFlagItem, MedicationAnalysisDetail, HomeoRemedyRecommendation } from '../types';
 import { exportCategoryPDF, PDFExportCategory } from '../services/pdfExportService';
 import { useTranslation } from '../i18n/LanguageContext';
+import { MedicationResearchView } from './MedicationResearchView';
 import { getLocalizedPresetValue } from '../utils/remedyLocalization';
 import { 
   ShieldAlert, 
@@ -23,7 +25,9 @@ import {
   Download,
   Check,
   Clock,
-  Timer
+  Timer,
+  X,
+  ExternalLink
 } from 'lucide-react';
 
 interface ComprehensiveAnalysisViewProps {
@@ -32,6 +36,9 @@ interface ComprehensiveAnalysisViewProps {
   onEditSection?: (stepIndex: number) => void;
   onReAnalyze?: () => void;
   isAnalyzing?: boolean;
+  allCases?: PatientCase[];
+  onUpdateCase?: (updatedCase: Partial<PatientCase>) => void;
+  onOpenMedicationsModal?: (autoAddNew?: boolean) => void;
 }
 
 export const ComprehensiveAnalysisView: React.FC<ComprehensiveAnalysisViewProps> = ({
@@ -39,11 +46,28 @@ export const ComprehensiveAnalysisView: React.FC<ComprehensiveAnalysisViewProps>
   analysis,
   onEditSection,
   onReAnalyze,
-  isAnalyzing = false
+  isAnalyzing = false,
+  allCases = [],
+  onUpdateCase,
+  onOpenMedicationsModal,
 }) => {
   const { t, language } = useTranslation();
   const [activeTab, setActiveTab] = useState<'redFlags' | 'falldaten' | 'differential' | 'homoeopathie' | 'medikamente' | 'gesamt'>('redFlags');
+  const [isMedicationModalOpen, setIsMedicationModalOpen] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState<string | null>(null);
+
+  // Close medication modal on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isMedicationModalOpen) {
+        setIsMedicationModalOpen(false);
+      }
+    };
+    if (isMedicationModalOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isMedicationModalOpen]);
 
   const handleDownloadPDF = (cat: PDFExportCategory, label: string) => {
     try {
@@ -59,6 +83,140 @@ export const ComprehensiveAnalysisView: React.FC<ComprehensiveAnalysisViewProps>
   const redFlags: RedFlagItem[] = analysis.redFlags?.warnings || [];
   const meds: MedicationAnalysisDetail[] = analysis.medikamente?.details || [];
   const homeoMittel: HomeoRemedyRecommendation[] = analysis.homoeopathie?.mittel || [];
+
+  const renderMedicationAnalysisContent = (isPrint: boolean = false) => (
+    <div className="space-y-6">
+      {!isPrint && (
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-lg bg-teal-100 text-teal-800">
+              <Pill className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-slate-900">{t('sec3Title')}</h3>
+              <p className="text-xs text-slate-500">{t('sec3Subtitle')}</p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => handleDownloadPDF('medikamente', t('tabMedications'))}
+            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-teal-50 text-slate-700 hover:text-teal-900 text-xs font-semibold border border-slate-200 print:hidden cursor-pointer"
+          >
+            <Download className="w-3.5 h-3.5 text-teal-600" />
+            <span>{t('pdfMedsBtn')}</span>
+          </button>
+        </div>
+      )}
+
+      {/* Warning Banner */}
+      <div className="p-4 rounded-xl bg-amber-50/80 border border-amber-200 text-xs sm:text-sm text-amber-950 font-medium leading-relaxed">
+        {analysis.medikamente?.warnhinweis || 'Alle Angaben beschreiben mögliche, keine gesicherten Zusammenhänge und ersetzen keine ärztliche oder pharmazeutische Beratung.'}
+      </div>
+
+      {/* Summary Box */}
+      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1 text-xs sm:text-sm">
+        <h4 className="font-bold text-slate-700 uppercase tracking-wider text-xs">
+          {t('medicationSummaryHeader')}
+        </h4>
+        <p className="text-slate-800 leading-relaxed">
+          {analysis.medikamente?.zusammenfassung}
+        </p>
+      </div>
+
+      {/* Detailed Medication Cards */}
+      <div className="space-y-4">
+        {meds.map((med, idx) => (
+          <div key={idx} className="p-5 rounded-xl bg-slate-50/70 border border-slate-200 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-2">
+              <h4 className="text-base font-bold text-slate-900">{med.name}</h4>
+              <div className="flex items-center gap-2">
+                {med.dosierung && (
+                  <span className="px-2 py-0.5 rounded bg-slate-200 text-slate-800 text-xs font-semibold">
+                    {t('dosePrefix')} {med.dosierung}
+                  </span>
+                )}
+                {med.einnahme && (
+                  <span className="px-2 py-0.5 rounded bg-teal-100 text-teal-900 text-xs font-semibold">
+                    {med.einnahme}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {med.wirkung && (
+              <p className="text-xs sm:text-sm text-slate-700">
+                <strong>{t('observedEffect')}</strong> {med.wirkung}
+              </p>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div className="p-3 bg-white rounded-lg border border-slate-200 space-y-1.5">
+                <span className="font-bold text-rose-800 flex items-center gap-1">
+                  <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                  {t('possibleSideEffects')}
+                </span>
+                <ul className="space-y-1 text-slate-600">
+                  {med.nebenwirkungen.map((nw, nIdx) => (
+                    <li key={nIdx}>• {nw}</li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="p-3 bg-white rounded-lg border border-slate-200 space-y-1.5">
+                <span className="font-bold text-teal-800 flex items-center gap-1">
+                  <Info className="w-3.5 h-3.5 text-teal-600" />
+                  {t('possibleConnectionsWithComplaints')}
+                </span>
+                <ul className="space-y-1 text-slate-600">
+                  {med.zusammenhaenge.map((zh, zIdx) => (
+                    <li key={zIdx}>• {zh}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+
+            {med.uebergebrauchBeurteilung && (
+              <div className="p-3 rounded-lg bg-teal-50 border border-teal-100 text-xs text-teal-950">
+                <strong>{t('medOveruseAssessment')}</strong> {med.uebergebrauchBeurteilung}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Missing Info Box */}
+      {analysis.fehlendeInformationen && analysis.fehlendeInformationen.length > 0 && (
+        <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
+          <h4 className="font-bold text-slate-800 flex items-center gap-1.5">
+            <HelpCircle className="w-4 h-4 text-slate-500" />
+            <span>{t('missingInformationTitle')}</span>
+          </h4>
+          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-slate-600 pl-5 list-disc">
+            {analysis.fehlendeInformationen.map((info, idx) => (
+              <li key={idx}>{info}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Actionable Next Steps Box */}
+      {analysis.gesamtAuswertung?.naechsteSchritte && (
+        <div className="p-5 rounded-xl bg-slate-900 text-white space-y-3 print:bg-white print:text-black print:border print:border-slate-300">
+          <h4 className="font-bold text-sm tracking-wide text-teal-300 uppercase">
+            {t('actionableNextStepsHeader')}
+          </h4>
+          <div className="space-y-1.5 text-xs sm:text-sm">
+            {analysis.gesamtAuswertung.naechsteSchritte.map((step, idx) => (
+              <p key={idx} className="font-medium text-slate-200 print:text-slate-800">
+                {step}
+              </p>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -138,15 +296,18 @@ export const ComprehensiveAnalysisView: React.FC<ComprehensiveAnalysisViewProps>
 
           <button
             type="button"
-            onClick={() => setActiveTab('medikamente')}
+            id="tab-btn-medications-modal"
+            onClick={() => setIsMedicationModalOpen(true)}
             className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
-              activeTab === 'medikamente'
+              isMedicationModalOpen
                 ? 'bg-teal-700 text-white shadow-2xs'
-                : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200'
+                : 'bg-slate-50 hover:bg-slate-100 hover:text-teal-900 text-slate-700 border border-slate-200'
             }`}
+            title={t('openMedicationAnalysisPopup')}
           >
-            <Pill className="w-4 h-4 text-teal-300" />
+            <Pill className={`w-4 h-4 ${isMedicationModalOpen ? 'text-teal-200' : 'text-teal-600'}`} />
             <span>{t('tabMedications')}</span>
+            <ExternalLink className="w-3.5 h-3.5 opacity-60 ml-0.5" />
           </button>
 
           <button
@@ -525,147 +686,61 @@ export const ComprehensiveAnalysisView: React.FC<ComprehensiveAnalysisViewProps>
       )}
 
       {/* ========================================================================= */}
-      {/* SECTION 3: MEDIKAMENTE */}
+      {/* SECTION 3: MEDIKAMENTE (IM SCREEN-FLOW DURCH POPUP ERSETZT) */}
       {/* ========================================================================= */}
       {(activeTab === 'medikamente' || activeTab === 'gesamt') && (
-        <section className="bg-white p-6 rounded-xl shadow-xs border border-slate-200 space-y-6 print:p-0 print:border-none print:shadow-none print:break-before-page">
-          {/* Printable Header */}
-          <div className="hidden print:flex items-center justify-between border-b pb-3 mb-4 text-xs text-slate-600">
-            <div>
-              <span className="font-bold text-slate-900 text-sm">3. {t('sec3Title')}: {patientCase.patientName || 'Patient'}</span>
-              <span> • Datum: {patientCase.anamneseDatum || new Date().toLocaleDateString()}</span>
-            </div>
-            <div className="font-bold text-teal-800">{t('defaultPracticeName')}</div>
-          </div>
-
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-lg bg-teal-100 text-teal-800">
+        <>
+          {/* On-screen preview / launch card (replaces the inline medication view) */}
+          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 print:hidden">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-teal-50 text-teal-700 border border-teal-100 shrink-0">
                 <Pill className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-slate-900">{t('sec3Title')}</h3>
-                <p className="text-xs text-slate-500">{t('sec3Subtitle')}</p>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => handleDownloadPDF('medikamente', t('tabMedications'))}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-teal-50 text-slate-700 hover:text-teal-900 text-xs font-semibold border border-slate-200 print:hidden cursor-pointer"
-            >
-              <Download className="w-3.5 h-3.5 text-teal-600" />
-              <span>{t('pdfMedsBtn')}</span>
-            </button>
-          </div>
-
-          {/* Warning Banner */}
-          <div className="p-4 rounded-xl bg-amber-50/80 border border-amber-200 text-xs sm:text-sm text-amber-950 font-medium leading-relaxed">
-            {analysis.medikamente?.warnhinweis || 'Alle Angaben beschreiben mögliche, keine gesicherten Zusammenhänge und ersetzen keine ärztliche oder pharmazeutische Beratung.'}
-          </div>
-
-          {/* Summary Box */}
-          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1 text-xs sm:text-sm">
-            <h4 className="font-bold text-slate-700 uppercase tracking-wider text-xs">
-              {t('medicationSummaryHeader')}
-            </h4>
-            <p className="text-slate-800 leading-relaxed">
-              {analysis.medikamente?.zusammenfassung}
-            </p>
-          </div>
-
-          {/* Detailed Medication Cards */}
-          <div className="space-y-4">
-            {meds.map((med, idx) => (
-              <div key={idx} className="p-5 rounded-xl bg-slate-50/70 border border-slate-200 space-y-4">
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-2">
-                  <h4 className="text-base font-bold text-slate-900">{med.name}</h4>
-                  <div className="flex items-center gap-2">
-                    {med.dosierung && (
-                      <span className="px-2 py-0.5 rounded bg-slate-200 text-slate-800 text-xs font-semibold">
-                        {t('dosePrefix')} {med.dosierung}
-                      </span>
-                    )}
-                    {med.einnahme && (
-                      <span className="px-2 py-0.5 rounded bg-teal-100 text-teal-900 text-xs font-semibold">
-                        {med.einnahme}
-                      </span>
-                    )}
-                  </div>
+                <div className="flex items-center gap-2">
+                  <h4 className="font-bold text-slate-900 text-sm">3. {t('sec3Title')}</h4>
+                  <span className="text-[11px] px-2 py-0.5 rounded bg-teal-50 text-teal-800 font-semibold border border-teal-200/60">
+                    {meds.length} {meds.length === 1 ? 'Medikament' : 'Medikamente'}
+                  </span>
                 </div>
-
-                {med.wirkung && (
-                  <p className="text-xs sm:text-sm text-slate-700">
-                    <strong>{t('observedEffect')}</strong> {med.wirkung}
-                  </p>
-                )}
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                  <div className="p-3 bg-white rounded-lg border border-slate-200 space-y-1.5">
-                    <span className="font-bold text-rose-800 flex items-center gap-1">
-                      <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
-                      {t('possibleSideEffects')}
-                    </span>
-                    <ul className="space-y-1 text-slate-600">
-                      {med.nebenwirkungen.map((nw, nIdx) => (
-                        <li key={nIdx}>• {nw}</li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  <div className="p-3 bg-white rounded-lg border border-slate-200 space-y-1.5">
-                    <span className="font-bold text-teal-800 flex items-center gap-1">
-                      <Info className="w-3.5 h-3.5 text-teal-600" />
-                      {t('possibleConnectionsWithComplaints')}
-                    </span>
-                    <ul className="space-y-1 text-slate-600">
-                      {med.zusammenhaenge.map((zh, zIdx) => (
-                        <li key={zIdx}>• {zh}</li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-
-                {med.uebergebrauchBeurteilung && (
-                  <div className="p-3 rounded-lg bg-teal-50 border border-teal-100 text-xs text-teal-950">
-                    <strong>{t('medOveruseAssessment')}</strong> {med.uebergebrauchBeurteilung}
-                  </div>
-                )}
+                <p className="text-xs text-slate-500 mt-0.5">{t('sec3Subtitle')}</p>
               </div>
-            ))}
+            </div>
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <button
+                type="button"
+                id="btn-launch-medication-modal"
+                onClick={() => setIsMedicationModalOpen(true)}
+                className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-semibold shadow-2xs transition-all cursor-pointer"
+              >
+                <Pill className="w-4 h-4" />
+                <span>{t('openMedicationAnalysisPopup')}</span>
+                <ExternalLink className="w-3.5 h-3.5 opacity-80" />
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDownloadPDF('medikamente', t('tabMedications'))}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-100 hover:bg-teal-50 text-slate-700 hover:text-teal-900 text-xs font-semibold border border-slate-200 transition-all cursor-pointer"
+                title={t('pdfMedsBtn')}
+              >
+                <Download className="w-3.5 h-3.5 text-teal-600" />
+                <span className="hidden md:inline">{t('pdfMedsBtn')}</span>
+              </button>
+            </div>
           </div>
 
-          {/* Missing Info Box */}
-          {analysis.fehlendeInformationen && analysis.fehlendeInformationen.length > 0 && (
-            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
-              <h4 className="font-bold text-slate-800 flex items-center gap-1.5">
-                <HelpCircle className="w-4 h-4 text-slate-500" />
-                <span>{t('missingInformationTitle')}</span>
-              </h4>
-              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-slate-600 pl-5 list-disc">
-                {analysis.fehlendeInformationen.map((info, idx) => (
-                  <li key={idx}>{info}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {/* Actionable Next Steps Box */}
-          {analysis.gesamtAuswertung?.naechsteSchritte && (
-            <div className="p-5 rounded-xl bg-slate-900 text-white space-y-3 print:bg-white print:text-black print:border print:border-slate-300">
-              <h4 className="font-bold text-sm tracking-wide text-teal-300 uppercase">
-                {t('actionableNextStepsHeader')}
-              </h4>
-              <div className="space-y-1.5 text-xs sm:text-sm">
-                {analysis.gesamtAuswertung.naechsteSchritte.map((step, idx) => (
-                  <p key={idx} className="font-medium text-slate-200 print:text-slate-800">
-                    {step}
-                  </p>
-                ))}
+          {/* Hidden on screen, preserved strictly for print in full case report */}
+          <section className="hidden print:block print:p-0 print:border-none print:shadow-none print:break-before-page space-y-6">
+            <div className="flex items-center justify-between border-b pb-3 mb-4 text-xs text-slate-600">
+              <div>
+                <span className="font-bold text-slate-900 text-sm">3. {t('sec3Title')}: {patientCase.patientName || 'Patient'}</span>
+                <span> • Datum: {patientCase.anamneseDatum || new Date().toLocaleDateString()}</span>
               </div>
+              <div className="font-bold text-teal-800">{t('defaultPracticeName')}</div>
             </div>
-          )}
-        </section>
+            {renderMedicationAnalysisContent(true)}
+          </section>
+        </>
       )}
 
       {/* ========================================================================= */}
@@ -977,6 +1052,37 @@ export const ComprehensiveAnalysisView: React.FC<ComprehensiveAnalysisViewProps>
             </div>
           )}
         </section>
+      )}
+
+      {/* ========================================================================= */}
+      {/* POPUP / MODAL: MEDIKAMENTE & ARZNEIMITTELRECHERCHE */}
+      {/* ========================================================================= */}
+      {isMedicationModalOpen && typeof document !== 'undefined' && createPortal(
+        <div
+          id="medication-analysis-modal-backdrop"
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-4 md:p-6 bg-slate-900/60 backdrop-blur-xs overflow-hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="medication-analysis-modal-title"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setIsMedicationModalOpen(false);
+          }}
+        >
+          <div
+            id="medication-analysis-modal-dialog"
+            className="bg-white w-full max-w-[1400px] h-[92vh] max-h-[92vh] rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <MedicationResearchView
+              currentCase={patientCase}
+              allCases={allCases}
+              onUpdateCase={onUpdateCase}
+              onOpenMedicationsModal={onOpenMedicationsModal}
+              onClose={() => setIsMedicationModalOpen(false)}
+            />
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   );

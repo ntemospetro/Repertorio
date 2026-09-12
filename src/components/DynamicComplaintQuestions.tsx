@@ -691,6 +691,7 @@ export const DynamicComplaintQuestions: React.FC<DynamicComplaintQuestionsProps>
                               onChange={(val) => onUpdateQuestion(q.id, { answerText: val })}
                               size="xs"
                               mode="append"
+                              context="question_answer"
                               id={`btn-voice-q-${q.id}`}
                             />
                           </div>
@@ -716,6 +717,7 @@ export const DynamicComplaintQuestions: React.FC<DynamicComplaintQuestionsProps>
                             onChange={(val) => onUpdateQuestion(q.id, { answerText: val })}
                             size="xs"
                             mode="append"
+                            context="question_answer"
                             id={`btn-voice-q-${q.id}`}
                           />
                         </div>

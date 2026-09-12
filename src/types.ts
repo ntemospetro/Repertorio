@@ -4,6 +4,35 @@ export type TariffType = 'free_trial' | 'pro_unlimited' | string;
 
 export type TariffBillingPeriod = 'free' | 'one_time' | 'monthly' | 'yearly';
 
+export interface TariffPagePermissions {
+  dashboard?: boolean;     // Dashboard / Startseite
+  patients?: boolean;      // Kunden- / Patientenkartei
+  cases?: boolean;         // Fallmanagement & Repertorisation
+  quickintake?: boolean;   // Akutaufnahme & Schnellrepertorisation
+  quickIntake?: boolean;   // Alias für quickintake
+  materiamedica?: boolean; // Materia Medica
+  materiaMedica?: boolean; // Alias für materiamedica
+  repertorium?: boolean;   // Repertorium (Boericke / Kent)
+  medications?: boolean;   // Medikamente & Arzneimittelrecherche
+  documentation?: boolean; // Dokumentation / Anleitungen
+}
+
+export interface TariffFeatureLimits {
+  unlimitedAll?: boolean;              // Globaler Schalter: "Ohne Begrenzung für alle (Unbegrenzt)"
+  maxPatients?: number;                // Maximale Kunden / Patienten (z.B. 10, 50 oder -1 für unbegrenzt)
+  unlimitedPatients?: boolean;         // Ohne Begrenzung für Kunden/Patienten
+  maxAnalyses?: number;                // Maximale homöopathische Fallauswertungen (z.B. 25 oder -1)
+  unlimitedAnalyses?: boolean;         // Ohne Begrenzung für Analysen
+  maxMedsPerCase?: number;             // Maximale Medikamente pro Kunde/Fall (z.B. 5, 12 oder -1)
+  unlimitedMedsPerCase?: boolean;      // Ohne Begrenzung für Medikamente pro Fall
+  maxRiskAnalyses?: number;            // Maximale Medikamenten-Risikoanalysen / Wechselwirkungs-Checks
+  unlimitedRiskAnalyses?: boolean;     // Ohne Begrenzung für Risikoanalysen
+  maxReports?: number;                 // Maximale PDF-Berichte & Dokumentations-Exporte
+  unlimitedReports?: boolean;          // Ohne Begrenzung für Berichte
+  maxAiRequests?: number;              // KI-Anfragen / Differenzialdiagnosen
+  unlimitedAiRequests?: boolean;       // Ohne Begrenzung für KI-Anfragen
+}
+
 export interface PackagePlan {
   id: string;
   name: string;
@@ -20,6 +49,11 @@ export interface PackagePlan {
   isDefault?: boolean;
   isActive: boolean;
   createdAt: string;
+  maxVoiceMainComplaintSeconds?: number; // e.g. 60, 120, 180, 300
+  maxVoiceQuestionAnswerSeconds?: number; // e.g. 0, 30, 45, 60, 120
+  allowVoiceQuestionAnswer?: boolean; // false if speech recording is not permitted for questions in this plan
+  pagePermissions?: TariffPagePermissions;
+  featureLimits?: TariffFeatureLimits;
 }
 
 export type LanguageCode = 'de' | 'en' | 'fr' | 'el' | 'it' | 'ru' | 'es';

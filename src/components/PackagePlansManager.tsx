@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { RegistrationTrialConfigEditor } from "./RegistrationTrialConfigEditor";
-import { PackagePlan, TariffBillingPeriod } from '../types';
+import { PackagePlan, TariffBillingPeriod, TariffPagePermissions, TariffFeatureLimits } from '../types';
 import { 
   getPackagePlans, 
   createPackagePlan, 
@@ -26,7 +26,15 @@ import {
   Star,
   AlertCircle,
   CreditCard,
-  Coins
+  Coins,
+  Mic,
+  Lock,
+  Unlock,
+  ShieldAlert,
+  FileText,
+  BookOpen,
+  Pill,
+  LayoutDashboard
 } from 'lucide-react';
 
 interface PackagePlansManagerProps {
@@ -57,6 +65,34 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
     isActive: true,
     initialBookingAmount: 20,
     lowBalanceThreshold: 5,
+    maxVoiceMainComplaintSeconds: 180,
+    maxVoiceQuestionAnswerSeconds: 60,
+    allowVoiceQuestionAnswer: true,
+    pagePermissions: {
+      dashboard: true,
+      patients: true,
+      cases: true,
+      quickIntake: true,
+      materiaMedica: true,
+      repertorium: true,
+      medications: true,
+      documentation: true,
+    } as TariffPagePermissions,
+    featureLimits: {
+      unlimitedAll: false,
+      maxPatients: 100,
+      unlimitedPatients: false,
+      maxAnalyses: 50,
+      unlimitedAnalyses: false,
+      maxMedsPerCase: 20,
+      unlimitedMedsPerCase: false,
+      maxRiskAnalyses: 30,
+      unlimitedRiskAnalyses: false,
+      maxReports: 25,
+      unlimitedReports: false,
+      maxAiRequests: 100,
+      unlimitedAiRequests: false,
+    } as TariffFeatureLimits,
   });
 
   const refreshData = () => {
@@ -95,6 +131,34 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
       isActive: true,
       initialBookingAmount: 20,
       lowBalanceThreshold: 5,
+      maxVoiceMainComplaintSeconds: 180,
+      maxVoiceQuestionAnswerSeconds: 60,
+      allowVoiceQuestionAnswer: true,
+      pagePermissions: {
+        dashboard: true,
+        patients: true,
+        cases: true,
+        quickIntake: true,
+        materiaMedica: true,
+        repertorium: true,
+        medications: true,
+        documentation: true,
+      },
+      featureLimits: {
+        unlimitedAll: false,
+        maxPatients: 100,
+        unlimitedPatients: false,
+        maxAnalyses: 25,
+        unlimitedAnalyses: false,
+        maxMedsPerCase: 20,
+        unlimitedMedsPerCase: false,
+        maxRiskAnalyses: 30,
+        unlimitedRiskAnalyses: false,
+        maxReports: 25,
+        unlimitedReports: false,
+        maxAiRequests: 100,
+        unlimitedAiRequests: false,
+      },
     });
     setIsModalOpen(true);
   };
@@ -115,6 +179,34 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
       isActive: plan.isActive,
       initialBookingAmount: plan.initialBookingAmount !== undefined ? plan.initialBookingAmount : 20,
       lowBalanceThreshold: plan.lowBalanceThreshold !== undefined ? plan.lowBalanceThreshold : 5,
+      maxVoiceMainComplaintSeconds: plan.maxVoiceMainComplaintSeconds !== undefined ? plan.maxVoiceMainComplaintSeconds : 180,
+      maxVoiceQuestionAnswerSeconds: plan.maxVoiceQuestionAnswerSeconds !== undefined ? plan.maxVoiceQuestionAnswerSeconds : 60,
+      allowVoiceQuestionAnswer: plan.allowVoiceQuestionAnswer !== undefined ? plan.allowVoiceQuestionAnswer : true,
+      pagePermissions: {
+        dashboard: plan.pagePermissions?.dashboard ?? true,
+        patients: plan.pagePermissions?.patients ?? true,
+        cases: plan.pagePermissions?.cases ?? true,
+        quickIntake: plan.pagePermissions?.quickIntake ?? true,
+        materiaMedica: plan.pagePermissions?.materiaMedica ?? true,
+        repertorium: plan.pagePermissions?.repertorium ?? true,
+        medications: plan.pagePermissions?.medications ?? true,
+        documentation: plan.pagePermissions?.documentation ?? true,
+      },
+      featureLimits: {
+        unlimitedAll: plan.featureLimits?.unlimitedAll ?? false,
+        maxPatients: plan.featureLimits?.maxPatients ?? 100,
+        unlimitedPatients: plan.featureLimits?.unlimitedPatients ?? false,
+        maxAnalyses: plan.featureLimits?.maxAnalyses ?? (plan.isUnlimited ? 999999 : plan.maxAnalyses),
+        unlimitedAnalyses: plan.featureLimits?.unlimitedAnalyses ?? plan.isUnlimited ?? false,
+        maxMedsPerCase: plan.featureLimits?.maxMedsPerCase ?? 20,
+        unlimitedMedsPerCase: plan.featureLimits?.unlimitedMedsPerCase ?? false,
+        maxRiskAnalyses: plan.featureLimits?.maxRiskAnalyses ?? 30,
+        unlimitedRiskAnalyses: plan.featureLimits?.unlimitedRiskAnalyses ?? false,
+        maxReports: plan.featureLimits?.maxReports ?? 25,
+        unlimitedReports: plan.featureLimits?.unlimitedReports ?? false,
+        maxAiRequests: plan.featureLimits?.maxAiRequests ?? 100,
+        unlimitedAiRequests: plan.featureLimits?.unlimitedAiRequests ?? false,
+      },
     });
     setIsModalOpen(true);
   };
@@ -170,6 +262,10 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
     const maxAnalysesNum = formData.isUnlimited ? 999999 : Math.max(1, Number(formData.maxAnalyses) || 1);
     const initialBookingAmountNum = Math.max(0, Number(formData.initialBookingAmount) || 0);
     const lowBalanceThresholdNum = Math.max(0, Number(formData.lowBalanceThreshold) || 0);
+    const maxVoiceMainComplaintSecondsNum = Math.max(5, Number(formData.maxVoiceMainComplaintSeconds) || 60);
+    const maxVoiceQuestionAnswerSecondsNum = formData.allowVoiceQuestionAnswer 
+      ? Math.max(0, Number(formData.maxVoiceQuestionAnswerSeconds) || 30) 
+      : 0;
 
     if (editingPlan) {
       // Update
@@ -187,6 +283,11 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
         isActive: formData.isActive,
         initialBookingAmount: initialBookingAmountNum,
         lowBalanceThreshold: lowBalanceThresholdNum,
+        maxVoiceMainComplaintSeconds: maxVoiceMainComplaintSecondsNum,
+        maxVoiceQuestionAnswerSeconds: maxVoiceQuestionAnswerSecondsNum,
+        allowVoiceQuestionAnswer: formData.allowVoiceQuestionAnswer,
+        pagePermissions: formData.pagePermissions,
+        featureLimits: formData.featureLimits,
       });
       showToast(`Paket "${formData.name}" erfolgreich aktualisiert`);
     } else {
@@ -205,6 +306,11 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
         isActive: formData.isActive,
         initialBookingAmount: initialBookingAmountNum,
         lowBalanceThreshold: lowBalanceThresholdNum,
+        maxVoiceMainComplaintSeconds: maxVoiceMainComplaintSecondsNum,
+        maxVoiceQuestionAnswerSeconds: maxVoiceQuestionAnswerSecondsNum,
+        allowVoiceQuestionAnswer: formData.allowVoiceQuestionAnswer,
+        pagePermissions: formData.pagePermissions,
+        featureLimits: formData.featureLimits,
       });
       showToast(`Neues Paket "${formData.name}" erfolgreich erstellt`);
     }
@@ -458,6 +564,87 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
                   </span>
                 </div>
 
+                {/* Voice Limits Info */}
+                <div className="mt-2 p-2 rounded-lg bg-emerald-50/70 text-emerald-950 border border-emerald-200/70 space-y-1 text-[11px]">
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-1 text-emerald-800 font-medium">
+                      <Mic className="w-3 h-3 text-emerald-600" />
+                      <span>{t('adminVoiceMainComplaintLimitLabel') || 'Hauptbeschwerde'}:</span>
+                    </span>
+                    <span className="font-mono bg-white px-1.5 py-0.5 rounded border border-emerald-200 text-emerald-900 font-bold text-[10px]">
+                      {plan.maxVoiceMainComplaintSeconds ?? 180}s
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-600 font-medium pl-4">
+                      {t('adminVoiceQuestionAnswerLimitLabel') || 'Fragen-Antworten'}:
+                    </span>
+                    {plan.allowVoiceQuestionAnswer !== false ? (
+                      <span className="font-mono bg-white px-1.5 py-0.5 rounded border border-slate-200 text-slate-800 font-bold text-[10px]">
+                        {plan.maxVoiceQuestionAnswerSeconds ?? 60}s
+                      </span>
+                    ) : (
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 border border-rose-200">
+                        {t('adminVoiceNotPermitted') || 'Nicht zulässig'}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Tariff Permissions & Quotas Summary Badge */}
+                <div className="mt-2 p-2 rounded-lg bg-slate-100/80 border border-slate-200/80 space-y-1.5 text-[11px]">
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-1 font-semibold text-slate-700">
+                      <Lock className="w-3 h-3 text-slate-500" />
+                      <span>{t('tariffSummaryTitle')}:</span>
+                    </span>
+                    {(() => {
+                      const perms = plan.pagePermissions;
+                      if (!perms) {
+                        return <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">{t('tariffAllPagesUnlocked')}</span>;
+                      }
+                      const pages = ['dashboard', 'patients', 'cases', 'quickIntake', 'materiaMedica', 'repertorium', 'medications', 'documentation'] as const;
+                      const unlockedCount = pages.filter(p => perms[p] !== false).length;
+                      return (
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${
+                          unlockedCount === pages.length 
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                            : 'bg-amber-50 text-amber-800 border-amber-200'
+                        }`}>
+                          {unlockedCount === pages.length 
+                            ? t('tariffAllPagesUnlocked') 
+                            : t('tariffAllowedPagesCount', { count: unlockedCount })}
+                        </span>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Quota Highlights */}
+                  <div className="flex flex-wrap gap-1 pt-1 text-[9px] font-medium">
+                    {plan.featureLimits?.unlimitedAll ? (
+                      <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-200 font-bold flex items-center gap-0.5">
+                        <InfinityIcon className="w-2.5 h-2.5" />
+                        {t('tariffUnlimitedAllLabel')}
+                      </span>
+                    ) : (
+                      <>
+                        <span className="px-1.5 py-0.5 rounded bg-white text-slate-700 border border-slate-200">
+                          Pat: {plan.featureLimits?.unlimitedPatients ? '∞' : (plan.featureLimits?.maxPatients ?? 100)}
+                        </span>
+                        <span className="px-1.5 py-0.5 rounded bg-white text-slate-700 border border-slate-200">
+                          Meds: {plan.featureLimits?.unlimitedMedsPerCase ? '∞' : (plan.featureLimits?.maxMedsPerCase ?? 20)}
+                        </span>
+                        <span className="px-1.5 py-0.5 rounded bg-white text-slate-700 border border-slate-200">
+                          Risiko: {plan.featureLimits?.unlimitedRiskAnalyses ? '∞' : (plan.featureLimits?.maxRiskAnalyses ?? 30)}
+                        </span>
+                        <span className="px-1.5 py-0.5 rounded bg-white text-slate-700 border border-slate-200">
+                          PDFs: {plan.featureLimits?.unlimitedReports ? '∞' : (plan.featureLimits?.maxReports ?? 25)}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </div>
+
                 {/* Description */}
                 {plan.description && (
                   <p className="text-xs text-slate-600 mt-3 leading-relaxed">
@@ -520,7 +707,7 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
       {/* MODAL: Create / Edit Package Plan */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl max-w-lg w-full border border-slate-200 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 text-xs">
+          <div className="bg-white rounded-xl max-w-2xl w-full border border-slate-200 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 text-xs">
             {/* Modal Header */}
             <div className="bg-slate-900 p-5 text-white flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -532,7 +719,7 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
                     {editingPlan ? 'Paket bearbeiten' : 'Neues Paket zusammenstellen'}
                   </h3>
                   <p className="text-xs text-slate-400">
-                    Definieren Sie Tarifpreis, Analysen-Kontingent und Konditionen.
+                    Definieren Sie Tarifpreis, Seitenfreigaben, Nutzungslimits und Konditionen.
                   </p>
                 </div>
               </div>
@@ -545,7 +732,7 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
             </div>
 
             {/* Modal Form */}
-            <form onSubmit={handleSavePlan} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+            <form onSubmit={handleSavePlan} className="p-6 space-y-5 max-h-[85vh] overflow-y-auto">
               {/* Paketname */}
               <div>
                 <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
@@ -736,6 +923,375 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
                     </span>
                   </label>
                 </div>
+              </div>
+
+              {/* Voice Recording Limits Section */}
+              <div className="p-3.5 bg-emerald-50/70 rounded-xl border border-emerald-200/80 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Mic className="w-4 h-4 text-emerald-700" />
+                  <span className="text-[11px] font-bold text-emerald-900 uppercase">
+                    {t('adminVoiceLimitsTitle') || 'Sprachaufnahme & Diktat-Limits (Voice-Felder)'}
+                  </span>
+                </div>
+
+                {/* Hauptbeschwerde Max Time */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[11px] font-bold text-slate-700">
+                      {t('adminVoiceMainComplaintLimitField') || 'Hauptbeschwerde: Max. Aufnahmezeit (Sekunden)'}
+                    </label>
+                    <span className="text-[10px] text-emerald-800 font-mono font-bold">
+                      {formData.maxVoiceMainComplaintSeconds}s ({Math.floor(formData.maxVoiceMainComplaintSeconds / 60)}m {formData.maxVoiceMainComplaintSeconds % 60}s)
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min="5"
+                      max="3600"
+                      step="5"
+                      value={formData.maxVoiceMainComplaintSeconds}
+                      onChange={(e) => setFormData({ ...formData, maxVoiceMainComplaintSeconds: Math.max(5, Number(e.target.value)) })}
+                      className="w-28 px-3 py-1.5 border border-emerald-300 rounded-md bg-white font-mono text-sm font-bold text-slate-900 focus:outline-none focus:border-emerald-600 h-[36px]"
+                    />
+                    {/* Quick pick buttons */}
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {[30, 60, 120, 180, 300, 600].map(sec => (
+                        <button
+                          key={sec}
+                          type="button"
+                          onClick={() => setFormData({ ...formData, maxVoiceMainComplaintSeconds: sec })}
+                          className={`px-2 py-1 text-[10px] font-bold rounded border transition-colors cursor-pointer ${
+                            formData.maxVoiceMainComplaintSeconds === sec
+                              ? 'bg-emerald-600 text-white border-emerald-700'
+                              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          {sec < 60 ? `${sec}s` : `${sec / 60}m`}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    {t('adminVoiceMainComplaintLimitDesc') || 'Gilt für die ausführliche Hauptbeschwerde und Spontanberichte.'}
+                  </p>
+                </div>
+
+                {/* Frage-Antworten: Erlauben & Max Time */}
+                <div className="pt-2.5 border-t border-emerald-200/60 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-bold text-slate-700">
+                      {t('adminVoiceQuestionAnswerAllowedLabel') || 'Spracheingabe bei Fragen zulässig'}
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={formData.allowVoiceQuestionAnswer}
+                        onChange={(e) => setFormData({ ...formData, allowVoiceQuestionAnswer: e.target.checked })}
+                        className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
+                      />
+                      <span className={`text-xs font-bold ${formData.allowVoiceQuestionAnswer ? 'text-emerald-800' : 'text-slate-500'}`}>
+                        {formData.allowVoiceQuestionAnswer ? t('adminVoiceQuestionAnswerAllowedLabel') : t('adminVoiceNotPermitted')}
+                      </span>
+                    </label>
+                  </div>
+
+                  {formData.allowVoiceQuestionAnswer ? (
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-[11px] font-medium text-slate-600">
+                          {t('adminVoiceQuestionAnswerLimitField') || 'Fragen: Max. Aufnahmezeit (Sekunden)'}
+                        </label>
+                        <span className="text-[10px] text-emerald-800 font-mono font-bold">
+                          {formData.maxVoiceQuestionAnswerSeconds}s
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          min="5"
+                          max="1800"
+                          step="5"
+                          value={formData.maxVoiceQuestionAnswerSeconds}
+                          onChange={(e) => setFormData({ ...formData, maxVoiceQuestionAnswerSeconds: Math.max(5, Number(e.target.value)) })}
+                          className="w-28 px-3 py-1.5 border border-emerald-300 rounded-md bg-white font-mono text-sm font-bold text-slate-900 focus:outline-none focus:border-emerald-600 h-[36px]"
+                        />
+                        {/* Quick pick buttons */}
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {[15, 30, 45, 60, 90, 120].map(sec => (
+                            <button
+                              key={sec}
+                              type="button"
+                              onClick={() => setFormData({ ...formData, maxVoiceQuestionAnswerSeconds: sec })}
+                              className={`px-2 py-1 text-[10px] font-bold rounded border transition-colors cursor-pointer ${
+                                formData.maxVoiceQuestionAnswerSeconds === sec
+                                  ? 'bg-emerald-600 text-white border-emerald-700'
+                                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                              }`}
+                            >
+                              {sec}s
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <p className="text-[10px] text-slate-500 mt-1">
+                        {t('adminVoiceQuestionAnswerLimitDesc') || 'Gilt für Antworten in Anamnese-Fragebögen und gezielten Nachfragen.'}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="p-2 bg-amber-50 rounded border border-amber-200 text-[10px] text-amber-800">
+                      {t('adminVoiceQuestionAnswerDisabledNotice') || 'In diesem Tarif ist die Spracheingabe bei Fragen gesperrt (z. B. für den kostenlosen Test-Tarif). Nutzer sehen einen Hinweis und können auf einen höheren Tarif upgraden.'}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* 1. SEITENFREIGABE & FUNKTIONSSPERRE */}
+              <div className="p-4 bg-slate-50/80 rounded-xl border border-slate-200/90 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-md bg-indigo-100 text-indigo-700 flex items-center justify-center">
+                      <Lock className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-900">
+                        {t('tariffPagePermissionsTitle')}
+                      </h4>
+                      <p className="text-[10px] text-slate-500">
+                        {t('tariffPagePermissionsDesc')}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setFormData({
+                        ...formData,
+                        pagePermissions: {
+                          dashboard: true,
+                          patients: true,
+                          cases: true,
+                          quickIntake: true,
+                          materiaMedica: true,
+                          repertorium: true,
+                          medications: true,
+                          documentation: true,
+                        }
+                      })}
+                      className="text-[10px] text-indigo-700 font-semibold hover:underline cursor-pointer"
+                    >
+                      Alle freigeben
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                  {[
+                    { key: 'dashboard' as const, label: t('navDashboard'), icon: LayoutDashboard },
+                    { key: 'patients' as const, label: t('tariffPagePatientsLabel'), icon: Users },
+                    { key: 'cases' as const, label: t('tariffPageCasesLabel'), icon: FileText },
+                    { key: 'quickIntake' as const, label: t('tariffPageQuickIntakeLabel'), icon: Sparkles },
+                    { key: 'materiaMedica' as const, label: t('tariffPageMateriaMedicaLabel'), icon: BookOpen },
+                    { key: 'repertorium' as const, label: t('tariffPageRepertoriumLabel'), icon: Layers },
+                    { key: 'medications' as const, label: t('tariffPageMedicationsLabel'), icon: Pill },
+                    { key: 'documentation' as const, label: t('tariffPageDocumentationLabel'), icon: FileCheck },
+                  ].map(page => {
+                    const IconComp = page.icon;
+                    const isAllowed = formData.pagePermissions[page.key] ?? true;
+                    return (
+                      <label
+                        key={page.key}
+                        className={`flex items-center justify-between p-2.5 rounded-lg border text-xs cursor-pointer transition-all ${
+                          isAllowed
+                            ? 'bg-white border-emerald-200 shadow-xs'
+                            : 'bg-rose-50/50 border-rose-200 text-rose-900'
+                        }`}
+                      >
+                        <span className="flex items-center gap-2 font-medium">
+                          <IconComp className={`w-3.5 h-3.5 ${isAllowed ? 'text-teal-600' : 'text-rose-500'}`} />
+                          <span className={isAllowed ? 'text-slate-800' : 'text-rose-950 font-medium'}>
+                            {page.label}
+                          </span>
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                            isAllowed
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                              : 'bg-rose-100 text-rose-700 border border-rose-200'
+                          }`}>
+                            {isAllowed ? t('tariffPageUnlockedBadge') : t('tariffPageLockedBadge')}
+                          </span>
+                          <input
+                            type="checkbox"
+                            checked={isAllowed}
+                            onChange={(e) => setFormData({
+                              ...formData,
+                              pagePermissions: {
+                                ...formData.pagePermissions,
+                                [page.key]: e.target.checked
+                              }
+                            })}
+                            className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
+                          />
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 2. INDIVIDUELLE NUTZUNGSKONTINGENTE PRO NUTZER */}
+              <div className="p-4 bg-slate-50/80 rounded-xl border border-slate-200/90 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-md bg-amber-100 text-amber-700 flex items-center justify-center">
+                      <Sliders className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-900">
+                        {t('tariffFeatureLimitsTitle')}
+                      </h4>
+                      <p className="text-[10px] text-slate-500">
+                        {t('tariffFeatureLimitsDesc')}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* CHECKBUTTON OHNE BEGRENZUNG FUER ALLE */}
+                <div className="p-3 bg-amber-500/10 border border-amber-300/80 rounded-lg flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <InfinityIcon className="w-4 h-4 text-amber-700" />
+                    <div>
+                      <div className="text-xs font-bold text-amber-950">
+                        {t('tariffUnlimitedAllLabel')}
+                      </div>
+                      <div className="text-[10px] text-amber-800">
+                        {t('tariffUnlimitedAllHelp')}
+                      </div>
+                    </div>
+                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={formData.featureLimits.unlimitedAll}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        featureLimits: {
+                          ...formData.featureLimits,
+                          unlimitedAll: e.target.checked
+                        }
+                      })}
+                      className="rounded border-amber-400 text-amber-600 focus:ring-amber-500 w-4 h-4 cursor-pointer"
+                    />
+                    <span className="text-xs font-bold text-amber-900">
+                      {t('tariffLimitUnlimitedBadge')}
+                    </span>
+                  </label>
+                </div>
+
+                {/* Einzelne Kontingente (nur aktiv wenn nicht unlimitedAll) */}
+                {!formData.featureLimits.unlimitedAll && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                    {[
+                      {
+                        key: 'Patients' as const,
+                        label: t('tariffLimitPatientsLabel'),
+                        val: formData.featureLimits.maxPatients ?? 100,
+                        unlim: formData.featureLimits.unlimitedPatients ?? false,
+                        defVal: 100,
+                      },
+                      {
+                        key: 'Analyses' as const,
+                        label: t('tariffLimitAnalysesLabel'),
+                        val: formData.featureLimits.maxAnalyses ?? 50,
+                        unlim: formData.featureLimits.unlimitedAnalyses ?? false,
+                        defVal: 50,
+                      },
+                      {
+                        key: 'MedsPerCase' as const,
+                        label: t('tariffLimitMedsPerCaseLabel'),
+                        val: formData.featureLimits.maxMedsPerCase ?? 20,
+                        unlim: formData.featureLimits.unlimitedMedsPerCase ?? false,
+                        defVal: 20,
+                      },
+                      {
+                        key: 'RiskAnalyses' as const,
+                        label: t('tariffLimitRiskAnalysesLabel'),
+                        val: formData.featureLimits.maxRiskAnalyses ?? 30,
+                        unlim: formData.featureLimits.unlimitedRiskAnalyses ?? false,
+                        defVal: 30,
+                      },
+                      {
+                        key: 'Reports' as const,
+                        label: t('tariffLimitReportsLabel'),
+                        val: formData.featureLimits.maxReports ?? 25,
+                        unlim: formData.featureLimits.unlimitedReports ?? false,
+                        defVal: 25,
+                      },
+                      {
+                        key: 'AiRequests' as const,
+                        label: t('tariffLimitAiRequestsLabel'),
+                        val: formData.featureLimits.maxAiRequests ?? 100,
+                        unlim: formData.featureLimits.unlimitedAiRequests ?? false,
+                        defVal: 100,
+                      },
+                    ].map(item => {
+                      const valKey = `max${item.key}` as keyof TariffFeatureLimits;
+                      const unlimKey = `unlimited${item.key}` as keyof TariffFeatureLimits;
+                      return (
+                        <div key={item.key} className="p-2.5 bg-white rounded-lg border border-slate-200/90 shadow-2xs space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-semibold text-slate-800">
+                              {item.label}
+                            </span>
+                            <label className="flex items-center gap-1 cursor-pointer select-none">
+                              <input
+                                type="checkbox"
+                                checked={item.unlim}
+                                onChange={(e) => setFormData({
+                                  ...formData,
+                                  featureLimits: {
+                                    ...formData.featureLimits,
+                                    [unlimKey]: e.target.checked
+                                  }
+                                })}
+                                className="rounded border-slate-300 text-teal-600 focus:ring-teal-500 w-3.5 h-3.5 cursor-pointer"
+                              />
+                              <span className="text-[10px] font-bold text-teal-700">∞</span>
+                            </label>
+                          </div>
+                          {item.unlim ? (
+                            <div className="px-2 py-1 rounded bg-teal-50 border border-teal-200 text-teal-800 font-bold text-[10px] flex items-center gap-1">
+                              <InfinityIcon className="w-3 h-3" />
+                              <span>{t('tariffLimitUnlimitedBadge')}</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1.5">
+                              <input
+                                type="number"
+                                min="1"
+                                max="100000"
+                                value={item.val}
+                                onChange={(e) => setFormData({
+                                  ...formData,
+                                  featureLimits: {
+                                    ...formData.featureLimits,
+                                    [valKey]: Math.max(1, Number(e.target.value))
+                                  }
+                                })}
+                                className="flex-1 px-2.5 py-1 text-xs font-mono font-bold text-slate-900 bg-white border border-slate-300 rounded focus:outline-none focus:border-teal-600 h-[30px]"
+                              />
+                              <span className="text-[10px] text-slate-500 font-medium">
+                                {t('tariffLimitCustomValue')}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               {/* Description */}
