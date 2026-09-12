@@ -4,6 +4,7 @@ import { matchesAuthorFilter, ClassicalAuthorFilterKey } from '../data/classical
 import { getBogerSynopticEntry, BogerSynopticEntry } from '../data/bogerSynopticData';
 import type { AnamnesisDialogueStep } from './adaptiveAnamnesisEngine';
 import { detectDomainFromTokens } from './chiefComplaintAnalysisService';
+import { translateText } from '../i18n/translations';
 
 export type SymptomWeightGrade = 1 | 2 | 3 | 4;
 
@@ -1586,7 +1587,7 @@ export function evaluateCandidatePillars(
           grade: 3,
           explanation: 'Dokumentierte Organ- und Linksseitenlokalisation vorhanden.'
         };
-        matchingAreas.push(`Säule 1 (WO: ${locText})`);
+        matchingAreas.push(translateText(language, 'repertoriumPillarPrefix1', { term: locText }));
       } else if (organMatch) {
         pillar1Location = {
           status: 'UNCLEAR',
@@ -1599,7 +1600,7 @@ export function evaluateCandidatePillars(
           grade: 1,
           explanation: 'In den Hauptquellen nicht spezifisch für linken Oberbauch hervorgehoben; allgemeine Magen- und Oberbauchsymptome vorhanden.'
         };
-        unclearAreas.push('Säule 1 (WO: Spezifische Linksseitigkeit nicht gesondert hervorgehoben)');
+        unclearAreas.push(translateText(language, 'repertoriumPillarPrefix1', { term: locText }));
       } else {
         pillar1Location = {
           status: 'UNCLEAR',
@@ -1612,7 +1613,7 @@ export function evaluateCandidatePillars(
           grade: 0,
           explanation: 'Lokalisation in den primären Wirkungsbereichen des Mittels nicht prioritär geführt.'
         };
-        unclearAreas.push(`Säule 1 (WO: ${locText})`);
+        unclearAreas.push(translateText(language, 'repertoriumPillarPrefix1', { term: locText }));
       }
     } else {
       const proofLoc = verifySinglePillar('location', 'WO?', locText, remedy, bogerEntry, remedyNormId, remedyLatin.toLowerCase(), (remedy.commonName || '').toLowerCase(), language);
@@ -1628,7 +1629,7 @@ export function evaluateCandidatePillars(
           grade: proofLoc.grade,
           explanation: 'Dokumentierte Organ- und Regionenlokalisation in Primärquelle belegt.'
         };
-        matchingAreas.push(`Säule 1 (WO: ${locText})`);
+        matchingAreas.push(translateText(language, 'repertoriumPillarPrefix1', { term: locText }));
       } else {
         pillar1Location = {
           status: 'UNCLEAR',
@@ -1641,7 +1642,7 @@ export function evaluateCandidatePillars(
           grade: 0,
           explanation: 'In den Kernrubriken der Materia Medica für diesen Ort nicht gesondert hervorgehoben.'
         };
-        unclearAreas.push(`Säule 1 (WO: ${locText})`);
+        unclearAreas.push(translateText(language, 'repertoriumPillarPrefix1', { term: locText }));
       }
     }
   }
@@ -1684,7 +1685,7 @@ export function evaluateCandidatePillars(
         grade: 3,
         explanation: 'Völlegefühl wie zersprengend / Berstungsschmerz im Oberbauch belegt.'
       };
-      matchingAreas.push(`Säule 2 (WAS: ${sensText})`);
+      matchingAreas.push(translateText(language, 'repertoriumPillarPrefix2', { term: sensText }));
     } else {
       const proofSens = verifySinglePillar('sensation', 'WAS?', sensText, remedy, bogerEntry, remedyNormId, remedyLatin.toLowerCase(), (remedy.commonName || '').toLowerCase(), language);
       if (proofSens.matched) {
@@ -1699,7 +1700,7 @@ export function evaluateCandidatePillars(
           grade: proofSens.grade,
           explanation: 'Charakteristische Schmerzempfindung in Primärquellen belegt.'
         };
-        matchingAreas.push(`Säule 2 (WAS: ${sensText})`);
+        matchingAreas.push(translateText(language, 'repertoriumPillarPrefix2', { term: sensText }));
       } else {
         pillar2Sensation = {
           status: 'UNCLEAR',
@@ -1712,7 +1713,7 @@ export function evaluateCandidatePillars(
           grade: 0,
           explanation: 'Spezifischer Schmerzcharakter in den Hauptquellen nicht explizit hervorgehoben.'
         };
-        unclearAreas.push(`Säule 2 (WAS: ${sensText})`);
+        unclearAreas.push(translateText(language, 'repertoriumPillarPrefix2', { term: sensText }));
       }
     }
   }
@@ -1751,7 +1752,7 @@ export function evaluateCandidatePillars(
           sourceWork: 'Materia Medica & Repertorium',
           explanation: 'Klassisches Leitsymptom für Beschwerden nach Genussmitteln / Feiern.'
         };
-        matchingAreas.push(`Säule 3 (Causa: ${causaText})`);
+        matchingAreas.push(translateText(language, 'repertoriumPillarPrefix3Causa', { term: causaText }));
       } else if (remedyNormId.includes('arsenicum') || remedyNormId.includes('carbo-veg') || remedyNormId.includes('pulsatilla') || remedyNormId.includes('bryonia') || remedyNormId.includes('antimonium-crud')) {
         causaEval = {
           status: 'MATCH',
@@ -1764,7 +1765,7 @@ export function evaluateCandidatePillars(
           sourceWork: 'Materia Medica',
           explanation: 'Dokumentierte Magen-Darm-Folgen nach Überladung oder Diätfehlern.'
         };
-        matchingAreas.push(`Säule 3 (Causa: ${causaText})`);
+        matchingAreas.push(translateText(language, 'repertoriumPillarPrefix3Causa', { term: causaText }));
       } else {
         causaEval = {
           status: 'UNCLEAR',
@@ -1777,7 +1778,7 @@ export function evaluateCandidatePillars(
           sourceWork: '',
           explanation: 'Ereignis dokumentiert; keine spezifische Causa-Hervorhebung in den Kernrubriken.'
         };
-        unclearAreas.push(`Säule 3 (Causa: ${causaText})`);
+        unclearAreas.push(translateText(language, 'repertoriumPillarPrefix3Causa', { term: causaText }));
       }
     } else if (isColdExposure) {
       if (remedyNormId.includes('aconitum') || remedyNormId.includes('dulcamara') || remedyNormId.includes('rhus-tox') || remedyNormId.includes('bryonia')) {
@@ -1792,7 +1793,7 @@ export function evaluateCandidatePillars(
           sourceWork: 'Materia Medica',
           explanation: 'Dokumentierte Causa für Kälteeinwirkung.'
         };
-        matchingAreas.push(`Säule 3 (Causa: ${causaText})`);
+        matchingAreas.push(translateText(language, 'repertoriumPillarPrefix3Causa', { term: causaText }));
       } else {
         causaEval = {
           status: 'UNCLEAR',
@@ -1819,7 +1820,7 @@ export function evaluateCandidatePillars(
           sourceWork: 'Materia Medica',
           explanation: 'Dokumentierte Causa für Ärger und emotionale Aufregung.'
         };
-        matchingAreas.push(`Säule 3 (Causa: ${causaText})`);
+        matchingAreas.push(translateText(language, 'repertoriumPillarPrefix3Causa', { term: causaText }));
       } else {
         causaEval = {
           status: 'UNCLEAR',
@@ -1845,7 +1846,7 @@ export function evaluateCandidatePillars(
         sourceWork: '',
         explanation: 'Ereignis vom Patienten angegeben; in Materia Medica nicht gesondert hervorgehoben.'
       };
-      unclearAreas.push(`Säule 3 (Causa: ${causaText})`);
+      unclearAreas.push(translateText(language, 'repertoriumPillarPrefix3Causa', { term: causaText }));
     }
   }
 
@@ -1869,7 +1870,7 @@ export function evaluateCandidatePillars(
         sourceWork: 'Materia Medica',
         explanation: `Verschlimmerung durch ${modWorseText} (<) in Materia Medica dokumentiert.`
       };
-      matchingAreas.push(`Säule 3 (< Verschlechterung: ${modWorseText})`);
+      matchingAreas.push(translateText(language, 'repertoriumPillarPrefix3Worse', { term: modWorseText }));
     } else if (contradictsBetter) {
       modWorseEval = {
         status: 'CONTRADICTION',
@@ -1882,7 +1883,7 @@ export function evaluateCandidatePillars(
         sourceWork: 'Materia Medica',
         explanation: `Patient berichtet Verschlechterung durch ${modWorseText}, während das Mittel typischerweise dadurch gebessert wird (>)!`
       };
-      contradictionAreas.push(`Säule 3: Patient berichtet < ${modWorseText}, Mittel weist > ${modWorseText} auf`);
+      contradictionAreas.push(translateText(language, 'repertoriumContradictionPrefix3Worse', { term: modWorseText }));
     } else {
       modWorseEval = {
         status: 'UNCLEAR',
@@ -1895,7 +1896,7 @@ export function evaluateCandidatePillars(
         sourceWork: '',
         explanation: `In den Verschlimmerungsrubriken des Mittels nicht prioritär geführt.`
       };
-      unclearAreas.push(`Säule 3 (< Verschlechterung: ${modWorseText})`);
+      unclearAreas.push(translateText(language, 'repertoriumPillarPrefix3Worse', { term: modWorseText }));
     }
   }
 
@@ -1918,7 +1919,7 @@ export function evaluateCandidatePillars(
           sourceWork: 'Materia Medica',
           explanation: 'Typische Besserung durch frische Luft (> frische Luft) dokumentiert.'
         };
-        matchingAreas.push(`Säule 3 (> Besserung: ${modBetterText})`);
+        matchingAreas.push(translateText(language, 'repertoriumPillarPrefix3Better', { term: modBetterText }));
       } else if (remedyNormId.includes('nux-vomica') || remedyNormId.includes('hepar-sulph') || remedyNormId.includes('silicea') || remedyNormId.includes('psorinum') || remedyNormId.includes('arsenicum')) {
         modBetterEval = {
           status: 'CONTRADICTION',
@@ -1931,7 +1932,7 @@ export function evaluateCandidatePillars(
           sourceWork: 'Materia Medica',
           explanation: `${remedyLatin} typischerweise < Kälte, < Zugluft, < frische Luft. Patient erfährt hierbei Besserung.`
         };
-        contradictionAreas.push(`Säule 3: Frische Luft als Besserung widerspricht < Frische Luft bei ${remedyLatin}`);
+        contradictionAreas.push(translateText(language, 'repertoriumContradictionPrefix3Better', { term: modBetterText }));
       } else {
         modBetterEval = {
           status: 'UNCLEAR',
@@ -1944,7 +1945,7 @@ export function evaluateCandidatePillars(
           sourceWork: '',
           explanation: 'Frische Luft in den Besserungsrubriken des Mittels nicht gesondert hervorgehoben.'
         };
-        unclearAreas.push(`Säule 3 (> Besserung: ${modBetterText})`);
+        unclearAreas.push(translateText(language, 'repertoriumPillarPrefix3Better', { term: modBetterText }));
       }
     } else {
       const proofB = verifySinglePillar('modalities', 'WANN (>)?', `> ${modBetterText}`, remedy, bogerEntry, remedyNormId, remedyLatin.toLowerCase(), (remedy.commonName || '').toLowerCase(), language);
@@ -1963,7 +1964,7 @@ export function evaluateCandidatePillars(
           sourceWork: 'Materia Medica',
           explanation: `Besserung durch ${modBetterText} (>) in Materia Medica dokumentiert.`
         };
-        matchingAreas.push(`Säule 3 (> Besserung: ${modBetterText})`);
+        matchingAreas.push(translateText(language, 'repertoriumPillarPrefix3Better', { term: modBetterText }));
       } else if (contradictsWorse) {
         modBetterEval = {
           status: 'CONTRADICTION',
@@ -1976,7 +1977,7 @@ export function evaluateCandidatePillars(
           sourceWork: 'Materia Medica',
           explanation: `Patient berichtet Besserung durch ${modBetterText}, während das Mittel typischerweise dadurch verschlimmert wird (<)!`
         };
-        contradictionAreas.push(`Säule 3: Patient berichtet > ${modBetterText}, Mittel weist < ${modBetterText} auf`);
+        contradictionAreas.push(translateText(language, 'repertoriumContradictionPrefix3Better', { term: modBetterText }));
       } else {
         modBetterEval = {
           status: 'UNCLEAR',
@@ -1989,7 +1990,7 @@ export function evaluateCandidatePillars(
           sourceWork: '',
           explanation: 'In den Besserungsrubriken des Mittels nicht spezifisch verzeichnet.'
         };
-        unclearAreas.push(`Säule 3 (> Besserung: ${modBetterText})`);
+        unclearAreas.push(translateText(language, 'repertoriumPillarPrefix3Better', { term: modBetterText }));
       }
     }
   }
@@ -2008,7 +2009,7 @@ export function evaluateCandidatePillars(
       sourceWork: '',
       explanation: 'Richtung (< oder >) vom Patienten nicht angegeben. Gemäß Methodik wird keine automatische Richtung erfunden.'
     };
-    unclearAreas.push(`Säule 3 (Modalität: ${modGenText} ohne Richtungsangabe)`);
+    unclearAreas.push(translateText(language, 'repertoriumPillarPrefix3Worse', { term: modGenText }));
   }
 
   // Pillar 3 overall status
@@ -2079,7 +2080,7 @@ export function evaluateCandidatePillars(
           ? `Begleitphänomen in Primärliteratur belegt: "${proofConcom.quote}"`
           : 'Begleitsymptom in Primärquellen dokumentiert.'
       };
-      matchingAreas.push(`Säule 4 (WAS NOCH: ${concomText})`);
+      matchingAreas.push(translateText(language, 'repertoriumPillarPrefix4', { term: concomText }));
     } else {
       pillar4Concomitants = {
         status: 'UNCLEAR',
@@ -2092,20 +2093,25 @@ export function evaluateCandidatePillars(
         grade: 0,
         explanation: 'In den Begleitsymptom- und Gemütsrubriken für dieses Mittel nicht spezifisch hervorgehoben.'
       };
-      unclearAreas.push(`Säule 4 (WAS NOCH: ${concomText})`);
+      unclearAreas.push(translateText(language, 'repertoriumPillarPrefix4', { term: concomText }));
     }
   }
 
   // Synthesized overall assessment
   let overallAssessment = '';
   if (matchingAreas.length >= 3 && contradictionAreas.length === 0) {
-    overallAssessment = `Hohe Dichte passender Symptome (${matchingAreas.length} Bereiche übereinstimmend) ohne dokumentierte Widersprüche.`;
+    overallAssessment = translateText(language, 'repertoriumOverallAssessmentHigh', { count: matchingAreas.length });
   } else if (matchingAreas.length >= 2 && contradictionAreas.length > 0) {
-    overallAssessment = `Gute Passung in zentralen Bereichen (${matchingAreas.join(', ')}), jedoch liegt ein zu beachtender Widerspruch vor (${contradictionAreas.join(', ')}).`;
+    overallAssessment = translateText(language, 'repertoriumOverallAssessmentContradiction', {
+      matches: matchingAreas.join(', '),
+      contradictions: contradictionAreas.join(', ')
+    });
   } else if (matchingAreas.length > 0) {
-    overallAssessment = `Teilweise dokumentierte Übereinstimmung (${matchingAreas.join(', ')}). Weitere Kriterien sind nicht ausreichend beurteilbar.`;
+    overallAssessment = translateText(language, 'repertoriumOverallAssessmentPartial', {
+      matches: matchingAreas.join(', ')
+    });
   } else {
-    overallAssessment = 'Keine wesentliche Übereinstimmung mit den erhobenen Säulen-Angaben nachweisbar.';
+    overallAssessment = translateText(language, 'repertoriumOverallAssessmentNone');
   }
 
   return {

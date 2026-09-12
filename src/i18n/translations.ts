@@ -28,3 +28,20 @@ export const translations = {
 };
 
 export type TranslationKey = keyof typeof de;
+
+export function translateText(
+  lang: LanguageCode,
+  key: TranslationKey,
+  params?: Record<string, string | number>
+): string {
+  const langDict = translations[lang] || translations.de;
+  let template = (langDict as Record<string, string>)[key] || (translations.de as Record<string, string>)[key] || key;
+
+  if (params) {
+    Object.entries(params).forEach(([k, v]) => {
+      template = template.replace(new RegExp(`\\{${k}\\}`, 'g'), String(v));
+    });
+  }
+
+  return template;
+}

@@ -398,6 +398,11 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
   const handleStep0Next = () => {
     if (!step0Input.trim()) return;
 
+    // Strict validation: Unrecognized chief complaint cannot be accepted
+    if (!step0Analysis.isRecognized) {
+      return;
+    }
+
     const chosenPrimary = selectedPrimaryComplaint || step0Input.trim();
     const cues = extractCuesFromInitialComplaint(chosenPrimary);
 
@@ -1153,14 +1158,26 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
                   </div>
                 )}
 
-                {/* Domain verification badge */}
-                {step0Input.trim() && step0Analysis.isRecognized && step0Analysis.organDomain && (
-                  <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-between text-xs text-emerald-950 font-medium">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                      <span>{t('chiefComplaintVerified')}: <strong className="text-emerald-800 font-bold">{step0Analysis.organDomain}</strong></span>
+                {/* Domain verification badge or unrecognized warning */}
+                {step0Input.trim() && (
+                  step0Analysis.isRecognized && step0Analysis.organDomain ? (
+                    <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-between text-xs text-emerald-950 font-medium">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span>{t('chiefComplaintVerified')}: <strong className="text-emerald-800 font-bold">{step0Analysis.organDomain}</strong></span>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-950 space-y-1">
+                      <div className="flex items-center gap-2 font-semibold text-amber-900">
+                        <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                        <span>{t('chiefComplaintUnrecognized')}</span>
+                      </div>
+                      <p className="text-[11px] leading-relaxed text-amber-800/90 pl-6">
+                        {t('chiefComplaintUnrecognizedPrompt')}
+                      </p>
+                    </div>
+                  )
                 )}
               </div>
 
@@ -1174,9 +1191,9 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
               <div className="flex justify-end pt-2">
                 <button
                   type="button"
-                  disabled={!step0Input.trim()}
+                  disabled={!step0Input.trim() || !step0Analysis.isRecognized}
                   onClick={handleStep0Next}
-                  className="py-2.5 px-5 rounded-xl bg-teal-700 hover:bg-teal-800 disabled:opacity-50 text-white font-semibold text-sm flex items-center gap-2 shadow-xs transition-all cursor-pointer disabled:cursor-not-allowed"
+                  className="py-2.5 px-5 rounded-xl bg-teal-700 hover:bg-teal-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-sm flex items-center gap-2 shadow-xs transition-all cursor-pointer"
                 >
                   <span>{t('anamnesisNavNext')}</span>
                   <ArrowRight className="w-4 h-4" />

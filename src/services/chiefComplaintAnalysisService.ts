@@ -31,13 +31,13 @@ export const DOMAIN_DEFINITIONS: DomainDefinition[] = [
       ru: 'Голова, ЦНС и органы чувств'
     },
     keywords: [
-      'kopf', 'stirn', 'schlafe', 'hinterkopf', 'scheitel', 'migran', 'gehirn', 'augen', 'ohr',
-      'head', 'forehead', 'temple', 'occiput', 'migraine', 'brain', 'eyes', 'ears',
-      'cabeza', 'frente', 'sien', 'nuca', 'migrana', 'cerebro', 'ojos', 'oidos',
-      'tete', 'front', 'tempe', 'nuque', 'migraine', 'cerveau', 'yeux', 'oreilles',
-      'testa', 'fronte', 'tempia', 'nuca', 'emicrania', 'cervello', 'occhi', 'orecchie',
-      'κεφαλ', 'πονοκεφαλ', 'μετωπ', 'κροταφ', 'ινιο', 'εγκεφαλ', 'ματι', 'αυτι', 'ημικραν',
-      'голов', 'лоб', 'висок', 'затыл', 'мигрен', 'мозг', 'глаз', 'уш'
+      'kopf', 'stirn', 'schlafe', 'hinterkopf', 'scheitel', 'migran', 'gehirn', 'augen', 'ohr', 'ohren', 'zahn', 'zahne', 'schwindel', 'benommen',
+      'head', 'forehead', 'temple', 'occiput', 'migraine', 'brain', 'eyes', 'ears', 'tooth', 'teeth', 'dizzy', 'dizziness', 'vertigo',
+      'cabeza', 'frente', 'sien', 'nuca', 'migrana', 'cerebro', 'ojos', 'oidos', 'diente', 'mareo', 'vertigo',
+      'tete', 'front', 'tempe', 'nuque', 'migraine', 'cerveau', 'yeux', 'oreilles', 'dent', 'vertige',
+      'testa', 'fronte', 'tempia', 'nuca', 'emicrania', 'cervello', 'occhi', 'orecchie', 'dente', 'vertigine',
+      'κεφαλ', 'πονοκεφαλ', 'μετωπ', 'κροταφ', 'ινιο', 'εγκεφαλ', 'ματι', 'αυτι', 'ημικραν', 'δοντι', 'ζαλη', 'ιλιγγος',
+      'голов', 'лоб', 'висок', 'затыл', 'мигрен', 'мозг', 'глаз', 'уш', 'зуб', 'головокруж'
     ]
   },
   {
@@ -52,7 +52,7 @@ export const DOMAIN_DEFINITIONS: DomainDefinition[] = [
       ru: 'Желудок, кишечник и пищеварение'
     },
     keywords: [
-      'magen', 'bauch', 'oberbauch', 'unterbauch', 'darm', 'leber', 'galle', 'ubelk', 'erbrech', 'durchfall', 'verstopf', 'kolik',
+      'magen', 'bauch', 'oberbauch', 'unterbauch', 'darm', 'leber', 'galle', 'ubelk', 'ubel', 'erbrech', 'kotz', 'durchfall', 'verstopf', 'kolik',
       'stomach', 'abdomen', 'belly', 'gut', 'bowel', 'liver', 'nausea', 'vomit', 'diarrhea', 'constipat', 'colic',
       'estomago', 'vientre', 'higado', 'nausea', 'vomito', 'diarrea', 'estrenim', 'colico',
       'estomac', 'ventre', 'foie', 'nausee', 'vomiss', 'diarrhee', 'constipat', 'colique',
@@ -94,13 +94,13 @@ export const DOMAIN_DEFINITIONS: DomainDefinition[] = [
       ru: 'Опорно-двигательный аппарат, суставы и спина'
     },
     keywords: [
-      'rucken', 'kreuz', 'lws', 'gelenk', 'muskel', 'knochen', 'extremit', 'lahm', 'steif', 'verstauch', 'rheuma',
-      'back', 'lumbar', 'joint', 'muscle', 'bone', 'limb', 'stiff', 'sprain', 'rheumat',
-      'espalda', 'lumbar', 'articulac', 'musculo', 'hueso', 'extremidad', 'rigidez', 'esguince',
-      'dos', 'lombaire', 'articulat', 'muscle', 'os', 'membre', 'raideur', 'entorse',
-      'schiena', 'lombare', 'articolaz', 'muscolo', 'osso', 'arto', 'rigidita', 'distorsione',
-      'πλατη', 'μεση', 'οσφυ', 'αρθρωσ', 'μυς', 'οστ', 'ακρα', 'δυσκαμψ', 'διαστρεμμ', 'ρευματ',
-      'спин', 'поясниц', 'сустав', 'мышц', 'кост', 'конечност', 'скованност', 'растяжен'
+      'rucken', 'kreuz', 'lws', 'nacken', 'hws', 'gelenk', 'muskel', 'knochen', 'extremit', 'lahm', 'steif', 'verstauch', 'rheuma',
+      'back', 'lumbar', 'neck', 'cervical', 'joint', 'muscle', 'bone', 'limb', 'stiff', 'sprain', 'rheumat',
+      'espalda', 'lumbar', 'cuello', 'cervical', 'articulac', 'musculo', 'hueso', 'extremidad', 'rigidez', 'esguince',
+      'dos', 'lombaire', 'cou', 'cervicale', 'articulat', 'muscle', 'os', 'membre', 'raideur', 'entorse',
+      'schiena', 'lombare', 'collo', 'cervicale', 'articolaz', 'muscolo', 'osso', 'arto', 'rigidita', 'distorsione',
+      'πλατη', 'μεση', 'αυχενας', 'οσφυ', 'αρθρωσ', 'μυς', 'οστ', 'ακρα', 'δυσκαμψ', 'διαστρεμμ', 'ρευματ',
+      'спин', 'поясниц', 'шея', 'сустав', 'мышц', 'кост', 'конечност', 'скованност', 'растяжен'
     ]
   },
   {
@@ -593,7 +593,10 @@ export function analyzeChiefComplaint(
   const hasMultipleComplaints = detectedComplaints.length >= 2;
 
   const normInput = normalizeQuery(trimmed);
-  const inputWords = normInput.split(/\s+/).filter(w => w.length >= 3);
+  const inputWords = normInput.split(/\s+/).filter(w => w.length >= 2);
+  const canon = canonicalizeSymptomTerm(trimmed, lang);
+  const normCanon = normalizeQuery(canon);
+  const canonWords = normCanon.split(/\s+/).filter(w => w.length >= 2);
 
   // 1. Identify domain
   let bestDomain: DomainDefinition | null = null;
@@ -602,13 +605,21 @@ export function analyzeChiefComplaint(
   for (const domain of DOMAIN_DEFINITIONS) {
     let count = 0;
     for (const kw of domain.keywords) {
-      if (normInput.includes(kw)) {
-        count += 2;
-      } else {
-        for (const iw of inputWords) {
-          if (iw.length >= 3 && (kw.startsWith(iw.slice(0, 4)) || iw.startsWith(kw.slice(0, 4)) || kw.includes(iw))) {
-            count++;
-          }
+      // Check input words for exact match or legitimate compound starting with >=4 letter keyword
+      for (const iw of inputWords) {
+        if (iw === kw) {
+          count += 3;
+        } else if (kw.length >= 4 && iw.length > kw.length && iw.startsWith(kw)) {
+          // e.g. bauchschmerzen starts with bauch
+          count += 2;
+        }
+      }
+      // Check canonical term words as well
+      for (const cw of canonWords) {
+        if (cw === kw) {
+          count += 3;
+        } else if (kw.length >= 4 && cw.length > kw.length && cw.startsWith(kw)) {
+          count += 2;
         }
       }
     }

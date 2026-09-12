@@ -565,8 +565,8 @@ export const CASCADE_PILLAR_DEFINITIONS: Record<string, CascadePillarData> = {
             },
             remedyHints: ['bryonia-alba', 'belladonna'],
             tier3Options: [
-              { id: 'mod-effect-motion-worse', label: { de: '< Verschlimmert massiv (zwingt zu absoluter Ruhe)', en: '< Aggravates severely (demands absolute rest)', es: '< Empeora mucho', fr: '< Aggrave nettement', it: '< Peggiora molto', el: '< Επιδεινώνει έντονα', ru: '< Резко ухудшает' }, direction: 'worse' },
-              { id: 'mod-effect-motion-better', label: { de: '> Bringt Erleichterung (fortgesetzte Bewegung bessert)', en: '> Relieves (continued motion relieves)', es: '> Alivia con movimiento continuo', fr: '> Soulage en bougeant', it: '> Migliora muovendosi', el: '> Βελτιώνει με τη συνεχή κίνηση', ru: '> Облегчает при движении' }, direction: 'better' }
+              { id: 'mod-effect-motion-worse', label: { de: 'Verschlimmert massiv (zwingt zu absoluter Ruhe)', en: 'Aggravates severely (demands absolute rest)', es: 'Empeora mucho (obliga al reposo absoluto)', fr: 'Aggrave nettement (impose le repos absolu)', it: 'Peggiora molto (costringe al riposo assoluto)', el: 'Επιδεινώνει έντονα (επιβάλλει απόλυτη ηρεμία)', ru: 'Резко ухудшает (вынуждает к абсолютному покою)' }, direction: 'worse' },
+              { id: 'mod-effect-motion-better', label: { de: 'Bringt Erleichterung (fortgesetzte Bewegung bessert)', en: 'Relieves (continued motion relieves)', es: 'Alivia con movimiento continuo', fr: 'Soulage en bougeant (mouvement continu)', it: 'Migliora muovendosi (movimento continuo)', el: 'Βελτιώνει με τη συνεχή κίνηση', ru: 'Облегчает при движении (продолжительное движение)' }, direction: 'better' }
             ]
           },
           {
@@ -582,8 +582,8 @@ export const CASCADE_PILLAR_DEFINITIONS: Record<string, CascadePillarData> = {
             },
             remedyHints: ['colocynthis', 'magnesium-phosphoricum'],
             tier3Options: [
-              { id: 'mod-effect-bend-better', label: { de: '> Bessert die Kolik spürbar (Colocynthis-Leitsymptom)', en: '> Relieves colic noticeably', es: '> Mejora el cólico', fr: '> Améliore nettement la colique', it: '> Migliora nettamente la colica', el: '> Βελτιώνει αισθητά τον κολικό', ru: '> Заметно облегчает колику' }, direction: 'better' },
-              { id: 'mod-effect-bend-worse', label: { de: '< Streckung bessert / Krümmen verschlimmert (Dioscorea)', en: '< Stretching relieves / bending worsens', es: '< Estirarse mejora / doblarse empeora', fr: '< S\'étirer soulage', it: '< Distendersi migliora', el: '< Το τέντωμα βελτιώνει', ru: '< Разгибание облегчает' }, direction: 'worse' }
+              { id: 'mod-effect-bend-better', label: { de: 'Bessert die Kolik spürbar (Colocynthis-Leitsymptom)', en: 'Relieves colic noticeably (Colocynthis hallmark)', es: 'Mejora el cólico notablemente (Colocynthis)', fr: 'Améliore nettement la colique (Colocynthis)', it: 'Migliora nettamente la colica (Colocynthis)', el: 'Βελτιώνει αισθητά τον κολικό (βασικό σύμπτωμα Colocynthis)', ru: 'Заметно облегчает колику (ключевой симптом Colocynthis)' }, direction: 'better' },
+              { id: 'mod-effect-bend-worse', label: { de: 'Streckung bessert / Krümmen verschlimmert (Dioscorea)', en: 'Stretching relieves / bending worsens (Dioscorea)', es: 'Estirarse mejora / doblarse empeora (Dioscorea)', fr: 'S\'étirer soulage / se plier aggrave (Dioscorea)', it: 'Distendersi migliora / piegarsi peggiora (Dioscorea)', el: 'Επιδεινώνει με το δίπλωμα (μόνο το τέντωμα ανακουφίζει - Dioscorea)', ru: 'Разгибание облегчает / сгибание ухудшает (Dioscorea)' }, direction: 'worse' }
             ]
           }
         ]
@@ -613,8 +613,8 @@ export const CASCADE_PILLAR_DEFINITIONS: Record<string, CascadePillarData> = {
             },
             remedyHints: ['magnesium-phosphoricum', 'arsenicum-album', 'nux-vomica'],
             tier3Options: [
-              { id: 'mod-effect-warmth-better', label: { de: '> Bessert Beschwerden augenblicklich', en: '> Relieves complaints immediately', es: '> Mejora de inmediato', fr: '> Soulage immédiatement', it: '> Migliora immediatamente', el: '> Βελτιώνει αμέσως', ru: '> Мгновенно облегчает' }, direction: 'better' },
-              { id: 'mod-effect-warmth-worse', label: { de: '< Hitze unerträglich / Kälte verlangt (Apis / Pulsatilla)', en: '< Heat unbearable / seeks cold', es: '< Calor insoportable / pide frío', fr: '< Chaleur insupportable', it: '< Calore insopportabile', el: '< Αφόρητη ζέστη / ζητά κρύο', ru: '< Жара невыносима / просит холода' }, direction: 'worse' }
+              { id: 'mod-effect-warmth-better', label: { de: 'Bessert Beschwerden augenblicklich', en: 'Relieves complaints immediately', es: 'Mejora de inmediato', fr: 'Soulage immédiatement', it: 'Migliora immediatamente', el: 'Βελτιώνει αμέσως', ru: 'Мгновенно облегчает' }, direction: 'better' },
+              { id: 'mod-effect-warmth-worse', label: { de: 'Hitze unerträglich / Kälte verlangt (Apis / Pulsatilla)', en: 'Heat unbearable / seeks cold (Apis / Pulsatilla)', es: 'Calor insoportable / pide frío (Apis / Pulsatilla)', fr: 'Chaleur insupportable / recherche le froid (Apis / Pulsatilla)', it: 'Calore insopportabile / cerca il freddo (Apis / Pulsatilla)', el: 'Αφόρητη ζέστη / ζητά κρύο (Apis / Pulsatilla)', ru: 'Жара невыносима / просит холода (Apis / Pulsatilla)' }, direction: 'worse' }
             ]
           },
           {
@@ -630,8 +630,8 @@ export const CASCADE_PILLAR_DEFINITIONS: Record<string, CascadePillarData> = {
             },
             remedyHints: ['pulsatilla-pratensis', 'carbo-vegetabilis'],
             tier3Options: [
-              { id: 'mod-effect-air-better', label: { de: '> Bessert deutlich (braucht kühle Luft zum Atmen)', en: '> Relieves markedly (craves air)', es: '> Mejora claramente', fr: '> Améliore nettement', it: '> Migliora nettamente', el: '> Βελτιώνει έντονα', ru: '> Заметно облегчает' }, direction: 'better' },
-              { id: 'mod-effect-air-worse', label: { de: '< Zugluft / Kälteempfindlichkeit verschlimmert', en: '< Draft / chilling worsens', es: '< Corrientes empeoran', fr: '< Courants d\'air aggravent', it: '< Correnti d\'aria peggiorano', el: '< Ρεύματα αέρα επιδεινώνουν', ru: '< Сквозняк ухудшает' }, direction: 'worse' }
+              { id: 'mod-effect-air-better', label: { de: 'Bessert deutlich (braucht kühle Luft zum Atmen)', en: 'Relieves markedly (craves cool air to breathe)', es: 'Mejora claramente (necesita aire fresco)', fr: 'Améliore nettement (besoin d\'air frais)', it: 'Migliora nettamente (ha bisogno di aria fresca)', el: 'Βελτιώνει έντονα (χρειάζεται δροσερό αέρα)', ru: 'Заметно облегчает (нуждается в прохладном воздухе)' }, direction: 'better' },
+              { id: 'mod-effect-air-worse', label: { de: 'Zugluft / Kälteempfindlichkeit verschlimmert', en: 'Draft / chilling worsens', es: 'Corrientes de aire y frío empeoran', fr: 'Courants d\'air et froid aggravent', it: 'Correnti d\'aria e freddo peggiorano', el: 'Ρεύματα αέρα & ευαισθησία στο κρύο επιδεινώνουν', ru: 'Сквозняк и холод ухудшают' }, direction: 'worse' }
             ]
           }
         ]
@@ -661,8 +661,8 @@ export const CASCADE_PILLAR_DEFINITIONS: Record<string, CascadePillarData> = {
             },
             remedyHints: ['colocynthis', 'bryonia-alba', 'magnesium-phosphoricum'],
             tier3Options: [
-              { id: 'mod-effect-hard-press-better', label: { de: '> Bessert den Schmerz deutlich', en: '> Relieves pain distinctly', es: '> Mejora el dolor', fr: '> Soulage la douleur', it: '> Migliora il dolore', el: '> Βελτιώνει αισθητά τον πόνο', ru: '> Заметно облегчает боль' }, direction: 'better' },
-              { id: 'mod-effect-hard-press-worse', label: { de: '< Selbst sanfter Druck unerträglich', en: '< Even gentle pressure intolerable', es: '< Presión intolerable', fr: '< Pression intolérable', it: '< Pressione intollerabile', el: '< Αφόρητη πίεση', ru: '< Не переносит давления' }, direction: 'worse' }
+              { id: 'mod-effect-hard-press-better', label: { de: 'Bessert den Schmerz deutlich', en: 'Relieves pain distinctly', es: 'Mejora el dolor claramente', fr: 'Soulage nettement la douleur', it: 'Migliora nettamente il dolore', el: 'Βελτιώνει αισθητά τον πόνο', ru: 'Заметно облегчает боль' }, direction: 'better' },
+              { id: 'mod-effect-hard-press-worse', label: { de: 'Selbst sanfter Druck unerträglich', en: 'Even gentle pressure intolerable', es: 'Incluso la presión suave es intolerable', fr: 'Même une légère pression est intolérable', it: 'Perfino la minima pressione è intollerabile', el: 'Αφόρητη ακόμα και η απαλή πίεση', ru: 'Даже легкое давление невыносимо' }, direction: 'worse' }
             ]
           },
           {
@@ -678,7 +678,7 @@ export const CASCADE_PILLAR_DEFINITIONS: Record<string, CascadePillarData> = {
             },
             remedyHints: ['lachesis-mutus', 'lycopodium-clavatum', 'nux-vomica'],
             tier3Options: [
-              { id: 'mod-effect-tight-worse', label: { de: '< Muss Kleidung öffnen / Lockern bringt Erleichterung', en: '< Must unbutton / loosening relieves', es: '< Debe desabrocharse la ropa', fr: '< Doit déboutonner ses vêtements', it: '< Deve allentare i vestiti', el: '< Πρέπει να χαλαρώσει τα ρούχα', ru: '< Должен расстегнуть одежду' }, direction: 'worse' }
+              { id: 'mod-effect-tight-worse', label: { de: 'Muss Kleidung öffnen / Lockern bringt Erleichterung', en: 'Must unbutton / loosening relieves', es: 'Debe desabrocharse la ropa / aflojar alivia', fr: 'Doit déboutonner ses vêtements / desserrer soulage', it: 'Deve allentare i vestiti / allentare dà sollievo', el: 'Πρέπει να χαλαρώσει τα ρούχα / το ξεκούμπωμα ανακουφίζει', ru: 'Должен расстегнуть одежду / ослабление приносит облегчение' }, direction: 'worse' }
             ]
           }
         ]
@@ -708,8 +708,8 @@ export const CASCADE_PILLAR_DEFINITIONS: Record<string, CascadePillarData> = {
             },
             remedyHints: ['nux-vomica', 'pulsatilla-pratensis', 'lycopodium-clavatum', 'anacardium-orientale'],
             tier3Options: [
-              { id: 'mod-effect-eating-worse', label: { de: '< Verschlimmert sofort oder 1-2h nach dem Essen', en: '< Worsens immediately or 1-2h after eating', es: '< Empeora tras comer', fr: '< Aggrave après manger', it: '< Peggiora dopo mangiato', el: '< Επιδεινώνει μετά το φαγητό', ru: '< Ухудшает после еды' }, direction: 'worse' },
-              { id: 'mod-effect-eating-better', label: { de: '> Essen lindert vorübergehend den Schmerz (Anacardium)', en: '> Eating temporarily relieves pain', es: '> Comer alivia temporalmente', fr: '> Manger soulage temporairement', it: '> Mangiare allevia temporaneamente', el: '> Το φαγητό ανακουφίζει προσωρινά', ru: '> Еда временно облегчает' }, direction: 'better' }
+              { id: 'mod-effect-eating-worse', label: { de: 'Verschlimmert sofort oder 1-2h nach dem Essen', en: 'Worsens immediately or 1-2h after eating', es: 'Empeora inmediatamente o 1-2h después de comer', fr: 'Aggrave immédiatement ou 1-2h après avoir mangé', it: 'Peggiora subito o 1-2 ore dopo mangiato', el: 'Επιδεινώνει αμέσως ή 1-2 ώρες μετά το φαγητό', ru: 'Ухудшает сразу или через 1-2 часа после еды' }, direction: 'worse' },
+              { id: 'mod-effect-eating-better', label: { de: 'Essen lindert vorübergehend den Schmerz (Anacardium)', en: 'Eating temporarily relieves pain (Anacardium)', es: 'Comer alivia temporalmente el dolor (Anacardium)', fr: 'Manger soulage temporairement la douleur (Anacardium)', it: 'Mangiare allevia temporaneamente il dolore (Anacardium)', el: 'Το φαγητό ανακουφίζει προσωρινά τον πόνο (Anacardium)', ru: 'Еда временно облегчает боль (Anacardium)' }, direction: 'better' }
             ]
           },
           {
@@ -725,9 +725,9 @@ export const CASCADE_PILLAR_DEFINITIONS: Record<string, CascadePillarData> = {
             },
             remedyHints: ['arsenicum-album', 'lycopodium-clavatum', 'nux-vomica', 'kali-carbonicum'],
             tier3Options: [
-              { id: 'mod-effect-night-1-2', label: { de: '< Nachts 1:00 – 2:00 Uhr (Arsenicum-Maximum)', en: '< Night 1:00 – 2:00 AM (Arsenicum)', es: '< Noche 1:00 – 2:00', fr: '< Nuit 1h – 2h', it: '< Notte 1:00 – 2:00', el: '< Νύχτα 1:00 – 2:00 π.μ.', ru: '< Ночью 1:00 – 2:00' }, direction: 'worse' },
-              { id: 'mod-effect-night-3-4', label: { de: '< Nachts 3:00 – 4:00 Uhr (Nux vomica / Kali carb)', en: '< Night 3:00 – 4:00 AM (Nux-v / Kali-c)', es: '< Noche 3:00 – 4:00', fr: '< Nuit 3h – 4h', it: '< Notte 3:00 – 4:00', el: '< Νύχτα 3:00 – 4:00 π.μ.', ru: '< Ночью 3:00 – 4:00' }, direction: 'worse' },
-              { id: 'mod-effect-afternoon-4-8', label: { de: '< Nachmittags 16:00 – 20:00 Uhr (Lycopodium-Maximum)', en: '< Afternoon 4:00 – 8:00 PM (Lycopodium)', es: '< Tarde 16:00 – 20:00', fr: '< Après-midi 16h – 20h', it: '< Pomeriggio 16:00 – 20:00', el: '< Απόγευμα 16:00 – 20:00', ru: '< Вечером 16:00 – 20:00' }, direction: 'worse' }
+              { id: 'mod-effect-night-1-2', label: { de: 'Nachts 1:00 – 2:00 Uhr (Arsenicum-Maximum)', en: 'Night 1:00 – 2:00 AM (Arsenicum)', es: 'Noche 1:00 – 2:00 (Arsenicum)', fr: 'Nuit 1h – 2h (Arsenicum)', it: 'Notte 1:00 – 2:00 (Arsenicum)', el: 'Νύχτα 1:00 – 2:00 π.μ. (μέγιστο Arsenicum)', ru: 'Ночью 1:00 – 2:00 (максимум Arsenicum)' }, direction: 'worse' },
+              { id: 'mod-effect-night-3-4', label: { de: 'Nachts 3:00 – 4:00 Uhr (Nux vomica / Kali carb)', en: 'Night 3:00 – 4:00 AM (Nux-v / Kali-c)', es: 'Noche 3:00 – 4:00 (Nux-v / Kali-c)', fr: 'Nuit 3h – 4h (Nux-v / Kali-c)', it: 'Notte 3:00 – 4:00 (Nux-v / Kali-c)', el: 'Νύχτα 3:00 – 4:00 π.μ. (Nux-v / Kali-c)', ru: 'Ночью 3:00 – 4:00 (Nux-v / Kali-c)' }, direction: 'worse' },
+              { id: 'mod-effect-afternoon-4-8', label: { de: 'Nachmittags 16:00 – 20:00 Uhr (Lycopodium-Maximum)', en: 'Afternoon 4:00 – 8:00 PM (Lycopodium)', es: 'Tarde 16:00 – 20:00 (Lycopodium)', fr: 'Après-midi 16h – 20h (Lycopodium)', it: 'Pomeriggio 16:00 – 20:00 (Lycopodium)', el: 'Απόγευμα 16:00 – 20:00 (μέγιστο Lycopodium)', ru: 'Вечером 16:00 – 20:00 (максимум Lycopodium)' }, direction: 'worse' }
             ]
           }
         ]
@@ -773,8 +773,8 @@ export const CASCADE_PILLAR_DEFINITIONS: Record<string, CascadePillarData> = {
             },
             remedyHints: ['staphisagria', 'ignatia-amara', 'colocynthis', 'lycopodium-clavatum'],
             tier3Options: [
-              { id: 'causa-effect-immed-worse', label: { de: '< Hat Schmerz unmittelbar ausgelöst', en: '< Immediately triggered the pain', es: '< Desencadenó el dolor de inmediato', fr: '< A déclenché la douleur immédiatement', it: '< Ha scatenato il dolore immediatamente', el: '< Πυροδότησε άμεσα τον πόνο', ru: '< Мгновенно вызвало боль' }, direction: 'worse' },
-              { id: 'causa-effect-delayed-worse', label: { de: '< Trat ca. 1–2 Stunden zeitverzögert auf', en: '< Occurred with 1-2h delay', es: '< Apareció 1-2h después', fr: '< Apparu 1-2h plus tard', it: '< Comparso 1-2h dopo', el: '< Εμφανίστηκε με καθυστέρηση 1-2 ωρών', ru: '< Появилось через 1-2 часа' }, direction: 'worse' }
+              { id: 'causa-effect-immed-worse', label: { de: 'Hat Schmerz unmittelbar ausgelöst', en: 'Immediately triggered the pain', es: 'Desencadenó el dolor de inmediato', fr: 'A déclenché la douleur immédiatement', it: 'Ha scatenato il dolore immediatamente', el: 'Πυροδότησε άμεσα τον πόνο', ru: 'Мгновенно вызвало боль' }, direction: 'worse' },
+              { id: 'causa-effect-delayed-worse', label: { de: 'Trat ca. 1–2 Stunden zeitverzögert auf', en: 'Occurred with 1-2h delay', es: 'Apareció 1-2h después', fr: 'Apparu 1-2h plus tard', it: 'Comparso 1-2h dopo', el: 'Εμφανίστηκε με καθυστέρηση 1-2 ωρών', ru: 'Появилось через 1-2 часа' }, direction: 'worse' }
             ]
           },
           {
@@ -790,7 +790,7 @@ export const CASCADE_PILLAR_DEFINITIONS: Record<string, CascadePillarData> = {
             },
             remedyHints: ['chamomilla', 'nux-vomica', 'bryonia-alba'],
             tier3Options: [
-              { id: 'causa-effect-immed-fury', label: { de: '< Magen- / Bauchkolik direkt während des Wutanfalls', en: '< Colic right during the fit of rage', es: '< Cólico durante el ataque de ira', fr: '< Colique pendant la colère', it: '< Colica durante l\'attacco di rabbia', el: '< Κολικός άμεσα κατά το ξέσπασμα', ru: '< Колика прямо во время приступа ярости' }, direction: 'worse' }
+              { id: 'causa-effect-immed-fury', label: { de: 'Magen- / Bauchkolik direkt während des Wutanfalls', en: 'Colic right during the fit of rage', es: 'Cólico durante el ataque de ira', fr: 'Colique pendant la colère', it: 'Colica durante l\'attacco di rabbia', el: 'Κολικός άμεσα κατά το ξέσπασμα', ru: 'Колика прямо во время приступа ярости' }, direction: 'worse' }
             ]
           },
           {
@@ -833,7 +833,7 @@ export const CASCADE_PILLAR_DEFINITIONS: Record<string, CascadePillarData> = {
             },
             remedyHints: ['aconitum-napellus', 'bryonia-alba', 'hepar-sulfuris'],
             tier3Options: [
-              { id: 'causa-effect-sudden-hours', label: { de: '< Plötzlicher, stürmischer Beginn innerhalb weniger Stunden', en: '< Sudden violent onset within hours', es: '< Inicio repentino en pocas horas', fr: '< Début soudain en quelques heures', it: '< Insorgenza improvvisa in poche ore', el: '< Ξαφνική έναρξη εντός ολίγων ωρών', ru: '< Внезапное бурное начало за несколько часов' }, direction: 'worse' }
+              { id: 'causa-effect-sudden-hours', label: { de: 'Plötzlicher, stürmischer Beginn innerhalb weniger Stunden', en: 'Sudden violent onset within hours', es: 'Inicio repentino en pocas horas', fr: 'Début soudain en quelques heures', it: 'Insorgenza improvvisa in poche ore', el: 'Ξαφνική έναρξη εντός ολίγων ωρών', ru: 'Внезапное бурное начало за несколько часов' }, direction: 'worse' }
             ]
           },
           {
@@ -889,7 +889,7 @@ export const CASCADE_PILLAR_DEFINITIONS: Record<string, CascadePillarData> = {
             },
             remedyHints: ['nux-vomica', 'pulsatilla-pratensis', 'arsenicum-album', 'carbo-vegetabilis'],
             tier3Options: [
-              { id: 'causa-effect-morning-after', label: { de: '< Schmerz und Übelkeit am nächsten Morgen nach dem Erwachen', en: '< Pain and nausea next morning on waking', es: '< Dolor a la mañana siguiente', fr: '< Douleur au réveil le lendemain', it: '< Dolore al mattino al risveglio', el: '< Πόνος και ναυτία το επόμενο πρωί', ru: '< Боль и тошнота на следующее утро' }, direction: 'worse' }
+              { id: 'causa-effect-morning-after', label: { de: 'Schmerz und Übelkeit am nächsten Morgen nach dem Erwachen', en: 'Pain and nausea next morning on waking', es: 'Dolor y náuseas a la mañana siguiente al despertar', fr: 'Douleur et nausée le lendemain matin au réveil', it: 'Dolore e nausea il mattino seguente al risveglio', el: 'Πόνος και ναυτία το επόμενο πρωί μετά το ξύπνημα', ru: 'Боль и тошнота на следующее утро после пробуждения' }, direction: 'worse' }
             ]
           },
           {

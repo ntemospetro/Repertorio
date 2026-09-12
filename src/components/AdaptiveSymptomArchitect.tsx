@@ -134,6 +134,11 @@ export const AdaptiveSymptomArchitect: React.FC<AdaptiveSymptomArchitectProps> =
     const text = initialInput.trim();
     if (!text) return;
 
+    // Strict validation: Do not accept input if not recognized as a complaint
+    if (!chiefAnalysis.isRecognized) {
+      return;
+    }
+
     const chosenPrimary = selectedPrimaryComplaint || text;
     const cues = extractCuesFromInitialComplaint(chosenPrimary);
 
@@ -354,21 +359,32 @@ export const AdaptiveSymptomArchitect: React.FC<AdaptiveSymptomArchitectProps> =
             {/* Real-time domain verification */}
             {initialInput.trim() && (
               <div className="space-y-2 pt-1">
-                {chiefAnalysis.isRecognized && chiefAnalysis.organDomain && (
+                {chiefAnalysis.isRecognized && chiefAnalysis.organDomain ? (
                   <div className="p-2.5 rounded-lg bg-emerald-50/80 border border-emerald-200/80 flex items-center justify-between text-xs text-emerald-950 font-medium">
                     <div className="flex items-center gap-1.5">
                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                       <span>{t('chiefComplaintVerified')}: <strong className="text-emerald-800">{chiefAnalysis.organDomain}</strong></span>
                     </div>
                   </div>
+                ) : (
+                  <div className="p-2.5 rounded-lg bg-amber-50/90 border border-amber-200 text-xs text-amber-950">
+                    <div className="flex items-center gap-1.5 font-semibold text-amber-900">
+                      <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                      <span>{t('chiefComplaintUnrecognized')}</span>
+                    </div>
+                    <p className="mt-1 text-[11px] leading-relaxed text-amber-800/90">
+                      {t('chiefComplaintUnrecognizedPrompt')}
+                    </p>
+                  </div>
                 )}
 
                 <div className="pt-1">
                   <button
                     type="submit"
-                    className="w-full relative overflow-hidden py-2.5 px-4 rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 shadow-xs transition-all border border-teal-800 bg-teal-700 hover:bg-teal-800 text-white cursor-pointer group"
+                    disabled={!chiefAnalysis.isRecognized}
+                    className="w-full relative overflow-hidden py-2.5 px-4 rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 shadow-xs transition-all border border-teal-800 bg-teal-700 hover:bg-teal-800 disabled:bg-slate-200 disabled:border-slate-300 disabled:text-slate-400 disabled:cursor-not-allowed text-white cursor-pointer group"
                   >
-                    <Sparkles className="w-4 h-4 text-teal-200 group-hover:scale-110 transition-transform shrink-0" />
+                    <Sparkles className={`w-4 h-4 transition-transform shrink-0 ${chiefAnalysis.isRecognized ? 'text-teal-200 group-hover:scale-110' : 'text-slate-400'}`} />
                     <span>{t('anamnesisStartBtn')}</span>
                   </button>
                 </div>

@@ -54,7 +54,6 @@ import {
   SubtractiveCascadeStep 
 } from '../services/boerickeRepertoryService';
 import { 
-  getRemedyClassicalAuthors, 
   matchesAuthorFilter, 
   ClassicalAuthorFilterKey 
 } from '../data/classicalAuthorsMap';
@@ -872,19 +871,6 @@ export const RepertoriumView: React.FC<RepertoriumViewProps> = ({
                           <span className="text-xs text-slate-500">
                             ({res.remedy.commonName})
                           </span>
-                          {(res.remedy.ist_polychrest || res.remedy.isPolychrest) && (
-                            <span 
-                              className={`inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full border shadow-2xs transition-all ${
-                                praxisBonusActive 
-                                  ? 'bg-amber-50 text-amber-900 border-amber-300 ring-1 ring-amber-400/30' 
-                                  : 'bg-slate-100 text-slate-700 border-slate-300'
-                              }`}
-                              title={praxisBonusActive ? t('repertoriumPraxisBonusTooltip') : t('repertoriumPraxisBonusTooltipInactive')}
-                            >
-                              <span className="text-amber-600 font-bold">✦</span>
-                              <span>{praxisBonusActive ? t('repertoriumPraxisBonusBadge') : t('repertoriumPraxisBonusBadgeSimple')}</span>
-                            </span>
-                          )}
                           {res.isFullMatch && (
                             <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-300">
                               <CheckCircle2 className="w-3 h-3 text-emerald-700" />
@@ -892,47 +878,6 @@ export const RepertoriumView: React.FC<RepertoriumViewProps> = ({
                             </span>
                           )}
                         </div>
-
-                        {/* Classical Author Badges for this remedy */}
-                        {(() => {
-                          const authorsInfo = getRemedyClassicalAuthors(res.remedy.id);
-                          const hasAny = authorsInfo.hahnemann || authorsInfo.kent || authorsInfo.hering || authorsInfo.boericke || authorsInfo.boger || authorsInfo.allen;
-                          if (!hasAny) return null;
-                          return (
-                            <div className="flex flex-wrap items-center gap-1 mt-1">
-                              {authorsInfo.hahnemann && (
-                                <span className="text-[10px] font-medium px-1.5 py-0.2 rounded bg-amber-50 text-amber-800 border border-amber-200/60" title="Samuel Hahnemann">
-                                  S. Hahnemann
-                                </span>
-                              )}
-                              {authorsInfo.kent && (
-                                <span className="text-[10px] font-medium px-1.5 py-0.2 rounded bg-indigo-50 text-indigo-800 border border-indigo-200/60" title="James Tyler Kent">
-                                  J. T. Kent
-                                </span>
-                              )}
-                              {authorsInfo.hering && (
-                                <span className="text-[10px] font-medium px-1.5 py-0.2 rounded bg-teal-50 text-teal-800 border border-teal-200/60" title="Constantine Hering">
-                                  C. Hering
-                                </span>
-                              )}
-                              {authorsInfo.boericke && (
-                                <span className="text-[10px] font-medium px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-800 border border-emerald-200/60" title="William Boericke">
-                                  W. Boericke
-                                </span>
-                              )}
-                              {authorsInfo.boger && (
-                                <span className="text-[10px] font-medium px-1.5 py-0.2 rounded bg-purple-50 text-purple-800 border border-purple-200/60" title="Cyrus Maxwell Boger">
-                                  C. M. Boger
-                                </span>
-                              )}
-                              {authorsInfo.allen && (
-                                <span className="text-[10px] font-medium px-1.5 py-0.2 rounded bg-amber-50 text-amber-900 border border-amber-300/80" title="Henry C. Allen">
-                                  H. C. Allen
-                                </span>
-                              )}
-                            </div>
-                          );
-                        })()}
 
                         <p className="text-xs text-slate-600 line-clamp-1 italic">
                           {res.remedy.essence || res.remedy.origin}
@@ -1083,7 +1028,7 @@ export const RepertoriumView: React.FC<RepertoriumViewProps> = ({
                                       </span>
                                       {proof.matched && (
                                         <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-50 text-amber-900 border border-amber-200 shrink-0">
-                                          {'★'.repeat(proof.grade)} (Grad {proof.grade})
+                                          {'★'.repeat(proof.grade)} ({t('repertoriumGradeLabel', { grade: proof.grade })})
                                         </span>
                                       )}
                                     </div>

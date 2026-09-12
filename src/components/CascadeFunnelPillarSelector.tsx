@@ -572,7 +572,14 @@ export const CascadeFunnelPillarSelector: React.FC<CascadeFunnelPillarSelectorPr
                       </p>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1">
-                        {t2.tier3Options!.map((t3) => {
+                        {t2.tier3Options!
+                          .filter((t3) => {
+                            if (pillar === 'modalities' && activeDirection) {
+                              return !t3.direction || t3.direction === activeDirection;
+                            }
+                            return true;
+                          })
+                          .map((t3) => {
                           const isT3Active = selectedEntry?.tier3Id === t3.id;
                           return (
                             <button
