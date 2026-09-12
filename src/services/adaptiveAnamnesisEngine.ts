@@ -1058,6 +1058,30 @@ function isAnatomicallyRelevantForComplaint(
   const lText = label.toLowerCase();
   const cText = (chiefComplaint || '').toLowerCase();
 
+  // A. GENERAL PILLAR RULE FOR "LOCATION" (WO?):
+  // Fluids, systemic vascular tissues, metabolic terms and general categories are NOT anatomical sites or radiation zones.
+  if (pillar === 'location') {
+    const nonLocationTerms = [
+      'blut', 'blood', 'sang', 'sangue', 'αιμα', 'кровь',
+      'lymfe', 'lymphe', 'lymph', 'linfa', 'λεμφ', 'лимф',
+      'gefäß', 'gefäss', 'vessels', 'vaisseaux', 'vasi', 'αγγει', 'сосуд',
+      'kreislauf', 'circulation', 'циркуляц', 'κυκλοφορ',
+      'nervensystem', 'nervous system', 'système nerveux', 'sistema nervoso', 'νευρικό σύστημα', 'нервная система',
+      'vitalität', 'vitality', 'vitalite', 'vitalita',
+      'gewebe', 'tissue', 'tissu', 'tessuto', 'ιστος', 'ткань',
+      'zellulär', 'cellular', 'cellulaire', 'клеточн'
+    ];
+    for (const term of nonLocationTerms) {
+      if (cText.includes(term)) continue;
+      const regex = new RegExp(`\\b${term}\\b|${term}`, 'i');
+      if (regex.test(lText)) {
+        return false;
+      }
+    }
+  }
+
+  // B. COMPLAINT-SPECIFIC ANATOMICAL FILTERS:
+
   // 1. ABDOMEN / MAGEN / DARM / BAUCH
   const isAbdomenComplaint =
     cText.includes('bauch') || cText.includes('magen') || cText.includes('darm') ||
@@ -1069,11 +1093,38 @@ function isAnatomicallyRelevantForComplaint(
   if (isAbdomenComplaint) {
     // Exclude completely unrelated organs/regions
     const forbiddenForAbdomen = [
-      'after', 'anus', 'harnblase', 'blase', 'harnweg', 'haut', 'warzen', 'warze',
-      'haare', 'haar', 'gehirn', 'nervensystem', 'meatus', 'schleimhautgrenzen',
-      'schleimhaut-grenzen', 'schläfe', 'stirn', 'hinterkopf', 'okziput', 'vertex',
-      'scheitel', 'auge', 'augen', 'ohr', 'ohren', 'zahn', 'zähne', 'knie',
-      'knöchel', 'zehen', 'finger', 'extremitäten', 'hws', 'cervical', 'lunge', 'bronchien'
+      // Oral & cephalic structures (Zunge, Mund, etc. never belong into abdomen location)
+      'zunge', 'tongue', 'langue', 'lingua', 'γλωσσ', 'язык',
+      'mund', 'mouth', 'bouche', 'bocca', 'στομα', 'рот',
+      'lippen', 'lippe', 'lips', 'lèvres', 'labbra', 'χειλη', 'губы',
+      'zahn', 'zähne', 'teeth', 'tooth', 'dents', 'denti', 'δοντι', 'зубы',
+      'gaumen', 'palate', 'palais', 'palato', 'ουρανισκος', 'небо',
+      'rachen', 'pharynx', 'throat', 'gorge', 'gola', 'φαρυγγ', 'глотка',
+      'mandeln', 'tonsils', 'amygdales', 'tonsille', 'αμυγδαλ', 'миндалины',
+
+      // Head & sensory organs
+      'schläfe', 'stirn', 'hinterkopf', 'okziput', 'vertex', 'scheitel',
+      'gehirn', 'brain', 'cerveau', 'cervello', 'εγκεφαλ', 'мозг',
+      'auge', 'augen', 'eyes', 'yeux', 'occhi', 'ματια', 'глаза',
+      'ohr', 'ohren', 'ears', 'oreilles', 'orecchi', 'αυτια', 'уши',
+      'nase', 'nose', 'nez', 'naso', 'μυτη', 'нос',
+
+      // Pelvic floor, urogenital & perianal (unless explicitly stated)
+      'after', 'anus', 'meatus', 'harnblase', 'blase', 'harnweg', 'urethra',
+
+      // Skin & appendages
+      'haut', 'skin', 'peau', 'pelle', 'δερμα', 'кожа',
+      'warzen', 'warze', 'warts', 'verrues', 'verruche', 'μυρμηγκι', 'бородавк',
+      'haare', 'haar', 'hair', 'cheveux', 'capelli', 'μαλλια', 'волосы',
+      'schleimhautgrenzen', 'schleimhaut-grenzen',
+
+      // Extremities and distant joints
+      'knie', 'knee', 'genou', 'ginocchio', 'γονατο', 'колено',
+      'knöchel', 'ankle', 'cheville', 'caviglia', 'αστραγαλ', 'лодыжк',
+      'zehen', 'zehe', 'toes', 'orteils', 'dita dei piedi', 'δαχτυλα ποδιων', 'пальцы ног',
+      'finger', 'fingers', 'doigts', 'dita', 'δαχτυλα', 'пальцы рук',
+      'extremitäten', 'limbs', 'extremites', 'arti', 'ακρα', 'конечност',
+      'hws', 'cervical', 'lunge', 'bronchien', 'bronchia'
     ];
 
     // Check if the label contains any forbidden terms
