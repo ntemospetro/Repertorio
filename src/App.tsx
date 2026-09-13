@@ -31,6 +31,7 @@ import { TherapistPanel } from './components/TherapistPanel';
 import { TherapistLogin } from './components/TherapistLogin';
 import { AdminPanel } from './components/AdminPanel';
 import { AdminLogin } from './components/AdminLogin';
+import { AdminSecurityGate } from './components/AdminSecurityGate';
 import { LandingPage } from './components/LandingPage';
 
 function AppContent() {
@@ -40,6 +41,7 @@ function AppContent() {
   });
   const [activeTherapist, setActiveTherapist] = useState<Therapist | null>(getActiveTherapist());
   const [isAdmin, setIsAdmin] = useState<boolean>(isAdminLoggedIn());
+  const [isAdminGateUnlocked, setIsAdminGateUnlocked] = useState<boolean>(false);
   const { t } = useTranslation();
 
   const syncState = () => {
@@ -139,6 +141,7 @@ function AppContent() {
   const handleAdminLogout = () => {
     setAdminLoggedIn(false);
     setIsAdmin(false);
+    setIsAdminGateUnlocked(false);
   };
 
   return (
@@ -192,13 +195,18 @@ function AppContent() {
           )
         )}
 
-        {/* VIEW 3: ADMIN-PANEL (Streng geschützt) */}
+        {/* VIEW 3: ADMIN-PANEL (Streng geschützt durch Sicherheits-Gate & Login) */}
         {currentView === 'admin' && (
           <>
             {isAdmin ? (
               <AdminPanel
                 onSwitchToTherapist={handleSwitchToTherapistFromAdmin}
                 onLogout={handleAdminLogout}
+              />
+            ) : !isAdminGateUnlocked ? (
+              <AdminSecurityGate
+                onUnlock={() => setIsAdminGateUnlocked(true)}
+                onCancel={() => handleViewChange('landing')}
               />
             ) : (
               <AdminLogin

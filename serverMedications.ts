@@ -325,7 +325,7 @@ export function search_database(medikament_name: string): {
       );
     });
 
-    const allMatches = exactMatches.length > 0 ? exactMatches : partialMatches;
+    const allMatches = (exactMatches.length > 0 ? exactMatches : partialMatches).slice(0, 50);
 
     if (allMatches.length === 0) {
       return { found: false, isComplete: false, matches: [] };
@@ -775,6 +775,13 @@ function normalizeMedicationItem(raw: any): StoredMedication {
       contraindications,
       warnings
     });
+  }
+
+  if (monographText) {
+    monographText = monographText
+      .replace(/\uFFFD/g, '')
+      .replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, '')
+      .replace(/(?<![\u2600-\u27BF\uD83C-\uD83F])[\uFE0E\uFE0F]/g, '');
   }
 
   return {

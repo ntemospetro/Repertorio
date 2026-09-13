@@ -6,7 +6,8 @@ import {
   updatePatientStammdatenAcrossCases,
   getRecentlyEditedPatientNames,
   deletePatientCase,
-  deletePatientAndAllCases
+  deletePatientAndAllCases,
+  isFeatureLimitReached
 } from '../services/storage';
 import { useTranslation } from '../i18n/LanguageContext';
 import { VoiceInputButton } from './VoiceInputButton';
@@ -214,6 +215,23 @@ export const PatientDirectoryView: React.FC<PatientDirectoryViewProps> = ({
   }, [therapist.id]);
 
   const handleSaveNewPatient = (data: Partial<PatientCase>) => {
+    const pName = data.patientName?.trim() || '';
+    const checkPatients = isFeatureLimitReached(therapist.id, 'maxPatients', 1, pName);
+    if (checkPatients.reached) {
+      window.dispatchEvent(new CustomEvent('homoeo_action_limit_reached', {
+        detail: { feature: t('tariffLimitPatientsLabel'), limit: checkPatients.limit }
+      }));
+      return;
+    }
+
+    const checkCases = isFeatureLimitReached(therapist.id, 'maxCases', 1);
+    if (checkCases.reached) {
+      window.dispatchEvent(new CustomEvent('homoeo_action_limit_reached', {
+        detail: { feature: t('tariffLimitCasesLabel'), limit: checkCases.limit }
+      }));
+      return;
+    }
+
     const newCaseId = 'case-' + Date.now();
     const isFemale = (data.patientGender || 'weiblich') === 'weiblich';
     const created = savePatientCase({

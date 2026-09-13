@@ -30,6 +30,15 @@ interface MonographSection {
   paragraphs: string[];
 }
 
+// Helper to strip any corrupted replacement characters (U+FFFD), orphaned surrogates, or stray variation selectors
+export const cleanMonographText = (text: string): string => {
+  if (!text) return '';
+  return text
+    .replace(/\uFFFD/g, '')
+    .replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, '')
+    .replace(/(?<![\u2600-\u27BF\uD83C-\uD83F])[\uFE0E\uFE0F]/g, '');
+};
+
 export const MedicationMonographView: React.FC<MedicationMonographViewProps> = ({
   monographText,
   medName,
@@ -42,25 +51,26 @@ export const MedicationMonographView: React.FC<MedicationMonographViewProps> = (
   const [isTranslating, setIsTranslating] = useState(false);
 
   // Keep a reference to the base German text so translations to any language are always accurate
-  const baseTextRef = useRef<string>(monographText);
+  const baseTextRef = useRef<string>(cleanMonographText(monographText));
   if (
     monographText &&
     (monographText.includes('Wirkstoff') ||
       monographText.includes('Inhaltsstoffe') ||
       !baseTextRef.current)
   ) {
-    baseTextRef.current = monographText;
+    baseTextRef.current = cleanMonographText(monographText);
   }
 
   // Initialize with immediate structural localization
   const [currentMonograph, setCurrentMonograph] = useState<string>(() => {
     if (!monographText) return '';
-    return language === 'de' ? monographText : localizeMonograph(monographText, language);
+    const cleaned = cleanMonographText(monographText);
+    return language === 'de' ? cleaned : cleanMonographText(localizeMonograph(cleaned, language));
   });
 
   // Whenever monographText or language changes, synchronize immediately and fetch complete translation
   useEffect(() => {
-    const sourceText = baseTextRef.current || monographText;
+    const sourceText = cleanMonographText(baseTextRef.current || monographText);
     if (!sourceText) {
       setCurrentMonograph('');
       return;
@@ -73,7 +83,7 @@ export const MedicationMonographView: React.FC<MedicationMonographViewProps> = (
     }
 
     // Step 1: Instant localization with zero flicker
-    const immediate = localizeMonograph(sourceText, language);
+    const immediate = cleanMonographText(localizeMonograph(sourceText, language));
     setCurrentMonograph(immediate);
 
     // Step 2: Asynchronous AI translation via backend
@@ -83,7 +93,7 @@ export const MedicationMonographView: React.FC<MedicationMonographViewProps> = (
     fetchTranslatedMonograph(medName, sourceText, language)
       .then((translated) => {
         if (!isCancelled && translated) {
-          setCurrentMonograph(translated);
+          setCurrentMonograph(cleanMonographText(translated));
         }
       })
       .catch((err) => {
@@ -100,11 +110,11 @@ export const MedicationMonographView: React.FC<MedicationMonographViewProps> = (
     };
   }, [monographText, medName, language]);
 
-  const activeText = currentMonograph || monographText;
+  const activeText = cleanMonographText(currentMonograph || monographText);
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(activeText);
+      await navigator.clipboard.writeText(cleanMonographText(activeText));
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
@@ -114,18 +124,19 @@ export const MedicationMonographView: React.FC<MedicationMonographViewProps> = (
 
   // Parse narrative monograph text into clean, structured sections matching Kompaktansicht
   const parseMonographText = (rawText: string): { intro: string; sections: MonographSection[] } => {
-    if (!rawText || !rawText.trim()) {
+    const sanitized = cleanMonographText(rawText);
+    if (!sanitized || !sanitized.trim()) {
       return { intro: '', sections: [] };
     }
 
-    const lines = rawText.split('\n');
+    const lines = sanitized.split('\n');
     let intro = '';
     const sections: MonographSection[] = [];
     let currentSection: MonographSection | null = null;
 
     for (let i = 0; i < lines.length; i++) {
       const rawLine = lines[i];
-      const trimmed = rawLine.trim();
+      const trimmed = cleanMonographText(rawLine).trim();
 
       if (!trimmed) continue;
 
@@ -142,7 +153,7 @@ export const MedicationMonographView: React.FC<MedicationMonographViewProps> = (
           (trimmed.toLowerCase().includes('vollständige fachinformation') && !trimmed.match(/^\d+\./));
 
         if (isIntro) {
-          intro = trimmed;
+          intro = cleanMonographText(trimmed);
           continue;
         }
       }
@@ -152,7 +163,7 @@ export const MedicationMonographView: React.FC<MedicationMonographViewProps> = (
       // Pattern 2: Emoji marker (e.g. "📝 1. Wirkstoff...")
       // Pattern 3: Markdown heading (e.g. "## 1. ...")
       const isNumbered = /^\d+\.\s/.test(trimmed);
-      const isEmoji = /^[📝💊⚠️🚫❌]/.test(trimmed);
+      const isEmoji = /^(?:[📝💊⚠️🚫❌]|\u26A0\uFE0F?)/u.test(trimmed);
       const isMd = /^#{1,4}\s/.test(trimmed);
       const isKnownSection =
         /^(Indikation|Wirkstoff|Dosierung|Verabreichung|Gegenanzeigen|Kontraindikationen|Warnhinweise|Nebenwirkungen|Toxikologie|Wechselwirkungen|Pharmakokinetik|Indication|Dosage|Side effects|Contraindications|Interactions)/i.test(
@@ -160,10 +171,11 @@ export const MedicationMonographView: React.FC<MedicationMonographViewProps> = (
         ) && trimmed.length < 80;
 
       if (isNumbered || isEmoji || isMd || isKnownSection) {
-        const cleanHeaderLine = trimmed
-          .replace(/^#{1,4}\s*/, '')
-          .replace(/^[📝💊⚠️🚫❌]\s*/, '')
-          .trim();
+        const cleanHeaderLine = cleanMonographText(
+          trimmed
+            .replace(/^#{1,4}\s*/, '')
+            .replace(/^(?:[📝💊🚫❌]|⚠️|\u26A0\uFE0F?|\uFE0F|\uFFFD)\s*/u, '')
+        ).trim();
 
         let title = cleanHeaderLine;
         let inlineContent = '';
@@ -171,8 +183,8 @@ export const MedicationMonographView: React.FC<MedicationMonographViewProps> = (
         // If title and content are separated by colon (e.g. "1. Indikation und Pharmakologie: Magnesium ist...")
         const colonIdx = cleanHeaderLine.indexOf(':');
         if (colonIdx > 0 && colonIdx < 55) {
-          title = cleanHeaderLine.slice(0, colonIdx).trim();
-          inlineContent = cleanHeaderLine.slice(colonIdx + 1).trim();
+          title = cleanMonographText(cleanHeaderLine.slice(0, colonIdx)).trim();
+          inlineContent = cleanMonographText(cleanHeaderLine.slice(colonIdx + 1)).trim();
         }
 
         // Determine icon type from title
@@ -236,16 +248,16 @@ export const MedicationMonographView: React.FC<MedicationMonographViewProps> = (
         };
         sections.push(currentSection);
       } else if (currentSection) {
-        currentSection.paragraphs.push(trimmed);
+        currentSection.paragraphs.push(cleanMonographText(trimmed));
       } else {
         if (!intro) {
-          intro = trimmed;
+          intro = cleanMonographText(trimmed);
         } else {
           currentSection = {
             id: 'sec-general',
             title: t('medMonographOverview' as TranslationKey) || 'Fachinformation & Monographie',
             iconType: 'general',
-            paragraphs: [trimmed]
+            paragraphs: [cleanMonographText(trimmed)]
           };
           sections.push(currentSection);
         }
@@ -254,9 +266,9 @@ export const MedicationMonographView: React.FC<MedicationMonographViewProps> = (
 
     // Fallback if no structured sections could be parsed
     if (sections.length === 0) {
-      const fallbackParas = rawText
+      const fallbackParas = sanitized
         .split(/\n\s*\n/)
-        .map((p) => p.trim())
+        .map((p) => cleanMonographText(p).trim())
         .filter(Boolean);
       sections.push({
         id: 'sec-fallback',
@@ -274,7 +286,7 @@ export const MedicationMonographView: React.FC<MedicationMonographViewProps> = (
 
   // Render individual paragraph inside section card matching Kompaktansicht font and styling
   const renderParagraph = (pText: string, pIdx: number) => {
-    const trimmed = pText.trim();
+    const trimmed = cleanMonographText(pText).trim();
     if (!trimmed) return null;
 
     // Bullet point item

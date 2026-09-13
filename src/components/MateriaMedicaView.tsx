@@ -46,6 +46,7 @@ import {
   DifferentialDiagnosisResult
 } from '../services/quickSymptomMatcher';
 import { useTranslation } from '../i18n/LanguageContext';
+import { getActiveTherapist, isFeatureLimitReached, incrementTherapistUsage } from '../services/storage';
 import { 
   isSpeechRecognitionSupported, 
   startSpeechRecognition, 
@@ -200,6 +201,31 @@ export const MateriaMedicaView: React.FC<MateriaMedicaViewProps> = ({
   
   // Search and Filter State
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Perform Materia Medica quota check and usage increment on search
+  useEffect(() => {
+    const trimmed = searchQuery.trim();
+    if (!trimmed) return;
+
+    const timer = setTimeout(() => {
+      const activeTherapist = getActiveTherapist();
+      if (activeTherapist) {
+        const limitCheck = isFeatureLimitReached(activeTherapist.id, 'maxMateriaMedicaSearch', 1);
+        if (limitCheck.reached) {
+          window.dispatchEvent(new CustomEvent('homoeo_action_limit_reached', {
+            detail: { feature: t('tariffLimitMateriaMedicaSearchLabel'), limit: limitCheck.limit }
+          }));
+          // Reset query to prevent locking up or infinite triggers
+          setSearchQuery('');
+          return;
+        }
+        incrementTherapistUsage(activeTherapist.id, 'materia_search');
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedAuthor, setSelectedAuthor] = useState<ClassicalAuthorFilterKey>('all');
   const [selectedRemedyForModal, setSelectedRemedyForModal] = useState<LocalizedRemedy | null>(null);

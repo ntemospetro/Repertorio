@@ -41,7 +41,7 @@ import {
   fetchLocalizedStructuredMedication, 
   LocalizedStructuredData 
 } from '../services/medicationLocalization';
-import { savePatientCase } from '../services/storage';
+import { savePatientCase, isFeatureLimitReached, incrementTherapistUsage } from '../services/storage';
 
 interface MedicationResearchViewProps {
   currentCase: Partial<PatientCase>;
@@ -148,7 +148,7 @@ export const MedicationResearchView: React.FC<MedicationResearchViewProps> = ({
       : (t('unknownDate' as TranslationKey) || '—');
   }, [currentCase.anamneseDatum, language, t]);
 
-  // Perform search in medical database
+  // Perform search in medical database with debounce and request abortion
   useEffect(() => {
     const trimmed = searchQuery.trim();
     if (!trimmed) {
@@ -157,20 +157,45 @@ export const MedicationResearchView: React.FC<MedicationResearchViewProps> = ({
       return;
     }
 
+    const abortController = new AbortController();
+
     const timer = setTimeout(async () => {
+      const therapistId = currentCase.therapistId || '';
+      if (therapistId) {
+        const limitCheck = isFeatureLimitReached(therapistId, 'maxMedResearch', 1);
+        if (limitCheck.reached) {
+          window.dispatchEvent(new CustomEvent('homoeo_action_limit_reached', {
+            detail: { feature: t('tariffLimitMedResearchLabel'), limit: limitCheck.limit }
+          }));
+          return;
+        }
+      }
+
       setIsSearching(true);
       try {
-        const results = await searchMedications(trimmed, false, language);
-        setSearchResults(results);
-        setHasSearched(true);
-      } catch (e) {
-        console.warn('Error during medication research search:', e);
+        const results = await searchMedications(trimmed, false, language, abortController.signal);
+        if (!abortController.signal.aborted) {
+          setSearchResults(results);
+          setHasSearched(true);
+          if (therapistId) {
+            incrementTherapistUsage(therapistId, 'med_research');
+          }
+        }
+      } catch (e: any) {
+        if (e?.name !== 'AbortError') {
+          console.warn('Error during medication research search:', e);
+        }
       } finally {
-        setIsSearching(false);
+        if (!abortController.signal.aborted) {
+          setIsSearching(false);
+        }
       }
-    }, 280);
+    }, 320);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      abortController.abort();
+    };
   }, [searchQuery, language]);
 
   // Determine active medication item to display
@@ -198,50 +223,63 @@ export const MedicationResearchView: React.FC<MedicationResearchViewProps> = ({
 
   // When active item lacks full structured details or monographText, auto-fetch in background
   useEffect(() => {
-    if (!activeDisplayItem?.name) return;
+    const medName = activeDisplayItem?.name?.trim();
+    if (!medName || medName.length < 2) return;
 
     // Check if we need to fetch deeper monograph text
     if (!activeDisplayItem.monographText) {
+      const abortController = new AbortController();
       setIsLoadingDetail(true);
-      fetchMedicationDetails(activeDisplayItem.name, language)
+
+      fetchMedicationDetails(medName, language, abortController.signal)
         .then((detail) => {
-          if (detail) {
-            if (researchedMedDetail && researchedMedDetail.name === activeDisplayItem.name) {
-              setResearchedMedDetail(detail);
-            } else if (activePatientMed && activePatientMed.name === detail.name) {
-              // Update current case with enriched data
-              const updatedList = patientMeds.map((m, idx) => {
-                if (idx === selectedMedIndex) {
-                  return {
-                    ...m,
-                    wirkstoff: detail.activeSubstance || m.wirkstoff,
-                    kategorie: detail.category || m.kategorie,
-                    packungsgroessen: detail.packageSizes || m.packungsgroessen,
-                    nebenwirkungenGegliedert: detail.sideEffectsByFrequency || m.nebenwirkungenGegliedert,
-                    nebenwirkungen: detail.sideEffects || m.nebenwirkungen,
-                    wechselwirkungen: detail.interactions || m.wechselwirkungen,
-                    kontraindikationen: detail.contraindications || m.kontraindikationen,
-                    risiken: detail.warnings || m.risiken,
-                    monographText: detail.monographText || formatMedicationMonograph(detail, language as any),
-                    authoritySource: detail.authoritySource || m.authoritySource
-                  };
-                }
-                return m;
-              });
-              const updatedCase = {
-                ...currentCase,
-                medikamenteList: updatedList
-              };
-              if (currentCase.id) {
-                savePatientCase(updatedCase as PatientCase);
+          if (abortController.signal.aborted || !detail) return;
+          if (researchedMedDetail && researchedMedDetail.name === medName) {
+            setResearchedMedDetail(detail);
+          } else if (activePatientMed && activePatientMed.name === detail.name) {
+            // Update current case with enriched data
+            const updatedList = patientMeds.map((m, idx) => {
+              if (idx === selectedMedIndex) {
+                return {
+                  ...m,
+                  wirkstoff: detail.activeSubstance || m.wirkstoff,
+                  kategorie: detail.category || m.kategorie,
+                  packungsgroessen: detail.packageSizes || m.packungsgroessen,
+                  nebenwirkungenGegliedert: detail.sideEffectsByFrequency || m.nebenwirkungenGegliedert,
+                  nebenwirkungen: detail.sideEffects || m.nebenwirkungen,
+                  wechselwirkungen: detail.interactions || m.wechselwirkungen,
+                  kontraindikationen: detail.contraindications || m.kontraindikationen,
+                  risiken: detail.warnings || m.risiken,
+                  monographText: detail.monographText || formatMedicationMonograph(detail, language as any),
+                  authoritySource: detail.authoritySource || m.authoritySource
+                };
               }
-              if (onUpdateCase) onUpdateCase(updatedCase);
+              return m;
+            });
+            const updatedCase = {
+              ...currentCase,
+              medikamenteList: updatedList
+            };
+            if (currentCase.id) {
+              savePatientCase(updatedCase as PatientCase);
             }
+            if (onUpdateCase) onUpdateCase(updatedCase);
+          }
+        })
+        .catch((err: any) => {
+          if (err?.name !== 'AbortError') {
+            console.warn('Error fetching medication detail:', err);
           }
         })
         .finally(() => {
-          setIsLoadingDetail(false);
+          if (!abortController.signal.aborted) {
+            setIsLoadingDetail(false);
+          }
         });
+
+      return () => {
+        abortController.abort();
+      };
     }
   }, [activeDisplayItem?.name, language]);
 
@@ -365,6 +403,17 @@ export const MedicationResearchView: React.FC<MedicationResearchViewProps> = ({
       authoritySource: detail.authoritySource || 'Geprüfte Fachinformation (BfArM / EMA / Rote Liste)',
       datenbankQuelle: 'datenbank' as const
     };
+
+    const therapistId = currentCase.therapistId || '';
+    if (therapistId) {
+      const limitCheck = isFeatureLimitReached(therapistId, 'maxMedsPerCase', 1, currentCase.id);
+      if (limitCheck.reached) {
+        window.dispatchEvent(new CustomEvent('homoeo_action_limit_reached', {
+          detail: { feature: t('tariffLimitMedsPerCaseLabel'), limit: limitCheck.limit }
+        }));
+        return;
+      }
+    }
 
     const updatedList = [...patientMeds, newMedItem];
     const updatedCase = {

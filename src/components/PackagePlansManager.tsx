@@ -86,10 +86,26 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
       unlimitedAll: false,
       maxPatients: 100,
       unlimitedPatients: false,
-      maxAnalyses: 50,
-      unlimitedAnalyses: false,
+      maxCases: 100,
+      unlimitedCases: false,
+      maxAnalysesPerCase: 1,
+      unlimitedAnalysesPerCase: false,
       maxMedsPerCase: 20,
       unlimitedMedsPerCase: false,
+      maxMedsPerResearch: 4,
+      unlimitedMedsPerResearch: false,
+      maxMedResearch: 50,
+      unlimitedMedResearch: false,
+      maxMateriaMedicaSearch: 100,
+      unlimitedMateriaMedicaSearch: false,
+      maxRepertoriumSearch: 100,
+      unlimitedRepertoriumSearch: false,
+      maxRepertoriumSymptoms: 20,
+      unlimitedRepertoriumSymptoms: false,
+      maxQuickIntake: 50,
+      unlimitedQuickIntake: false,
+      maxQuickIntakeSymptoms: 15,
+      unlimitedQuickIntakeSymptoms: false,
       maxRiskAnalyses: 30,
       unlimitedRiskAnalyses: false,
       maxReports: 25,
@@ -154,10 +170,26 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
         unlimitedAll: false,
         maxPatients: 100,
         unlimitedPatients: false,
-        maxAnalyses: 25,
-        unlimitedAnalyses: false,
+        maxCases: 25,
+        unlimitedCases: false,
+        maxAnalysesPerCase: 1,
+        unlimitedAnalysesPerCase: false,
         maxMedsPerCase: 20,
         unlimitedMedsPerCase: false,
+        maxMedsPerResearch: 4,
+        unlimitedMedsPerResearch: false,
+        maxMedResearch: 50,
+        unlimitedMedResearch: false,
+        maxMateriaMedicaSearch: 100,
+        unlimitedMateriaMedicaSearch: false,
+        maxRepertoriumSearch: 100,
+        unlimitedRepertoriumSearch: false,
+        maxRepertoriumSymptoms: 20,
+        unlimitedRepertoriumSymptoms: false,
+        maxQuickIntake: 50,
+        unlimitedQuickIntake: false,
+        maxQuickIntakeSymptoms: 15,
+        unlimitedQuickIntakeSymptoms: false,
         maxRiskAnalyses: 30,
         unlimitedRiskAnalyses: false,
         maxReports: 25,
@@ -206,10 +238,26 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
         unlimitedAll: plan.featureLimits?.unlimitedAll ?? false,
         maxPatients: plan.featureLimits?.maxPatients ?? 100,
         unlimitedPatients: plan.featureLimits?.unlimitedPatients ?? false,
-        maxAnalyses: plan.featureLimits?.maxAnalyses ?? (plan.isUnlimited ? 999999 : plan.maxAnalyses),
-        unlimitedAnalyses: plan.featureLimits?.unlimitedAnalyses ?? plan.isUnlimited ?? false,
+        maxCases: plan.featureLimits?.maxCases ?? plan.featureLimits?.maxAnalyses ?? (plan.isUnlimited ? 999999 : plan.maxAnalyses),
+        unlimitedCases: plan.featureLimits?.unlimitedCases ?? plan.featureLimits?.unlimitedAnalyses ?? plan.isUnlimited ?? false,
+        maxAnalysesPerCase: plan.featureLimits?.maxAnalysesPerCase ?? 1,
+        unlimitedAnalysesPerCase: plan.featureLimits?.unlimitedAnalysesPerCase ?? false,
         maxMedsPerCase: plan.featureLimits?.maxMedsPerCase ?? 20,
         unlimitedMedsPerCase: plan.featureLimits?.unlimitedMedsPerCase ?? false,
+        maxMedsPerResearch: plan.featureLimits?.maxMedsPerResearch ?? 4,
+        unlimitedMedsPerResearch: plan.featureLimits?.unlimitedMedsPerResearch ?? false,
+        maxMedResearch: plan.featureLimits?.maxMedResearch ?? 50,
+        unlimitedMedResearch: plan.featureLimits?.unlimitedMedResearch ?? false,
+        maxMateriaMedicaSearch: plan.featureLimits?.maxMateriaMedicaSearch ?? 100,
+        unlimitedMateriaMedicaSearch: plan.featureLimits?.unlimitedMateriaMedicaSearch ?? false,
+        maxRepertoriumSearch: plan.featureLimits?.maxRepertoriumSearch ?? 100,
+        unlimitedRepertoriumSearch: plan.featureLimits?.unlimitedRepertoriumSearch ?? false,
+        maxRepertoriumSymptoms: plan.featureLimits?.maxRepertoriumSymptoms ?? 20,
+        unlimitedRepertoriumSymptoms: plan.featureLimits?.unlimitedRepertoriumSymptoms ?? false,
+        maxQuickIntake: plan.featureLimits?.maxQuickIntake ?? 50,
+        unlimitedQuickIntake: plan.featureLimits?.unlimitedQuickIntake ?? false,
+        maxQuickIntakeSymptoms: plan.featureLimits?.maxQuickIntakeSymptoms ?? 15,
+        unlimitedQuickIntakeSymptoms: plan.featureLimits?.unlimitedQuickIntakeSymptoms ?? false,
         maxRiskAnalyses: plan.featureLimits?.maxRiskAnalyses ?? 30,
         unlimitedRiskAnalyses: plan.featureLimits?.unlimitedRiskAnalyses ?? false,
         maxReports: plan.featureLimits?.maxReports ?? 25,
@@ -280,18 +328,38 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
 
     const sanitizedFeatureLimits = {
       unlimitedAll: formData.featureLimits.unlimitedAll,
-      maxPatients: Math.max(1, Number(formData.featureLimits.maxPatients) || 100),
+      maxPatients: formData.featureLimits.unlimitedPatients ? -1 : Math.max(0, Number(formData.featureLimits.maxPatients) ?? 0),
       unlimitedPatients: formData.featureLimits.unlimitedPatients,
-      maxAnalyses: Math.max(1, Number(formData.featureLimits.maxAnalyses) || 50),
-      unlimitedAnalyses: formData.featureLimits.unlimitedAnalyses,
-      maxMedsPerCase: Math.max(1, Number(formData.featureLimits.maxMedsPerCase) || 20),
+      maxCases: formData.featureLimits.unlimitedCases ? -1 : Math.max(0, Number(formData.featureLimits.maxCases) ?? 0),
+      unlimitedCases: formData.featureLimits.unlimitedCases,
+      maxAnalysesPerCase: formData.featureLimits.unlimitedAnalysesPerCase ? -1 : Math.max(0, Number(formData.featureLimits.maxAnalysesPerCase) ?? 0),
+      unlimitedAnalysesPerCase: formData.featureLimits.unlimitedAnalysesPerCase,
+      maxMedsPerCase: formData.featureLimits.unlimitedMedsPerCase ? -1 : Math.max(0, Number(formData.featureLimits.maxMedsPerCase) ?? 0),
       unlimitedMedsPerCase: formData.featureLimits.unlimitedMedsPerCase,
-      maxRiskAnalyses: Math.max(1, Number(formData.featureLimits.maxRiskAnalyses) || 30),
+      maxMedsPerResearch: formData.featureLimits.unlimitedMedsPerResearch ? -1 : Math.max(0, Number(formData.featureLimits.maxMedsPerResearch) ?? 0),
+      unlimitedMedsPerResearch: formData.featureLimits.unlimitedMedsPerResearch,
+      maxMedResearch: formData.featureLimits.unlimitedMedResearch ? -1 : Math.max(0, Number(formData.featureLimits.maxMedResearch) ?? 0),
+      unlimitedMedResearch: formData.featureLimits.unlimitedMedResearch,
+      maxMateriaMedicaSearch: formData.featureLimits.unlimitedMateriaMedicaSearch ? -1 : Math.max(0, Number(formData.featureLimits.maxMateriaMedicaSearch) ?? 0),
+      unlimitedMateriaMedicaSearch: formData.featureLimits.unlimitedMateriaMedicaSearch,
+      maxRepertoriumSearch: formData.featureLimits.unlimitedRepertoriumSearch ? -1 : Math.max(0, Number(formData.featureLimits.maxRepertoriumSearch) ?? 0),
+      unlimitedRepertoriumSearch: formData.featureLimits.unlimitedRepertoriumSearch,
+      maxRepertoriumSymptoms: formData.featureLimits.unlimitedRepertoriumSymptoms ? -1 : Math.max(0, Number(formData.featureLimits.maxRepertoriumSymptoms) ?? 0),
+      unlimitedRepertoriumSymptoms: formData.featureLimits.unlimitedRepertoriumSymptoms,
+      maxQuickIntake: formData.featureLimits.unlimitedQuickIntake ? -1 : Math.max(0, Number(formData.featureLimits.maxQuickIntake) ?? 0),
+      unlimitedQuickIntake: formData.featureLimits.unlimitedQuickIntake,
+      maxQuickIntakeSymptoms: formData.featureLimits.unlimitedQuickIntakeSymptoms ? -1 : Math.max(0, Number(formData.featureLimits.maxQuickIntakeSymptoms) ?? 0),
+      unlimitedQuickIntakeSymptoms: formData.featureLimits.unlimitedQuickIntakeSymptoms,
+      maxRiskAnalyses: formData.featureLimits.unlimitedRiskAnalyses ? -1 : Math.max(0, Number(formData.featureLimits.maxRiskAnalyses) ?? 0),
       unlimitedRiskAnalyses: formData.featureLimits.unlimitedRiskAnalyses,
-      maxReports: Math.max(1, Number(formData.featureLimits.maxReports) || 25),
+      maxReports: formData.featureLimits.unlimitedReports ? -1 : Math.max(0, Number(formData.featureLimits.maxReports) ?? 0),
       unlimitedReports: formData.featureLimits.unlimitedReports,
-      maxAiRequests: Math.max(1, Number(formData.featureLimits.maxAiRequests) || 100),
+      maxAiRequests: formData.featureLimits.unlimitedAiRequests ? -1 : Math.max(0, Number(formData.featureLimits.maxAiRequests) ?? 0),
       unlimitedAiRequests: formData.featureLimits.unlimitedAiRequests,
+      
+      // Für Rückwärtskompatibilität
+      maxAnalyses: formData.featureLimits.unlimitedCases ? -1 : Math.max(0, Number(formData.featureLimits.maxCases) ?? 0),
+      unlimitedAnalyses: formData.featureLimits.unlimitedCases,
     };
 
     const sanitizedPagePermissions = {
@@ -743,33 +811,33 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
 
       {/* MODAL: Create / Edit Package Plan */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl max-w-2xl w-full border border-slate-200 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 text-xs">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 md:p-6">
+          <div className="bg-white rounded-xl max-w-4xl w-full border border-slate-200 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 text-xs my-auto">
             {/* Modal Header */}
             <div className="bg-slate-900 p-5 text-white flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-teal-500/20 border border-teal-500/30 flex items-center justify-center">
+                <div className="w-9 h-9 rounded-lg bg-teal-500/20 border border-teal-500/30 flex items-center justify-center shrink-0">
                   <Package className="w-5 h-5 text-teal-400" />
                 </div>
-                <div>
-                  <h3 className="text-base font-bold text-white tracking-tight">
+                <div className="min-w-0">
+                  <h3 className="text-base font-bold text-white tracking-tight truncate">
                     {editingPlan ? 'Paket bearbeiten' : 'Neues Paket zusammenstellen'}
                   </h3>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-slate-400 truncate">
                     Definieren Sie Tarifpreis, Seitenfreigaben, Nutzungslimits und Konditionen.
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-white p-1 rounded-md hover:bg-slate-800 transition-colors cursor-pointer"
+                className="text-slate-400 hover:text-white p-1 rounded-md hover:bg-slate-800 transition-colors cursor-pointer shrink-0 ml-2"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Modal Form */}
-            <form onSubmit={handleSavePlan} className="p-6 space-y-5 max-h-[85vh] overflow-y-auto">
+            <form onSubmit={handleSavePlan} className="p-4 sm:p-6 space-y-5 max-h-[85vh] overflow-y-auto overflow-x-hidden">
               {/* Paketname */}
               <div>
                 <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
@@ -786,7 +854,7 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
               </div>
 
               {/* Price & Billing Period */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
                     Tarifpreis (€) *
@@ -993,7 +1061,7 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
                       {(Number(formData.maxVoiceMainComplaintSeconds) || 0)}s ({Math.floor((Number(formData.maxVoiceMainComplaintSeconds) || 0) / 60)}m {(Number(formData.maxVoiceMainComplaintSeconds) || 0) % 60}s)
                     </span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <input
                       type="number"
                       min="5"
@@ -1004,10 +1072,10 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
                         const val = e.target.value;
                         setFormData({ ...formData, maxVoiceMainComplaintSeconds: val === '' ? '' : Math.max(5, Number(val)) } as any);
                       }}
-                      className="w-28 px-3 py-1.5 border border-emerald-300 rounded-md bg-white font-mono text-sm font-bold text-slate-900 focus:outline-none focus:border-emerald-600 h-[36px]"
+                      className="w-24 shrink-0 min-w-0 px-3 py-1.5 border border-emerald-300 rounded-md bg-white font-mono text-sm font-bold text-slate-900 focus:outline-none focus:border-emerald-600 h-[36px]"
                     />
                     {/* Quick pick buttons */}
-                    <div className="flex flex-wrap items-center gap-1.5">
+                    <div className="flex flex-wrap items-center gap-1.5 min-w-0">
                       {[30, 60, 120, 180, 300, 600].map(sec => (
                         <button
                           key={sec}
@@ -1058,7 +1126,7 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
                           {(Number(formData.maxVoiceQuestionAnswerSeconds) || 0)}s
                         </span>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <input
                           type="number"
                           min="5"
@@ -1069,10 +1137,10 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
                             const val = e.target.value;
                             setFormData({ ...formData, maxVoiceQuestionAnswerSeconds: val === '' ? '' : Math.max(5, Number(val)) } as any);
                           }}
-                          className="w-28 px-3 py-1.5 border border-emerald-300 rounded-md bg-white font-mono text-sm font-bold text-slate-900 focus:outline-none focus:border-emerald-600 h-[36px]"
+                          className="w-24 shrink-0 min-w-0 px-3 py-1.5 border border-emerald-300 rounded-md bg-white font-mono text-sm font-bold text-slate-900 focus:outline-none focus:border-emerald-600 h-[36px]"
                         />
                         {/* Quick pick buttons */}
-                        <div className="flex flex-wrap items-center gap-1.5">
+                        <div className="flex flex-wrap items-center gap-1.5 min-w-0">
                           {[15, 30, 45, 60, 90, 120].map(sec => (
                             <button
                               key={sec}
@@ -1102,23 +1170,23 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
               </div>
 
               {/* 1. SEITENFREIGABE & FUNKTIONSSPERRE */}
-              <div className="p-4 bg-slate-50/80 rounded-xl border border-slate-200/90 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-md bg-indigo-100 text-indigo-700 flex items-center justify-center">
+              <div className="p-4 bg-slate-50/80 rounded-xl border border-slate-200/90 space-y-3 min-w-0">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 min-w-0">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="w-6 h-6 rounded-md bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0">
                       <Lock className="w-3.5 h-3.5" />
                     </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-slate-900">
+                    <div className="min-w-0">
+                      <h4 className="text-xs font-bold text-slate-900 truncate">
                         {t('tariffPagePermissionsTitle')}
                       </h4>
-                      <p className="text-[10px] text-slate-500">
+                      <p className="text-[10px] text-slate-500 line-clamp-1">
                         {t('tariffPagePermissionsDesc')}
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                                    <button
+                  <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
+                    <button
                       type="button"
                       onClick={() => setFormData({
                         ...formData,
@@ -1136,14 +1204,14 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
                           pdfExport: true,
                         }
                       })}
-                      className="text-[10px] text-indigo-700 font-semibold hover:underline cursor-pointer"
+                      className="text-[10px] text-indigo-700 font-semibold hover:underline cursor-pointer px-2 py-1 bg-indigo-50 hover:bg-indigo-100 rounded border border-indigo-200 transition-colors"
                     >
-                      Alle freigeben
+                      {t('tariffUnlockAllBtn')}
                     </button>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 pt-1">
                   {[
                     { key: 'dashboard' as const, label: t('navHome' as any), icon: LayoutDashboard },
                     { key: 'patients' as const, label: t('tariffPagePatientsLabel'), icon: Users },
@@ -1161,55 +1229,21 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
                     return (
                       <div
                         key={page.key}
-                        className={`flex flex-col sm:flex-row sm:items-center justify-between p-2.5 rounded-lg border text-xs transition-all gap-2.5 bg-white ${
+                        className={`p-2.5 rounded-lg border text-xs transition-all bg-white flex flex-col justify-between gap-2 min-w-0 ${
                           isAllowed
-                            ? 'border-emerald-200 shadow-xs'
-                            : 'bg-rose-50/50 border-rose-200 text-rose-900'
+                            ? 'border-emerald-200 shadow-2xs'
+                            : 'bg-rose-50/40 border-rose-200 text-rose-900'
                         }`}
                       >
-                        <span className="flex items-center gap-2 font-medium">
-                          <IconComp className={`w-3.5 h-3.5 ${isAllowed ? 'text-teal-600' : 'text-rose-500'}`} />
-                          <span className={isAllowed ? 'text-slate-800' : 'text-rose-950 font-medium'}>
-                            {page.label}
+                        {/* Upper row: Icon, Page Name and Unlocked/Locked toggle */}
+                        <div className="flex items-center justify-between gap-2 min-w-0">
+                          <span className="flex items-center gap-2 font-semibold min-w-0">
+                            <IconComp className={`w-4 h-4 shrink-0 ${isAllowed ? 'text-teal-600' : 'text-rose-500'}`} />
+                            <span className={`truncate text-xs ${isAllowed ? 'text-slate-800' : 'text-rose-950 font-semibold'}`} title={page.label}>
+                              {page.label}
+                            </span>
                           </span>
-                        </span>
-                        <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto pt-1 sm:pt-0 border-t sm:border-t-0 border-slate-100">
-                          {/* Visibility Toggle */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const nextHidden = !isHidden;
-                              const updatedHidden = {
-                                ...formData.hiddenPages,
-                                [page.key]: nextHidden,
-                                [page.key.toLowerCase()]: nextHidden,
-                              };
-                              setFormData({
-                                ...formData,
-                                hiddenPages: updatedHidden,
-                              });
-                            }}
-                            className={`flex items-center gap-1 px-2 py-0.5 rounded border transition-colors cursor-pointer text-[10px] font-bold select-none ${
-                              isHidden
-                                ? 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
-                                : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                            }`}
-                          >
-                            {isHidden ? (
-                              <>
-                                <EyeOff className="w-3 h-3 text-amber-600" />
-                                <span>{t('tariffPageHideInNavigation')}</span>
-                              </>
-                            ) : (
-                              <>
-                                <Eye className="w-3 h-3 text-teal-600" />
-                                <span>{t('tariffPageShowInNavigation')}</span>
-                              </>
-                            )}
-                          </button>
-
-                          {/* Access Toggle */}
-                          <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                          <label className="flex items-center gap-1.5 cursor-pointer select-none shrink-0">
                             <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
                               isAllowed
                                 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
@@ -1241,6 +1275,46 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
                             />
                           </label>
                         </div>
+
+                        {/* Lower row: Sidebar visibility toggle */}
+                        <div className="flex items-center justify-between pt-1.5 border-t border-slate-100 text-[10px]">
+                          <span className="text-slate-500 font-medium">
+                            {t('adminVisibilityLabel')}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const nextHidden = !isHidden;
+                              const updatedHidden = {
+                                ...formData.hiddenPages,
+                                [page.key]: nextHidden,
+                                [page.key.toLowerCase()]: nextHidden,
+                              };
+                              setFormData({
+                                ...formData,
+                                hiddenPages: updatedHidden,
+                              });
+                            }}
+                            className={`flex items-center gap-1 px-2 py-0.5 rounded border transition-colors cursor-pointer text-[10px] font-bold select-none truncate max-w-[200px] ${
+                              isHidden
+                                ? 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
+                                : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                            }`}
+                            title={isHidden ? t('tariffPageHideInNavigation') : t('tariffPageShowInNavigation')}
+                          >
+                            {isHidden ? (
+                              <>
+                                <EyeOff className="w-3 h-3 text-amber-600 shrink-0" />
+                                <span className="truncate">{t('tariffPageHideInNavigation')}</span>
+                              </>
+                            ) : (
+                              <>
+                                <Eye className="w-3 h-3 text-teal-600 shrink-0" />
+                                <span className="truncate">{t('tariffPageShowInNavigation')}</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
                       </div>
                     );
                   })}
@@ -1248,17 +1322,17 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
               </div>
 
               {/* 2. INDIVIDUELLE NUTZUNGSKONTINGENTE PRO NUTZER */}
-              <div className="p-4 bg-slate-50/80 rounded-xl border border-slate-200/90 space-y-3">
+              <div className="p-4 bg-slate-50/80 rounded-xl border border-slate-200/90 space-y-3 min-w-0">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-md bg-amber-100 text-amber-700 flex items-center justify-center">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="w-6 h-6 rounded-md bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
                       <Sliders className="w-3.5 h-3.5" />
                     </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-slate-900">
+                    <div className="min-w-0">
+                      <h4 className="text-xs font-bold text-slate-900 truncate">
                         {t('tariffFeatureLimitsTitle')}
                       </h4>
-                      <p className="text-[10px] text-slate-500">
+                      <p className="text-[10px] text-slate-500 line-clamp-1">
                         {t('tariffFeatureLimitsDesc')}
                       </p>
                     </div>
@@ -1266,19 +1340,19 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
                 </div>
 
                 {/* CHECKBUTTON OHNE BEGRENZUNG FUER ALLE */}
-                <div className="p-3 bg-amber-500/10 border border-amber-300/80 rounded-lg flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <InfinityIcon className="w-4 h-4 text-amber-700" />
-                    <div>
-                      <div className="text-xs font-bold text-amber-950">
+                <div className="p-3 bg-amber-500/10 border border-amber-300/80 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 min-w-0">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <InfinityIcon className="w-4 h-4 text-amber-700 shrink-0" />
+                    <div className="min-w-0">
+                      <div className="text-xs font-bold text-amber-950 truncate">
                         {t('tariffUnlimitedAllLabel')}
                       </div>
-                      <div className="text-[10px] text-amber-800">
+                      <div className="text-[10px] text-amber-800 line-clamp-1">
                         {t('tariffUnlimitedAllHelp')}
                       </div>
                     </div>
                   </div>
-                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <label className="flex items-center gap-2 cursor-pointer select-none shrink-0 self-end sm:self-auto">
                     <input
                       type="checkbox"
                       checked={formData.featureLimits.unlimitedAll}
@@ -1309,11 +1383,18 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
                         defVal: 100,
                       },
                       {
-                        key: 'Analyses' as const,
-                        label: t('tariffLimitAnalysesLabel'),
-                        val: formData.featureLimits.maxAnalyses ?? 50,
-                        unlim: formData.featureLimits.unlimitedAnalyses ?? false,
-                        defVal: 50,
+                        key: 'Cases' as const,
+                        label: t('tariffLimitCasesLabel'),
+                        val: formData.featureLimits.maxCases ?? 100,
+                        unlim: formData.featureLimits.unlimitedCases ?? false,
+                        defVal: 100,
+                      },
+                      {
+                        key: 'AnalysesPerCase' as const,
+                        label: t('tariffLimitAnalysesPerCaseLabel'),
+                        val: formData.featureLimits.maxAnalysesPerCase ?? 1,
+                        unlim: formData.featureLimits.unlimitedAnalysesPerCase ?? false,
+                        defVal: 1,
                       },
                       {
                         key: 'MedsPerCase' as const,
@@ -1321,6 +1402,55 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
                         val: formData.featureLimits.maxMedsPerCase ?? 20,
                         unlim: formData.featureLimits.unlimitedMedsPerCase ?? false,
                         defVal: 20,
+                      },
+                      {
+                        key: 'MedsPerResearch' as const,
+                        label: t('tariffLimitMedsPerResearchLabel'),
+                        val: formData.featureLimits.maxMedsPerResearch ?? 4,
+                        unlim: formData.featureLimits.unlimitedMedsPerResearch ?? false,
+                        defVal: 4,
+                      },
+                      {
+                        key: 'MedResearch' as const,
+                        label: t('tariffLimitMedResearchLabel'),
+                        val: formData.featureLimits.maxMedResearch ?? 50,
+                        unlim: formData.featureLimits.unlimitedMedResearch ?? false,
+                        defVal: 50,
+                      },
+                      {
+                        key: 'MateriaMedicaSearch' as const,
+                        label: t('tariffLimitMateriaMedicaSearchLabel'),
+                        val: formData.featureLimits.maxMateriaMedicaSearch ?? 100,
+                        unlim: formData.featureLimits.unlimitedMateriaMedicaSearch ?? false,
+                        defVal: 100,
+                      },
+                      {
+                        key: 'RepertoriumSearch' as const,
+                        label: t('tariffLimitRepertoriumSearchLabel'),
+                        val: formData.featureLimits.maxRepertoriumSearch ?? 100,
+                        unlim: formData.featureLimits.unlimitedRepertoriumSearch ?? false,
+                        defVal: 100,
+                      },
+                      {
+                        key: 'RepertoriumSymptoms' as const,
+                        label: t('tariffLimitRepertoriumSymptomsLabel'),
+                        val: formData.featureLimits.maxRepertoriumSymptoms ?? 20,
+                        unlim: formData.featureLimits.unlimitedRepertoriumSymptoms ?? false,
+                        defVal: 20,
+                      },
+                      {
+                        key: 'QuickIntake' as const,
+                        label: t('tariffLimitQuickIntakeLabel'),
+                        val: formData.featureLimits.maxQuickIntake ?? 50,
+                        unlim: formData.featureLimits.unlimitedQuickIntake ?? false,
+                        defVal: 50,
+                      },
+                      {
+                        key: 'QuickIntakeSymptoms' as const,
+                        label: t('tariffLimitQuickIntakeSymptomsLabel'),
+                        val: formData.featureLimits.maxQuickIntakeSymptoms ?? 15,
+                        unlim: formData.featureLimits.unlimitedQuickIntakeSymptoms ?? false,
+                        defVal: 15,
                       },
                       {
                         key: 'RiskAnalyses' as const,
@@ -1347,12 +1477,12 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
                       const valKey = `max${item.key}` as keyof TariffFeatureLimits;
                       const unlimKey = `unlimited${item.key}` as keyof TariffFeatureLimits;
                       return (
-                        <div key={item.key} className="p-2.5 bg-white rounded-lg border border-slate-200/90 shadow-2xs space-y-1.5">
-                          <div className="flex items-center justify-between">
-                            <span className="text-[11px] font-semibold text-slate-800">
+                        <div key={item.key} className="p-2.5 bg-white rounded-lg border border-slate-200/90 shadow-2xs space-y-2 min-w-0">
+                          <div className="flex items-center justify-between gap-1.5 min-w-0">
+                            <span className="text-[11px] font-semibold text-slate-800 truncate" title={item.label}>
                               {item.label}
                             </span>
-                            <label className="flex items-center gap-1 cursor-pointer select-none">
+                            <label className="flex items-center gap-1 cursor-pointer select-none shrink-0" title={t('tariffLimitUnlimitedBadge')}>
                               <input
                                 type="checkbox"
                                 checked={item.unlim}
@@ -1365,19 +1495,19 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
                                 })}
                                 className="rounded border-slate-300 text-teal-600 focus:ring-teal-500 w-3.5 h-3.5 cursor-pointer"
                               />
-                              <span className="text-[10px] font-bold text-teal-700">∞</span>
+                              <span className="text-[11px] font-bold text-teal-700">∞</span>
                             </label>
                           </div>
                           {item.unlim ? (
-                            <div className="px-2 py-1 rounded bg-teal-50 border border-teal-200 text-teal-800 font-bold text-[10px] flex items-center gap-1">
-                              <InfinityIcon className="w-3 h-3" />
-                              <span>{t('tariffLimitUnlimitedBadge')}</span>
+                            <div className="px-2 py-1 rounded bg-teal-50 border border-teal-200 text-teal-800 font-bold text-[10px] flex items-center gap-1 w-full">
+                              <InfinityIcon className="w-3 h-3 shrink-0" />
+                              <span className="truncate">{t('tariffLimitUnlimitedBadge')}</span>
                             </div>
                           ) : (
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-2 min-w-0">
                               <input
                                 type="number"
-                                min="1"
+                                min="0"
                                 max="100000"
                                 value={(item.val as any) === '' ? '' : item.val}
                                 onChange={(e) => {
@@ -1386,13 +1516,13 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
                                     ...formData,
                                     featureLimits: {
                                       ...formData.featureLimits,
-                                      [valKey]: val === '' ? '' : Math.max(1, Number(val))
+                                      [valKey]: val === '' ? '' : Math.max(0, Number(val))
                                     }
                                   } as any);
                                 }}
-                                className="flex-1 px-2.5 py-1 text-xs font-mono font-bold text-slate-900 bg-white border border-slate-300 rounded focus:outline-none focus:border-teal-600 h-[30px]"
+                                className="w-20 min-w-0 shrink-0 px-2 py-1 text-xs font-mono font-bold text-slate-900 bg-white border border-slate-300 rounded focus:outline-none focus:border-teal-600 h-[30px]"
                               />
-                              <span className="text-[10px] text-slate-500 font-medium">
+                              <span className="text-[10px] text-slate-500 font-medium truncate">
                                 {t('tariffLimitCustomValue')}
                               </span>
                             </div>

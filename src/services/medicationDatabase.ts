@@ -366,7 +366,12 @@ for (const m of [...COMMON_MEDICATIONS_DB, ...TOP_MEDICATIONS_CATALOG]) {
 const searchCache = new Map<string, MedicationSuggestion[]>();
 const detailsCache = new Map<string, MedicationSuggestion>();
 
-export async function searchMedications(query: string, forceLive: boolean = false, lang: string = 'de'): Promise<MedicationSuggestion[]> {
+export async function searchMedications(
+  query: string, 
+  forceLive: boolean = false, 
+  lang: string = 'de',
+  signal?: AbortSignal
+): Promise<MedicationSuggestion[]> {
   if (!query || query.trim().length < 1) return [];
   const q = query.toLowerCase().trim();
   const cacheKey = `${q}_${forceLive ? 'force' : 'std'}_${lang}`;
@@ -383,14 +388,21 @@ export async function searchMedications(query: string, forceLive: boolean = fals
     (m.category && m.category.toLowerCase().includes(q))
   );
 
+  // Single-character search: serve instantly from local curated database (0 network load, 0 risk of firewall 403)
+  if (!forceLive && q.length < 2) {
+    const limited = localMatches.slice(0, 40);
+    searchCache.set(cacheKey, limited);
+    return limited;
+  }
+
   // Perform live internet & authority search via the server endpoint
   try {
     const url = `/api/medications/search?q=${encodeURIComponent(query.trim())}${forceLive ? '&force=1' : ''}&lang=${encodeURIComponent(lang)}`;
-    const res = await fetch(url);
+    const res = await fetch(url, { signal });
     if (res.ok) {
       const data = await res.json();
       if (data.results && Array.isArray(data.results) && data.results.length > 0) {
-        const liveResults: MedicationSuggestion[] = data.results.map((r: any) => ({
+        const liveResults: MedicationSuggestion[] = data.results.slice(0, 50).map((r: any) => ({
           name: r.name || query,
           activeSubstance: r.activeSubstance || '',
           category: r.category || '',
@@ -429,27 +441,31 @@ export async function searchMedications(query: string, forceLive: boolean = fals
             seenNames.add(key);
             merged.push(item);
           }
+          if (merged.length >= 50) break;
         }
 
         searchCache.set(cacheKey, merged);
         return merged;
       }
     }
-  } catch (err) {
-    console.warn('Live medication search error, using local database:', err);
+  } catch (err: any) {
+    if (err?.name !== 'AbortError') {
+      console.warn('Live medication search error or rate limit, using local database:', err);
+    }
   }
 
-  // If live search returned empty or errored, return local matches
-  if (localMatches.length > 0) {
-    searchCache.set(cacheKey, localMatches);
-    return localMatches;
+  // If live search returned empty, rate-limited, or errored, return local matches
+  const fallback = localMatches.slice(0, 50);
+  if (fallback.length > 0) {
+    searchCache.set(cacheKey, fallback);
+    return fallback;
   }
 
   return [];
 }
 
-export async function fetchMedicationDetails(name: string, lang: string = 'de'): Promise<MedicationSuggestion | null> {
-  if (!name || !name.trim()) return null;
+export async function fetchMedicationDetails(name: string, lang: string = 'de', signal?: AbortSignal): Promise<MedicationSuggestion | null> {
+  if (!name || name.trim().length < 2) return null;
   const key = `${name.toLowerCase().trim()}_${lang}`;
 
   if (detailsCache.has(key)) {
@@ -464,7 +480,7 @@ export async function fetchMedicationDetails(name: string, lang: string = 'de'):
   );
 
   try {
-    const res = await fetch(`/api/medications/details?name=${encodeURIComponent(name.trim())}&lang=${encodeURIComponent(lang)}`);
+    const res = await fetch(`/api/medications/details?name=${encodeURIComponent(name.trim())}&lang=${encodeURIComponent(lang)}`, { signal });
     if (res.ok) {
       const data = await res.json();
       if (data.details) {

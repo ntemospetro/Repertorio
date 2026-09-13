@@ -52,6 +52,8 @@ export const AdminConfigEditor: React.FC<AdminConfigEditorProps> = ({ onShowToas
   // Admin Credentials State
   const [email, setEmail] = useState(adminCreds.email);
   const [resetEmail, setResetEmail] = useState(adminCreds.resetEmailDestination);
+  const [securityPin, setSecurityPin] = useState(adminCreds.securityPin || '360');
+  const [showSecurityPin, setShowSecurityPin] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -105,6 +107,7 @@ export const AdminConfigEditor: React.FC<AdminConfigEditorProps> = ({ onShowToas
     setAdminCreds(creds);
     setEmail(creds.email);
     setResetEmail(creds.resetEmailDestination);
+    setSecurityPin(creds.securityPin || '360');
     
     const config = getSiteConfig();
     setSiteConfig(config);
@@ -166,6 +169,12 @@ export const AdminConfigEditor: React.FC<AdminConfigEditorProps> = ({ onShowToas
       return;
     }
 
+    const cleanSecurityPin = securityPin.trim();
+    if (!cleanSecurityPin) {
+      setErrorMessage('Bitte geben Sie ein gültiges Sicherheitskennwort ein.');
+      return;
+    }
+
     if (newPassword.trim()) {
       if (newPassword.length < 6) {
         setErrorMessage('Das neue Passwort muss mindestens 6 Zeichen lang sein.');
@@ -179,9 +188,10 @@ export const AdminConfigEditor: React.FC<AdminConfigEditorProps> = ({ onShowToas
 
     setIsSaving(true);
     setTimeout(() => {
-      const updates: { email: string; resetEmailDestination: string; password?: string } = {
+      const updates: { email: string; resetEmailDestination: string; securityPin: string; password?: string } = {
         email: cleanEmail,
         resetEmailDestination: cleanResetEmail,
+        securityPin: cleanSecurityPin,
       };
 
       if (newPassword.trim()) {
@@ -200,11 +210,12 @@ export const AdminConfigEditor: React.FC<AdminConfigEditorProps> = ({ onShowToas
   };
 
   const handleResetToDefault = () => {
-    if (window.confirm('Möchten Sie die Administrator-Zugangsdaten wirklich auf die System-Standardwerte zurücksetzen?\n\nStandard-E-Mail: p.stogian@yahoo.com')) {
+    if (window.confirm('Möchten Sie die Administrator-Zugangsdaten wirklich auf die System-Standardwerte zurücksetzen?\n\nStandard-E-Mail: p.stogian@yahoo.com\nStandard-Sicherheitskennwort: 360')) {
       const creds = resetAdminCredentials();
       setAdminCreds(creds);
       setEmail(creds.email);
       setResetEmail(creds.resetEmailDestination);
+      setSecurityPin(creds.securityPin || '360');
       setNewPassword('');
       setConfirmPassword('');
       setSuccessMessage('Administrator-Zugangsdaten auf Standard zurückgesetzt.');
@@ -560,6 +571,36 @@ export const AdminConfigEditor: React.FC<AdminConfigEditorProps> = ({ onShowToas
                 </p>
               </div>
 
+              {/* 4. Sicherheitskennwort (Gate-PIN) */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1" htmlFor="admin-config-security-pin">
+                  {t('adminConfigSecurityPinLabel')} *
+                </label>
+                <div className="relative">
+                  <KeyRound className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                  <input
+                    id="admin-config-security-pin"
+                    type={showSecurityPin ? 'text' : 'password'}
+                    value={securityPin}
+                    onChange={(e) => setSecurityPin(e.target.value)}
+                    required
+                    placeholder="360"
+                    className="w-full pl-10 pr-10 py-2.5 rounded-lg border border-slate-300 bg-white text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-teal-600 focus:ring-1 focus:ring-teal-600 transition-colors font-mono font-bold tracking-wider"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowSecurityPin(!showSecurityPin)}
+                    className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+                    title={showSecurityPin ? 'Verbergen' : 'Anzeigen'}
+                  >
+                    {showSecurityPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  {t('adminConfigSecurityPinDesc')}
+                </p>
+              </div>
+
               {/* Buttons */}
               <div className="pt-3 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100">
                 <button
@@ -611,6 +652,15 @@ export const AdminConfigEditor: React.FC<AdminConfigEditorProps> = ({ onShowToas
                 </span>
                 <span className="font-mono text-teal-800 font-semibold break-all">
                   {adminCreds.resetEmailDestination}
+                </span>
+              </div>
+
+              <div className="p-3 bg-slate-50 rounded-lg border border-slate-100 space-y-1">
+                <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider block">
+                  {t('adminConfigSecurityPinLabel')}
+                </span>
+                <span className="font-mono text-teal-800 font-bold tracking-wider">
+                  {adminCreds.securityPin || '360'}
                 </span>
               </div>
 

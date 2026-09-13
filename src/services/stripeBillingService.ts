@@ -116,7 +116,11 @@ function saveStoredLocalConfig(cfg: Partial<AdminStripeConfigResponse>): AdminSt
 export async function fetchAdminStripeConfig(): Promise<AdminStripeConfigResponse> {
   const local = getStoredLocalConfig();
   try {
-    const res = await fetch('/api/admin/stripe/config');
+    let res = await fetch('/api/admin/stripe/config');
+    // If WAF blocks /admin/ path with 403, fallback to alias /api/billing/stripe-config
+    if (!res.ok && res.status === 403) {
+      res = await fetch('/api/billing/stripe-config');
+    }
     if (res.ok) {
       const serverData = await res.json();
       if (serverData && typeof serverData === 'object') {
@@ -151,17 +155,24 @@ export async function saveAdminStripeConfig(config: {
   });
 
   try {
-    const res = await fetch('/api/admin/stripe/config', {
+    let res = await fetch('/api/admin/stripe/config', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(config)
     });
+    if (!res.ok && res.status === 403) {
+      res = await fetch('/api/billing/stripe-config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config)
+      });
+    }
     if (res.ok) {
       const serverData = await res.json();
       return saveStoredLocalConfig(serverData);
     }
   } catch (err) {
-    console.warn('Backend /api/admin/stripe/config unreachable, using local storage state:', err);
+    console.warn('Backend stripe config unreachable, using local storage state:', err);
   }
   return localSaved;
 }

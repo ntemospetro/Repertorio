@@ -43,6 +43,7 @@ import { useTranslation, useLanguage } from '../i18n/LanguageContext';
 import { HomeopathicExpertResult, LanguageCode } from '../types';
 import { analyzeAcuteCaseWithAIOrFallback } from '../services/homeopathicExpertEngine';
 import { getRemedyClassicalAuthors } from '../data/classicalAuthorsMap';
+import { getActiveTherapist, isFeatureLimitReached, incrementTherapistUsage } from '../services/storage';
 import { 
   Mic, 
   MicOff, 
@@ -299,6 +300,31 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
     language,
     t
   ]);
+
+  // Perform Quick Intake limit check and usage increment on search/intake
+  useEffect(() => {
+    const query = comprehensiveCaseText || symptomText;
+    const trimmed = query.trim();
+    if (trimmed.length < 3) return;
+
+    const timer = setTimeout(() => {
+      const activeTherapist = getActiveTherapist();
+      if (activeTherapist) {
+        const limitCheck = isFeatureLimitReached(activeTherapist.id, 'maxQuickIntake', 1);
+        if (limitCheck.reached) {
+          window.dispatchEvent(new CustomEvent('homoeo_action_limit_reached', {
+            detail: { feature: t('tariffLimitQuickIntakeLabel'), limit: limitCheck.limit }
+          }));
+          // Reset input to prevent locking up or infinite triggers
+          setSymptomText('');
+          return;
+        }
+        incrementTherapistUsage(activeTherapist.id, 'quick_intake');
+      }
+    }, 1200);
+
+    return () => clearTimeout(timer);
+  }, [symptomText, comprehensiveCaseText]);
 
   // Handle saving a variable from the AcuteVariableModal
   const handleSaveVariable = (varKey: AcuteVariableType, newValue: string) => {

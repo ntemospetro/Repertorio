@@ -20,18 +20,36 @@ export interface TariffPagePermissions {
 
 export interface TariffFeatureLimits {
   unlimitedAll?: boolean;              // Globaler Schalter: "Ohne Begrenzung für alle (Unbegrenzt)"
-  maxPatients?: number;                // Maximale Kunden / Patienten (z.B. 10, 50 oder -1 für unbegrenzt)
+  maxPatients?: number;                // Maximale Kunden / Patienten (z.B. 3)
   unlimitedPatients?: boolean;         // Ohne Begrenzung für Kunden/Patienten
-  maxAnalyses?: number;                // Maximale homöopathische Fallauswertungen (z.B. 25 oder -1)
-  unlimitedAnalyses?: boolean;         // Ohne Begrenzung für Analysen
-  maxMedsPerCase?: number;             // Maximale Medikamente pro Kunde/Fall (z.B. 5, 12 oder -1)
+  maxCases?: number;                   // Maximale Fälle gesamt (z.B. 3)
+  unlimitedCases?: boolean;            // Ohne Begrenzung für Fälle gesamt
+  maxAnalysesPerCase?: number;         // Maximale Repertorisationen/Auswertungen pro Fall (z.B. 1)
+  unlimitedAnalysesPerCase?: boolean;  // Ohne Begrenzung für Auswertungen pro Fall
+  maxMedsPerCase?: number;             // Maximale Medikamente pro Kunde/Fall (z.B. 4)
   unlimitedMedsPerCase?: boolean;      // Ohne Begrenzung für Medikamente pro Fall
+  maxMedsPerResearch?: number;         // Maximale Medikamente pro Recherche-Ergebnis (z.B. 4)
+  unlimitedMedsPerResearch?: boolean;  // Ohne Begrenzung für Medikamente pro Recherche-Ergebnis
+  maxMedResearch?: number;             // Maximale Medikamenten-Recherchen gesamt (z.B. 3)
+  unlimitedMedResearch?: boolean;      // Ohne Begrenzung für Medikamenten-Recherchen
+  maxMateriaMedicaSearch?: number;     // Maximale Materia Medica Arzneimittelsuchen gesamt (z.B. 3)
+  unlimitedMateriaMedicaSearch?: boolean; // Ohne Begrenzung für Materia Medica Suchen
+  maxRepertoriumSearch?: number;       // Maximale Suchen im Repertorium gesamt (z.B. 3)
+  unlimitedRepertoriumSearch?: boolean; // Ohne Begrenzung für Repertorium Suchen
+  maxRepertoriumSymptoms?: number;     // Maximale Symptome pro Repertorisation (z.B. 5)
+  unlimitedRepertoriumSymptoms?: boolean; // Ohne Begrenzung für Symptome pro Repertorisation
+  maxQuickIntake?: number;             // Maximale Akutaufnahmen gesamt (z.B. 3)
+  unlimitedQuickIntake?: boolean;      // Ohne Begrenzung für Akutaufnahmen
+  maxQuickIntakeSymptoms?: number;     // Maximale Symptome pro Akutaufnahme (z.B. 4)
+  unlimitedQuickIntakeSymptoms?: boolean; // Ohne Begrenzung für Symptome pro Akutaufnahme
   maxRiskAnalyses?: number;            // Maximale Medikamenten-Risikoanalysen / Wechselwirkungs-Checks
   unlimitedRiskAnalyses?: boolean;     // Ohne Begrenzung für Risikoanalysen
   maxReports?: number;                 // Maximale PDF-Berichte & Dokumentations-Exporte
   unlimitedReports?: boolean;          // Ohne Begrenzung für Berichte
   maxAiRequests?: number;              // KI-Anfragen / Differenzialdiagnosen
   unlimitedAiRequests?: boolean;       // Ohne Begrenzung für KI-Anfragen
+  maxAnalyses?: number;                // Backwards compatibility
+  unlimitedAnalyses?: boolean;         // Backwards compatibility
 }
 
 export interface PackagePlan {
@@ -78,6 +96,7 @@ export interface AdminCredentials {
   email: string;
   password: string;
   resetEmailDestination: string;
+  securityPin?: string;
   updatedAt?: string;
 }
 

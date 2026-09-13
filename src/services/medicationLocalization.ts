@@ -820,10 +820,14 @@ const CLINICAL_PHRASES: Record<string, Record<LanguageCode, string>> = {
  */
 export function localizeMonograph(rawMonograph: string, targetLang: LanguageCode): string {
   if (!rawMonograph || !rawMonograph.trim()) return '';
-  if (targetLang === 'de') return rawMonograph;
+  const sanitized = rawMonograph
+    .replace(/\uFFFD/g, '')
+    .replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, '')
+    .replace(/(?<![\u2600-\u27BF\uD83C-\uD83F])[\uFE0E\uFE0F]/g, '');
+  if (targetLang === 'de') return sanitized;
 
   const h = MONOGRAPH_SECTIONS_I18N[targetLang] || MONOGRAPH_SECTIONS_I18N.en;
-  const lines = rawMonograph.split('\n');
+  const lines = sanitized.split('\n');
 
   // Extract drug name and active substance from intro or first lines
   let extractedName = '';

@@ -725,10 +725,15 @@ if ($route === 'medications/search' || $route === 'search') {
 
     $allMatches = array_merge($exactMatches, $partialMatches);
 
+    // Limit to max 50 items to keep payload lightweight and prevent Hostinger firewall blocks
+    if (count($allMatches) > 50) {
+        $allMatches = array_slice($allMatches, 0, 50);
+    }
+
     // TURBO-SPEED: Wenn NICHT forciert -> Sofortige Antwort aus der Datenbank in < 5ms!
     // Dadurch friert die Eingabe beim Tippen niemals ein.
     if (!$force) {
-        echo json_encode([
+        sendJsonResponse([
             'results' => $allMatches,
             'fromDatabase' => true,
             'stepExecuted' => 'database_match',
@@ -836,7 +841,7 @@ Antworte AUSSCHLIESSLICH mit einem kompakten JSON-Array:
     }
 
     // Fallback: Datenbank-Treffer zurückgeben
-    echo json_encode([
+    sendJsonResponse([
         'results' => $allMatches,
         'fromDatabase' => true,
         'stepExecuted' => 'database_match',
@@ -2165,9 +2170,9 @@ function recordTariffUpgradePaymentPhp($params) {
 }
 
 // =========================================================================
-// ROUTE 16: STRIPE CONFIGURATION (/api/admin/stripe/config)
+// ROUTE 16: STRIPE CONFIGURATION (/api/admin/stripe/config, /api/billing/stripe-config)
 // =========================================================================
-if ($route === 'admin/stripe/config') {
+if ($route === 'admin/stripe/config' || $route === 'billing/stripe-config' || $route === 'stripe/config') {
     $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
     $host = $_SERVER['HTTP_HOST'] ?? 'homeopilot360.com';
     $webhookUrl = "{$protocol}://{$host}/api/billing/webhook";
@@ -2215,9 +2220,9 @@ if ($route === 'admin/stripe/config') {
 }
 
 // =========================================================================
-// ROUTE 17: STRIPE TEST CONNECTION (/api/admin/stripe/test)
+// ROUTE 17: STRIPE TEST CONNECTION (/api/admin/stripe/test, /api/billing/stripe-test)
 // =========================================================================
-if ($route === 'admin/stripe/test') {
+if ($route === 'admin/stripe/test' || $route === 'billing/stripe-test' || $route === 'stripe/test') {
     $cfg = getStoredStripeConfig();
     $secretKey = $cfg['secretKey'] ?? '';
     if (empty($secretKey)) {

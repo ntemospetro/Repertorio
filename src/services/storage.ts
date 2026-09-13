@@ -14,6 +14,7 @@ export const DEFAULT_ADMIN_CREDENTIALS: AdminCredentials = {
   email: 'p.stogian@yahoo.com',
   password: 'Othonospet@19071963',
   resetEmailDestination: 'p.stogian@yahoo.com',
+  securityPin: '360',
 };
 
 export const DEFAULT_EMAIL_CONFIG: EmailConfig = {
@@ -325,6 +326,7 @@ export function getAdminCredentials(): AdminCredentials {
       email: parsed.email || DEFAULT_ADMIN_CREDENTIALS.email,
       password: parsed.password || DEFAULT_ADMIN_CREDENTIALS.password,
       resetEmailDestination: parsed.resetEmailDestination || DEFAULT_ADMIN_CREDENTIALS.resetEmailDestination,
+      securityPin: parsed.securityPin || DEFAULT_ADMIN_CREDENTIALS.securityPin || '360',
       updatedAt: parsed.updatedAt,
     };
   } catch {
@@ -342,6 +344,7 @@ export async function syncAdminCredentialsFromServer(): Promise<AdminCredentials
           email: data.email || DEFAULT_ADMIN_CREDENTIALS.email,
           password: data.password || DEFAULT_ADMIN_CREDENTIALS.password,
           resetEmailDestination: data.resetEmailDestination || DEFAULT_ADMIN_CREDENTIALS.resetEmailDestination,
+          securityPin: data.securityPin || DEFAULT_ADMIN_CREDENTIALS.securityPin || '360',
           updatedAt: data.updatedAt,
         };
         safeLocalStorageSetItem(STORAGE_KEYS.ADMIN_CREDENTIALS, JSON.stringify(serverCreds));
@@ -1446,16 +1449,34 @@ export function getTariffAccessForTherapist(therapistOrId?: Therapist | string):
     unlimitedAll,
     maxPatients: unlimitedAll ? -1 : (plan?.featureLimits?.maxPatients ?? (plan?.maxAnalyses || (isTrial ? 3 : 25))),
     unlimitedPatients: unlimitedAll ? true : (plan?.featureLimits?.unlimitedPatients ?? false),
-    maxAnalyses: unlimitedAll ? -1 : (plan?.featureLimits?.maxAnalyses ?? (plan?.maxAnalyses || (isTrial ? 3 : 25))),
-    unlimitedAnalyses: unlimitedAll ? true : (plan?.featureLimits?.unlimitedAnalyses ?? isUnlimitedPlan ?? false),
-    maxMedsPerCase: unlimitedAll ? -1 : (plan?.featureLimits?.maxMedsPerCase ?? (isTrial ? 3 : 15)),
+    maxCases: unlimitedAll ? -1 : (plan?.featureLimits?.maxCases ?? plan?.featureLimits?.maxAnalyses ?? (plan?.maxAnalyses || (isTrial ? 3 : 25))),
+    unlimitedCases: unlimitedAll ? true : (plan?.featureLimits?.unlimitedCases ?? plan?.featureLimits?.unlimitedAnalyses ?? false),
+    maxAnalysesPerCase: unlimitedAll ? -1 : (plan?.featureLimits?.maxAnalysesPerCase ?? 1),
+    unlimitedAnalysesPerCase: unlimitedAll ? true : (plan?.featureLimits?.unlimitedAnalysesPerCase ?? false),
+    maxMedsPerCase: unlimitedAll ? -1 : (plan?.featureLimits?.maxMedsPerCase ?? (isTrial ? 4 : 15)),
     unlimitedMedsPerCase: unlimitedAll ? true : (plan?.featureLimits?.unlimitedMedsPerCase ?? false),
+    maxMedsPerResearch: unlimitedAll ? -1 : (plan?.featureLimits?.maxMedsPerResearch ?? 4),
+    unlimitedMedsPerResearch: unlimitedAll ? true : (plan?.featureLimits?.unlimitedMedsPerResearch ?? false),
+    maxMedResearch: unlimitedAll ? -1 : (plan?.featureLimits?.maxMedResearch ?? (isTrial ? 3 : 50)),
+    unlimitedMedResearch: unlimitedAll ? true : (plan?.featureLimits?.unlimitedMedResearch ?? false),
+    maxMateriaMedicaSearch: unlimitedAll ? -1 : (plan?.featureLimits?.maxMateriaMedicaSearch ?? (isTrial ? 3 : 100)),
+    unlimitedMateriaMedicaSearch: unlimitedAll ? true : (plan?.featureLimits?.unlimitedMateriaMedicaSearch ?? false),
+    maxRepertoriumSearch: unlimitedAll ? -1 : (plan?.featureLimits?.maxRepertoriumSearch ?? (isTrial ? 3 : 100)),
+    unlimitedRepertoriumSearch: unlimitedAll ? true : (plan?.featureLimits?.unlimitedRepertoriumSearch ?? false),
+    maxRepertoriumSymptoms: unlimitedAll ? -1 : (plan?.featureLimits?.maxRepertoriumSymptoms ?? (isTrial ? 5 : 20)),
+    unlimitedRepertoriumSymptoms: unlimitedAll ? true : (plan?.featureLimits?.unlimitedRepertoriumSymptoms ?? false),
+    maxQuickIntake: unlimitedAll ? -1 : (plan?.featureLimits?.maxQuickIntake ?? (isTrial ? 3 : 50)),
+    unlimitedQuickIntake: unlimitedAll ? true : (plan?.featureLimits?.unlimitedQuickIntake ?? false),
+    maxQuickIntakeSymptoms: unlimitedAll ? -1 : (plan?.featureLimits?.maxQuickIntakeSymptoms ?? (isTrial ? 4 : 15)),
+    unlimitedQuickIntakeSymptoms: unlimitedAll ? true : (plan?.featureLimits?.unlimitedQuickIntakeSymptoms ?? false),
     maxRiskAnalyses: unlimitedAll ? -1 : (plan?.featureLimits?.maxRiskAnalyses ?? (isTrial ? 3 : (plan?.maxAnalyses || 25))),
     unlimitedRiskAnalyses: unlimitedAll ? true : (plan?.featureLimits?.unlimitedRiskAnalyses ?? false),
     maxReports: unlimitedAll ? -1 : (plan?.featureLimits?.maxReports ?? (isTrial ? 3 : (plan?.maxAnalyses || 25))),
     unlimitedReports: unlimitedAll ? true : (plan?.featureLimits?.unlimitedReports ?? false),
     maxAiRequests: unlimitedAll ? -1 : (plan?.featureLimits?.maxAiRequests ?? (isTrial ? 5 : 50)),
     unlimitedAiRequests: unlimitedAll ? true : (plan?.featureLimits?.unlimitedAiRequests ?? false),
+    maxAnalyses: unlimitedAll ? -1 : (plan?.featureLimits?.maxAnalyses ?? plan?.featureLimits?.maxCases ?? (plan?.maxAnalyses || (isTrial ? 3 : 25))),
+    unlimitedAnalyses: unlimitedAll ? true : (plan?.featureLimits?.unlimitedAnalyses ?? plan?.featureLimits?.unlimitedCases ?? false),
   };
 
   return {
@@ -2034,3 +2055,166 @@ export function setStoredAdminTab(tab: string): void {
     sessionStorage.setItem(STORAGE_KEYS.ADMIN_TAB, tab);
   } catch (e) {}
 }
+
+export type TherapistUsageActionType = 'med_research' | 'materia_search' | 'repertorium_search' | 'quick_intake' | 'risk_analysis' | 'reports' | 'ai_request';
+
+export function getTherapistUsageCount(therapistId: string, actionType: TherapistUsageActionType): number {
+  if (!therapistId) return 0;
+  try {
+    const key = `homoeo_usage_${therapistId}_${actionType}`;
+    const raw = localStorage.getItem(key);
+    return raw ? parseInt(raw, 10) || 0 : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export function incrementTherapistUsage(therapistId: string, actionType: TherapistUsageActionType): void {
+  if (!therapistId) return;
+  try {
+    const key = `homoeo_usage_${therapistId}_${actionType}`;
+    const current = getTherapistUsageCount(therapistId, actionType);
+    localStorage.setItem(key, String(current + 1));
+    window.dispatchEvent(new Event('homoeo_storage_updated'));
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+export function isFeatureLimitReached(
+  therapistId: string,
+  feature: 'maxPatients' | 'maxCases' | 'maxAnalysesPerCase' | 'maxMedsPerCase' | 'maxMedsPerResearch' | 'maxMedResearch' | 'maxMateriaMedicaSearch' | 'maxRepertoriumSearch' | 'maxRepertoriumSymptoms' | 'maxQuickIntake' | 'maxQuickIntakeSymptoms' | 'maxRiskAnalyses' | 'maxReports' | 'maxAiRequests',
+  additionalCountToTest: number = 0,
+  contextId?: string
+): { reached: boolean; limit: number; current: number } {
+  const access = getTariffAccessForTherapist(therapistId);
+  if (access.isUnlimitedAll) {
+    return { reached: false, limit: -1, current: 0 };
+  }
+
+  const limits = access.featureLimits;
+  
+  let limitValue = -1;
+  let isUnlimited = false;
+  let currentUsage = 0;
+
+  switch (feature) {
+    case 'maxPatients':
+      limitValue = limits.maxPatients ?? -1;
+      isUnlimited = !!limits.unlimitedPatients;
+      break;
+    case 'maxCases':
+      limitValue = limits.maxCases ?? -1;
+      isUnlimited = !!limits.unlimitedCases;
+      break;
+    case 'maxAnalysesPerCase':
+      limitValue = limits.maxAnalysesPerCase ?? -1;
+      isUnlimited = !!limits.unlimitedAnalysesPerCase;
+      break;
+    case 'maxMedsPerCase':
+      limitValue = limits.maxMedsPerCase ?? -1;
+      isUnlimited = !!limits.unlimitedMedsPerCase;
+      break;
+    case 'maxMedsPerResearch':
+      limitValue = limits.maxMedsPerResearch ?? -1;
+      isUnlimited = !!limits.unlimitedMedsPerResearch;
+      break;
+    case 'maxMedResearch':
+      limitValue = limits.maxMedResearch ?? -1;
+      isUnlimited = !!limits.unlimitedMedResearch;
+      break;
+    case 'maxMateriaMedicaSearch':
+      limitValue = limits.maxMateriaMedicaSearch ?? -1;
+      isUnlimited = !!limits.unlimitedMateriaMedicaSearch;
+      break;
+    case 'maxRepertoriumSearch':
+      limitValue = limits.maxRepertoriumSearch ?? -1;
+      isUnlimited = !!limits.unlimitedRepertoriumSearch;
+      break;
+    case 'maxRepertoriumSymptoms':
+      limitValue = limits.maxRepertoriumSymptoms ?? -1;
+      isUnlimited = !!limits.unlimitedRepertoriumSymptoms;
+      break;
+    case 'maxQuickIntake':
+      limitValue = limits.maxQuickIntake ?? -1;
+      isUnlimited = !!limits.unlimitedQuickIntake;
+      break;
+    case 'maxQuickIntakeSymptoms':
+      limitValue = limits.maxQuickIntakeSymptoms ?? -1;
+      isUnlimited = !!limits.unlimitedQuickIntakeSymptoms;
+      break;
+    case 'maxRiskAnalyses':
+      limitValue = limits.maxRiskAnalyses ?? -1;
+      isUnlimited = !!limits.unlimitedRiskAnalyses;
+      break;
+    case 'maxReports':
+      limitValue = limits.maxReports ?? -1;
+      isUnlimited = !!limits.unlimitedReports;
+      break;
+    case 'maxAiRequests':
+      limitValue = limits.maxAiRequests ?? -1;
+      isUnlimited = !!limits.unlimitedAiRequests;
+      break;
+  }
+
+  if (isUnlimited || limitValue < 0) {
+    return { reached: false, limit: -1, current: 0 };
+  }
+
+  if (feature === 'maxPatients') {
+    const cases = getPatientCases(therapistId);
+    const uniquePatients = new Set(cases.map(c => c.patientName.trim().toLowerCase()));
+    currentUsage = uniquePatients.size;
+    if (contextId && uniquePatients.has(contextId.trim().toLowerCase())) {
+      return { reached: false, limit: limitValue, current: currentUsage };
+    }
+  } else if (feature === 'maxCases') {
+    const cases = getPatientCases(therapistId);
+    currentUsage = cases.length;
+  } else if (feature === 'maxAnalysesPerCase') {
+    if (contextId) {
+      const cases = getPatientCases(therapistId);
+      const targetCase = cases.find(c => c.id === contextId);
+      if (targetCase && (targetCase.remedySuggestions || targetCase.analyzedAt)) {
+        currentUsage = 1;
+      } else {
+        currentUsage = 0;
+      }
+    } else {
+      currentUsage = 0;
+    }
+  } else if (feature === 'maxMedsPerCase') {
+    if (contextId) {
+      const cases = getPatientCases(therapistId);
+      const targetCase = cases.find(c => c.id === contextId);
+      const remedyStr = targetCase?.initialPrescription?.remedy || '';
+      currentUsage = remedyStr.split(',').map(r => r.trim()).filter(Boolean).length;
+    } else {
+      currentUsage = 0;
+    }
+  } else if (feature === 'maxMedsPerResearch') {
+    currentUsage = 0;
+  } else if (feature === 'maxRepertoriumSymptoms') {
+    currentUsage = 0;
+  } else if (feature === 'maxQuickIntakeSymptoms') {
+    currentUsage = 0;
+  } else {
+    const mapActionType: Record<string, TherapistUsageActionType> = {
+      maxMedResearch: 'med_research',
+      maxMateriaMedicaSearch: 'materia_search',
+      maxRepertoriumSearch: 'repertorium_search',
+      maxQuickIntake: 'quick_intake',
+      maxRiskAnalyses: 'risk_analysis',
+      maxReports: 'reports',
+      maxAiRequests: 'ai_request'
+    };
+    const action = mapActionType[feature];
+    if (action) {
+      currentUsage = getTherapistUsageCount(therapistId, action);
+    }
+  }
+
+  const reached = (currentUsage + additionalCountToTest) > limitValue;
+  return { reached, limit: limitValue, current: currentUsage };
+}
+

@@ -10,7 +10,9 @@ import {
   getStoredTherapistTab,
   setStoredTherapistTab,
   getRecentlyEditedPatientNames,
-  getTariffAccessForTherapist
+  getTariffAccessForTherapist,
+  isFeatureLimitReached,
+  incrementTherapistUsage
 } from '../services/storage';
 import { navigateTo, openModal, closeModal } from '../services/navigation';
 import { runHomeopathyAnalysis, HomeoRemedyResult } from '../services/homeopathyEngine';
@@ -294,6 +296,7 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
   const [isMedicationsModalOpen, setIsMedicationsModalOpen] = useState(false);
   const [medicationsModalAutoAddNew, setMedicationsModalAutoAddNew] = useState(false);
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+  const [limitExceededError, setLimitExceededError] = useState<{ featureName: string; limitValue: number } | null>(null);
   const [isNoMasterDataModalOpen, setIsNoMasterDataModalOpen] = useState(false);
   const [isPatientSelectionModalOpen, setIsPatientSelectionModalOpen] = useState(false);
   const [caseToDeleteId, setCaseToDeleteId] = useState<string | null>(null);
@@ -998,6 +1001,38 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
   const isLocked = !isUnlimited && limitStatus.isLocked;
   const remainingCount = isUnlimited ? 999999 : limitStatus.remainingAnalyses;
 
+  const checkLimitAndTriggerError = (
+    feature: 'maxPatients' | 'maxCases' | 'maxAnalysesPerCase' | 'maxMedsPerCase' | 'maxMedsPerResearch' | 'maxMedResearch' | 'maxMateriaMedicaSearch' | 'maxRepertoriumSearch' | 'maxRepertoriumSymptoms' | 'maxQuickIntake' | 'maxQuickIntakeSymptoms' | 'maxRiskAnalyses' | 'maxReports' | 'maxAiRequests',
+    additionalCount: number = 1,
+    contextId?: string
+  ): boolean => {
+    const res = isFeatureLimitReached(therapist.id, feature, additionalCount, contextId);
+    if (res.reached) {
+      const featureKeyMap: Record<string, string> = {
+        maxPatients: t('tariffLimitPatientsLabel'),
+        maxCases: t('tariffLimitCasesLabel'),
+        maxAnalysesPerCase: t('tariffLimitAnalysesPerCaseLabel'),
+        maxMedsPerCase: t('tariffLimitMedsPerCaseLabel'),
+        maxMedsPerResearch: t('tariffLimitMedsPerResearchLabel'),
+        maxMedResearch: t('tariffLimitMedResearchLabel'),
+        maxMateriaMedicaSearch: t('tariffLimitMateriaMedicaSearchLabel'),
+        maxRepertoriumSearch: t('tariffLimitRepertoriumSearchLabel'),
+        maxRepertoriumSymptoms: t('tariffLimitRepertoriumSymptomsLabel'),
+        maxQuickIntake: t('tariffLimitQuickIntakeLabel'),
+        maxQuickIntakeSymptoms: t('tariffLimitQuickIntakeSymptomsLabel'),
+        maxRiskAnalyses: t('tariffLimitRiskAnalysesLabel'),
+        maxReports: t('tariffLimitReportsLabel'),
+        maxAiRequests: t('tariffLimitAiRequestsLabel'),
+      };
+      setLimitExceededError({
+        featureName: featureKeyMap[feature] || feature,
+        limitValue: res.limit
+      });
+      return true;
+    }
+    return false;
+  };
+
   const hasPatientData = Boolean(currentCase.patientName && currentCase.patientName.trim());
 
   // Group cases by patient identity (case-insensitive name) for stats and quick selection
@@ -1158,6 +1193,9 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
   };
 
   const handleStartNewPatient = () => {
+    if (checkLimitAndTriggerError('maxPatients', 1)) {
+      return;
+    }
     setClinicalAnalysis(null);
     setAnalysisResults([]);
     setSelectedCaseId(null);
@@ -1177,6 +1215,13 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
     const hasPatientMasterData = Boolean(currentCase.patientName && currentCase.patientName.trim());
 
     if (hasPatientMasterData) {
+      if (checkLimitAndTriggerError('maxPatients', 1, currentCase.patientName)) {
+        return;
+      }
+      if (checkLimitAndTriggerError('maxCases', 1)) {
+        return;
+      }
+      
       const isFemale = (currentCase.patientGender || 'weiblich') === 'weiblich';
       const today = new Date().toISOString().split('T')[0];
 
@@ -1258,18 +1303,29 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
         onLogout();
       }
     };
+    const handleLimitReachedEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<{ feature: string; limit: number }>;
+      if (customEvent.detail) {
+        setLimitExceededError({
+          featureName: customEvent.detail.feature,
+          limitValue: customEvent.detail.limit,
+        });
+      }
+    };
 
     window.addEventListener('homoeo_action_new_patient', handleNewPatientEvent);
     window.addEventListener('homoeo_action_open_patient_directory', handleOpenDirectoryEvent);
     window.addEventListener('homoeo_action_set_therapist_tab', handleSetTabEvent);
     window.addEventListener('homoeo_action_set_modal', handleModalEvent);
     window.addEventListener('homoeo_action_therapist_logout', handleLogoutEvent);
+    window.addEventListener('homoeo_action_limit_reached', handleLimitReachedEvent);
     return () => {
       window.removeEventListener('homoeo_action_new_patient', handleNewPatientEvent);
       window.removeEventListener('homoeo_action_open_patient_directory', handleOpenDirectoryEvent);
       window.removeEventListener('homoeo_action_set_therapist_tab', handleSetTabEvent);
       window.removeEventListener('homoeo_action_set_modal', handleModalEvent);
       window.removeEventListener('homoeo_action_therapist_logout', handleLogoutEvent);
+      window.removeEventListener('homoeo_action_limit_reached', handleLimitReachedEvent);
     };
   }, [onLogout]);
 
@@ -1576,6 +1632,10 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
   };
 
   const handleRunAnalysis = async () => {
+    if (checkLimitAndTriggerError('maxAnalysesPerCase', 1, currentCase.id)) {
+      return;
+    }
+
     if (hasAnalysis) {
       setIsAnalysisAlreadyCreatedModalOpen(true);
       return;
@@ -4309,6 +4369,36 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
         lockReason={limitStatus.reason}
         therapist={therapist}
       />
+
+      {/* Limit Exceeded Error Modal */}
+      {limitExceededError && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xl max-w-md w-full p-6 animate-in fade-in zoom-in duration-200">
+            <div className="flex flex-col items-center text-center space-y-4">
+              <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-lg font-bold text-slate-950">
+                  {t('tariffLimitReachedAlertTitle' as TranslationKey) || 'Limit erreicht'}
+                </h3>
+                <p className="text-sm text-slate-600 leading-relaxed">
+                  {t('tariffLimitReachedAlertDesc' as TranslationKey, {
+                    feature: limitExceededError.featureName,
+                    limit: limitExceededError.limitValue
+                  }) || `Sie haben das Limit für "${limitExceededError.featureName}" (${limitExceededError.limitValue}) in Ihrem aktuellen Tarif erreicht. Bitte kontaktieren Sie den Administrator für ein Upgrade.`}
+                </p>
+              </div>
+              <button
+                onClick={() => setLimitExceededError(null)}
+                className="w-full py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold rounded-xl transition duration-150 shadow-xs cursor-pointer"
+              >
+                {t('commonClose' as TranslationKey) || 'Schließen'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Patient / Customer Selection Modal */}
       <PatientSelectionModal

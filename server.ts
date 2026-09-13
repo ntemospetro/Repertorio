@@ -1744,7 +1744,11 @@ ${text}`;
         contents: prompt
       });
 
-      const translatedText = response.text ? response.text.trim() : "";
+      const rawTranslated = response.text ? response.text.trim() : "";
+      const translatedText = rawTranslated
+        .replace(/\uFFFD/g, '')
+        .replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, '')
+        .replace(/(?<![\u2600-\u27BF\uD83C-\uD83F])[\uFE0E\uFE0F]/g, '');
       if (translatedText && translatedText.length > 50) {
         saveMedicationTranslation(directKey, translatedText);
         saveMedicationTranslation(baseKey, translatedText);
@@ -2075,6 +2079,7 @@ Erstelle eine GFM-Markdown-Tabelle für die 5 Organsysteme:
     email: process.env.ADMIN_EMAIL || 'p.stogian@yahoo.com',
     password: process.env.ADMIN_PASSWORD || 'Othonospet@19071963',
     resetEmailDestination: process.env.ADMIN_RESET_EMAIL || process.env.ADMIN_EMAIL || 'p.stogian@yahoo.com',
+    securityPin: process.env.ADMIN_SECURITY_PIN || '360',
   };
 
   const DEFAULT_EMAIL_SETTINGS = {
@@ -2106,6 +2111,7 @@ Erstelle eine GFM-Markdown-Tabelle für die 5 Organsysteme:
           email: parsed.email || DEFAULT_ADMIN.email,
           password: parsed.password || DEFAULT_ADMIN.password,
           resetEmailDestination: parsed.resetEmailDestination || DEFAULT_ADMIN.resetEmailDestination,
+          securityPin: parsed.securityPin || DEFAULT_ADMIN.securityPin || '360',
           updatedAt: parsed.updatedAt,
         });
       }
@@ -2133,6 +2139,7 @@ Erstelle eine GFM-Markdown-Tabelle für die 5 Organsysteme:
         email: updates.email?.trim() || current.email,
         password: updates.password !== undefined && updates.password !== null && updates.password !== '' ? updates.password : current.password,
         resetEmailDestination: updates.resetEmailDestination?.trim() || current.resetEmailDestination,
+        securityPin: updates.securityPin !== undefined && updates.securityPin !== null && String(updates.securityPin).trim() !== '' ? String(updates.securityPin).trim() : (current.securityPin || '360'),
         updatedAt: new Date().toISOString(),
       };
 
@@ -2449,7 +2456,7 @@ Erstelle eine GFM-Markdown-Tabelle für die 5 Organsysteme:
   // =============================================================
 
   // 1. Get Admin Stripe Config (Masked)
-  app.get(["/api/admin/stripe/config", "/api/admin/stripe/config/"], (req, res) => {
+  app.get(["/api/admin/stripe/config", "/api/admin/stripe/config/", "/api/billing/stripe-config", "/api/stripe/config"], (req, res) => {
     try {
       const config = getRawStripeConfig();
       const host = req.get('host') || 'localhost:3000';
@@ -2474,7 +2481,7 @@ Erstelle eine GFM-Markdown-Tabelle für die 5 Organsysteme:
   });
 
   // 2. Save Admin Stripe Config
-  app.post(["/api/admin/stripe/config", "/api/admin/stripe/config/"], (req, res) => {
+  app.post(["/api/admin/stripe/config", "/api/admin/stripe/config/", "/api/billing/stripe-config", "/api/stripe/config"], (req, res) => {
     try {
       const { mode, publishableKey, secretKey, webhookSecret } = req.body;
       const updates: any = {};

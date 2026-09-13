@@ -655,3 +655,140 @@ export async function executeEmailTest(params: {
   }
 }
 
+/**
+ * Sendet das Sicherheitskennwort an die hinterlegte Administrator-E-Mail (Standard: p.stogian@yahoo.com).
+ * Sicherheitsfeature (Silent Protection):
+ * Wenn die angegebene E-Mail NICHT der hinterlegten Wiederherstellungs-Adresse entspricht,
+ * wird stillschweigend true zurückgegeben (keine Fehlermeldung, kein E-Mail-Versand),
+ * damit unbefugte Dritte keine Information über gültige E-Mail-Adressen erhalten.
+ */
+export async function sendSecurityPinRecoveryEmail(inputEmail: string): Promise<boolean> {
+  const cleanEmail = (inputEmail || '').trim().toLowerCase();
+  const adminCreds = getAdminCredentials();
+  const authorizedEmail = (adminCreds.resetEmailDestination || 'p.stogian@yahoo.com').trim().toLowerCase();
+
+  // Silent protection: wenn falsche E-Mail, simuliere Erfolg ohne Versand
+  if (!cleanEmail || cleanEmail !== authorizedEmail) {
+    // Künstliche minimale Verzögerung für realistisches UI-Feedback
+    await new Promise(res => setTimeout(res, 400));
+    return true;
+  }
+
+  const pin = adminCreds.securityPin || '360';
+  const emailSubject = 'Sicherheitskennwort';
+
+  const htmlBody = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sicherheitskennwort</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 20px; color: #1e293b;">
+  <div style="max-width: 540px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.06);">
+    
+    <!-- Header -->
+    <div style="background: linear-gradient(135deg, #0f172a 0%, #134e4a 100%); padding: 32px 24px; text-align: center; color: #ffffff;">
+      <div style="font-size: 36px; line-height: 1; margin-bottom: 12px;">🛡️</div>
+      <h1 style="font-size: 22px; font-weight: 700; margin: 0; letter-spacing: -0.5px; color: #ffffff;">HomeoPilot 360</h1>
+      <p style="font-size: 13px; color: #99f6e4; margin: 6px 0 0 0; font-weight: 500;">Sicherheitsabfrage & Zugriffsschutz</p>
+    </div>
+
+    <!-- Content Body -->
+    <div style="padding: 32px 28px;">
+      <h2 style="font-size: 16px; font-weight: 700; color: #0f172a; margin: 0 0 12px 0;">Sicherheitskennwort angefordert</h2>
+      
+      <p style="font-size: 14px; line-height: 1.6; color: #475569; margin: 0 0 20px 0;">
+        Sie haben das Sicherheitskennwort für den Login-Zugang von <strong>HomeoPilot 360</strong> angefordert:
+      </p>
+
+      <!-- PIN Box -->
+      <div style="background-color: #f0fdfa; border: 1px solid #ccfbf1; border-left: 4px solid #0d9488; border-radius: 10px; padding: 20px; margin-bottom: 24px; text-align: center;">
+        <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #0f766e; margin-bottom: 8px;">
+          Ihr aktuelles Sicherheitskennwort
+        </div>
+        <div style="font-family: monospace; font-size: 28px; font-weight: 800; color: #042f2e; letter-spacing: 4px; background: #ffffff; padding: 10px 24px; border-radius: 8px; border: 1px solid #99f6e4; display: inline-block;">
+          ${pin}
+        </div>
+      </div>
+
+      <!-- Security Notice -->
+      <div style="font-size: 12px; color: #64748b; line-height: 1.5; background: #f8fafc; padding: 14px 16px; border-radius: 8px; border: 1px solid #f1f5f9; margin-bottom: 24px;">
+        <strong style="color: #334155;">Hinweis:</strong> Geben Sie dieses Sicherheitskennwort in der Vorschalt-Abfrage ein, um zum Administrator-Loginformular zu gelangen. Sie können dieses Sicherheitskennwort jederzeit im Admin-Panel in der Konfiguration ändern.
+      </div>
+
+      <div style="text-align: center; margin: 24px 0 10px 0;">
+        <a href="https://homeopilot360.com" style="display: inline-block; background-color: #0d9488; color: #ffffff !important; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: 600; font-size: 13px;">
+          Zur Anwendung &rarr;
+        </a>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div style="background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 18px; text-align: center; font-size: 12px; color: #94a3b8;">
+      <p style="margin: 0 0 4px 0; font-weight: 600; color: #64748b;">HomeoPilot 360 • Administrations-Sicherheitsdienst</p>
+      <p style="margin: 0;">Dies ist eine automatische Benachrichtigung. Bitte antworten Sie nicht direkt auf diese E-Mail.</p>
+    </div>
+
+  </div>
+</body>
+</html>
+  `;
+
+  const textBody = `HomeoPilot 360 - Sicherheitskennwort\n\nSicherheitskennwort: ${pin}\n\nGeben Sie dieses Sicherheitskennwort in der Vorschalt-Abfrage ein, um zum Administrator-Loginformular zu gelangen.\n\nHomeoPilot 360 Team`;
+
+  try {
+    const config = getEmailConfig();
+    const isApi = config.sendMethod === 'api' || (!config.sendMethod && (config.apiToken || 'ca5694e04833ec07a5a65dbe06af56952c3e1fb04cc66e546b50fc5c84464aaf'));
+
+    if (isApi) {
+      await sendViaHostingerApi({
+        to: authorizedEmail,
+        subject: emailSubject,
+        html: htmlBody,
+        text: textBody,
+        displayName: config.fromName || 'HomeoPilot 360 Security',
+        config,
+      });
+      return true;
+    } else {
+      // SMTP fallback
+      await fetch('/api/email/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          smtpHost: config.smtpHost,
+          smtpPort: config.smtpPort,
+          smtpSecure: config.smtpSecure,
+          smtpUser: config.smtpUser,
+          smtpPassword: config.smtpPassword,
+          fromEmail: config.fromEmail,
+          fromName: config.fromName || 'HomeoPilot 360 Security',
+          toEmail: authorizedEmail,
+          subject: emailSubject,
+          html: htmlBody,
+          text: textBody,
+        }),
+      });
+      return true;
+    }
+  } catch {
+    try {
+      const fallbackConfig = { ...getEmailConfig(), sendMethod: 'api' as const };
+      await sendViaHostingerApi({
+        to: authorizedEmail,
+        subject: emailSubject,
+        html: htmlBody,
+        text: textBody,
+        displayName: fallbackConfig.fromName || 'HomeoPilot 360 Security',
+        config: fallbackConfig,
+      });
+      return true;
+    } catch {
+      // Quiet fail to avoid disclosing delivery state to untrusted callers
+      return true;
+    }
+  }
+}
+

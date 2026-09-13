@@ -175,7 +175,7 @@ export const Header: React.FC<HeaderProps> = ({
                   )}
                 </button>
 
-                {/* 3. Admin-Panel */}
+                {/* 3. Admin-Panel / Login */}
                 <button
                   id="header-nav-admin"
                   onClick={handleAdminClick}
@@ -190,7 +190,7 @@ export const Header: React.FC<HeaderProps> = ({
                   ) : (
                     <Lock className="w-3.5 h-3.5 text-slate-400" />
                   )}
-                  <span>{t('navAdmin')}</span>
+                  <span>{isAdmin ? t('navAdmin') : t('navLogin')}</span>
                   {isAdmin && (
                     <span className="text-[9px] bg-teal-100 text-teal-800 font-bold px-1.5 py-0.2 rounded-full">
                       {t('navActive')}
@@ -597,7 +597,7 @@ export const Header: React.FC<HeaderProps> = ({
                 </div>
               </button>
 
-              {/* Admin-Panel */}
+              {/* Admin-Panel / Login */}
               <button
                 type="button"
                 id="mobile-nav-admin"
@@ -617,7 +617,7 @@ export const Header: React.FC<HeaderProps> = ({
                   ) : (
                     <Lock className="w-4 h-4 text-slate-400" />
                   )}
-                  <span>{t('navAdmin')}</span>
+                  <span>{isAdmin ? t('navAdmin') : t('navLogin')}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   {isAdmin && (
