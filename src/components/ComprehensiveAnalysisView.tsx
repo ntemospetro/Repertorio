@@ -1077,7 +1077,7 @@ export const ComprehensiveAnalysisView: React.FC<ComprehensiveAnalysisViewProps>
         >
           <div
             id="medication-analysis-modal-dialog"
-            className="bg-white w-full max-w-[1400px] h-[92vh] max-h-[92vh] rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden relative"
+            className="bg-white w-full max-w-[1400px] h-[92vh] max-h-[92vh] md:h-[92vh] md:max-h-[92vh] rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-y-auto md:overflow-hidden relative"
             onClick={(e) => e.stopPropagation()}
           >
             <MedicationResearchView

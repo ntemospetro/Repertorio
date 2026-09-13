@@ -271,6 +271,22 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
       ? Math.max(0, Number(formData.maxVoiceQuestionAnswerSeconds) || 30) 
       : 0;
 
+    const sanitizedFeatureLimits = {
+      unlimitedAll: formData.featureLimits.unlimitedAll,
+      maxPatients: Math.max(1, Number(formData.featureLimits.maxPatients) || 100),
+      unlimitedPatients: formData.featureLimits.unlimitedPatients,
+      maxAnalyses: Math.max(1, Number(formData.featureLimits.maxAnalyses) || 50),
+      unlimitedAnalyses: formData.featureLimits.unlimitedAnalyses,
+      maxMedsPerCase: Math.max(1, Number(formData.featureLimits.maxMedsPerCase) || 20),
+      unlimitedMedsPerCase: formData.featureLimits.unlimitedMedsPerCase,
+      maxRiskAnalyses: Math.max(1, Number(formData.featureLimits.maxRiskAnalyses) || 30),
+      unlimitedRiskAnalyses: formData.featureLimits.unlimitedRiskAnalyses,
+      maxReports: Math.max(1, Number(formData.featureLimits.maxReports) || 25),
+      unlimitedReports: formData.featureLimits.unlimitedReports,
+      maxAiRequests: Math.max(1, Number(formData.featureLimits.maxAiRequests) || 100),
+      unlimitedAiRequests: formData.featureLimits.unlimitedAiRequests,
+    };
+
     if (editingPlan) {
       // Update
       updatePackagePlan(editingPlan.id, {
@@ -291,7 +307,7 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
         maxVoiceQuestionAnswerSeconds: maxVoiceQuestionAnswerSecondsNum,
         allowVoiceQuestionAnswer: formData.allowVoiceQuestionAnswer,
         pagePermissions: formData.pagePermissions,
-        featureLimits: formData.featureLimits,
+        featureLimits: sanitizedFeatureLimits,
       });
       showToast(`Paket "${formData.name}" erfolgreich aktualisiert`);
     } else {
@@ -314,7 +330,7 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
         maxVoiceQuestionAnswerSeconds: maxVoiceQuestionAnswerSecondsNum,
         allowVoiceQuestionAnswer: formData.allowVoiceQuestionAnswer,
         pagePermissions: formData.pagePermissions,
-        featureLimits: formData.featureLimits,
+        featureLimits: sanitizedFeatureLimits,
       });
       showToast(`Neues Paket "${formData.name}" erfolgreich erstellt`);
     }
@@ -764,8 +780,11 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
                       min="0"
                       step="1"
                       required
-                      value={formData.price}
-                      onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) })}
+                      value={(formData.price as any) === '' ? '' : formData.price}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setFormData({ ...formData, price: val === '' ? '' : Number(val) } as any);
+                      }}
                       className="flex-1 px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:border-teal-600 font-mono text-sm font-bold text-slate-900 h-[38px]"
                     />
                     <span className="text-slate-500 font-bold px-1.5">€</span>
@@ -816,8 +835,11 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
                         type="number"
                         min="1"
                         max="10000"
-                        value={formData.maxAnalyses}
-                        onChange={(e) => setFormData({ ...formData, maxAnalyses: Math.max(1, Number(e.target.value)) })}
+                        value={(formData.maxAnalyses as any) === '' ? '' : formData.maxAnalyses}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setFormData({ ...formData, maxAnalyses: val === '' ? '' : Math.max(1, Number(val)) } as any);
+                        }}
                         className="flex-1 px-3 py-2 border border-slate-300 rounded-md bg-white font-mono text-sm font-bold text-slate-900 focus:outline-none focus:border-teal-600 h-[38px]"
                       />
                       <span className="text-xs text-slate-600 font-medium whitespace-nowrap">
@@ -854,8 +876,11 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
                         type="number"
                         min="0"
                         step="1"
-                        value={formData.initialBookingAmount ?? 20}
-                        onChange={(e) => setFormData({ ...formData, initialBookingAmount: Math.max(0, Number(e.target.value)) })}
+                        value={(formData.initialBookingAmount as any) === '' ? '' : (formData.initialBookingAmount ?? 20)}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setFormData({ ...formData, initialBookingAmount: val === '' ? '' : Math.max(0, Number(val)) } as any);
+                        }}
                         className="flex-1 px-3 py-2 border border-violet-200 rounded-md bg-white font-mono text-sm font-bold text-slate-900 focus:outline-none focus:border-violet-600 h-[38px]"
                       />
                       <span className="text-slate-500 font-bold px-1">€</span>
@@ -874,8 +899,11 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
                         type="number"
                         min="0"
                         step="1"
-                        value={formData.lowBalanceThreshold ?? 5}
-                        onChange={(e) => setFormData({ ...formData, lowBalanceThreshold: Math.max(0, Number(e.target.value)) })}
+                        value={(formData.lowBalanceThreshold as any) === '' ? '' : (formData.lowBalanceThreshold ?? 5)}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setFormData({ ...formData, lowBalanceThreshold: val === '' ? '' : Math.max(0, Number(val)) } as any);
+                        }}
                         className="flex-1 px-3 py-2 border border-violet-200 rounded-md bg-white font-mono text-sm font-bold text-slate-900 focus:outline-none focus:border-violet-600 h-[38px]"
                       />
                       <span className="text-slate-500 font-bold px-1">€</span>
@@ -945,7 +973,7 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
                       {t('adminVoiceMainComplaintLimitField') || 'Hauptbeschwerde: Max. Aufnahmezeit (Sekunden)'}
                     </label>
                     <span className="text-[10px] text-emerald-800 font-mono font-bold">
-                      {formData.maxVoiceMainComplaintSeconds}s ({Math.floor(formData.maxVoiceMainComplaintSeconds / 60)}m {formData.maxVoiceMainComplaintSeconds % 60}s)
+                      {(Number(formData.maxVoiceMainComplaintSeconds) || 0)}s ({Math.floor((Number(formData.maxVoiceMainComplaintSeconds) || 0) / 60)}m {(Number(formData.maxVoiceMainComplaintSeconds) || 0) % 60}s)
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -954,8 +982,11 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
                       min="5"
                       max="3600"
                       step="5"
-                      value={formData.maxVoiceMainComplaintSeconds}
-                      onChange={(e) => setFormData({ ...formData, maxVoiceMainComplaintSeconds: Math.max(5, Number(e.target.value)) })}
+                      value={(formData.maxVoiceMainComplaintSeconds as any) === '' ? '' : formData.maxVoiceMainComplaintSeconds}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setFormData({ ...formData, maxVoiceMainComplaintSeconds: val === '' ? '' : Math.max(5, Number(val)) } as any);
+                      }}
                       className="w-28 px-3 py-1.5 border border-emerald-300 rounded-md bg-white font-mono text-sm font-bold text-slate-900 focus:outline-none focus:border-emerald-600 h-[36px]"
                     />
                     {/* Quick pick buttons */}
@@ -1007,7 +1038,7 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
                           {t('adminVoiceQuestionAnswerLimitField') || 'Fragen: Max. Aufnahmezeit (Sekunden)'}
                         </label>
                         <span className="text-[10px] text-emerald-800 font-mono font-bold">
-                          {formData.maxVoiceQuestionAnswerSeconds}s
+                          {(Number(formData.maxVoiceQuestionAnswerSeconds) || 0)}s
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
@@ -1016,8 +1047,11 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
                           min="5"
                           max="1800"
                           step="5"
-                          value={formData.maxVoiceQuestionAnswerSeconds}
-                          onChange={(e) => setFormData({ ...formData, maxVoiceQuestionAnswerSeconds: Math.max(5, Number(e.target.value)) })}
+                          value={(formData.maxVoiceQuestionAnswerSeconds as any) === '' ? '' : formData.maxVoiceQuestionAnswerSeconds}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setFormData({ ...formData, maxVoiceQuestionAnswerSeconds: val === '' ? '' : Math.max(5, Number(val)) } as any);
+                          }}
                           className="w-28 px-3 py-1.5 border border-emerald-300 rounded-md bg-white font-mono text-sm font-bold text-slate-900 focus:outline-none focus:border-emerald-600 h-[36px]"
                         />
                         {/* Quick pick buttons */}
@@ -1278,14 +1312,17 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
                                 type="number"
                                 min="1"
                                 max="100000"
-                                value={item.val}
-                                onChange={(e) => setFormData({
-                                  ...formData,
-                                  featureLimits: {
-                                    ...formData.featureLimits,
-                                    [valKey]: Math.max(1, Number(e.target.value))
-                                  }
-                                })}
+                                value={(item.val as any) === '' ? '' : item.val}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setFormData({
+                                    ...formData,
+                                    featureLimits: {
+                                      ...formData.featureLimits,
+                                      [valKey]: val === '' ? '' : Math.max(1, Number(val))
+                                    }
+                                  } as any);
+                                }}
                                 className="flex-1 px-2.5 py-1 text-xs font-mono font-bold text-slate-900 bg-white border border-slate-300 rounded focus:outline-none focus:border-teal-600 h-[30px]"
                               />
                               <span className="text-[10px] text-slate-500 font-medium">
