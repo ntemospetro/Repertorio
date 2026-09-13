@@ -3540,3 +3540,9 @@ export function matchesAuthorFilter(remedyId: string, filter: ClassicalAuthorFil
   const authors = getRemedyClassicalAuthors(remedyId);
   return Boolean(authors[filter]);
 }
+
+export function matchesAuthorFilters(remedyId: string, filters: ClassicalAuthorFilterKey[]): boolean {
+  if (filters.length === 0 || filters.includes('all')) return true;
+  const authors = getRemedyClassicalAuthors(remedyId);
+  return filters.some(f => Boolean(authors[f]));
+}

@@ -2517,7 +2517,7 @@ export const de = {
   repertoriumScore: "Repertorium-Punkte",
   repertoriumBoerickeNotice: "Klassische Materia Medica & Repertorium (Hahnemann, Kent, Hering, Boericke)",
   repertoriumRemoveSymptom: "Symptom entfernen",
-  repertoriumStepNumber: "Symptom",
+  repertoriumStepNumber: "Beschwerde",
   repertoriumMatchesCount: "Mittel decken dieses Symptom ab",
   repertoriumNarrowingTitle: "Stufenweise Symptom-Eingrenzung (Kaskade)",
   repertoriumSearchHint: "Tippen Sie z. B. 'brennend', 'kaltluft', 'durstlos', 'ruhelos', um Rubriken einzuschränken.",
@@ -3246,5 +3246,8 @@ export const de = {
   securityGateRecoverySent: "Falls diese E-Mail-Adresse im System als Wiederherstellungs-Adresse hinterlegt ist, wurde das Sicherheitskennwort versendet. Bitte prüfen Sie Ihren Posteingang.",
   securityGateBackToGate: "Zurück zur Eingabe",
   adminConfigSecurityPinLabel: "Sicherheitskennwort (Gate-PIN)",
-  adminConfigSecurityPinDesc: "Zusätzlicher Schutzwall vor dem Administrator-Login (Standard: 360)."
+  adminConfigSecurityPinDesc: "Zusätzlicher Schutzwall vor dem Administrator-Login (Standard: 360).",
+  anamnesisStepBetter: "Säule 4.1 – WANN: Besserung (> Linderung)",
+  anamnesisStepWorse: "Säule 4.2 – WANN: Verschlimmerung (< Verschlechterung)",
+  anamnesisStepPillarCausa: "Säule 3 – WODURCH? (Causa & Auslöser)"
 };

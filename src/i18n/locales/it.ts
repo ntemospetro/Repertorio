@@ -2511,7 +2511,7 @@ export const it = {
   repertoriumScore: "Punti di repertorio",
   repertoriumBoerickeNotice: "Materia Medica Classica e Repertorio (Hahnemann, Kent, Hering, Boericke)",
   repertoriumRemoveSymptom: "Rimuovi sintomo",
-  repertoriumStepNumber: "Sintomo",
+  repertoriumStepNumber: "Disturbo",
   repertoriumMatchesCount: "rimedi coprono questo sintomo",
   repertoriumNarrowingTitle: "Delimitazione progressiva dei sintomi (Cascata)",
   repertoriumSearchHint: "Digita ad es. 'bruciante', 'aria fredda', 'senza sete', 'irrequieto' per filtrare.",
@@ -3239,5 +3239,8 @@ export const it = {
   securityGateRecoverySent: "Se questo indirizzo email è registrato nel sistema, il codice di sicurezza è stato inviato. Controlla la tua casella di posta.",
   securityGateBackToGate: "Torna all'inserimento",
   adminConfigSecurityPinLabel: "Codice di sicurezza (PIN di accesso)",
-  adminConfigSecurityPinDesc: "Barriera di sicurezza aggiuntiva prima del login amministratore (Predefinito: 360)."
+  adminConfigSecurityPinDesc: "Barriera di sicurezza aggiuntiva prima del login amministratore (Predefinito: 360).",
+  anamnesisStepBetter: "Pilastro 4.1 – QUANDO: Miglioramento (> Sollievo)",
+  anamnesisStepWorse: "Pilastro 4.2 – QUANDO: Peggioramento (< Aggravamento)",
+  anamnesisStepPillarCausa: "Pilastro 3 – DA COSA? (Causa & Scatenante)"
 };

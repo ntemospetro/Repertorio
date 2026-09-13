@@ -2517,7 +2517,7 @@ export const en = {
   repertoriumScore: "Repertory Points",
   repertoriumBoerickeNotice: "Classical Materia Medica & Repertory (Hahnemann, Kent, Hering, Boericke)",
   repertoriumRemoveSymptom: "Remove symptom",
-  repertoriumStepNumber: "Symptom",
+  repertoriumStepNumber: "Complaint",
   repertoriumMatchesCount: "remedies cover this symptom",
   repertoriumNarrowingTitle: "Stepwise Symptom Narrowing (Cascade)",
   repertoriumSearchHint: "Type e.g. 'burning', 'cold air', 'thirstless', 'restless' to filter rubrics.",
@@ -3245,5 +3245,8 @@ export const en = {
   securityGateRecoverySent: "If this email address is registered in the system, the security PIN has been sent. Please check your inbox.",
   securityGateBackToGate: "Back to PIN entry",
   adminConfigSecurityPinLabel: "Security PIN (Gate PIN)",
-  adminConfigSecurityPinDesc: "Additional security gate before administrator login (Default: 360)."
+  adminConfigSecurityPinDesc: "Additional security gate before administrator login (Default: 360).",
+  anamnesisStepBetter: "Pillar 4.1 – WHEN: Improvement (> Relief)",
+  anamnesisStepWorse: "Pillar 4.2 – WHEN: Aggravation (< Worsening)",
+  anamnesisStepPillarCausa: "Pillar 3 – FROM WHAT? (Causa & Trigger)"
 };

@@ -156,8 +156,32 @@ export const RepertoriumView: React.FC<RepertoriumViewProps> = ({
   // Selected stage for full-screen paginated modal
   const [selectedFunnelStep, setSelectedFunnelStep] = useState<SubtractiveCascadeStep | null>(null);
 
-  // Filter by classical authors (All, Hahnemann, Kent, Hering, Boericke)
-  const [selectedAuthor, setSelectedAuthor] = useState<ClassicalAuthorFilterKey>('all');
+  // Filter by classical authors (All, Hahnemann, Kent, Hering, Boericke) supporting multi-select
+  const [selectedAuthors, setSelectedAuthors] = useState<ClassicalAuthorFilterKey[]>(['all']);
+
+  const handleAuthorClick = (key: ClassicalAuthorFilterKey) => {
+    if (key === 'all') {
+      setSelectedAuthors(['all']);
+    } else {
+      let next: ClassicalAuthorFilterKey[];
+      if (selectedAuthors.includes('all')) {
+        next = [key];
+      } else if (selectedAuthors.includes(key)) {
+        next = selectedAuthors.filter(k => k !== key);
+        if (next.length === 0) {
+          next = ['all'];
+        }
+      } else {
+        next = [...selectedAuthors, key];
+      }
+      setSelectedAuthors(next);
+    }
+  };
+
+  const isAuthorActive = (key: ClassicalAuthorFilterKey) => {
+    if (key === 'all') return selectedAuthors.includes('all') || selectedAuthors.length === 0;
+    return selectedAuthors.includes(key);
+  };
 
   // Selected remedy for Materia Medica monograph modal
   const [selectedRemedy, setSelectedRemedy] = useState<LocalizedRemedy | null>(null);
@@ -215,8 +239,8 @@ export const RepertoriumView: React.FC<RepertoriumViewProps> = ({
 
   // Compute live repertorisation using Classical Repertory Engine (Hahnemann, Kent, Hering, Boericke)
   const results = useMemo(() => {
-    return performBoerickeRepertorisation(debouncedSymptoms, language, strictOnly, selectedAuthor, praxisBonusActive);
-  }, [debouncedSymptoms, language, strictOnly, selectedAuthor, praxisBonusActive]);
+    return performBoerickeRepertorisation(debouncedSymptoms, language, strictOnly, selectedAuthors, praxisBonusActive);
+  }, [debouncedSymptoms, language, strictOnly, selectedAuthors, praxisBonusActive]);
 
   // Compute subtractive funnel cascade for primary structured symptom
   const funnelReport: SubtractiveCascadeReport = useMemo(() => {
@@ -232,8 +256,8 @@ export const RepertoriumView: React.FC<RepertoriumViewProps> = ({
         survivingRemedies: []
       };
     }
-    return performSubtractiveFunnelCascade(primarySymptom, language, selectedAuthor);
-  }, [debouncedSymptoms, language, selectedAuthor]);
+    return performSubtractiveFunnelCascade(primarySymptom, language, selectedAuthors);
+  }, [debouncedSymptoms, language, selectedAuthors]);
 
   const handleAddSymptom = () => {
     const nextId = `sym-${Date.now()}`;
@@ -424,51 +448,35 @@ export const RepertoriumView: React.FC<RepertoriumViewProps> = ({
               {t('filterAuthorLabel')}
             </span>
             <span className="text-xs text-slate-500">
-              — {selectedAuthor === 'all' 
+              — {selectedAuthors.includes('all') || selectedAuthors.length === 0
                 ? t('repertoriumScopeAll') 
-                : `${t('repertoriumScopeAuthor')} ${authors.find(a => a.key === selectedAuthor)?.label}`}
+                : `${t('repertoriumScopeAuthor')} ${selectedAuthors.map(k => authors.find(a => a.key === k)?.label).filter(Boolean).join(', ')}`}
             </span>
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              id="repertorium-reset-btn"
-              onClick={handleReset}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 transition-colors cursor-pointer"
-              title={t('repertoriumReset')}
-            >
-              <span>{t('repertoriumReset')}</span>
-            </button>
-            {onGoToMateriaMedica && (
-              <button
-                type="button"
-                id="repertorium-to-materiamedica-btn"
-                onClick={onGoToMateriaMedica}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-teal-800 bg-teal-50 hover:bg-teal-100 border border-teal-200 transition-colors cursor-pointer"
-              >
-                <span>{t('tabMateriaMedica')}</span>
-              </button>
-            )}
           </div>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 w-full">
-          {authors.map((auth) => (
-            <button
-              key={auth.key}
-              type="button"
-              id={`repertorium-filter-author-${auth.key}`}
-              onClick={() => setSelectedAuthor(auth.key)}
-              className={`py-2 px-2 md:py-2.5 md:px-3 rounded-xl text-xs md:text-sm font-semibold transition-all cursor-pointer text-center truncate shadow-2xs ${
-                selectedAuthor === auth.key
-                  ? 'bg-teal-700 text-white font-bold shadow-xs ring-1 ring-teal-800'
-                  : 'bg-slate-100 hover:bg-slate-200/90 text-slate-700 border border-slate-200/80'
-              }`}
-            >
-              {auth.label}
-            </button>
-          ))}
+          {authors.map((auth) => {
+            const active = isAuthorActive(auth.key);
+            return (
+              <button
+                key={auth.key}
+                type="button"
+                id={`repertorium-filter-author-${auth.key}`}
+                onClick={() => handleAuthorClick(auth.key)}
+                className={`py-2 px-2 md:py-2.5 md:px-3 rounded-xl text-xs md:text-sm font-semibold transition-all cursor-pointer text-center truncate shadow-2xs ${
+                  active
+                    ? 'bg-teal-700 text-white font-bold shadow-xs ring-1 ring-teal-800'
+                    : 'bg-slate-100 hover:bg-slate-200/90 text-slate-700 border border-slate-200/80'
+                }`}
+              >
+                {auth.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -495,9 +503,9 @@ export const RepertoriumView: React.FC<RepertoriumViewProps> = ({
           <div className="bg-white rounded-2xl border border-slate-200/80 p-4 text-xs text-slate-600 space-y-1.5 shadow-2xs">
             <div className="flex items-center gap-2 font-bold text-slate-900">
               <span>
-                {selectedAuthor === 'all' 
+                {selectedAuthors.includes('all') || selectedAuthors.length === 0
                   ? t('repertoriumBoerickeNotice') 
-                  : `${t('repertoriumScopeAuthor')} ${authors.find(a => a.key === selectedAuthor)?.label}`}
+                  : `${t('repertoriumScopeAuthor')} ${selectedAuthors.map(k => authors.find(a => a.key === k)?.label).filter(Boolean).join(', ')}`}
               </span>
             </div>
             <p className="text-slate-600 leading-relaxed">
@@ -833,7 +841,9 @@ export const RepertoriumView: React.FC<RepertoriumViewProps> = ({
                       return (
                         <div 
                           key={cand.remedy.id}
-                          className="flex items-center gap-2 sm:gap-3 group text-xs hover:bg-slate-50/80 p-1 rounded-lg transition-colors"
+                          onClick={() => setSelectedRemedy(cand.remedy)}
+                          className="flex items-center gap-2 sm:gap-3 group text-xs hover:bg-teal-50/50 p-1.5 rounded-lg transition-colors cursor-pointer"
+                          title={`Arzneimittel-Bild von ${cand.remedy.latinName} öffnen`}
                         >
                           {/* Rank & Remedy Label */}
                           <div className="w-36 sm:w-44 shrink-0 flex items-center gap-1.5 truncate">

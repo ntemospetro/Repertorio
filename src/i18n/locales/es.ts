@@ -2511,7 +2511,7 @@ export const es = {
   repertoriumScore: "Puntos de repertorio",
   repertoriumBoerickeNotice: "Materia Médica Clásica y Repertorio (Hahnemann, Kent, Hering, Boericke)",
   repertoriumRemoveSymptom: "Eliminar síntoma",
-  repertoriumStepNumber: "Síntoma",
+  repertoriumStepNumber: "Molestia",
   repertoriumMatchesCount: "remedios cubren este síntoma",
   repertoriumNarrowingTitle: "Delimitación gradual de síntomas (Cascada)",
   repertoriumSearchHint: "Escriba p. ej. 'ardiente', 'aire frío', 'sin sed', 'inquieto' para filtrar rúbricas.",
@@ -3239,5 +3239,8 @@ export const es = {
   securityGateRecoverySent: "Si esta dirección de correo electrónico está registrada en el sistema, se ha enviado el código de seguridad. Por favor revise su bandeja de entrada.",
   securityGateBackToGate: "Volver a la entrada",
   adminConfigSecurityPinLabel: "Código de seguridad (PIN de acceso)",
-  adminConfigSecurityPinDesc: "Barrera de seguridad adicional antes del inicio de sesión del administrador (Predeterminado: 360)."
+  adminConfigSecurityPinDesc: "Barrera de seguridad adicional antes del inicio de sesión del administrador (Predeterminado: 360).",
+  anamnesisStepBetter: "Pilar 4.1 – CUÁNDO: Mejoría (> Alivio)",
+  anamnesisStepWorse: "Pilar 4.2 – CUÁNDO: Empeoramiento (< Empeoramiento)",
+  anamnesisStepPillarCausa: "Pilar 3 – POR QUÉ? (Causa y desencadenante)"
 };

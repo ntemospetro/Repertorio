@@ -2511,7 +2511,7 @@ export const ru = {
   repertoriumScore: "Баллы репертория",
   repertoriumBoerickeNotice: "Классическая Materia Medica и реперторий (Ганеман, Кент, Геринг, Берике)",
   repertoriumRemoveSymptom: "Удалить симптом",
-  repertoriumStepNumber: "Симптом",
+  repertoriumStepNumber: "Жалоба",
   repertoriumMatchesCount: "препаратов покрывают данный симптом",
   repertoriumNarrowingTitle: "Поэтапное сужение симптомов (Каскад)",
   repertoriumSearchHint: "Введите, напр., 'жгучий', 'холодный воздух', 'без жажды', 'беспокойство'.",
@@ -3239,5 +3239,8 @@ export const ru = {
   securityGateRecoverySent: "Если этот адрес электронной почты зарегистрирован в системе, код безопасности был отправлен. Пожалуйста, проверьте свой почтовый ящик.",
   securityGateBackToGate: "Вернуться к вводу",
   adminConfigSecurityPinLabel: "Код безопасности (PIN-код)",
-  adminConfigSecurityPinDesc: "Дополнительный барьер безопасности перед входом администратора (По умолчанию: 360)."
+  adminConfigSecurityPinDesc: "Дополнительный барьер безопасности перед входом администратора (По умолчанию: 360).",
+  anamnesisStepBetter: "Столп 4.1 – КОГДА: Улучшение (> Облегчение)",
+  anamnesisStepWorse: "Столп 4.2 – КОГДА: Ухудшение (< Утяжеление)",
+  anamnesisStepPillarCausa: "Столп 3 – ОТ ЧЕГО? (Causa и триггер)"
 };

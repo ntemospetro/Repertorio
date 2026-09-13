@@ -199,16 +199,16 @@ export const AdaptiveSymptomArchitect: React.FC<AdaptiveSymptomArchitectProps> =
     return (
       <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden transition-all">
         {/* Header Bar */}
-        <div className="bg-teal-900 text-white px-4 py-3 flex items-center justify-between border-b border-teal-950">
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-white/10 border border-white/20 flex items-center justify-center font-bold text-xs shadow-inner">
+        <div className="bg-teal-900 text-white px-4 py-3.5 flex items-start justify-between gap-3 border-b border-teal-950">
+          <div className="flex items-start gap-2.5 flex-1 min-w-0">
+            <div className="w-7 h-7 rounded-lg bg-white/10 border border-white/20 flex items-center justify-center font-bold text-xs shadow-inner shrink-0 mt-0.5">
               {index + 1}
             </div>
-            <div>
+            <div className="flex-1 min-w-0">
               <span className="text-[10.5px] font-bold tracking-wider uppercase text-teal-200/90 block leading-tight">
                 {t('repertoriumStepNumber')} {index + 1}
               </span>
-              <h4 className="text-xs sm:text-sm font-bold text-white truncate max-w-[220px] sm:max-w-md">
+              <h4 className="text-xs sm:text-sm font-bold text-white whitespace-normal break-words leading-relaxed">
                 {symptom.chiefComplaint || symptom.text || t('repertoriumSymptomPlaceholder')}
               </h4>
             </div>
@@ -378,16 +378,16 @@ export const AdaptiveSymptomArchitect: React.FC<AdaptiveSymptomArchitectProps> =
   return (
     <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden transition-all">
       {/* Header Bar: Restrained, elegant header matching the clean design */}
-      <div className="bg-teal-900 text-white px-4 py-3 flex items-center justify-between border-b border-teal-950">
-        <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-white/10 border border-white/20 flex items-center justify-center font-bold text-xs shadow-inner">
+      <div className="bg-teal-900 text-white px-4 py-3.5 flex items-start justify-between gap-3 border-b border-teal-950">
+        <div className="flex items-start gap-2.5 flex-1 min-w-0">
+          <div className="w-7 h-7 rounded-lg bg-white/10 border border-white/20 flex items-center justify-center font-bold text-xs shadow-inner shrink-0 mt-0.5">
             {index + 1}
           </div>
-          <div>
+          <div className="flex-1 min-w-0">
             <span className="text-[10.5px] font-bold tracking-wider uppercase text-teal-200/90 block leading-tight">
               {t('repertoriumStepNumber')} {index + 1}
             </span>
-            <h4 className="text-xs sm:text-sm font-bold text-white truncate max-w-[220px] sm:max-w-md">
+            <h4 className="text-xs sm:text-sm font-bold text-white whitespace-normal break-words leading-relaxed">
               {symptom.chiefComplaint || symptom.text || t('repertoriumSymptomPlaceholder')}
             </h4>
           </div>
@@ -403,16 +403,7 @@ export const AdaptiveSymptomArchitect: React.FC<AdaptiveSymptomArchitectProps> =
             <span>{t('anamnesisEditInWizard')}</span>
           </button>
 
-          {isStarted && (
-            <button
-              type="button"
-              onClick={handleResetAnamnesis}
-              className="px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-semibold flex items-center transition-colors cursor-pointer border border-white/20 shadow-2xs"
-              title={t('anamnesisResetBtn')}
-            >
-              <span className="text-xs font-semibold">{t('repertoriumReset')}</span>
-            </button>
-          )}
+
 
           {!isSingle && onRemove && (
             <button
@@ -427,392 +418,121 @@ export const AdaptiveSymptomArchitect: React.FC<AdaptiveSymptomArchitectProps> =
         </div>
       </div>
 
-      <div className="p-4 sm:p-5 space-y-4">
-        {/* Dynamic 4-Pillar Information Model Display */}
-        <div className="space-y-3.5">
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-slate-800 tracking-wide">
-                {t('anamnesisModelTitle')}
-              </span>
-            </div>
-            <span className="text-[11px] font-medium text-teal-800 bg-teal-50 px-2.5 py-0.5 rounded-full border border-teal-200/80">
-              {t('repertoriumClearAuditNotice')}
+      <div className="p-4 sm:p-5 space-y-3.5">
+        {/* 2. WO (Lokalisation) */}
+        <div className="p-3 rounded-xl border border-slate-200 bg-white flex items-center justify-between gap-3">
+          <div className="space-y-0.5 flex-1 min-w-0">
+            <span className="text-xs font-bold text-slate-800 block">
+              {t('anamnesisStepPillarWO')}
             </span>
+            <p className="text-xs text-slate-600 truncate">
+              {symptom.location?.trim() ? symptom.location : <span className="italic text-slate-400">{t('anamnesisPillarEmptyNotice')}</span>}
+            </p>
           </div>
-
-          {/* Chief complaint banner */}
-          <div className="p-3 bg-teal-50/50 border border-teal-200/80 rounded-xl flex items-start gap-2.5">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-[11px] font-bold text-teal-950 uppercase tracking-wider">
-                  {t('repertoriumPillarChiefComplaint')}
-                </span>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-semibold text-teal-800 bg-teal-100/70 px-2 py-0.5 rounded-full border border-teal-200/80">
-                    {t('repertoriumStatusConfirmed')}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => handleOpenWizard(0)}
-                    className="text-slate-500 hover:text-teal-700 text-xs font-bold px-1.5 py-0.5 rounded-md hover:bg-teal-50 transition-colors cursor-pointer"
-                    title={t('anamnesisEditInWizard')}
-                  >
-                    <span>{t('edit' as any) || 'Bearbeiten'}</span>
-                  </button>
-                </div>
-              </div>
-              <p className="text-xs font-medium text-slate-800 italic mt-0.5">
-                &bdquo;{symptom.chiefQuote || symptom.chiefComplaint}&ldquo;
-              </p>
-            </div>
-          </div>
-
-          {/* DYNAMISCHE BEDARFSANALYSE DER PATIENTENANGABEN */}
-          {(() => {
-            const needsAnalysis = analyzeAnamnesisInformationNeeds(symptom, language);
-            if (needsAnalysis.missingNeeds.length > 0) {
-              return (
-                <div className="p-3.5 bg-teal-50/50 text-slate-800 rounded-xl border border-teal-200/80 shadow-2xs space-y-2">
-                  <div className="flex items-center justify-between flex-wrap gap-2">
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-teal-900">
-                      <span>{t('anamnesisNeedsTitle')}</span>
-                    </div>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-100/80 text-teal-900 border border-teal-200">
-                      {needsAnalysis.missingNeeds.length} {t('anamnesisNeedsMissingTitle')}
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-700 italic leading-snug">
-                    &bdquo;{needsAnalysis.nextRecommendedQuestionText}&ldquo;
-                  </p>
-                  {needsAnalysis.highestPriorityNeed && (
-                    <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-teal-200/60 flex-wrap">
-                      <span className="text-[11px] text-teal-800 font-medium">
-                        {needsAnalysis.highestPriorityNeed.title}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const targetPillar = needsAnalysis.highestPriorityNeed!.pillar;
-                          const targetStep = 
-                            targetPillar === 'location' ? 1 :
-                            targetPillar === 'sensation' ? 2 :
-                            targetPillar === 'modalities' ? 4 : 6;
-                          handleOpenWizard(targetStep);
-                        }}
-                        className="px-3 py-1 rounded-lg bg-teal-700 hover:bg-teal-800 text-white font-semibold text-[11px] flex items-center gap-1 cursor-pointer transition-all shadow-xs border border-teal-800"
-                      >
-                        <span>{t('anamnesisNeedsAdoptQuestionBtn')}</span>
-                        <span className="ml-1">→</span>
-                      </button>
-                    </div>
-                  )}
-                </div>
-              );
-            }
-            return (
-              <div className="p-2.5 bg-teal-50/60 border border-teal-200/80 text-teal-950 rounded-xl flex items-center justify-between gap-2 text-xs font-medium">
-                <div className="flex items-center gap-2">
-                  <span>{t('repertoriumAllPillarsAuditNotice')}</span>
-                </div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-100 text-teal-900 border border-teal-200">
-                  {t('repertoriumStatusComplete')}
-                </span>
-              </div>
-            );
-          })()}
-
-          {/* DIE 4 SÄULEN DER HOMÖOPATHIE: 1. WO, 2. WAS, 3. WANN/WODURCH, 4. WAS NOCH */}
-          <div className="space-y-3">
-            
-            {/* 1. Säule 1 – WO? (Lokalisation & Seitigkeit) */}
-            <div className="p-3.5 rounded-xl border border-slate-200 bg-white space-y-2 shadow-2xs">
-              <div className="flex items-center justify-between flex-wrap gap-1">
-                <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                  {t('anamnesisStepPillarWO')}
-                </span>
-                <div className="flex items-center gap-1.5">
-                  {symptom.location?.trim() ? (
-                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-teal-50 text-teal-800 border border-teal-200/80">
-                      {t('repertoriumStatusConfirmed')}
-                    </span>
-                  ) : (
-                    <span className="text-[10px] text-slate-400 font-medium italic">
-                      {t('anamnesisPillarEmptyNotice')}
-                    </span>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => handleOpenWizard(1)}
-                    className="text-slate-500 hover:text-teal-700 text-xs font-bold px-1.5 py-0.5 rounded-md hover:bg-teal-50 transition-colors cursor-pointer"
-                    title={t('anamnesisEditInWizard')}
-                  >
-                    <span>{t('edit' as any) || 'Bearbeiten'}</span>
-                  </button>
-                </div>
-              </div>
-
-              {symptom.location?.trim() ? (
-                <div className="text-xs text-slate-800 font-medium bg-slate-50 p-2.5 rounded-lg border border-slate-200/70">
-                  {symptom.location}
-                  {symptom.locationQuote && (
-                    <span className="block text-[11px] text-teal-900 italic font-normal mt-1">
-                      &bdquo;{symptom.locationQuote}&ldquo;
-                    </span>
-                  )}
-                </div>
-              ) : null}
-
-              <button
-                type="button"
-                onClick={() => setExpandedPillar(expandedPillar === 'loc' ? null : 'loc')}
-                className="text-[10.5px] font-medium text-slate-500 hover:text-slate-800 flex items-center gap-1 cursor-pointer pt-0.5"
-              >
-                <span>{expandedPillar === 'loc' ? t('geniusClose') : t('symptomCustomInputPlaceholder')}</span>
-                <span className="text-[10px]">{expandedPillar === 'loc' ? '▲' : '▼'}</span>
-              </button>
-
-              {expandedPillar === 'loc' && (
-                <div className="pt-1.5 space-y-1">
-                  <input
-                    type="text"
-                    value={symptom.location || ''}
-                    onChange={(e) => handleDirectFieldUpdate('location', e.target.value)}
-                    placeholder={t('repertoriumPillar1Placeholder')}
-                    className="w-full px-2.5 py-1.5 text-xs bg-white rounded-lg border border-slate-300 text-slate-900 outline-none focus:ring-1 focus:ring-teal-600"
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* 2. Säule 2 – WAS? (Empfindung & Schmerzcharakter) */}
-            <div className="p-3.5 rounded-xl border border-slate-200 bg-white space-y-2 shadow-2xs">
-              <div className="flex items-center justify-between flex-wrap gap-1">
-                <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                  {t('anamnesisStepPillarWAS')}
-                </span>
-                <div className="flex items-center gap-1.5">
-                  {symptom.sensation?.trim() ? (
-                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-teal-50 text-teal-800 border border-teal-200/80">
-                      {t('repertoriumStatusConfirmed')}
-                    </span>
-                  ) : (
-                    <span className="text-[10px] text-slate-400 font-medium italic">
-                      {t('anamnesisPillarEmptyNotice')}
-                    </span>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => handleOpenWizard(2)}
-                    className="text-slate-500 hover:text-teal-700 text-xs font-bold px-1.5 py-0.5 rounded-md hover:bg-teal-50 transition-colors cursor-pointer"
-                    title={t('anamnesisEditInWizard')}
-                  >
-                    <span>{t('edit' as any) || 'Bearbeiten'}</span>
-                  </button>
-                </div>
-              </div>
-
-              {symptom.sensation?.trim() ? (
-                <div className="text-xs text-slate-800 font-medium bg-slate-50 p-2.5 rounded-lg border border-slate-200/70">
-                  {symptom.sensation}
-                  {symptom.sensationQuote && (
-                    <span className="block text-[11px] text-teal-900 italic font-normal mt-1">
-                      &bdquo;{symptom.sensationQuote}&ldquo;
-                    </span>
-                  )}
-                </div>
-              ) : null}
-
-              <button
-                type="button"
-                onClick={() => setExpandedPillar(expandedPillar === 'sens' ? null : 'sens')}
-                className="text-[10.5px] font-medium text-slate-500 hover:text-slate-800 flex items-center gap-1 cursor-pointer pt-0.5"
-              >
-                <span>{expandedPillar === 'sens' ? t('geniusClose') : t('symptomCustomInputPlaceholder')}</span>
-                <span className="text-[10px]">{expandedPillar === 'sens' ? '▲' : '▼'}</span>
-              </button>
-
-              {expandedPillar === 'sens' && (
-                <div className="pt-1.5 space-y-1">
-                  <input
-                    type="text"
-                    value={symptom.sensation || ''}
-                    onChange={(e) => handleDirectFieldUpdate('sensation', e.target.value)}
-                    placeholder={t('repertoriumPillar2Placeholder')}
-                    className="w-full px-2.5 py-1.5 text-xs bg-white rounded-lg border border-slate-300 text-slate-900 outline-none focus:ring-1 focus:ring-teal-600"
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* 3. Säule 3 – WANN / WODURCH? (Modalitäten & Causa) */}
-            <div className="p-3.5 rounded-xl border border-slate-200 bg-white space-y-2 shadow-2xs">
-              <div className="flex items-center justify-between flex-wrap gap-1">
-                <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                  {t('anamnesisStepPillarWANN')}
-                </span>
-                <div className="flex items-center gap-1.5">
-                  {(symptom.modalities?.trim() || symptom.causaEvent?.trim()) ? (
-                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-teal-50 text-teal-800 border border-teal-200/80">
-                      {t('repertoriumStatusConfirmed')}
-                    </span>
-                  ) : (
-                    <span className="text-[10px] text-slate-400 font-medium italic">
-                      {t('anamnesisPillarEmptyNotice')}
-                    </span>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => handleOpenWizard(4)}
-                    className="text-slate-500 hover:text-teal-700 text-xs font-bold px-1.5 py-0.5 rounded-md hover:bg-teal-50 transition-colors cursor-pointer"
-                    title={t('anamnesisEditInWizard')}
-                  >
-                    <span>{t('edit' as any) || 'Bearbeiten'}</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Modalities Content */}
-              {symptom.modalities?.trim() ? (
-                <div className="text-xs text-slate-800 font-medium bg-slate-50 p-2.5 rounded-lg border border-slate-200/70">
-                  <div>
-                    <span className="text-[11px] font-bold text-slate-900 block">{t('symptomModalitiesLabel')}:</span>
-                    <span>{symptom.modalities}</span>
-                  </div>
-                  {symptom.modalitiesQuote && (
-                    <span className="block text-[11px] text-teal-900 italic font-normal mt-1">
-                      &bdquo;{symptom.modalitiesQuote}&ldquo;
-                    </span>
-                  )}
-                </div>
-              ) : null}
-
-              {/* Causa & Auslöser Content within Pillar 3 */}
-              {symptom.causaEvent?.trim() ? (
-                <div className="text-xs text-slate-700 bg-slate-50 p-2.5 rounded-lg border border-slate-200/70 space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-slate-900">{t('symptomCausaEventLabel')}:</span>
-                    <span className="font-medium text-slate-800">{symptom.causaEvent}</span>
-                  </div>
-                  {symptom.causaQuote && (
-                    <div className="text-[11px] text-teal-900 italic">
-                      &bdquo;{symptom.causaQuote}&ldquo;
-                    </div>
-                  )}
-                  {symptom.causaTemporal && (
-                    <div className="flex items-center gap-2 text-[11px] text-slate-600">
-                      <span className="font-medium">{t('symptomCausaTemporalLabel')}:</span>
-                      <span>{symptom.causaTemporal}</span>
-                    </div>
-                  )}
-                  {symptom.causaEffect && (
-                    <div className="text-[11px] font-medium pt-0.5">
-                      <span className="text-slate-600">{t('symptomCausaEffectLabel')}: </span>
-                      <span className={symptom.causaEffect === 'worse' ? 'text-rose-700 font-bold' : symptom.causaEffect === 'better' ? 'text-teal-700 font-bold' : 'text-slate-700'}>
-                        {symptom.causaEffect === 'worse' ? t('repertoriumCausaEffectWorse') : symptom.causaEffect === 'better' ? t('repertoriumCausaEffectBetter') : t('repertoriumCausaEffectUnchanged')}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              ) : null}
-
-              <button
-                type="button"
-                onClick={() => setExpandedPillar(expandedPillar === 'mod' ? null : 'mod')}
-                className="text-[10.5px] font-medium text-slate-500 hover:text-slate-800 flex items-center gap-1 cursor-pointer pt-0.5"
-              >
-                <span>{expandedPillar === 'mod' ? t('geniusClose') : t('symptomCustomInputPlaceholder')}</span>
-                <span className="text-[10px]">{expandedPillar === 'mod' ? '▲' : '▼'}</span>
-              </button>
-
-              {expandedPillar === 'mod' && (
-                <div className="pt-1.5 space-y-2">
-                  <div>
-                    <label className="text-[10.5px] font-bold text-slate-700 block mb-1">{t('symptomModalitiesLabel')}</label>
-                    <input
-                      type="text"
-                      value={symptom.modalities || ''}
-                      onChange={(e) => handleDirectFieldUpdate('modalities', e.target.value)}
-                      placeholder={t('repertoriumPillar3Placeholder')}
-                      className="w-full px-2.5 py-1.5 text-xs bg-white rounded-lg border border-slate-300 text-slate-900 outline-none focus:ring-1 focus:ring-teal-600"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10.5px] font-bold text-slate-700 block mb-1">{t('symptomCausaEventLabel')} ({t('anamnesisStepPillarCAUSA')})</label>
-                    <input
-                      type="text"
-                      value={symptom.causaEvent || ''}
-                      onChange={(e) => handleDirectFieldUpdate('causaEvent', e.target.value)}
-                      placeholder={t('symptomCausaEventPlaceholder')}
-                      className="w-full px-2.5 py-1.5 text-xs bg-white rounded-lg border border-slate-300 text-slate-900 outline-none focus:ring-1 focus:ring-teal-600"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* 4. Säule 4 – WAS NOCH? (Begleitsymptome & Gemüt) */}
-            <div className="p-3.5 rounded-xl border border-slate-200 bg-white space-y-2 shadow-2xs">
-              <div className="flex items-center justify-between flex-wrap gap-1">
-                <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                  {t('anamnesisStepPillarWASNOCH')}
-                </span>
-                <div className="flex items-center gap-1.5">
-                  {symptom.concomitants?.trim() ? (
-                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-teal-50 text-teal-800 border border-teal-200/80">
-                      {t('repertoriumStatusConfirmed')}
-                    </span>
-                  ) : (
-                    <span className="text-[10px] text-slate-400 font-medium italic">
-                      {t('anamnesisPillarEmptyNotice')}
-                    </span>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => handleOpenWizard(6)}
-                    className="text-slate-500 hover:text-teal-700 text-xs font-bold px-1.5 py-0.5 rounded-md hover:bg-teal-50 transition-colors cursor-pointer"
-                    title={t('anamnesisEditInWizard')}
-                  >
-                    <span>{t('edit' as any) || 'Bearbeiten'}</span>
-                  </button>
-                </div>
-              </div>
-
-              {symptom.concomitants?.trim() ? (
-                <div className="text-xs text-slate-800 font-medium bg-slate-50 p-2.5 rounded-lg border border-slate-200/70">
-                  {symptom.concomitants}
-                  {symptom.concomitantsQuote && (
-                    <span className="block text-[11px] text-teal-900 italic font-normal mt-1">
-                      &bdquo;{symptom.concomitantsQuote}&ldquo;
-                    </span>
-                  )}
-                </div>
-              ) : null}
-
-              <button
-                type="button"
-                onClick={() => setExpandedPillar(expandedPillar === 'concom' ? null : 'concom')}
-                className="text-[10.5px] font-medium text-slate-500 hover:text-slate-800 flex items-center gap-1 cursor-pointer pt-0.5"
-              >
-                <span>{expandedPillar === 'concom' ? t('geniusClose') : t('symptomCustomInputPlaceholder')}</span>
-                <span className="text-[10px]">{expandedPillar === 'concom' ? '▲' : '▼'}</span>
-              </button>
-
-              {expandedPillar === 'concom' && (
-                <div className="pt-1.5 space-y-1">
-                  <input
-                    type="text"
-                    value={symptom.concomitants || ''}
-                    onChange={(e) => handleDirectFieldUpdate('concomitants', e.target.value)}
-                    placeholder={t('repertoriumPillar4Placeholder')}
-                    className="w-full px-2.5 py-1.5 text-xs bg-white rounded-lg border border-slate-300 text-slate-900 outline-none focus:ring-1 focus:ring-teal-600"
-                  />
-                </div>
-              )}
-            </div>
-
-          </div>
+          <button
+            type="button"
+            onClick={() => handleOpenWizard(1)}
+            className="text-xs font-medium text-teal-800 hover:text-teal-950 px-2 py-1 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-colors cursor-pointer shrink-0"
+          >
+            <span>{t('edit' as any) || 'Bearbeiten'}</span>
+          </button>
         </div>
+
+        {/* 3. WAS (Empfindung & Qualität) */}
+        <div className="p-3 rounded-xl border border-slate-200 bg-white flex items-center justify-between gap-3">
+          <div className="space-y-0.5 flex-1 min-w-0">
+            <span className="text-xs font-bold text-slate-800 block">
+              {t('anamnesisStepPillarWAS')}
+            </span>
+            <p className="text-xs text-slate-600 truncate">
+              {symptom.sensation?.trim() ? symptom.sensation : <span className="italic text-slate-400">{t('anamnesisPillarEmptyNotice')}</span>}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => handleOpenWizard(2)}
+            className="text-xs font-medium text-teal-800 hover:text-teal-950 px-2 py-1 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-colors cursor-pointer shrink-0"
+          >
+            <span>{t('edit' as any) || 'Bearbeiten'}</span>
+          </button>
+        </div>
+
+        {/* 4. Wodurch (Causa & Auslöser) */}
+        <div className="p-3 rounded-xl border border-slate-200 bg-white flex items-center justify-between gap-3">
+          <div className="space-y-0.5 flex-1 min-w-0">
+            <span className="text-xs font-bold text-slate-800 block">
+              {t('anamnesisStepPillarCausa')}
+            </span>
+            <p className="text-xs text-slate-600 truncate">
+              {symptom.causaEvent?.trim() ? symptom.causaEvent : <span className="italic text-slate-400">{t('anamnesisPillarEmptyNotice')}</span>}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => handleOpenWizard(3)}
+            className="text-xs font-medium text-teal-800 hover:text-teal-950 px-2 py-1 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-colors cursor-pointer shrink-0"
+          >
+            <span>{t('edit' as any) || 'Bearbeiten'}</span>
+          </button>
+        </div>
+
+        {/* 5. Wann: Besserung (> Linderung) */}
+        <div className="p-3 rounded-xl border border-slate-200 bg-white flex items-center justify-between gap-3">
+          <div className="space-y-0.5 flex-1 min-w-0">
+            <span className="text-xs font-bold text-slate-800 block">
+              {t('anamnesisStepBetter') || 'Wann: Besserung (> Linderung)'}
+            </span>
+            <p className="text-xs text-slate-600 truncate">
+              {symptom.modalitiesBetter?.trim() ? symptom.modalitiesBetter : <span className="italic text-slate-400">{t('anamnesisPillarEmptyNotice')}</span>}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => handleOpenWizard(4)}
+            className="text-xs font-medium text-teal-800 hover:text-teal-950 px-2 py-1 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-colors cursor-pointer shrink-0"
+          >
+            <span>{t('edit' as any) || 'Bearbeiten'}</span>
+          </button>
+        </div>
+
+        {/* 6. Wann: Verschlimmerung (< Verschlechterung) */}
+        <div className="p-3 rounded-xl border border-slate-200 bg-white flex items-center justify-between gap-3">
+          <div className="space-y-0.5 flex-1 min-w-0">
+            <span className="text-xs font-bold text-slate-800 block">
+              {t('anamnesisStepWorse') || 'Wann: Verschlimmerung (< Verschlechterung)'}
+            </span>
+            <p className="text-xs text-slate-600 truncate">
+              {symptom.modalitiesWorse?.trim() ? symptom.modalitiesWorse : <span className="italic text-slate-400">{t('anamnesisPillarEmptyNotice')}</span>}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => handleOpenWizard(4)}
+            className="text-xs font-medium text-teal-800 hover:text-teal-950 px-2 py-1 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-colors cursor-pointer shrink-0"
+          >
+            <span>{t('edit' as any) || 'Bearbeiten'}</span>
+          </button>
+        </div>
+
+        {/* 7. Was noch (Begleitsymptome & Gemüt) */}
+        <div className="p-3 rounded-xl border border-slate-200 bg-white flex items-center justify-between gap-3">
+          <div className="space-y-0.5 flex-1 min-w-0">
+            <span className="text-xs font-bold text-slate-800 block">
+              {t('anamnesisStepPillarWASNOCH')}
+            </span>
+            <p className="text-xs text-slate-600 truncate">
+              {symptom.concomitants?.trim() ? symptom.concomitants : <span className="italic text-slate-400">{t('anamnesisPillarEmptyNotice')}</span>}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => handleOpenWizard(6)}
+            className="text-xs font-medium text-teal-800 hover:text-teal-950 px-2 py-1 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-colors cursor-pointer shrink-0"
+          >
+            <span>{t('edit' as any) || 'Bearbeiten'}</span>
+          </button>
+        </div>
+
       </div>
 
       {/* GUIDED ANAMNESIS STEP-BY-STEP MODAL */}

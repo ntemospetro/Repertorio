@@ -1,6 +1,6 @@
 import { getLocalizedRemedies, LocalizedRemedy, getCanonicalRemedyKey } from '../data/materiaMedicaData';
 import { LanguageCode } from '../types';
-import { matchesAuthorFilter, ClassicalAuthorFilterKey } from '../data/classicalAuthorsMap';
+import { matchesAuthorFilter, matchesAuthorFilters, ClassicalAuthorFilterKey } from '../data/classicalAuthorsMap';
 import { getBogerSynopticEntry, BogerSynopticEntry } from '../data/bogerSynopticData';
 import type { AnamnesisDialogueStep } from './adaptiveAnamnesisEngine';
 import { detectDomainFromTokens } from './chiefComplaintAnalysisService';
@@ -2143,7 +2143,7 @@ export function performBoerickeRepertorisation(
   symptoms: RepertoriumSymptomInput[],
   language: LanguageCode,
   strictIntersectionOnly: boolean = false,
-  authorFilter: ClassicalAuthorFilterKey = 'all',
+  authorFilter: ClassicalAuthorFilterKey | ClassicalAuthorFilterKey[] = 'all',
   praxisBonusActive: boolean = true
 ): BoerickeRepertorisationResult[] {
   const allRemedies = getLocalizedRemedies(language);
@@ -2158,9 +2158,10 @@ export function performBoerickeRepertorisation(
 
   const primarySymptom = activeSymptoms[0];
   const results: BoerickeRepertorisationResult[] = [];
+  const authorFilters = Array.isArray(authorFilter) ? authorFilter : [authorFilter];
 
   for (const remedy of allRemedies) {
-    if (authorFilter !== 'all' && !matchesAuthorFilter(remedy.id, authorFilter)) {
+    if (!matchesAuthorFilters(remedy.id, authorFilters)) {
       continue;
     }
 
@@ -2445,10 +2446,11 @@ export function performBoerickeRepertorisation(
 export function performSubtractiveFunnelCascade(
   symptom: RepertoriumSymptomInput,
   language: LanguageCode,
-  authorFilter: ClassicalAuthorFilterKey = 'all'
+  authorFilter: ClassicalAuthorFilterKey | ClassicalAuthorFilterKey[] = 'all'
 ): SubtractiveCascadeReport {
+  const authorFilters = Array.isArray(authorFilter) ? authorFilter : [authorFilter];
   const allRemedies = getLocalizedRemedies(language).filter(r => 
-    authorFilter === 'all' || matchesAuthorFilter(r.id, authorFilter)
+    matchesAuthorFilters(r.id, authorFilters)
   );
 
   const chief = (symptom.chiefComplaint?.trim() || symptom.text?.trim() || '');

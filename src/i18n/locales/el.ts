@@ -2511,7 +2511,7 @@ export const el = {
   repertoriumScore: "Βαθμοί ρεπερτορίου",
   repertoriumBoerickeNotice: "Κλασική Materia Medica & Ρεπερτόριο (Hahnemann, Kent, Hering, Boericke)",
   repertoriumRemoveSymptom: "Αφαίρεση συμπτώματος",
-  repertoriumStepNumber: "Σύμπτωμα",
+  repertoriumStepNumber: "Πρόβλημα",
   repertoriumMatchesCount: "φάρμακα καλύπτουν αυτό το σύμπτωμα",
   repertoriumNarrowingTitle: "Σταδιακός περιορισμός συμπτωμάτων (Καταρράκτης)",
   repertoriumSearchHint: "Πληκτρολογήστε π.χ. 'καυστικός', 'ψυχρός αέρας', 'χωρίς δίψα', 'ανήσυχος'.",
@@ -3239,5 +3239,8 @@ export const el = {
   securityGateRecoverySent: "Εάν αυτή η διεύθυνση email είναι καταχωρημένη στο σύστημα, ο κωδικός ασφαλείας έχει σταλεί. Παρακαλούμε ελέγξτε τα εισερχόμενά σας.",
   securityGateBackToGate: "Επιστροφή στην εισαγωγή",
   adminConfigSecurityPinLabel: "Κωδικός ασφαλείας (PIN πύλης)",
-  adminConfigSecurityPinDesc: "Πρόσθετη πύλη ασφαλείας πριν από τη σύνδεση διαχειριστή (Προεπιλογή: 360)."
+  adminConfigSecurityPinDesc: "Πρόσθετη πύλη ασφαλείας πριν από τη σύνδεση διαχειριστή (Προεπιλογή: 360).",
+  anamnesisStepBetter: "Στήλη 4.1 – ΠΟΤΕ: Βελτίωση (> Ανακούφιση)",
+  anamnesisStepWorse: "Στήλη 4.2 – ΠΟΤΕ: Επιδείνωση (< Χειροτέρευση)",
+  anamnesisStepPillarCausa: "Στήλη 3 – ΑΠΟ ΤΙ? (Causa & Εκκίνησις)"
 };
