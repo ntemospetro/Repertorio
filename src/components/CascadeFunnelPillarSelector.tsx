@@ -452,10 +452,6 @@ export const CascadeFunnelPillarSelector: React.FC<CascadeFunnelPillarSelectorPr
             )}
           </div>
 
-          <p className="text-[11px] text-slate-500">
-            {t('cascadeFunnelLevel2Hint')}
-          </p>
-
           <div className="space-y-2">
             {activeCategory.tier2Options.map((t2) => {
               const isSelected = !!selectedTier2Map[t2.id];
@@ -604,16 +600,6 @@ export const CascadeFunnelPillarSelector: React.FC<CascadeFunnelPillarSelectorPr
               );
             })}
           </div>
-        </div>
-      )}
-
-      {/* Adoption Required Hint */}
-      {selectedCount > 0 && (
-        <div className="p-2.5 bg-emerald-50 border border-emerald-300 rounded-xl flex items-center gap-2 text-xs text-emerald-900">
-          <Check className="w-4 h-4 text-emerald-600 shrink-0" />
-          <span className="font-semibold">
-            {t('cascadeFunnelAdoptRequiredHint')}
-          </span>
         </div>
       )}
     </div>

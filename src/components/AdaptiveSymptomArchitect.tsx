@@ -1,29 +1,4 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
-import { 
-  MapPin, 
-  Flame, 
-  Sliders, 
-  Award, 
-  Clock, 
-  Quote, 
-  Sparkles, 
-  Trash2, 
-  MessageSquare, 
-  RotateCcw, 
-  Layers, 
-  ChevronDown, 
-  ChevronUp,
-  Edit3,
-  Activity,
-  Zap,
-  ArrowRight,
-  AlertCircle,
-  CheckCircle2,
-  Mic,
-  MicOff,
-  HelpCircle,
-  Check
-} from 'lucide-react';
 import { useTranslation } from '../i18n/LanguageContext';
 import { LanguageCode } from '../types';
 import { RepertoriumSymptomInput } from '../services/boerickeRepertoryService';
@@ -246,14 +221,13 @@ export const AdaptiveSymptomArchitect: React.FC<AdaptiveSymptomArchitectProps> =
               className="p-1.5 rounded-lg text-teal-200 hover:text-rose-300 hover:bg-white/10 transition-colors cursor-pointer"
               title={t('repertoriumRemoveSymptom')}
             >
-              <Trash2 className="w-3.5 h-3.5" />
+              <span className="text-xs font-bold font-mono">X</span>
             </button>
           )}
         </div>
 
         <div className="p-4 sm:p-5 space-y-3">
           <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
-            <Activity className="w-3.5 h-3.5 text-teal-600" />
             <span>{t('repertoriumPillarChiefComplaint')}</span>
           </div>
           <form onSubmit={handleStartAnamnesis} className="space-y-3">
@@ -284,8 +258,8 @@ export const AdaptiveSymptomArchitect: React.FC<AdaptiveSymptomArchitectProps> =
                 }`}
                 title={isRecording ? t('chiefComplaintListening') : t('chiefComplaintVoiceBtn')}
               >
-                <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white shadow-inner">
-                  {isRecording ? <MicOff className="w-4 h-4 text-white" /> : <Mic className="w-4 h-4 text-white" />}
+                <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white shadow-inner text-[10px] font-black uppercase">
+                  {isRecording ? 'Stop' : 'Rec'}
                 </div>
                 <span className="text-[11px] font-semibold text-white tracking-wide text-center leading-tight">
                   {isRecording ? t('voiceStopBtn') : t('voiceRecordCardLabel')}
@@ -305,7 +279,6 @@ export const AdaptiveSymptomArchitect: React.FC<AdaptiveSymptomArchitectProps> =
             {initialInput.trim() && chiefAnalysis.hasMultipleComplaints && chiefAnalysis.detectedComplaints.length > 1 && (
               <div className="p-3 rounded-xl bg-teal-50/60 border border-teal-200 space-y-2 text-xs animate-in fade-in duration-150">
                 <div className="flex items-center gap-1.5 text-teal-950 font-bold">
-                  <HelpCircle className="w-3.5 h-3.5 text-teal-700 shrink-0" />
                   <span>{t('chiefComplaintMultipleDetectedTitle')}</span>
                 </div>
                 <p className="text-[11px] text-slate-700 font-medium leading-relaxed">
@@ -325,7 +298,7 @@ export const AdaptiveSymptomArchitect: React.FC<AdaptiveSymptomArchitectProps> =
                             : 'bg-white text-slate-800 border-teal-200 hover:bg-teal-50 hover:border-teal-300'
                         }`}
                       >
-                        {isSelected && <Check className="w-3 h-3 text-white" />}
+                        {isSelected && <span className="text-xs mr-0.5 font-bold">✓</span>}
                         <span>{complaint}</span>
                         {isSelected && (
                           <span className="text-[9px] bg-teal-800 px-1 py-0.5 rounded text-teal-100">
@@ -349,7 +322,6 @@ export const AdaptiveSymptomArchitect: React.FC<AdaptiveSymptomArchitectProps> =
                 </div>
                 {selectedPrimaryComplaint && (
                   <p className="text-[10px] text-teal-900 font-medium pt-0.5 flex items-center gap-1">
-                    <Sparkles className="w-3 h-3 text-teal-600 shrink-0" />
                     <span>{t('chiefComplaintOtherAsConcomitants')}</span>
                   </p>
                 )}
@@ -362,14 +334,12 @@ export const AdaptiveSymptomArchitect: React.FC<AdaptiveSymptomArchitectProps> =
                 {chiefAnalysis.isRecognized && chiefAnalysis.organDomain ? (
                   <div className="p-2.5 rounded-lg bg-emerald-50/80 border border-emerald-200/80 flex items-center justify-between text-xs text-emerald-950 font-medium">
                     <div className="flex items-center gap-1.5">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                       <span>{t('chiefComplaintVerified')}: <strong className="text-emerald-800">{chiefAnalysis.organDomain}</strong></span>
                     </div>
                   </div>
                 ) : (
                   <div className="p-2.5 rounded-lg bg-amber-50/90 border border-amber-200 text-xs text-amber-950">
                     <div className="flex items-center gap-1.5 font-semibold text-amber-900">
-                      <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                       <span>{t('chiefComplaintUnrecognized')}</span>
                     </div>
                     <p className="mt-1 text-[11px] leading-relaxed text-amber-800/90">
@@ -384,7 +354,6 @@ export const AdaptiveSymptomArchitect: React.FC<AdaptiveSymptomArchitectProps> =
                     disabled={!chiefAnalysis.isRecognized}
                     className="w-full relative overflow-hidden py-2.5 px-4 rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 shadow-xs transition-all border border-teal-800 bg-teal-700 hover:bg-teal-800 disabled:bg-slate-200 disabled:border-slate-300 disabled:text-slate-400 disabled:cursor-not-allowed text-white cursor-pointer group"
                   >
-                    <Sparkles className={`w-4 h-4 transition-transform shrink-0 ${chiefAnalysis.isRecognized ? 'text-teal-200 group-hover:scale-110' : 'text-slate-400'}`} />
                     <span>{t('anamnesisStartBtn')}</span>
                   </button>
                 </div>
@@ -431,7 +400,6 @@ export const AdaptiveSymptomArchitect: React.FC<AdaptiveSymptomArchitectProps> =
             className="px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer border border-white/20 shadow-2xs"
             title={t('anamnesisEditInWizard')}
           >
-            <Edit3 className="w-3.5 h-3.5 text-teal-200" />
             <span>{t('anamnesisEditInWizard')}</span>
           </button>
 
@@ -439,10 +407,10 @@ export const AdaptiveSymptomArchitect: React.FC<AdaptiveSymptomArchitectProps> =
             <button
               type="button"
               onClick={handleResetAnamnesis}
-              className="p-1.5 rounded-lg text-teal-200 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+              className="px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-semibold flex items-center transition-colors cursor-pointer border border-white/20 shadow-2xs"
               title={t('anamnesisResetBtn')}
             >
-              <RotateCcw className="w-3.5 h-3.5" />
+              <span className="text-xs font-semibold">{t('repertoriumReset')}</span>
             </button>
           )}
 
@@ -453,7 +421,7 @@ export const AdaptiveSymptomArchitect: React.FC<AdaptiveSymptomArchitectProps> =
               className="p-1.5 rounded-lg text-teal-200 hover:text-rose-300 hover:bg-white/10 transition-colors cursor-pointer"
               title={t('repertoriumRemoveSymptom')}
             >
-              <Trash2 className="w-3.5 h-3.5" />
+              <span className="text-xs font-bold font-mono">X</span>
             </button>
           )}
         </div>
@@ -464,7 +432,6 @@ export const AdaptiveSymptomArchitect: React.FC<AdaptiveSymptomArchitectProps> =
         <div className="space-y-3.5">
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-2">
-              <Layers className="w-4 h-4 text-teal-700" />
               <span className="text-xs font-bold text-slate-800 tracking-wide">
                 {t('anamnesisModelTitle')}
               </span>
@@ -476,7 +443,6 @@ export const AdaptiveSymptomArchitect: React.FC<AdaptiveSymptomArchitectProps> =
 
           {/* Chief complaint banner */}
           <div className="p-3 bg-teal-50/50 border border-teal-200/80 rounded-xl flex items-start gap-2.5">
-            <Quote className="w-4 h-4 text-teal-700 shrink-0 mt-0.5" />
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-[11px] font-bold text-teal-950 uppercase tracking-wider">
@@ -489,10 +455,10 @@ export const AdaptiveSymptomArchitect: React.FC<AdaptiveSymptomArchitectProps> =
                   <button
                     type="button"
                     onClick={() => handleOpenWizard(0)}
-                    className="text-slate-400 hover:text-teal-700 p-1 rounded-md transition-colors cursor-pointer"
+                    className="text-slate-500 hover:text-teal-700 text-xs font-bold px-1.5 py-0.5 rounded-md hover:bg-teal-50 transition-colors cursor-pointer"
                     title={t('anamnesisEditInWizard')}
                   >
-                    <Edit3 className="w-3.5 h-3.5" />
+                    <span>{t('edit' as any) || 'Bearbeiten'}</span>
                   </button>
                 </div>
               </div>
@@ -510,7 +476,6 @@ export const AdaptiveSymptomArchitect: React.FC<AdaptiveSymptomArchitectProps> =
                 <div className="p-3.5 bg-teal-50/50 text-slate-800 rounded-xl border border-teal-200/80 shadow-2xs space-y-2">
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <div className="flex items-center gap-1.5 text-xs font-bold text-teal-900">
-                      <Sparkles className="w-3.5 h-3.5 text-teal-700" />
                       <span>{t('anamnesisNeedsTitle')}</span>
                     </div>
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-100/80 text-teal-900 border border-teal-200">
@@ -538,7 +503,7 @@ export const AdaptiveSymptomArchitect: React.FC<AdaptiveSymptomArchitectProps> =
                         className="px-3 py-1 rounded-lg bg-teal-700 hover:bg-teal-800 text-white font-semibold text-[11px] flex items-center gap-1 cursor-pointer transition-all shadow-xs border border-teal-800"
                       >
                         <span>{t('anamnesisNeedsAdoptQuestionBtn')}</span>
-                        <ArrowRight className="w-3 h-3" />
+                        <span className="ml-1">→</span>
                       </button>
                     </div>
                   )}
@@ -548,7 +513,6 @@ export const AdaptiveSymptomArchitect: React.FC<AdaptiveSymptomArchitectProps> =
             return (
               <div className="p-2.5 bg-teal-50/60 border border-teal-200/80 text-teal-950 rounded-xl flex items-center justify-between gap-2 text-xs font-medium">
                 <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-teal-700 shrink-0" />
                   <span>{t('repertoriumAllPillarsAuditNotice')}</span>
                 </div>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-100 text-teal-900 border border-teal-200">
@@ -565,7 +529,6 @@ export const AdaptiveSymptomArchitect: React.FC<AdaptiveSymptomArchitectProps> =
             <div className="p-3.5 rounded-xl border border-slate-200 bg-white space-y-2 shadow-2xs">
               <div className="flex items-center justify-between flex-wrap gap-1">
                 <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                  <MapPin className="w-3.5 h-3.5 text-teal-700" />
                   {t('anamnesisStepPillarWO')}
                 </span>
                 <div className="flex items-center gap-1.5">
@@ -581,10 +544,10 @@ export const AdaptiveSymptomArchitect: React.FC<AdaptiveSymptomArchitectProps> =
                   <button
                     type="button"
                     onClick={() => handleOpenWizard(1)}
-                    className="text-slate-400 hover:text-teal-700 p-1 rounded-md transition-colors cursor-pointer"
+                    className="text-slate-500 hover:text-teal-700 text-xs font-bold px-1.5 py-0.5 rounded-md hover:bg-teal-50 transition-colors cursor-pointer"
                     title={t('anamnesisEditInWizard')}
                   >
-                    <Edit3 className="w-3.5 h-3.5" />
+                    <span>{t('edit' as any) || 'Bearbeiten'}</span>
                   </button>
                 </div>
               </div>
@@ -606,7 +569,7 @@ export const AdaptiveSymptomArchitect: React.FC<AdaptiveSymptomArchitectProps> =
                 className="text-[10.5px] font-medium text-slate-500 hover:text-slate-800 flex items-center gap-1 cursor-pointer pt-0.5"
               >
                 <span>{expandedPillar === 'loc' ? t('geniusClose') : t('symptomCustomInputPlaceholder')}</span>
-                {expandedPillar === 'loc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                <span className="text-[10px]">{expandedPillar === 'loc' ? '▲' : '▼'}</span>
               </button>
 
               {expandedPillar === 'loc' && (
@@ -626,7 +589,6 @@ export const AdaptiveSymptomArchitect: React.FC<AdaptiveSymptomArchitectProps> =
             <div className="p-3.5 rounded-xl border border-slate-200 bg-white space-y-2 shadow-2xs">
               <div className="flex items-center justify-between flex-wrap gap-1">
                 <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                  <Flame className="w-3.5 h-3.5 text-teal-700" />
                   {t('anamnesisStepPillarWAS')}
                 </span>
                 <div className="flex items-center gap-1.5">
@@ -642,10 +604,10 @@ export const AdaptiveSymptomArchitect: React.FC<AdaptiveSymptomArchitectProps> =
                   <button
                     type="button"
                     onClick={() => handleOpenWizard(2)}
-                    className="text-slate-400 hover:text-teal-700 p-1 rounded-md transition-colors cursor-pointer"
+                    className="text-slate-500 hover:text-teal-700 text-xs font-bold px-1.5 py-0.5 rounded-md hover:bg-teal-50 transition-colors cursor-pointer"
                     title={t('anamnesisEditInWizard')}
                   >
-                    <Edit3 className="w-3.5 h-3.5" />
+                    <span>{t('edit' as any) || 'Bearbeiten'}</span>
                   </button>
                 </div>
               </div>
@@ -667,7 +629,7 @@ export const AdaptiveSymptomArchitect: React.FC<AdaptiveSymptomArchitectProps> =
                 className="text-[10.5px] font-medium text-slate-500 hover:text-slate-800 flex items-center gap-1 cursor-pointer pt-0.5"
               >
                 <span>{expandedPillar === 'sens' ? t('geniusClose') : t('symptomCustomInputPlaceholder')}</span>
-                {expandedPillar === 'sens' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                <span className="text-[10px]">{expandedPillar === 'sens' ? '▲' : '▼'}</span>
               </button>
 
               {expandedPillar === 'sens' && (
@@ -687,7 +649,6 @@ export const AdaptiveSymptomArchitect: React.FC<AdaptiveSymptomArchitectProps> =
             <div className="p-3.5 rounded-xl border border-slate-200 bg-white space-y-2 shadow-2xs">
               <div className="flex items-center justify-between flex-wrap gap-1">
                 <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                  <Sliders className="w-3.5 h-3.5 text-teal-700" />
                   {t('anamnesisStepPillarWANN')}
                 </span>
                 <div className="flex items-center gap-1.5">
@@ -703,10 +664,10 @@ export const AdaptiveSymptomArchitect: React.FC<AdaptiveSymptomArchitectProps> =
                   <button
                     type="button"
                     onClick={() => handleOpenWizard(4)}
-                    className="text-slate-400 hover:text-teal-700 p-1 rounded-md transition-colors cursor-pointer"
+                    className="text-slate-500 hover:text-teal-700 text-xs font-bold px-1.5 py-0.5 rounded-md hover:bg-teal-50 transition-colors cursor-pointer"
                     title={t('anamnesisEditInWizard')}
                   >
-                    <Edit3 className="w-3.5 h-3.5" />
+                    <span>{t('edit' as any) || 'Bearbeiten'}</span>
                   </button>
                 </div>
               </div>
@@ -730,7 +691,6 @@ export const AdaptiveSymptomArchitect: React.FC<AdaptiveSymptomArchitectProps> =
               {symptom.causaEvent?.trim() ? (
                 <div className="text-xs text-slate-700 bg-slate-50 p-2.5 rounded-lg border border-slate-200/70 space-y-1">
                   <div className="flex items-center gap-2">
-                    <Zap className="w-3.5 h-3.5 text-teal-700 shrink-0" />
                     <span className="font-semibold text-slate-900">{t('symptomCausaEventLabel')}:</span>
                     <span className="font-medium text-slate-800">{symptom.causaEvent}</span>
                   </div>
@@ -741,7 +701,6 @@ export const AdaptiveSymptomArchitect: React.FC<AdaptiveSymptomArchitectProps> =
                   )}
                   {symptom.causaTemporal && (
                     <div className="flex items-center gap-2 text-[11px] text-slate-600">
-                      <Clock className="w-3 h-3 text-slate-500" />
                       <span className="font-medium">{t('symptomCausaTemporalLabel')}:</span>
                       <span>{symptom.causaTemporal}</span>
                     </div>
@@ -763,7 +722,7 @@ export const AdaptiveSymptomArchitect: React.FC<AdaptiveSymptomArchitectProps> =
                 className="text-[10.5px] font-medium text-slate-500 hover:text-slate-800 flex items-center gap-1 cursor-pointer pt-0.5"
               >
                 <span>{expandedPillar === 'mod' ? t('geniusClose') : t('symptomCustomInputPlaceholder')}</span>
-                {expandedPillar === 'mod' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                <span className="text-[10px]">{expandedPillar === 'mod' ? '▲' : '▼'}</span>
               </button>
 
               {expandedPillar === 'mod' && (
@@ -796,7 +755,6 @@ export const AdaptiveSymptomArchitect: React.FC<AdaptiveSymptomArchitectProps> =
             <div className="p-3.5 rounded-xl border border-slate-200 bg-white space-y-2 shadow-2xs">
               <div className="flex items-center justify-between flex-wrap gap-1">
                 <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                  <Award className="w-3.5 h-3.5 text-teal-700" />
                   {t('anamnesisStepPillarWASNOCH')}
                 </span>
                 <div className="flex items-center gap-1.5">
@@ -812,10 +770,10 @@ export const AdaptiveSymptomArchitect: React.FC<AdaptiveSymptomArchitectProps> =
                   <button
                     type="button"
                     onClick={() => handleOpenWizard(6)}
-                    className="text-slate-400 hover:text-teal-700 p-1 rounded-md transition-colors cursor-pointer"
+                    className="text-slate-500 hover:text-teal-700 text-xs font-bold px-1.5 py-0.5 rounded-md hover:bg-teal-50 transition-colors cursor-pointer"
                     title={t('anamnesisEditInWizard')}
                   >
-                    <Edit3 className="w-3.5 h-3.5" />
+                    <span>{t('edit' as any) || 'Bearbeiten'}</span>
                   </button>
                 </div>
               </div>
@@ -837,7 +795,7 @@ export const AdaptiveSymptomArchitect: React.FC<AdaptiveSymptomArchitectProps> =
                 className="text-[10.5px] font-medium text-slate-500 hover:text-slate-800 flex items-center gap-1 cursor-pointer pt-0.5"
               >
                 <span>{expandedPillar === 'concom' ? t('geniusClose') : t('symptomCustomInputPlaceholder')}</span>
-                {expandedPillar === 'concom' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                <span className="text-[10px]">{expandedPillar === 'concom' ? '▲' : '▼'}</span>
               </button>
 
               {expandedPillar === 'concom' && (

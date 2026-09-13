@@ -53,6 +53,7 @@ export interface MateriaMedicaEntry {
   isPolychrest?: boolean;
   ist_polychrest?: boolean;
   importanceTier?: number;
+  aliases?: string[];
   translations: Record<LanguageCode, LocalizedRemedyContent>;
 }
 
@@ -63,6 +64,7 @@ export interface LocalizedRemedy extends LocalizedRemedyContent {
   isPolychrest?: boolean;
   ist_polychrest?: boolean;
   importanceTier?: number;
+  aliases?: string[];
 }
 
 /**
@@ -179,7 +181,92 @@ export function isClassicalPolychrest(id: string, latinName?: string): boolean {
   return false;
 }
 
-export const MATERIA_MEDICA_ENTRIES: MateriaMedicaEntry[] = [
+/**
+ * Canonical key for remedy deduplication.
+ * Strips acidum prefixes/suffixes and punctuation so that "Acidum nitricum" and "Nitricum acidum"
+ * map to the exact same canonical key.
+ */
+export function getCanonicalRemedyKey(entryOrName: { id?: string; latinName?: string } | string): string {
+  const str = typeof entryOrName === 'string' 
+    ? entryOrName 
+    : (entryOrName.latinName || entryOrName.id || '');
+  if (!str) return '';
+  let s = str.toLowerCase().trim();
+  s = s.replace(/^(acidum|ac\.)\s+/, '');
+  s = s.replace(/\s+(acidum|ac\.)$/, '');
+  s = s.replace(/[^a-z0-9]/g, '');
+  if (s === 'nitricum') return 'acidum-nitricum';
+  if (s === 'phosphoricum') return 'acidum-phosphoricum';
+  return (typeof entryOrName === 'string' ? entryOrName : (entryOrName.latinName || entryOrName.id || '')).toLowerCase().trim();
+}
+
+/**
+ * Deduplicates and merges Materia Medica entries that share the same canonical remedy key.
+ * Guarantees that remedies like Acidum nitricum and Acidum phosphoricum are synthesized into
+ * a single, comprehensive monograph without duplicate listings in the repertory.
+ */
+export function deduplicateAndMergeMateriaMedica(entries: MateriaMedicaEntry[]): MateriaMedicaEntry[] {
+  const map = new Map<string, MateriaMedicaEntry>();
+
+  for (const entry of entries) {
+    const key = getCanonicalRemedyKey(entry);
+    if (!map.has(key)) {
+      map.set(key, {
+        ...entry,
+        aliases: entry.aliases ? [...entry.aliases] : [entry.id]
+      });
+    } else {
+      const existing = map.get(key)!;
+      // Merge all aliases into the surviving entry
+      const allAliases = Array.from(new Set([
+        ...(existing.aliases || [existing.id]),
+        entry.id,
+        ...(entry.aliases || [])
+      ]));
+      existing.aliases = allAliases;
+
+      // Merge polychrest status and tier
+      if (entry.isPolychrest || entry.ist_polychrest) {
+        existing.isPolychrest = true;
+        existing.ist_polychrest = true;
+      }
+      if (entry.importanceTier && (!existing.importanceTier || entry.importanceTier < existing.importanceTier)) {
+        existing.importanceTier = entry.importanceTier;
+      }
+
+      // Merge translations across all supported languages
+      const langs = Object.keys(entry.translations) as LanguageCode[];
+      for (const lang of langs) {
+        const t1 = existing.translations[lang];
+        const t2 = entry.translations[lang];
+        if (!t1 && t2) {
+          existing.translations[lang] = t2;
+        } else if (t1 && t2) {
+          const mergeArr = (a?: string[], b?: string[]) => Array.from(new Set([...(a || []), ...(b || [])]));
+          existing.translations[lang] = {
+            ...t1,
+            origin: (t2.origin && t2.origin.length > (t1.origin?.length || 0)) ? t2.origin : t1.origin,
+            essence: (t2.essence && t2.essence.length > (t1.essence?.length || 0)) ? t2.essence : t1.essence,
+            mindEmotional: (t2.mindEmotional && t2.mindEmotional.length > (t1.mindEmotional?.length || 0)) ? t2.mindEmotional : t1.mindEmotional,
+            potenciesAndDosage: (t2.potenciesAndDosage && t2.potenciesAndDosage.length > (t1.potenciesAndDosage?.length || 0)) ? t2.potenciesAndDosage : t1.potenciesAndDosage,
+            defaultTagesdosis: t1.defaultTagesdosis || t2.defaultTagesdosis,
+            mainIndications: mergeArr(t1.mainIndications, t2.mainIndications),
+            keynotes: mergeArr(t1.keynotes, t2.keynotes),
+            modalitiesBetter: mergeArr(t1.modalitiesBetter, t2.modalitiesBetter),
+            modalitiesWorse: mergeArr(t1.modalitiesWorse, t2.modalitiesWorse),
+            sphereOfAction: mergeArr(t1.sphereOfAction, t2.sphereOfAction),
+            differentialRemedies: mergeArr(t1.differentialRemedies, t2.differentialRemedies),
+            searchKeywords: mergeArr(t1.searchKeywords, t2.searchKeywords),
+          };
+        }
+      }
+    }
+  }
+
+  return Array.from(map.values()).sort((a, b) => a.latinName.localeCompare(b.latinName));
+}
+
+export const MATERIA_MEDICA_ENTRIES: MateriaMedicaEntry[] = deduplicateAndMergeMateriaMedica([
   ...MATERIA_MEDICA_PART1,
   ...MATERIA_MEDICA_PART2,
   ...MATERIA_MEDICA_PART3,
@@ -206,7 +293,7 @@ export const MATERIA_MEDICA_ENTRIES: MateriaMedicaEntry[] = [
   ...MATERIA_MEDICA_PART24,
   ...MATERIA_MEDICA_PART25,
   ...MATERIA_MEDICA_PART26
-].sort((a, b) => a.latinName.localeCompare(b.latinName));
+]);
 
 export const ALL_REMEDIES_DATABASE = MATERIA_MEDICA_ENTRIES;
 
@@ -220,12 +307,22 @@ export function getLocalizedRemedy(entry: MateriaMedicaEntry, lang: LanguageCode
     isPolychrest: isPoly,
     ist_polychrest: isPoly,
     importanceTier: entry.importanceTier,
+    aliases: entry.aliases || [entry.id],
     ...content
   };
 }
 
 export function getLocalizedRemedies(lang: LanguageCode): LocalizedRemedy[] {
   return MATERIA_MEDICA_ENTRIES.map((entry) => getLocalizedRemedy(entry, lang));
+}
+
+/**
+ * Resolves a remedy from a list by either its primary ID or any of its known aliases.
+ */
+export function findRemedyByAnyId(remedies: LocalizedRemedy[], idOrAlias: string): LocalizedRemedy | undefined {
+  if (!idOrAlias) return undefined;
+  const target = idOrAlias.toLowerCase().trim();
+  return remedies.find(r => r.id === target || (r.aliases && r.aliases.includes(target)));
 }
 
 export const LOCALIZED_PRESETS: Record<LanguageCode, string[]> = {

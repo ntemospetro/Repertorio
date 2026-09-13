@@ -1,4 +1,4 @@
-import { getLocalizedRemedies, LocalizedRemedy } from '../data/materiaMedicaData';
+import { getLocalizedRemedies, LocalizedRemedy, getCanonicalRemedyKey } from '../data/materiaMedicaData';
 import { LanguageCode } from '../types';
 import { matchesAuthorFilter, ClassicalAuthorFilterKey } from '../data/classicalAuthorsMap';
 import { getBogerSynopticEntry, BogerSynopticEntry } from '../data/bogerSynopticData';
@@ -2414,7 +2414,19 @@ export function performBoerickeRepertorisation(
     return a.remedy.latinName.localeCompare(b.remedy.latinName);
   });
 
-  return results;
+  // Deduplicate candidates by canonical remedy key (guarantees zero duplicate remedies in repertory view)
+  const deduplicatedResults: BoerickeRepertorisationResult[] = [];
+  const seenCanonicalKeys = new Set<string>();
+
+  for (const res of results) {
+    const key = getCanonicalRemedyKey(res.remedy);
+    if (!seenCanonicalKeys.has(key)) {
+      seenCanonicalKeys.add(key);
+      deduplicatedResults.push(res);
+    }
+  }
+
+  return deduplicatedResults;
 }
 
 /**

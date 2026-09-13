@@ -4288,20 +4288,34 @@ export const BOGER_SYNOPTIC_KEY_DATA: Record<string, BogerSynopticEntry> = {
   }
 };
 
+const BOGER_REMEDY_ALIASES: Record<string, string> = {
+  'acidum-nitricum': 'nitricum-acidum',
+  'nitricum-acidum': 'nitricum-acidum',
+  'acidum-phosphoricum': 'phosphoricum-acidum',
+  'phosphoricum-acidum': 'phosphoricum-acidum',
+  'nit-ac': 'nitricum-acidum',
+  'phos-ac': 'phosphoricum-acidum'
+};
+
 /**
  * Helper to retrieve Boger Synoptic Key entry by remedy ID
  */
 export function getBogerSynopticEntry(remedyId: string): BogerSynopticEntry | null {
   if (!remedyId) return null;
   const cleanId = remedyId.toLowerCase().trim();
+  const resolvedId = BOGER_REMEDY_ALIASES[cleanId] || cleanId;
   
+  if (BOGER_SYNOPTIC_KEY_DATA[resolvedId]) {
+    return BOGER_SYNOPTIC_KEY_DATA[resolvedId];
+  }
+
   if (BOGER_SYNOPTIC_KEY_DATA[cleanId]) {
     return BOGER_SYNOPTIC_KEY_DATA[cleanId];
   }
 
   // Fallback match by matching substring (e.g. 'arnica' in 'arnica-montana')
   for (const [key, entry] of Object.entries(BOGER_SYNOPTIC_KEY_DATA)) {
-    if (cleanId.includes(key) || key.includes(cleanId)) {
+    if (resolvedId.includes(key) || key.includes(resolvedId) || cleanId.includes(key) || key.includes(cleanId)) {
       return entry;
     }
   }

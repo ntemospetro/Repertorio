@@ -1,34 +1,4 @@
 import React, { useState, useMemo } from 'react';
-import { 
-  X, 
-  ArrowLeft, 
-  ArrowRight, 
-  Check, 
-  Sparkles, 
-  Quote, 
-  MapPin, 
-  Flame, 
-  Sliders, 
-  Award, 
-  Clock, 
-  Zap,
-  ChevronDown, 
-  ChevronUp, 
-  MessageSquare, 
-  HelpCircle, 
-  AlertCircle, 
-  Trash2, 
-  CornerDownRight, 
-  Send,
-  Layers,
-  Save,
-  CheckCircle2,
-  Target,
-  Plus,
-  Heart,
-  Mic,
-  MicOff
-} from 'lucide-react';
 import { useTranslation } from '../i18n/LanguageContext';
 import { LanguageCode } from '../types';
 import { RepertoriumSymptomInput } from '../services/boerickeRepertoryService';
@@ -105,8 +75,8 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
   // Selected structured answer options (multi-select)
   const [selectedOptions, setSelectedOptions] = useState<StructuredOptionItem[]>([]);
 
-  // Notice warning when user attempts to proceed without adopting
-  const [showMustAdoptWarning, setShowMustAdoptWarning] = useState(false);
+  // Notice warning when user attempts to proceed with an empty pillar
+  const [showEmptyPillarWarning, setShowEmptyPillarWarning] = useState(false);
 
   // Deepening questions list
   const [deepenings, setDeepenings] = useState<string[]>([]);
@@ -182,10 +152,6 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
     };
   }, [step0Input, selectedPrimaryComplaint, language, multiAnalysis]);
 
-  // Causa specific controls
-  const [causaTemporalInput, setCausaTemporalInput] = useState(draft.causaTemporal || '');
-  const [causaEffectState, setCausaEffectState] = useState<'worse' | 'better' | 'unchanged' | 'uncertain' | ''>(draft.causaEffect || '');
-
   // Sub-Tab inside Step 4 (WANN / Modalitäten): Besser (>) vs. Schlechter (<)
   const [modalitySubTab, setModalitySubTab] = useState<'better' | 'worse'>('better');
 
@@ -214,8 +180,6 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
       setDraft(symptom);
       const initStep0 = symptom.chiefComplaint || '';
       setStep0Input(initStep0);
-      setCausaTemporalInput(symptom.causaTemporal || '');
-      setCausaEffectState(symptom.causaEffect || '');
       if (symptom.modalities) {
         if (symptom.modalities.includes('>')) {
           setModalitySubTab('better');
@@ -238,7 +202,7 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
       setAdditionalQuestions([]);
       setDeepenings([]);
       setShowCancelConfirm(false);
-      setShowMustAdoptWarning(false);
+      setShowEmptyPillarWarning(false);
     }
   }, [isOpen, symptom, initialStep]);
 
@@ -365,7 +329,7 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
     : (activeQuestionItem ? activeQuestionItem.text : '');
 
   // Structured answer options for this pillar, tab and question
-  const { options: structuredOptions, standardOptions } = getStructuredAnswerOptions(
+  const { options: structuredOptions } = getStructuredAnswerOptions(
     currentPillar,
     activeQuestionText,
     draft.chiefComplaint || '',
@@ -458,7 +422,6 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
     setSelectedOptions([]);
     setPatientQuote('');
     setDeepenings([]);
-    setShowMustAdoptWarning(false);
   };
 
   // Handle adopting an answer in Steps 1 to 6
@@ -523,21 +486,11 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
       }
     }
 
-    if (currentPillar === 'causa') {
-      if (causaTemporalInput.trim()) {
-        updated.causaTemporal = causaTemporalInput.trim();
-      }
-      if (causaEffectState) {
-        updated.causaEffect = causaEffectState;
-      }
-    }
-
     updated.text = buildSynthesizedSymptomText(updated);
     setDraft(updated);
 
     // Mark current step as adopted
     setAdoptedSteps(prev => new Set(prev).add(currentStep));
-    setShowMustAdoptWarning(false);
 
     // Reset temporary quote/question inputs
     setPatientQuote('');
@@ -576,60 +529,6 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
     });
   };
 
-  // Dedicated handler for Causa Effect toggle (Verschlimmert < vs. Gebessert >)
-  const handleToggleCausaEffect = (effect: 'worse' | 'better') => {
-    const nextVal = causaEffectState === effect ? '' : effect;
-    setCausaEffectState(nextVal);
-    setDraft(prev => {
-      const updated: RepertoriumSymptomInput = {
-        ...prev,
-        causaEffect: nextVal
-      };
-      updated.text = buildSynthesizedSymptomText(updated);
-      return updated;
-    });
-  };
-
-  // Deepen the current statement
-  const handleDeepen = () => {
-    const field: keyof RepertoriumSymptomInput = 
-      currentPillar === 'causa' ? 'causaEvent' :
-      currentPillar === 'location' ? 'location' :
-      currentPillar === 'sensation' ? 'sensation' :
-      currentPillar === 'modalities' ? 'modalities' :
-      currentPillar === 'mind' ? 'mind' : 'concomitants';
-    const textToAnalyze = patientQuote.trim() || (draft[field] as string) || '';
-    if (!textToAnalyze) return;
-    const dynamicQuestions = generateFollowUpDeepenings(currentPillar, textToAnalyze, language);
-    setDeepenings(dynamicQuestions);
-  };
-
-  // Skip current question (clean audit trail: not answered / not collected, NOT DENIED)
-  const handleSkipQuestion = () => {
-    const questionUsed = activeQuestionText || t('anamnesisDepthInvestigationTitle');
-    const stepId = `step-skip-${Date.now()}`;
-
-    const newStepEntry: AnamnesisDialogueStep = {
-      id: stepId,
-      question: questionUsed,
-      answer: t('anamnesisSkippedNotice'),
-      pillar: currentPillar,
-      timestamp: Date.now(),
-      depthLevel: 1,
-      status: 'NOT_STATED'
-    };
-
-    const updated = {
-      ...draft,
-      anamnesisDialogueSteps: [...(draft.anamnesisDialogueSteps || []), newStepEntry]
-    };
-    setDraft(updated);
-    setSelectedOptions([]);
-    setPatientQuote('');
-    setDeepenings([]);
-    setShowMustAdoptWarning(false);
-  };
-
   // Check if a structured or standard option is currently selected/active
   const isOptionActive = (opt: StructuredOptionItem) => {
     const pillarSteps = (draft.anamnesisDialogueSteps || []).filter(s => s.pillar === currentPillar);
@@ -650,7 +549,6 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
 
   // Toggle option: if active -> deselect and remove from pillar and statements; if inactive -> select and insert
   const handleToggleOption = (opt: StructuredOptionItem) => {
-    setShowMustAdoptWarning(false);
     const field: keyof RepertoriumSymptomInput = 
       currentPillar === 'causa' ? 'causaEvent' :
       currentPillar === 'location' ? 'location' :
@@ -756,7 +654,6 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
 
   // Handler for 3-Level Cascade Funnel multi-select changes
   const handleCascadeSelectionChange = (selectedItems: SelectedCascadeItem[], combinedSynthesizedText: string) => {
-    setShowMustAdoptWarning(false);
     const field: keyof RepertoriumSymptomInput = 
       currentPillar === 'causa' ? 'causaEvent' :
       currentPillar === 'location' ? 'location' :
@@ -936,6 +833,72 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
     { idx: 8, stepNumber: '7', label: t('anamnesisStepReviewAndDeepen'), short: t('anamnesisStepReviewAndConclusion'), hasData: !!(draft.location && draft.sensation && draft.modalities && draft.concomitants) },
   ];
 
+  // Check if current pillar currently has any recorded data
+  const checkCurrentPillarHasData = (): boolean => {
+    // If the user has entered text in the quote field, it will be automatically adopted -> has data
+    if (patientQuote.trim().length > 0) return true;
+
+    // Check dialogue steps recorded for this pillar
+    const stepsForPillar = (draft.anamnesisDialogueSteps || []).filter(s => {
+      if (s.pillar !== currentPillar) return false;
+      if (currentPillar === 'modalities') {
+        if (currentStep === 4) {
+          return s.direction === 'better' || s.answer.startsWith('>');
+        }
+        if (currentStep === 5) {
+          return s.direction === 'worse' || s.answer.startsWith('<');
+        }
+      }
+      return true;
+    });
+
+    if (stepsForPillar.length > 0) return true;
+
+    // Check consolidated field on draft
+    if (currentStep === 1) return !!(draft.location && draft.location.trim());
+    if (currentStep === 2) return !!(draft.sensation && draft.sensation.trim());
+    if (currentStep === 3) return !!(draft.causaEvent && draft.causaEvent.trim());
+    if (currentStep === 4) return !!(draft.modalities && draft.modalities.includes('>'));
+    if (currentStep === 5) return !!(draft.modalities && draft.modalities.includes('<'));
+    if (currentStep === 6) return !!(draft.concomitants && draft.concomitants.trim());
+    if (currentStep === 7) return !!(draft.mind && draft.mind.trim());
+
+    return false;
+  };
+
+  // Perform step advance and cleanup temporary fields
+  const advanceToNextStep = () => {
+    if (canAdopt) {
+      handleAdoptAnswer();
+    }
+    setCurrentStep(currentStep + 1);
+    setSelectedQuestionId('');
+    setSelectedOptions([]);
+    setPatientQuote('');
+    setCustomQuestion('');
+    setAdditionalQuestions([]);
+    setDeepenings([]);
+  };
+
+  // Handler for footer "Weiter zur nächsten Frage" or "Tiefenbefragung & Abschluss"
+  const handleProceedNext = () => {
+    if (currentStep === 0) {
+      handleStep0Next();
+      return;
+    }
+
+    // For steps 1 to 7, check if data has been entered
+    if (currentStep >= 1 && currentStep <= 7) {
+      const hasData = checkCurrentPillarHasData();
+      if (!hasData) {
+        setShowEmptyPillarWarning(true);
+        return;
+      }
+    }
+
+    advanceToNextStep();
+  };
+
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 md:p-6 animate-in fade-in duration-200">
       <div className="bg-white w-full max-w-5xl h-[92vh] max-h-[880px] rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-slate-200">
@@ -944,7 +907,7 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
         <div className="bg-gradient-to-r from-teal-900 via-teal-800 to-emerald-900 text-white px-4 sm:px-6 py-3.5 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-xl bg-teal-600/70 border border-teal-400/40 flex items-center justify-center font-bold text-sm shadow-inner">
-              <Sparkles className="w-4 h-4 text-teal-200" />
+              <span className="text-teal-200">✨</span>
             </div>
             <div>
               <h2 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
@@ -962,7 +925,7 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
               onClick={handleCancelClick}
               className="px-3 py-1.5 text-xs text-teal-100 hover:text-white hover:bg-white/10 rounded-xl transition-all flex items-center gap-1.5 border border-teal-400/30 cursor-pointer"
             >
-              <X className="w-3.5 h-3.5 text-rose-300" />
+              <span className="text-rose-300 font-bold">X</span>
               <span>{t('anamnesisNavCancel')}</span>
             </button>
           </div>
@@ -988,7 +951,6 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
                     if (canAdopt && currentStep > 0) {
                       handleAdoptAnswer();
                     }
-                    setShowMustAdoptWarning(false);
                     setCurrentStep(step.idx);
                     setSelectedQuestionId('');
                     setSelectedOptions([]);
@@ -1016,7 +978,7 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
                       ? 'bg-teal-100 text-teal-800'
                       : 'bg-slate-300 text-slate-700'
                   }`}>
-                    {step.hasData ? <Check className="w-2.5 h-2.5" /> : step.stepNumber}
+                    {step.hasData ? <span className="text-xs font-bold font-mono">✓</span> : step.stepNumber}
                   </span>
                   <span>{step.label}</span>
                 </button>
@@ -1025,23 +987,6 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
           </div>
         </div>
 
-        {/* MUST ADOPT WARNING BANNER */}
-        {showMustAdoptWarning && (
-          <div className="bg-amber-50 border-b border-amber-300 px-4 sm:px-6 py-2 flex items-center justify-between gap-2 text-amber-900 text-xs font-semibold animate-in fade-in duration-150 shrink-0">
-            <div className="flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-              <span>{t('anamnesisMustAdoptAnswerNotice')}</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setShowMustAdoptWarning(false)}
-              className="text-amber-700 hover:text-amber-900 cursor-pointer p-0.5"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        )}
-
         {/* MODAL BODY (PAGE-BY-PAGE VIEW) */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
           
@@ -1049,9 +994,6 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
           {currentStep === 0 && (
             <div className="max-w-2xl mx-auto py-6 space-y-6 animate-in fade-in duration-150">
               <div className="text-center space-y-2">
-                <div className="w-14 h-14 rounded-2xl bg-teal-50 border border-teal-200 text-teal-700 flex items-center justify-center mx-auto shadow-xs">
-                  <MessageSquare className="w-7 h-7" />
-                </div>
                 <h3 className="text-xl font-bold text-slate-900">
                   &bdquo;{t('anamnesisOpeningQuestion')}&ldquo;
                 </h3>
@@ -1075,7 +1017,7 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
                     }`}
                     title={isStep0Recording ? t('chiefComplaintListening') : t('chiefComplaintVoiceBtn')}
                   >
-                    {isStep0Recording ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+                    <span className="text-[10px] font-black uppercase mr-1">{isStep0Recording ? 'Stop' : 'Rec'}</span>
                     <span>{isStep0Recording ? t('chiefComplaintListening') : t('chiefComplaintVoiceBtn')}</span>
                   </button>
                 </div>
@@ -1103,7 +1045,6 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
                 {step0Input.trim() && step0Analysis.hasMultipleComplaints && step0Analysis.detectedComplaints.length > 1 && (
                   <div className="p-3.5 rounded-xl bg-amber-50/90 border-2 border-amber-300 space-y-2.5 shadow-xs animate-in fade-in duration-150">
                     <div className="flex items-center gap-2 text-amber-900 font-bold text-xs">
-                      <HelpCircle className="w-4 h-4 text-amber-600 shrink-0" />
                       <span>{t('chiefComplaintMultipleDetectedTitle')}</span>
                     </div>
                     <p className="text-xs text-amber-950 leading-relaxed font-medium">
@@ -1125,7 +1066,7 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
                                 : 'bg-white text-slate-800 border-amber-200 hover:bg-amber-100/70 hover:border-amber-400'
                             }`}
                           >
-                            {isSelected && <Check className="w-3.5 h-3.5 text-white" />}
+                            {isSelected && <span className="text-xs font-bold mr-1 text-white">✓</span>}
                             <span>{complaint}</span>
                             {isSelected && (
                               <span className="text-[10px] bg-amber-700/70 px-1.5 py-0.5 rounded text-amber-100">
@@ -1151,7 +1092,6 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
 
                     {selectedPrimaryComplaint && (
                       <p className="text-[11px] text-amber-900 font-medium pt-0.5 flex items-center gap-1.5">
-                        <Sparkles className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                         <span>{t('chiefComplaintOtherAsConcomitants')}</span>
                       </p>
                     )}
@@ -1163,14 +1103,12 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
                   step0Analysis.isRecognized && step0Analysis.organDomain ? (
                     <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-between text-xs text-emerald-950 font-medium">
                       <div className="flex items-center gap-2">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                         <span>{t('chiefComplaintVerified')}: <strong className="text-emerald-800 font-bold">{step0Analysis.organDomain}</strong></span>
                       </div>
                     </div>
                   ) : (
                     <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-950 space-y-1">
                       <div className="flex items-center gap-2 font-semibold text-amber-900">
-                        <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
                         <span>{t('chiefComplaintUnrecognized')}</span>
                       </div>
                       <p className="text-[11px] leading-relaxed text-amber-800/90 pl-6">
@@ -1182,7 +1120,6 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
               </div>
 
               <div className="p-3.5 bg-teal-50/60 rounded-xl border border-teal-200 text-xs text-teal-900 flex items-start gap-2.5">
-                <Sparkles className="w-4 h-4 text-teal-700 shrink-0 mt-0.5" />
                 <p className="leading-relaxed">
                   {t('repertoriumClearAuditNotice')}
                 </p>
@@ -1196,7 +1133,7 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
                   className="py-2.5 px-5 rounded-xl bg-teal-700 hover:bg-teal-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-sm flex items-center gap-2 shadow-xs transition-all cursor-pointer"
                 >
                   <span>{t('anamnesisNavNext')}</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <span className="ml-1">→</span>
                 </button>
               </div>
             </div>
@@ -1209,7 +1146,7 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
               {/* PILLAR CARD HEADER */}
               <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-slate-200">
                 <div className="flex items-center gap-2.5">
-                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-white ${
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-white font-bold text-xs ${
                     currentPillar === 'location' ? 'bg-sky-600' :
                     currentPillar === 'sensation' ? 'bg-amber-600' :
                     currentPillar === 'causa' ? 'bg-indigo-600' :
@@ -1217,13 +1154,7 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
                     currentStep === 5 ? 'bg-rose-600' :
                     currentPillar === 'concomitants' ? 'bg-purple-600' : 'bg-pink-600'
                   }`}>
-                    {currentPillar === 'location' && <MapPin className="w-4 h-4" />}
-                    {currentPillar === 'sensation' && <Flame className="w-4 h-4" />}
-                    {currentPillar === 'causa' && <Zap className="w-4 h-4" />}
-                    {currentStep === 4 && <Sliders className="w-4 h-4" />}
-                    {currentStep === 5 && <Sliders className="w-4 h-4" />}
-                    {currentPillar === 'concomitants' && <Award className="w-4 h-4" />}
-                    {currentPillar === 'mind' && <Heart className="w-4 h-4" />}
+                    <span>{currentStep}</span>
                   </div>
                   <div>
                     <h3 className="text-sm sm:text-base font-bold text-slate-900">
@@ -1322,80 +1253,10 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
                   />
                 </div>
 
-                    {/* STANDARD OPTIONS (Weiß nicht, Nicht beobachtet, etc.) */}
-                    <div className="pt-1 flex flex-wrap gap-1.5">
-                      {standardOptions.map((std) => {
-                        const isSelected = isOptionActive(std);
-                        return (
-                          <button
-                            key={std.id}
-                            type="button"
-                            onClick={() => handleToggleOption(std)}
-                            className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border transition-all cursor-pointer flex items-center gap-1 ${
-                              isSelected
-                                ? 'bg-slate-800 text-white border-slate-900 shadow-xs ring-1 ring-slate-700'
-                                : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-100'
-                            }`}
-                          >
-                            {isSelected && <Check className="w-3 h-3 text-slate-200" />}
-                            <span>{std.label}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    {/* CAUSA TEMPORAL & EFFECT FIELDS (If Causa step) */}
-                    {currentPillar === 'causa' && (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-200">
-                        <div className="space-y-1">
-                          <label className="text-[11px] font-bold text-slate-700 block">
-                            {t('symptomCausaTemporalLabel')}
-                          </label>
-                          <input
-                            type="text"
-                            value={causaTemporalInput}
-                            onChange={(e) => setCausaTemporalInput(e.target.value)}
-                            placeholder={t('symptomCausaTemporalPlaceholder')}
-                            className="w-full px-3 py-1.5 text-xs bg-white rounded-lg border border-slate-300 text-slate-900 outline-none"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-[11px] font-bold text-slate-700 block">
-                            {t('symptomCausaEffectLabel')}
-                          </label>
-                          <div className="flex items-center gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => handleToggleCausaEffect('worse')}
-                              className={`text-xs px-2.5 py-1 rounded-lg border font-bold cursor-pointer transition-all ${
-                                causaEffectState === 'worse'
-                                  ? 'bg-rose-100 text-rose-800 border-rose-400 ring-2 ring-rose-300'
-                                  : 'bg-white text-slate-600 border-slate-200 hover:bg-rose-50'
-                              }`}
-                            >
-                              &lt; {t('repertoriumCausaEffectWorse')}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleToggleCausaEffect('better')}
-                              className={`text-xs px-2.5 py-1 rounded-lg border font-bold cursor-pointer transition-all ${
-                                causaEffectState === 'better'
-                                  ? 'bg-emerald-100 text-emerald-800 border-emerald-400 ring-2 ring-emerald-300'
-                                  : 'bg-white text-slate-600 border-slate-200 hover:bg-emerald-50'
-                              }`}
-                            >
-                              &gt; {t('repertoriumCausaEffectBetter')}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
                     {/* SECTION 2: Originalaussage des Patienten (Freitext) */}
                     <div className="space-y-1.5 pt-2 border-t border-slate-200">
                       <div className="flex items-center justify-between">
                         <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                          <Quote className="w-3.5 h-3.5 text-amber-600" />
                           <span>{t('anamnesisOriginalQuoteTitle')}</span>
                         </label>
                         <span className="text-[10px] text-amber-900 font-medium italic">
@@ -1416,7 +1277,6 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
                       <div className="p-3 rounded-xl bg-white border border-teal-200 shadow-2xs space-y-2">
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-bold text-teal-950 flex items-center gap-1.5">
-                            <Sparkles className="w-3.5 h-3.5 text-teal-600" />
                             <span>{t('anamnesisAiAnalysisTitle')}</span>
                           </span>
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
@@ -1447,51 +1307,19 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
                                 <span>{currentStep === 4 || modalitySubTab === 'better' ? t('anamnesisDirectionBetter') : t('anamnesisDirectionWorse')}</span>
                               </span>
                             ) : (
-                              <div className="flex items-center gap-1">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    if (currentPillar === 'causa') {
-                                      handleToggleCausaEffect('worse');
-                                    }
-                                  }}
-                                  className={`px-1.5 py-0.5 rounded text-[10.5px] font-bold border transition-all cursor-pointer ${
-                                    (causaEffectState === 'worse' || aiAnalysis.direction === 'worse')
-                                      ? 'bg-rose-100 text-rose-800 border-rose-400 ring-1 ring-rose-300'
-                                      : 'bg-white text-slate-600 border-slate-200 hover:bg-rose-50'
-                                  }`}
-                                >
-                                  &lt;
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    if (currentPillar === 'causa') {
-                                      handleToggleCausaEffect('better');
-                                    }
-                                  }}
-                                  className={`px-1.5 py-0.5 rounded text-[10.5px] font-bold border transition-all cursor-pointer ${
-                                    (causaEffectState === 'better' || aiAnalysis.direction === 'better')
-                                      ? 'bg-emerald-100 text-emerald-800 border-emerald-400 ring-1 ring-emerald-300'
-                                      : 'bg-white text-slate-600 border-slate-200 hover:bg-emerald-50'
-                                  }`}
-                                >
-                                  &gt;
-                                </button>
-                                <span className={`font-semibold ml-0.5 ${
-                                  (causaEffectState === 'worse' || aiAnalysis.direction === 'worse')
-                                    ? 'text-rose-700'
-                                    : (causaEffectState === 'better' || aiAnalysis.direction === 'better')
-                                    ? 'text-emerald-700'
-                                    : 'text-slate-700'
-                                }`}>
-                                  {(causaEffectState === 'worse' || aiAnalysis.direction === 'worse')
-                                    ? t('anamnesisDirectionWorse')
-                                    : (causaEffectState === 'better' || aiAnalysis.direction === 'better')
-                                    ? t('anamnesisDirectionBetter')
-                                    : t('anamnesisDirectionNeutral')}
-                                </span>
-                              </div>
+                              <span className={`font-semibold ${
+                                aiAnalysis.direction === 'worse'
+                                  ? 'text-rose-700'
+                                  : aiAnalysis.direction === 'better'
+                                  ? 'text-emerald-700'
+                                  : 'text-slate-700'
+                              }`}>
+                                {aiAnalysis.direction === 'worse'
+                                  ? `< ${t('anamnesisDirectionWorse')}`
+                                  : aiAnalysis.direction === 'better'
+                                  ? `> ${t('anamnesisDirectionBetter')}`
+                                  : t('anamnesisDirectionNeutral')}
+                              </span>
                             )}
                           </div>
                           <div>
@@ -1528,55 +1356,13 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
                               }}
                               className="w-full text-left p-2 rounded-lg bg-white border border-teal-200 text-xs text-slate-800 hover:bg-teal-100/50 flex items-center gap-2 transition-colors cursor-pointer"
                             >
-                              <CornerDownRight className="w-3 h-3 text-teal-600 shrink-0" />
+                              <span className="text-teal-600 text-[10px] font-bold">└─&gt;</span>
                               <span>&bdquo;{deepQ}&ldquo;</span>
                             </button>
                           ))}
                         </div>
                       </div>
                     )}
-
-                    {/* SECTION 5: AKTIONEN IM OVERLAY */}
-                    <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200">
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={handleDeepen}
-                          disabled={!canAdopt}
-                          className="px-3 py-1.5 rounded-xl border border-teal-300 text-teal-800 hover:bg-teal-100/60 disabled:opacity-40 text-xs font-semibold flex items-center gap-1.5 cursor-pointer disabled:cursor-not-allowed"
-                        >
-                          <Sparkles className="w-3.5 h-3.5 text-teal-600" />
-                          <span>{t('anamnesisActionDeepen')}</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={handleSkipQuestion}
-                          className="px-3 py-1.5 rounded-xl border border-slate-300 text-slate-600 hover:bg-slate-100 text-xs font-medium cursor-pointer"
-                        >
-                          <span>{t('anamnesisActionSkip')}</span>
-                        </button>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={handleAdoptAnswer}
-                        disabled={!canAdopt}
-                        className={`py-2 px-4 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer ${
-                          isCurrentStepAdopted
-                            ? 'bg-emerald-700 hover:bg-emerald-800 text-white'
-                            : 'bg-teal-700 hover:bg-teal-800 text-white disabled:opacity-40 disabled:cursor-not-allowed'
-                        }`}
-                      >
-                        {isCurrentStepAdopted ? <Check className="w-3.5 h-3.5" /> : <Save className="w-3.5 h-3.5" />}
-                        <span>{t('anamnesisActionAdoptAnswer')}</span>
-                        {isCurrentStepAdopted && (
-                          <span className="ml-1 text-[10px] bg-emerald-800/90 px-1.5 py-0.5 rounded font-medium">
-                            ✓ {t('anamnesisAdoptedSuccess')}
-                          </span>
-                        )}
-                      </button>
-                    </div>
                   </div>
 
               {/* BEREITS ERFASSTE DIALOGSCHRITTE DIESER SÄULE */}
@@ -1611,17 +1397,16 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
                           <div className="flex-1 min-w-0">
                             <span className="text-slate-500 font-medium block text-[11px]">&bdquo;{st.question}&ldquo;</span>
                             <span className="font-semibold text-slate-900 block mt-0.5">
-                              <Quote className="w-3 h-3 text-amber-600 inline mr-1" />
                               &bdquo;{st.answer}&ldquo;
                             </span>
                           </div>
                           <button
                             type="button"
                             onClick={() => handleRemoveDialogueStep(st.id)}
-                            className="text-slate-400 hover:text-rose-600 p-1 rounded-md transition-colors cursor-pointer"
+                            className="text-slate-500 hover:text-rose-600 text-xs font-bold px-2 py-1 rounded hover:bg-rose-50 transition-colors cursor-pointer"
                             title={t('anamnesisDeleteStep')}
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>X</span>
                           </button>
                         </div>
                       ))}
@@ -1637,10 +1422,10 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
           {currentStep === 8 && (
             <div className="space-y-6 animate-in fade-in duration-200">
               {/* Header banner */}
-              <div className="p-4 rounded-2xl bg-gradient-to-r from-teal-800 to-emerald-850 text-white shadow-xs">
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-teal-800 to-emerald-855 text-white shadow-xs">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center font-bold text-teal-200">
-                    <Sparkles className="w-5 h-5 text-teal-200" />
+                  <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center font-bold text-teal-200 text-lg">
+                    <span>✨</span>
                   </div>
                   <div>
                     <h3 className="text-base font-bold text-white">
@@ -1656,7 +1441,6 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
               {/* Overview cards of Chief Complaint + 6 Pillars */}
               <div className="space-y-2.5">
                 <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                  <Layers className="w-3.5 h-3.5 text-teal-700" />
                   <span>{t('anamnesisModelTitle')}</span>
                 </h4>
 
@@ -1664,7 +1448,6 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
                 <div className="p-3 rounded-xl border border-slate-200 bg-slate-50/70 text-xs space-y-1">
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-slate-900 flex items-center gap-1">
-                      <Target className="w-3.5 h-3.5 text-teal-700" />
                       {t('anamnesisStepChief')} ({t('anamnesisChiefComplaintDescription')})
                     </span>
                     <button
@@ -1682,16 +1465,15 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {/* Säule 1 - WO */}
-                  <div className="p-3 rounded-xl border border-sky-200 bg-sky-50/40 text-xs space-y-1">
+                  <div className="p-3 rounded-xl border border-slate-200 bg-white text-xs space-y-1">
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-sky-950 flex items-center gap-1">
-                        <MapPin className="w-3.5 h-3.5 text-sky-600" />
+                      <span className="font-bold text-slate-800 flex items-center gap-1">
                         {t('anamnesisStepPillar1Short')}
                       </span>
                       <button
                         type="button"
                         onClick={() => setCurrentStep(1)}
-                        className="text-[10.5px] font-semibold text-sky-700 hover:text-sky-900 cursor-pointer"
+                        className="text-[10.5px] font-semibold text-slate-500 hover:text-slate-900 cursor-pointer"
                       >
                         {t('anamnesisEditInWizard')}
                       </button>
@@ -1700,21 +1482,20 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
                       {draft.location || <span className="italic text-slate-400 font-normal">{t('anamnesisPillarEmptyNotice')}</span>}
                     </p>
                     {draft.locationQuote && (
-                      <p className="text-[11px] text-amber-800 italic">&bdquo;{draft.locationQuote}&ldquo;</p>
+                      <p className="text-[11px] text-slate-500 italic">&bdquo;{draft.locationQuote}&ldquo;</p>
                     )}
                   </div>
 
                   {/* Säule 2 - WAS */}
-                  <div className="p-3 rounded-xl border border-amber-200 bg-amber-50/40 text-xs space-y-1">
+                  <div className="p-3 rounded-xl border border-slate-200 bg-white text-xs space-y-1">
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-amber-950 flex items-center gap-1">
-                        <Flame className="w-3.5 h-3.5 text-amber-600" />
+                      <span className="font-bold text-slate-800 flex items-center gap-1">
                         {t('anamnesisStepPillar2Short')}
                       </span>
                       <button
                         type="button"
                         onClick={() => setCurrentStep(2)}
-                        className="text-[10.5px] font-semibold text-amber-700 hover:text-amber-900 cursor-pointer"
+                        className="text-[10.5px] font-semibold text-slate-500 hover:text-slate-900 cursor-pointer"
                       >
                         {t('anamnesisEditInWizard')}
                       </button>
@@ -1723,21 +1504,20 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
                       {draft.sensation || <span className="italic text-slate-400 font-normal">{t('anamnesisPillarEmptyNotice')}</span>}
                     </p>
                     {draft.sensationQuote && (
-                      <p className="text-[11px] text-amber-800 italic">&bdquo;{draft.sensationQuote}&ldquo;</p>
+                      <p className="text-[11px] text-slate-500 italic">&bdquo;{draft.sensationQuote}&ldquo;</p>
                     )}
                   </div>
 
                   {/* Säule 3 - WODURCH (Causa & Auslöser) */}
-                  <div className="p-3 rounded-xl border border-indigo-200 bg-indigo-50/40 text-xs space-y-1">
+                  <div className="p-3 rounded-xl border border-slate-200 bg-white text-xs space-y-1">
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-indigo-950 flex items-center gap-1">
-                        <Zap className="w-3.5 h-3.5 text-indigo-600" />
+                      <span className="font-bold text-slate-800 flex items-center gap-1">
                         {t('anamnesisCausaTriggerTitle')}
                       </span>
                       <button
                         type="button"
                         onClick={() => setCurrentStep(3)}
-                        className="text-[10.5px] font-semibold text-indigo-700 hover:text-indigo-900 cursor-pointer"
+                        className="text-[10.5px] font-semibold text-slate-500 hover:text-slate-900 cursor-pointer"
                       >
                         {t('anamnesisEditInWizard')}
                       </button>
@@ -1749,21 +1529,20 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
                       <p className="text-[11px] text-slate-600 font-medium">{t('symptomCausaTemporalLabel')}: {draft.causaTemporal}</p>
                     )}
                     {draft.causaQuote && (
-                      <p className="text-[11px] text-amber-800 italic">&bdquo;{draft.causaQuote}&ldquo;</p>
+                      <p className="text-[11px] text-slate-500 italic">&bdquo;{draft.causaQuote}&ldquo;</p>
                     )}
                   </div>
 
                   {/* Säule 4.1 - WANN: Besserung (>) */}
-                  <div className="p-3 rounded-xl border border-emerald-200 bg-emerald-50/40 text-xs space-y-1">
+                  <div className="p-3 rounded-xl border border-slate-200 bg-white text-xs space-y-1">
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-emerald-950 flex items-center gap-1">
-                        <Sliders className="w-3.5 h-3.5 text-emerald-600" />
+                      <span className="font-bold text-slate-800 flex items-center gap-1">
                         {t('anamnesisModalitiesBetterTitle')}
                       </span>
                       <button
                         type="button"
                         onClick={() => setCurrentStep(4)}
-                        className="text-[10.5px] font-semibold text-emerald-700 hover:text-emerald-900 cursor-pointer"
+                        className="text-[10.5px] font-semibold text-slate-500 hover:text-slate-900 cursor-pointer"
                       >
                         {t('anamnesisEditInWizard')}
                       </button>
@@ -1772,21 +1551,20 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
                       {(draft.modalities && draft.modalities.includes('>')) ? draft.modalities : <span className="italic text-slate-400 font-normal">{t('anamnesisPillarEmptyNotice')}</span>}
                     </p>
                     {draft.modalitiesQuote && (
-                      <p className="text-[11px] text-amber-800 italic">&bdquo;{draft.modalitiesQuote}&ldquo;</p>
+                      <p className="text-[11px] text-slate-500 italic">&bdquo;{draft.modalitiesQuote}&ldquo;</p>
                     )}
                   </div>
 
                   {/* Säule 4.2 - WANN: Verschlimmerung (<) */}
-                  <div className="p-3 rounded-xl border border-teal-200 bg-teal-50/40 text-xs space-y-1">
+                  <div className="p-3 rounded-xl border border-slate-200 bg-white text-xs space-y-1">
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-teal-950 flex items-center gap-1">
-                        <Sliders className="w-3.5 h-3.5 text-teal-700" />
+                      <span className="font-bold text-slate-800 flex items-center gap-1">
                         {t('anamnesisModalitiesWorseTitle')}
                       </span>
                       <button
                         type="button"
                         onClick={() => setCurrentStep(5)}
-                        className="text-[10.5px] font-semibold text-teal-700 hover:text-teal-900 cursor-pointer"
+                        className="text-[10.5px] font-semibold text-slate-500 hover:text-slate-900 cursor-pointer"
                       >
                         {t('anamnesisEditInWizard')}
                       </button>
@@ -1797,16 +1575,15 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
                   </div>
 
                   {/* Säule 5 - WAS NOCH (Körperliche Begleitsymptome) */}
-                  <div className="p-3 rounded-xl border border-purple-200 bg-purple-50/40 text-xs space-y-1">
+                  <div className="p-3 rounded-xl border border-slate-200 bg-white text-xs space-y-1">
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-purple-950 flex items-center gap-1">
-                        <Award className="w-3.5 h-3.5 text-purple-600" />
+                      <span className="font-bold text-slate-800 flex items-center gap-1">
                         {t('anamnesisConcomitantsTitle')}
                       </span>
                       <button
                         type="button"
                         onClick={() => setCurrentStep(6)}
-                        className="text-[10.5px] font-semibold text-purple-700 hover:text-purple-900 cursor-pointer"
+                        className="text-[10.5px] font-semibold text-slate-500 hover:text-slate-900 cursor-pointer"
                       >
                         {t('anamnesisEditInWizard')}
                       </button>
@@ -1815,21 +1592,20 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
                       {draft.concomitants || <span className="italic text-slate-400 font-normal">{t('anamnesisPillarEmptyNotice')}</span>}
                     </p>
                     {draft.concomitantsQuote && (
-                      <p className="text-[11px] text-amber-800 italic">&bdquo;{draft.concomitantsQuote}&ldquo;</p>
+                      <p className="text-[11px] text-slate-500 italic">&bdquo;{draft.concomitantsQuote}&ldquo;</p>
                     )}
                   </div>
 
                   {/* Säule 6 - GEMÜT (Gemüt & Psyche) */}
-                  <div className="p-3 rounded-xl border border-rose-200 bg-rose-50/40 text-xs space-y-1">
+                  <div className="p-3 rounded-xl border border-slate-200 bg-white text-xs space-y-1">
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-rose-950 flex items-center gap-1">
-                        <Heart className="w-3.5 h-3.5 text-rose-600" />
+                      <span className="font-bold text-slate-800 flex items-center gap-1">
                         {t('anamnesisMindTitle')}
                       </span>
                       <button
                         type="button"
                         onClick={() => setCurrentStep(7)}
-                        className="text-[10.5px] font-semibold text-rose-700 hover:text-rose-900 cursor-pointer"
+                        className="text-[10.5px] font-semibold text-slate-500 hover:text-slate-900 cursor-pointer"
                       >
                         {t('anamnesisEditInWizard')}
                       </button>
@@ -1838,7 +1614,7 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
                       {draft.mind || <span className="italic text-slate-400 font-normal">{t('anamnesisPillarEmptyNotice')}</span>}
                     </p>
                     {draft.mindQuote && (
-                      <p className="text-[11px] text-amber-800 italic">&bdquo;{draft.mindQuote}&ldquo;</p>
+                      <p className="text-[11px] text-slate-500 italic">&bdquo;{draft.mindQuote}&ldquo;</p>
                     )}
                   </div>
                 </div>
@@ -1851,7 +1627,7 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
                   onClick={handleFinishAndSave}
                   className="w-full sm:w-auto py-3 px-8 rounded-xl bg-gradient-to-r from-emerald-700 to-teal-700 hover:from-emerald-800 hover:to-teal-800 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-sm cursor-pointer transition-all"
                 >
-                  <Check className="w-4 h-4" />
+                  <span className="font-bold text-white mr-1">✓</span>
                   <span>{t('anamnesisNavFinish')}</span>
                 </button>
               </div>
@@ -1869,7 +1645,7 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
               onClick={handleCancelClick}
               className="px-4 py-2 rounded-xl border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors"
             >
-              <X className="w-4 h-4 text-rose-500" />
+              <span className="text-rose-500 font-black mr-1">X</span>
               <span>{t('anamnesisNavCancel')}</span>
             </button>
           </div>
@@ -1879,7 +1655,6 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
               <button
                 type="button"
                 onClick={() => {
-                  setShowMustAdoptWarning(false);
                   setCurrentStep(currentStep - 1);
                   setSelectedQuestionId('');
                   setSelectedOptions([]);
@@ -1890,7 +1665,7 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
                 }}
                 className="px-4 py-2 rounded-xl border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors"
               >
-                <ArrowLeft className="w-4 h-4" />
+                <span className="font-bold mr-1">←</span>
                 <span>{t('anamnesisNavBack')}</span>
               </button>
             )}
@@ -1900,23 +1675,7 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
                 <button
                   type="button"
                   disabled={currentStep === 0 && !step0Input.trim() && !draft.chiefComplaint}
-                  onClick={() => {
-                    if (currentStep === 0) {
-                      handleStep0Next();
-                      return;
-                    }
-                    if (canAdopt) {
-                      handleAdoptAnswer();
-                    }
-                    setShowMustAdoptWarning(false);
-                    setCurrentStep(currentStep + 1);
-                    setSelectedQuestionId('');
-                    setSelectedOptions([]);
-                    setPatientQuote('');
-                    setCustomQuestion('');
-                    setAdditionalQuestions([]);
-                    setDeepenings([]);
-                  }}
+                  onClick={handleProceedNext}
                   className={`py-2 px-5 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all ${
                     currentStep > 0 || step0Input.trim() || draft.chiefComplaint
                       ? 'bg-teal-700 hover:bg-teal-800 text-white cursor-pointer'
@@ -1924,7 +1683,7 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
                   }`}
                 >
                   <span>{currentStep === 7 ? t('anamnesisStepReviewAndDeepen') : t('anamnesisNavNext')}</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <span className="font-bold ml-1">→</span>
                 </button>
               </div>
             ) : (
@@ -1933,7 +1692,7 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
                 onClick={handleFinishAndSave}
                 className="py-2 px-5 rounded-xl bg-gradient-to-r from-emerald-700 to-teal-700 hover:from-emerald-800 hover:to-teal-800 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer transition-all"
               >
-                <Check className="w-4 h-4" />
+                <span className="font-bold text-white mr-1">✓</span>
                 <span>{t('anamnesisNavFinish')}</span>
               </button>
             )}
@@ -1942,14 +1701,53 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
 
       </div>
 
+      {/* HINWEIS: NOCH KEINE DATEN IN DIESER SÄULE HINTERLEGT */}
+      {showEmptyPillarWarning && (
+        <div className="fixed inset-0 z-60 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl p-5 sm:p-6 max-w-md w-full shadow-2xl border border-amber-200 space-y-4">
+            <div className="flex items-center gap-3">
+              <div>
+                <h4 className="text-base font-bold text-slate-900">
+                  {t('anamnesisEmptyPillarWarningTitle')}
+                </h4>
+                <p className="text-xs font-semibold text-teal-800 mt-0.5">
+                  {steps.find(s => s.idx === currentStep)?.label}
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed bg-amber-50/60 p-3.5 rounded-xl border border-amber-200">
+              {t('anamnesisEmptyPillarWarningMessage', { pillar: steps.find(s => s.idx === currentStep)?.label || '' })}
+            </p>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowEmptyPillarWarning(false)}
+                className="px-4 py-2 rounded-xl border border-teal-600 text-teal-800 hover:bg-teal-50 text-xs font-bold cursor-pointer transition-colors"
+              >
+                {t('anamnesisEmptyPillarEditBtn')}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowEmptyPillarWarning(false);
+                  advanceToNextStep();
+                }}
+                className="px-4 py-2 rounded-xl bg-slate-700 hover:bg-slate-800 text-white text-xs font-bold cursor-pointer shadow-xs transition-colors"
+              >
+                {t('anamnesisEmptyPillarProceedBtn')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ABBRUCH-BESTÄTIGUNGSDIALOG */}
       {showCancelConfirm && !showDiscardConfirm && (
         <div className="fixed inset-0 z-60 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
           <div className="bg-white rounded-2xl p-5 sm:p-6 max-w-md w-full shadow-2xl border border-slate-200 space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 flex items-center justify-center shrink-0">
-                <AlertCircle className="w-6 h-6" />
-              </div>
               <div>
                 <h4 className="text-base font-bold text-slate-900">
                   {t('anamnesisCancelModalTitle')}
@@ -1985,7 +1783,6 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
                   onClick={handleConfirmCancelWithSave}
                   className="px-4 py-2 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs transition-all"
                 >
-                  <Save className="w-3.5 h-3.5" />
                   <span>{t('anamnesisCancelModalConfirm')}</span>
                 </button>
               </div>
@@ -1999,9 +1796,6 @@ export const AdaptiveAnamnesisWizardModal: React.FC<AdaptiveAnamnesisWizardModal
         <div className="fixed inset-0 z-70 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
           <div className="bg-white rounded-2xl p-5 sm:p-6 max-w-md w-full shadow-2xl border border-rose-200 space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 flex items-center justify-center shrink-0">
-                <AlertCircle className="w-6 h-6" />
-              </div>
               <div>
                 <h4 className="text-base font-bold text-slate-900">
                   {t('anamnesisDiscardConfirmTitle')}

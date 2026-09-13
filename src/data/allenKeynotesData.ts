@@ -3066,14 +3066,23 @@ export const ALLEN_KEYNOTES_DATA: Record<string, AllenKeynoteEntry> = {
   }
 };
 
+const ALLEN_REMEDY_ALIASES: Record<string, string> = {
+  'nitricum-acidum': 'acidum-nitricum',
+  'phosphoricum-acidum': 'acidum-phosphoricum',
+  'nit-ac': 'acidum-nitricum',
+  'phos-ac': 'acidum-phosphoricum'
+};
+
 export function getAllenKeynoteEntry(remedyId: string): AllenKeynoteEntry | null {
   if (!remedyId) return null;
   const cleanId = remedyId.toLowerCase().trim();
+  const resolvedId = ALLEN_REMEDY_ALIASES[cleanId] || cleanId;
+  if (ALLEN_KEYNOTES_DATA[resolvedId]) return ALLEN_KEYNOTES_DATA[resolvedId];
   if (ALLEN_KEYNOTES_DATA[cleanId]) return ALLEN_KEYNOTES_DATA[cleanId];
-  const hyphenId = cleanId.replace(/[^a-z0-9]+/g, "-");
+  const hyphenId = resolvedId.replace(/[^a-z0-9]+/g, "-");
   if (ALLEN_KEYNOTES_DATA[hyphenId]) return ALLEN_KEYNOTES_DATA[hyphenId];
   for (const [key, entry] of Object.entries(ALLEN_KEYNOTES_DATA)) {
-    if (cleanId.includes(key) || key.includes(cleanId)) return entry;
+    if (resolvedId.includes(key) || key.includes(resolvedId) || cleanId.includes(key) || key.includes(cleanId)) return entry;
   }
   return null;
 }
