@@ -223,9 +223,11 @@ export async function fetchBillingPayments(therapistId?: string): Promise<Billin
         } catch (e) {}
         return data.payments;
       }
+    } else if (res.status === 403) {
+      // Return local copy silently on forbidden
     }
   } catch (err) {
-    console.warn('Failed to fetch payments from server, returning local copy:', err);
+    // Suppress network/auth errors in client console
   }
 
   if (therapistId) {

@@ -160,9 +160,11 @@ export async function fetchTokenLogs(therapistId?: string, limit: number = 100):
       const data = await res.json();
       if (Array.isArray(data)) return data;
       return data.logs || [];
+    } else if (res.status === 403) {
+      return [];
     }
   } catch (err) {
-    console.warn('Failed to fetch token logs from server:', err);
+    // Suppress network/auth errors in client console
   }
   return [];
 }

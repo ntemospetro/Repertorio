@@ -21,7 +21,8 @@ import {
   GitBranch,
   ShieldAlert,
   Radio,
-  FileText
+  FileText,
+  ArrowLeft
 } from 'lucide-react';
 import { useTranslation } from '../i18n/LanguageContext';
 import { VoiceInputButton } from './VoiceInputButton';
@@ -31,6 +32,7 @@ import {
   runHahnemannAnalysis,
   CaseType
 } from '../services/hahnemannEngineService';
+import { extractSymptomsDeterministically } from '../services/homeopathicExpertEngine';
 
 interface ComplaintQuestionsWizardModalProps {
   isOpen: boolean;
@@ -68,6 +70,13 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
   const [analysisResult, setAnalysisResult] = useState<HahnemannAnalysisResult | null>(null);
   const [clarifyingAnswers, setClarifyingAnswers] = useState<Record<string, string>>({});
   const [customClarifyingInput, setCustomClarifyingInput] = useState<Record<string, string>>({});
+  const [snapshotHistory, setSnapshotHistory] = useState<Array<{
+    analysisResult: HahnemannAnalysisResult | null;
+    conversationHistory: Array<{ question: string; answer: string }>;
+    currentAnswer: string;
+    selectedOptions: string[];
+    clarifyingAnswers: Record<string, string>;
+  }>>([]);
 
   const initialParsedRef = useRef(false);
   const initialAnalysisRef = useRef<HahnemannAnalysisResult | null>(null);
@@ -202,9 +211,32 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
     }
   };
 
+  const handleBack = () => {
+    if (snapshotHistory.length === 0) return;
+    const lastState = snapshotHistory[snapshotHistory.length - 1];
+    setSnapshotHistory(prev => prev.slice(0, prev.length - 1));
+    setAnalysisResult(lastState.analysisResult);
+    setConversationHistory(lastState.conversationHistory);
+    setCurrentAnswer(lastState.currentAnswer);
+    setSelectedOptions(lastState.selectedOptions);
+    setClarifyingAnswers(lastState.clarifyingAnswers);
+  };
+
   const handleSendAnswer = async (answerTextToSend?: string) => {
     const textToSubmit = (answerTextToSend !== undefined ? answerTextToSend : currentAnswer).trim();
     if (!textToSubmit || !analysisResult || isProcessing) return;
+
+    // Save snapshot for Back button
+    setSnapshotHistory(prev => [
+      ...prev,
+      {
+        analysisResult: analysisResult ? JSON.parse(JSON.stringify(analysisResult)) : null,
+        conversationHistory: [...conversationHistory],
+        currentAnswer,
+        selectedOptions: [...selectedOptions],
+        clarifyingAnswers: { ...clarifyingAnswers },
+      }
+    ]);
 
     setIsProcessing(true);
     const updatedHistory = [
@@ -811,6 +843,25 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
                   </div>
                 </div>
 
+                {/* Live Extraction Preview (Erkannte Extraktion / Live-Vorschau) */}
+                {currentAnswer.trim().length > 1 && (() => {
+                  const previewExt = extractSymptomsDeterministically(currentAnswer, language);
+                  return (
+                    <div className="p-3 rounded-xl bg-teal-50/90 border border-teal-200 space-y-1.5 text-xs text-slate-800 shadow-xs animate-in fade-in duration-200 mt-2">
+                      <div className="flex items-center gap-1.5 font-bold text-teal-900 border-b border-teal-200 pb-1">
+                        <Sparkles className="w-3.5 h-3.5 text-teal-700" />
+                        <span>Erkannte Extraktion (Live-Vorschau nach Organon §§ 83–104):</span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                        <div><strong className="text-teal-950">Hauptbeschwerde:</strong> {previewExt.hauptbeschwerde || 'Noch nicht angegeben'}</div>
+                        <div><strong className="text-teal-950">Causa:</strong> {previewExt.causa || 'Noch nicht angegeben'}</div>
+                        <div><strong className="text-teal-950">Modalitäten:</strong> {previewExt.modalitaeten || 'Noch nicht angegeben'}</div>
+                        <div><strong className="text-teal-950">Begleitsymptome:</strong> {previewExt.begleitsymptome || 'Noch nicht angegeben'}</div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 <div className="pt-0.5">
                   <span className="text-[11px] text-slate-400">
                     {selectedOptions.length > 0 
@@ -1065,15 +1116,28 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
         </div>
 
         {/* Modal Footer */}
-        <div className="px-6 py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-2.5 shrink-0">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 rounded-lg border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-semibold transition-colors cursor-pointer"
-          >
-            {t('btnCancelModal')}
-          </button>
+        <div className="px-6 py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2">
+            {snapshotHistory.length > 0 && (
+              <button
+                type="button"
+                onClick={handleBack}
+                className="px-3.5 py-2 rounded-lg border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Zurück</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 rounded-lg border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-semibold transition-colors cursor-pointer"
+            >
+              {t('btnCancelModal')}
+            </button>
+          </div>
 
+          <div>
             {analysisResult?.analyse_status !== 'completed' && analysisResult?.naechste_frage ? (
               <button
                 type="button"
@@ -1109,6 +1173,7 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
                 <span>{t('hahnemannBtnTransferToCase')}</span>
               </button>
             )}
+          </div>
         </div>
       </div>
     </div>
