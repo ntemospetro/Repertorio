@@ -3199,5 +3199,7 @@ export const en = {
   tariffAllowedPagesCount: "{count} sections unlocked",
   tariffAllPagesUnlocked: "All pages unlocked",
   tariffPageLockedTooltip: "This page is locked in your plan",
-  tariffUpgradeNowBtn: "Upgrade Plan Now"
+  tariffUpgradeNowBtn: "Upgrade Plan Now",
+  tariffPageShowInNavigation: "Show in Sidebar",
+  tariffPageHideInNavigation: "Hide"
 };

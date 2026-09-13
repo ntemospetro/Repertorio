@@ -234,6 +234,12 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
     return tariffAccess.isPageAllowed(pageKey);
   };
 
+  const isTabHidden = (tab: string): boolean => {
+    const pageKey = getPagePermissionKeyForTab(tab);
+    if (!pageKey) return false;
+    return tariffAccess.isPageHidden(pageKey);
+  };
+
   const handleSelectTab = (tab: 'cases' | 'patients' | 'materiamedica' | 'repertorium' | 'quickintake' | 'medications' | 'documentation' | 'profile' | 'tariff') => {
     if (!isTabAllowed(tab)) {
       setLockedPageAttempt({ key: tab, name: getPageDisplayName(tab) });
@@ -1866,134 +1872,146 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
           
           <div className="space-y-1">
             {/* 1. Patienten- & Kundenkartei */}
-            <button
-              type="button"
-              onClick={() => handleSelectTab('patients')}
-              className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center justify-between transition-colors cursor-pointer ${
-                panelTab === 'patients'
-                  ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/50'
-                  : 'text-slate-600 hover:bg-slate-200/50 hover:text-slate-900'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <Users className={`w-4 h-4 ${isTabAllowed('patients') ? 'text-teal-600' : 'text-slate-400'}`} />
-                <span className={!isTabAllowed('patients') ? 'text-slate-500' : ''}>{termPatientenkartei}</span>
-              </div>
-              {!isTabAllowed('patients') && (
-                <span title={t('tariffPageLockedTooltip')}>
-                  <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                </span>
-              )}
-            </button>
+            {!isTabHidden('patients') && (
+              <button
+                type="button"
+                onClick={() => handleSelectTab('patients')}
+                className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center justify-between transition-colors cursor-pointer ${
+                  panelTab === 'patients'
+                    ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/50'
+                    : 'text-slate-600 hover:bg-slate-200/50 hover:text-slate-900'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Users className={`w-4 h-4 ${isTabAllowed('patients') ? 'text-teal-600' : 'text-slate-400'}`} />
+                  <span className={!isTabAllowed('patients') ? 'text-slate-500' : ''}>{termPatientenkartei}</span>
+                </div>
+                {!isTabAllowed('patients') && (
+                  <span title={t('tariffPageLockedTooltip')}>
+                    <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  </span>
+                )}
+              </button>
+            )}
 
             {/* 2. Akutanalyse */}
-            <button
-              type="button"
-              id="sidebar-nav-tab-quickintake"
-              onClick={() => handleSelectTab('quickintake')}
-              className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center justify-between transition-colors cursor-pointer ${
-                panelTab === 'quickintake'
-                  ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/50'
-                  : 'text-slate-600 hover:bg-slate-200/50 hover:text-slate-900'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <Mic className={`w-4 h-4 ${isTabAllowed('quickintake') ? 'text-teal-600' : 'text-slate-400'}`} />
-                <span className={!isTabAllowed('quickintake') ? 'text-slate-500' : ''}>{t('tabQuickIntake')}</span>
-              </div>
-              {!isTabAllowed('quickintake') && (
-                <span title={t('tariffPageLockedTooltip')}>
-                  <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                </span>
-              )}
-            </button>
+            {!isTabHidden('quickintake') && (
+              <button
+                type="button"
+                id="sidebar-nav-tab-quickintake"
+                onClick={() => handleSelectTab('quickintake')}
+                className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center justify-between transition-colors cursor-pointer ${
+                  panelTab === 'quickintake'
+                    ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/50'
+                    : 'text-slate-600 hover:bg-slate-200/50 hover:text-slate-900'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Mic className={`w-4 h-4 ${isTabAllowed('quickintake') ? 'text-teal-600' : 'text-slate-400'}`} />
+                  <span className={!isTabAllowed('quickintake') ? 'text-slate-500' : ''}>{t('tabQuickIntake')}</span>
+                </div>
+                {!isTabAllowed('quickintake') && (
+                  <span title={t('tariffPageLockedTooltip')}>
+                    <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  </span>
+                )}
+              </button>
+            )}
 
             {/* 3. Repertorium */}
-            <button
-              type="button"
-              id="sidebar-nav-tab-repertorium"
-              onClick={() => handleSelectTab('repertorium')}
-              className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center justify-between transition-colors cursor-pointer ${
-                panelTab === 'repertorium'
-                  ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/50'
-                  : 'text-slate-600 hover:bg-slate-200/50 hover:text-slate-900'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <Layers className={`w-4 h-4 ${isTabAllowed('repertorium') ? 'text-teal-600' : 'text-slate-400'}`} />
-                <span className={!isTabAllowed('repertorium') ? 'text-slate-500' : ''}>{t('tabRepertorium')}</span>
-              </div>
-              {!isTabAllowed('repertorium') && (
-                <span title={t('tariffPageLockedTooltip')}>
-                  <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                </span>
-              )}
-            </button>
+            {!isTabHidden('repertorium') && (
+              <button
+                type="button"
+                id="sidebar-nav-tab-repertorium"
+                onClick={() => handleSelectTab('repertorium')}
+                className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center justify-between transition-colors cursor-pointer ${
+                  panelTab === 'repertorium'
+                    ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/50'
+                    : 'text-slate-600 hover:bg-slate-200/50 hover:text-slate-900'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Layers className={`w-4 h-4 ${isTabAllowed('repertorium') ? 'text-teal-600' : 'text-slate-400'}`} />
+                  <span className={!isTabAllowed('repertorium') ? 'text-slate-500' : ''}>{t('tabRepertorium')}</span>
+                </div>
+                {!isTabAllowed('repertorium') && (
+                  <span title={t('tariffPageLockedTooltip')}>
+                    <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  </span>
+                )}
+              </button>
+            )}
 
             {/* 4. Repertorisation */}
-            <button
-              type="button"
-              onClick={() => handleSelectTab('cases')}
-              className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center justify-between transition-colors cursor-pointer ${
-                panelTab === 'cases'
-                  ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/50'
-                  : 'text-slate-600 hover:bg-slate-200/50 hover:text-slate-900'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <LayoutDashboard className={`w-4 h-4 ${isTabAllowed('cases') ? 'text-teal-600' : 'text-slate-400'}`} />
-                <span className={!isTabAllowed('cases') ? 'text-slate-500' : ''}>{t('tabCaseManagement')}</span>
-              </div>
-              {!isTabAllowed('cases') && (
-                <span title={t('tariffPageLockedTooltip')}>
-                  <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                </span>
-              )}
-            </button>
+            {!isTabHidden('cases') && (
+              <button
+                type="button"
+                onClick={() => handleSelectTab('cases')}
+                className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center justify-between transition-colors cursor-pointer ${
+                  panelTab === 'cases'
+                    ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/50'
+                    : 'text-slate-600 hover:bg-slate-200/50 hover:text-slate-900'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <LayoutDashboard className={`w-4 h-4 ${isTabAllowed('cases') ? 'text-teal-600' : 'text-slate-400'}`} />
+                  <span className={!isTabAllowed('cases') ? 'text-slate-500' : ''}>{t('tabCaseManagement')}</span>
+                </div>
+                {!isTabAllowed('cases') && (
+                  <span title={t('tariffPageLockedTooltip')}>
+                    <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  </span>
+                )}
+              </button>
+            )}
 
             {/* 5. Materia Medica */}
-            <button
-              type="button"
-              id="sidebar-nav-tab-materiamedica"
-              onClick={() => handleSelectTab('materiamedica')}
-              className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center justify-between transition-colors cursor-pointer ${
-                panelTab === 'materiamedica'
-                  ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/50'
-                  : 'text-slate-600 hover:bg-slate-200/50 hover:text-slate-900'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <BookOpen className={`w-4 h-4 ${isTabAllowed('materiamedica') ? 'text-teal-600' : 'text-slate-400'}`} />
-                <span className={!isTabAllowed('materiamedica') ? 'text-slate-500' : ''}>{t('tabMateriaMedica')}</span>
-              </div>
-              {!isTabAllowed('materiamedica') && (
-                <span title={t('tariffPageLockedTooltip')}>
-                  <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                </span>
-              )}
-            </button>
+            {!isTabHidden('materiamedica') && (
+              <button
+                type="button"
+                id="sidebar-nav-tab-materiamedica"
+                onClick={() => handleSelectTab('materiamedica')}
+                className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center justify-between transition-colors cursor-pointer ${
+                  panelTab === 'materiamedica'
+                    ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/50'
+                    : 'text-slate-600 hover:bg-slate-200/50 hover:text-slate-900'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <BookOpen className={`w-4 h-4 ${isTabAllowed('materiamedica') ? 'text-teal-600' : 'text-slate-400'}`} />
+                  <span className={!isTabAllowed('materiamedica') ? 'text-slate-500' : ''}>{t('tabMateriaMedica')}</span>
+                </div>
+                {!isTabAllowed('materiamedica') && (
+                  <span title={t('tariffPageLockedTooltip')}>
+                    <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  </span>
+                )}
+              </button>
+            )}
 
             {/* 6. Medikamente & Analyse */}
-            <button
-              type="button"
-              id="sidebar-nav-tab-medications"
-              onClick={() => handleSelectTab('medications')}
-              className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center justify-between transition-colors cursor-pointer ${
-                panelTab === 'medications'
-                  ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/50'
-                  : 'text-slate-600 hover:bg-slate-200/50 hover:text-slate-900'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <Pill className={`w-4 h-4 ${isTabAllowed('medications') ? 'text-teal-600' : 'text-slate-400'}`} />
-                <span className={!isTabAllowed('medications') ? 'text-slate-500' : ''}>{t('tabMedications')}</span>
-              </div>
-              {!isTabAllowed('medications') && (
-                <span title={t('tariffPageLockedTooltip')}>
-                  <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                </span>
-              )}
-            </button>
+            {!isTabHidden('medications') && (
+              <button
+                type="button"
+                id="sidebar-nav-tab-medications"
+                onClick={() => handleSelectTab('medications')}
+                className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center justify-between transition-colors cursor-pointer ${
+                  panelTab === 'medications'
+                    ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/50'
+                    : 'text-slate-600 hover:bg-slate-200/50 hover:text-slate-900'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Pill className={`w-4 h-4 ${isTabAllowed('medications') ? 'text-teal-600' : 'text-slate-400'}`} />
+                  <span className={!isTabAllowed('medications') ? 'text-slate-500' : ''}>{t('tabMedications')}</span>
+                </div>
+                {!isTabAllowed('medications') && (
+                  <span title={t('tariffPageLockedTooltip')}>
+                    <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  </span>
+                )}
+              </button>
+            )}
           </div>
         </div>
         
@@ -2067,26 +2085,28 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
               <span>{t('navSettings' as TranslationKey)}</span>
             </button>
 
-            <button
-              type="button"
-              id="sidebar-nav-tab-documentation"
-              onClick={() => handleSelectTab('documentation')}
-              className={`w-full text-left px-3.5 py-2 rounded-xl text-xs sm:text-sm font-medium flex items-center justify-between transition-colors cursor-pointer ${
-                panelTab === 'documentation'
-                  ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/50'
-                  : 'text-slate-600 hover:bg-slate-200/50 hover:text-slate-900'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <FileText className={`w-4 h-4 ${isTabAllowed('documentation') ? 'text-teal-600' : 'text-slate-400'}`} />
-                <span className={!isTabAllowed('documentation') ? 'text-slate-500' : ''}>{t('tabDocumentation')}</span>
-              </div>
-              {!isTabAllowed('documentation') && (
-                <span title={t('tariffPageLockedTooltip')}>
-                  <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                </span>
-              )}
-            </button>
+            {!isTabHidden('documentation') && (
+              <button
+                type="button"
+                id="sidebar-nav-tab-documentation"
+                onClick={() => handleSelectTab('documentation')}
+                className={`w-full text-left px-3.5 py-2 rounded-xl text-xs sm:text-sm font-medium flex items-center justify-between transition-colors cursor-pointer ${
+                  panelTab === 'documentation'
+                    ? 'bg-teal-50 text-teal-900 font-bold border border-teal-100/50'
+                    : 'text-slate-600 hover:bg-slate-200/50 hover:text-slate-900'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <FileText className={`w-4 h-4 ${isTabAllowed('documentation') ? 'text-teal-600' : 'text-slate-400'}`} />
+                  <span className={!isTabAllowed('documentation') ? 'text-slate-500' : ''}>{t('tabDocumentation')}</span>
+                </div>
+                {!isTabAllowed('documentation') && (
+                  <span title={t('tariffPageLockedTooltip')}>
+                    <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  </span>
+                )}
+              </button>
+            )}
             
             <button 
               type="button"

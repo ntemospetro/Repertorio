@@ -35,7 +35,9 @@ import {
   BookOpen,
   Pill,
   LayoutDashboard,
-  Download
+  Download,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
 interface PackagePlansManagerProps {
@@ -95,6 +97,7 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
       maxAiRequests: 100,
       unlimitedAiRequests: false,
     } as TariffFeatureLimits,
+    hiddenPages: {} as Record<string, boolean>,
   });
 
   const refreshData = () => {
@@ -162,6 +165,7 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
         maxAiRequests: 100,
         unlimitedAiRequests: false,
       },
+      hiddenPages: {},
     });
     setIsModalOpen(true);
   };
@@ -213,6 +217,7 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
         maxAiRequests: plan.featureLimits?.maxAiRequests ?? 100,
         unlimitedAiRequests: plan.featureLimits?.unlimitedAiRequests ?? false,
       },
+      hiddenPages: plan.hiddenPages || {},
     });
     setIsModalOpen(true);
   };
@@ -318,6 +323,7 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
         allowVoiceQuestionAnswer: formData.allowVoiceQuestionAnswer,
         pagePermissions: sanitizedPagePermissions,
         featureLimits: sanitizedFeatureLimits,
+        hiddenPages: formData.hiddenPages || {},
       });
       showToast(`Paket "${formData.name}" erfolgreich aktualisiert`);
     } else {
@@ -341,6 +347,7 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
         allowVoiceQuestionAnswer: formData.allowVoiceQuestionAnswer,
         pagePermissions: sanitizedPagePermissions,
         featureLimits: sanitizedFeatureLimits,
+        hiddenPages: formData.hiddenPages || {},
       });
       showToast(`Neues Paket "${formData.name}" erfolgreich erstellt`);
     }
@@ -1150,12 +1157,13 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
                   ].map(page => {
                     const IconComp = page.icon;
                     const isAllowed = formData.pagePermissions[page.key] ?? true;
+                    const isHidden = formData.hiddenPages && (formData.hiddenPages[page.key] === true || formData.hiddenPages[page.key.toLowerCase()] === true);
                     return (
-                      <label
+                      <div
                         key={page.key}
-                        className={`flex items-center justify-between p-2.5 rounded-lg border text-xs cursor-pointer transition-all ${
+                        className={`flex flex-col sm:flex-row sm:items-center justify-between p-2.5 rounded-lg border text-xs transition-all gap-2.5 bg-white ${
                           isAllowed
-                            ? 'bg-white border-emerald-200 shadow-xs'
+                            ? 'border-emerald-200 shadow-xs'
                             : 'bg-rose-50/50 border-rose-200 text-rose-900'
                         }`}
                       >
@@ -1165,38 +1173,75 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
                             {page.label}
                           </span>
                         </span>
-                        <div className="flex items-center gap-2">
-                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                            isAllowed
-                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                              : 'bg-rose-100 text-rose-700 border border-rose-200'
-                          }`}>
-                            {isAllowed ? t('tariffPageUnlockedBadge') : t('tariffPageLockedBadge')}
-                          </span>
-                           <input
-                            type="checkbox"
-                            checked={isAllowed}
-                            onChange={(e) => {
-                              const checked = e.target.checked;
-                              const updatedPerms = {
-                                ...formData.pagePermissions,
-                                [page.key]: checked,
+                        <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto pt-1 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+                          {/* Visibility Toggle */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const nextHidden = !isHidden;
+                              const updatedHidden = {
+                                ...formData.hiddenPages,
+                                [page.key]: nextHidden,
+                                [page.key.toLowerCase()]: nextHidden,
                               };
-                              if (page.key === 'quickIntake') {
-                                (updatedPerms as any).quickintake = checked;
-                              }
-                              if (page.key === 'materiaMedica') {
-                                (updatedPerms as any).materiamedica = checked;
-                              }
                               setFormData({
                                 ...formData,
-                                pagePermissions: updatedPerms
+                                hiddenPages: updatedHidden,
                               });
                             }}
-                            className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
-                          />
+                            className={`flex items-center gap-1 px-2 py-0.5 rounded border transition-colors cursor-pointer text-[10px] font-bold select-none ${
+                              isHidden
+                                ? 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
+                                : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                            }`}
+                          >
+                            {isHidden ? (
+                              <>
+                                <EyeOff className="w-3 h-3 text-amber-600" />
+                                <span>{t('tariffPageHideInNavigation')}</span>
+                              </>
+                            ) : (
+                              <>
+                                <Eye className="w-3 h-3 text-teal-600" />
+                                <span>{t('tariffPageShowInNavigation')}</span>
+                              </>
+                            )}
+                          </button>
+
+                          {/* Access Toggle */}
+                          <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                              isAllowed
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                : 'bg-rose-100 text-rose-700 border border-rose-200'
+                            }`}>
+                              {isAllowed ? t('tariffPageUnlockedBadge') : t('tariffPageLockedBadge')}
+                            </span>
+                            <input
+                              type="checkbox"
+                              checked={isAllowed}
+                              onChange={(e) => {
+                                const checked = e.target.checked;
+                                const updatedPerms = {
+                                  ...formData.pagePermissions,
+                                  [page.key]: checked,
+                                };
+                                if (page.key === 'quickIntake') {
+                                  (updatedPerms as any).quickintake = checked;
+                                }
+                                if (page.key === 'materiaMedica') {
+                                  (updatedPerms as any).materiamedica = checked;
+                                }
+                                setFormData({
+                                  ...formData,
+                                  pagePermissions: updatedPerms
+                                });
+                              }}
+                              className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5 cursor-pointer"
+                            />
+                          </label>
                         </div>
-                      </label>
+                      </div>
                     );
                   })}
                 </div>

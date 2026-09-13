@@ -1397,6 +1397,7 @@ export interface TherapistTariffAccess {
   pagePermissions: Required<TariffPagePermissions>;
   featureLimits: Required<TariffFeatureLimits>;
   isPageAllowed: (pageKey: keyof TariffPagePermissions) => boolean;
+  isPageHidden: (pageKey: string) => boolean;
   isUnlimitedAll: boolean;
 }
 
@@ -1462,6 +1463,16 @@ export function getTariffAccessForTherapist(therapistOrId?: Therapist | string):
     pagePermissions: resolvedPagePermissions,
     featureLimits: resolvedFeatureLimits,
     isPageAllowed: (pageKey: keyof TariffPagePermissions) => resolvedPagePermissions[pageKey] !== false,
+    isPageHidden: (pageKey: string) => {
+      if (!plan?.hiddenPages) return false;
+      const normalizedKey = pageKey.toLowerCase();
+      for (const k of Object.keys(plan.hiddenPages)) {
+        if (k.toLowerCase() === normalizedKey && plan.hiddenPages[k] === true) {
+          return true;
+        }
+      }
+      return false;
+    },
     isUnlimitedAll: unlimitedAll,
   };
 }

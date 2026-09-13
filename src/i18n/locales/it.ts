@@ -3193,5 +3193,7 @@ export const it = {
   tariffAllowedPagesCount: "{count} sezioni abilitate",
   tariffAllPagesUnlocked: "Tutte le pagine abilitate",
   tariffPageLockedTooltip: "Questa pagina è bloccata nella tua tariffa",
-  tariffUpgradeNowBtn: "Aggiorna tariffa ora"
+  tariffUpgradeNowBtn: "Aggiorna tariffa ora",
+  tariffPageShowInNavigation: "Mostra nella barra laterale",
+  tariffPageHideInNavigation: "Nascondi"
 };

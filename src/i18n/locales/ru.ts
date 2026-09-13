@@ -3193,5 +3193,7 @@ export const ru = {
   tariffAllowedPagesCount: "{count} разделов разблокировано",
   tariffAllPagesUnlocked: "Все страницы разблокированы",
   tariffPageLockedTooltip: "Эта страница заблокирована в вашем тарифе",
-  tariffUpgradeNowBtn: "Улучшить тариф сейчас"
+  tariffUpgradeNowBtn: "Улучшить тариф сейчас",
+  tariffPageShowInNavigation: "Показать в боковом меню",
+  tariffPageHideInNavigation: "Скрыть"
 };

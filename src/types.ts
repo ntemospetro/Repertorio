@@ -54,6 +54,7 @@ export interface PackagePlan {
   maxVoiceQuestionAnswerSeconds?: number; // e.g. 0, 30, 45, 60, 120
   allowVoiceQuestionAnswer?: boolean; // false if speech recording is not permitted for questions in this plan
   pagePermissions?: TariffPagePermissions;
+  hiddenPages?: Record<string, boolean>;
   featureLimits?: TariffFeatureLimits;
 }
 

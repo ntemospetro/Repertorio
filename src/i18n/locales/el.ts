@@ -3193,5 +3193,7 @@ export const el = {
   tariffAllowedPagesCount: "{count} ενότητες διαθέσιμες",
   tariffAllPagesUnlocked: "Όλες οι σελίδες ξεκλείδωτες",
   tariffPageLockedTooltip: "Αυτή η σελίδα είναι κλειδωμένη στο πακέτο σας",
-  tariffUpgradeNowBtn: "Αναβάθμιση πακέτου τώρα"
+  tariffUpgradeNowBtn: "Αναβάθμιση πακέτου τώρα",
+  tariffPageShowInNavigation: "Εμφάνιση στην πλευρική εργαλειοθήκη",
+  tariffPageHideInNavigation: "Απόκρυψη"
 };

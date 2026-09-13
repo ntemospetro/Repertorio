@@ -3200,5 +3200,7 @@ export const de = {
   tariffAllowedPagesCount: "{count} Bereiche freigegeben",
   tariffAllPagesUnlocked: "Alle Seiten freigeschaltet",
   tariffPageLockedTooltip: "Diese Seite ist in Ihrem Tarif gesperrt",
-  tariffUpgradeNowBtn: "Jetzt Tarif upgraden"
+  tariffUpgradeNowBtn: "Jetzt Tarif upgraden",
+  tariffPageShowInNavigation: "In Seitenleiste anzeigen",
+  tariffPageHideInNavigation: "Ausblenden"
 };

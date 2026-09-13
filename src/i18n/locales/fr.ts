@@ -3193,5 +3193,7 @@ export const fr = {
   tariffAllowedPagesCount: "{count} sections autorisées",
   tariffAllPagesUnlocked: "Toutes les pages déverrouillées",
   tariffPageLockedTooltip: "Cette page est verrouillée dans votre forfait",
-  tariffUpgradeNowBtn: "Mettre à niveau le forfait"
+  tariffUpgradeNowBtn: "Mettre à niveau le forfait",
+  tariffPageShowInNavigation: "Afficher dans la barre latérale",
+  tariffPageHideInNavigation: "Masquer"
 };
