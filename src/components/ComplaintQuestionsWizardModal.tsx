@@ -575,19 +575,6 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
 
         {/* Modal Scrollable Body */}
         <div className="flex-1 overflow-y-auto p-6 space-y-5">
-          
-          {/* Interpretationsverbot & Keine halluzinierten Symptome Notice (Organon § 83–84) */}
-          <div className="p-3 bg-amber-50/90 border border-amber-200/90 rounded-xl flex items-start gap-2.5 text-xs text-amber-900 shadow-2xs">
-            <ShieldAlert className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
-            <div>
-              <span className="font-bold block">
-                {t('hahnemannStrictBanBadge')} (Organon §§ 83–84)
-              </span>
-              <span>
-                {t('hahnemannNoHallucinationsNotice')}
-              </span>
-            </div>
-          </div>
 
           {/* SECTION 1: WAS BISHER VERSTANDEN WURDE (Hahnemann-Symptomstruktur) */}
           <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs space-y-4">
