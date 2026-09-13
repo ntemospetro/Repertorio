@@ -5,7 +5,9 @@ import {
   cloudDeleteTherapist,
   cloudSaveCase,
   cloudDeleteCase,
-  cloudDeleteCases
+  cloudDeleteCases,
+  cloudSavePackagePlan,
+  cloudDeletePackagePlan
 } from './cloudSyncService';
 
 export const DEFAULT_ADMIN_CREDENTIALS: AdminCredentials = {
@@ -1108,6 +1110,10 @@ export function getPackagePlans(): PackagePlan[] {
 export function savePackagePlans(plans: PackagePlan[]): void {
   safeLocalStorageSetItem(STORAGE_KEYS.PACKAGES, JSON.stringify(plans));
   window.dispatchEvent(new Event('homoeo_packages_updated'));
+  // Sync each plan to Firestore in the background
+  for (const p of plans) {
+    cloudSavePackagePlan(p);
+  }
 }
 
 export function createPackagePlan(data: Omit<PackagePlan, 'id' | 'createdAt'>): PackagePlan {
@@ -1160,6 +1166,7 @@ export function deletePackagePlan(id: string): boolean {
     filtered[0].isDefault = true;
   }
   savePackagePlans(filtered);
+  cloudDeletePackagePlan(id);
   return true;
 }
 
@@ -1410,14 +1417,22 @@ export function getTariffAccessForTherapist(therapistOrId?: Therapist | string):
   const isUnlimitedPlan = plan?.isUnlimited || plan?.id === 'pro_unlimited' || (therapist?.maxAnalyses ?? 0) >= 900000;
   const isTrial = !plan || plan.id === 'free_trial' || plan.billingPeriod === 'free' || plan.price === 0;
 
+  const rawQuickIntake = plan?.pagePermissions?.quickIntake !== undefined 
+    ? plan.pagePermissions.quickIntake 
+    : (plan?.pagePermissions?.quickintake !== undefined ? plan.pagePermissions.quickintake : true);
+
+  const rawMateriaMedica = plan?.pagePermissions?.materiaMedica !== undefined 
+    ? plan.pagePermissions.materiaMedica 
+    : (plan?.pagePermissions?.materiamedica !== undefined ? plan.pagePermissions.materiamedica : true);
+
   const resolvedPagePermissions: Required<TariffPagePermissions> = {
     dashboard: plan?.pagePermissions?.dashboard !== undefined ? plan.pagePermissions.dashboard : true,
     patients: plan?.pagePermissions?.patients !== undefined ? plan.pagePermissions.patients : true,
     cases: plan?.pagePermissions?.cases !== undefined ? plan.pagePermissions.cases : true,
-    quickintake: plan?.pagePermissions?.quickintake !== undefined ? plan.pagePermissions.quickintake : true,
-    quickIntake: plan?.pagePermissions?.quickIntake !== undefined ? plan.pagePermissions.quickIntake : true,
-    materiamedica: plan?.pagePermissions?.materiamedica !== undefined ? plan.pagePermissions.materiamedica : true,
-    materiaMedica: plan?.pagePermissions?.materiaMedica !== undefined ? plan.pagePermissions.materiaMedica : true,
+    quickintake: rawQuickIntake,
+    quickIntake: rawQuickIntake,
+    materiamedica: rawMateriaMedica,
+    materiaMedica: rawMateriaMedica,
     repertorium: plan?.pagePermissions?.repertorium !== undefined ? plan.pagePermissions.repertorium : (isTrial ? false : true),
     medications: plan?.pagePermissions?.medications !== undefined ? plan.pagePermissions.medications : true,
     documentation: plan?.pagePermissions?.documentation !== undefined ? plan.pagePermissions.documentation : true,

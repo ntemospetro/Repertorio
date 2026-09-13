@@ -189,8 +189,10 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
         dashboard: plan.pagePermissions?.dashboard ?? true,
         patients: plan.pagePermissions?.patients ?? true,
         cases: plan.pagePermissions?.cases ?? true,
-        quickIntake: plan.pagePermissions?.quickIntake ?? true,
-        materiaMedica: plan.pagePermissions?.materiaMedica ?? true,
+        quickIntake: plan.pagePermissions?.quickIntake ?? plan.pagePermissions?.quickintake ?? true,
+        quickintake: plan.pagePermissions?.quickIntake ?? plan.pagePermissions?.quickintake ?? true,
+        materiaMedica: plan.pagePermissions?.materiaMedica ?? plan.pagePermissions?.materiamedica ?? true,
+        materiamedica: plan.pagePermissions?.materiaMedica ?? plan.pagePermissions?.materiamedica ?? true,
         repertorium: plan.pagePermissions?.repertorium ?? true,
         medications: plan.pagePermissions?.medications ?? true,
         documentation: plan.pagePermissions?.documentation ?? true,
@@ -287,6 +289,14 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
       unlimitedAiRequests: formData.featureLimits.unlimitedAiRequests,
     };
 
+    const sanitizedPagePermissions = {
+      ...formData.pagePermissions,
+      quickintake: formData.pagePermissions.quickIntake ?? (formData.pagePermissions as any).quickintake ?? true,
+      quickIntake: formData.pagePermissions.quickIntake ?? (formData.pagePermissions as any).quickintake ?? true,
+      materiamedica: formData.pagePermissions.materiaMedica ?? (formData.pagePermissions as any).materiamedica ?? true,
+      materiaMedica: formData.pagePermissions.materiaMedica ?? (formData.pagePermissions as any).materiamedica ?? true,
+    };
+
     if (editingPlan) {
       // Update
       updatePackagePlan(editingPlan.id, {
@@ -306,7 +316,7 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
         maxVoiceMainComplaintSeconds: maxVoiceMainComplaintSecondsNum,
         maxVoiceQuestionAnswerSeconds: maxVoiceQuestionAnswerSecondsNum,
         allowVoiceQuestionAnswer: formData.allowVoiceQuestionAnswer,
-        pagePermissions: formData.pagePermissions,
+        pagePermissions: sanitizedPagePermissions,
         featureLimits: sanitizedFeatureLimits,
       });
       showToast(`Paket "${formData.name}" erfolgreich aktualisiert`);
@@ -329,7 +339,7 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
         maxVoiceMainComplaintSeconds: maxVoiceMainComplaintSecondsNum,
         maxVoiceQuestionAnswerSeconds: maxVoiceQuestionAnswerSecondsNum,
         allowVoiceQuestionAnswer: formData.allowVoiceQuestionAnswer,
-        pagePermissions: formData.pagePermissions,
+        pagePermissions: sanitizedPagePermissions,
         featureLimits: sanitizedFeatureLimits,
       });
       showToast(`Neues Paket "${formData.name}" erfolgreich erstellt`);
@@ -1110,7 +1120,9 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
                           patients: true,
                           cases: true,
                           quickIntake: true,
+                          quickintake: true,
                           materiaMedica: true,
+                          materiamedica: true,
                           repertorium: true,
                           medications: true,
                           documentation: true,
@@ -1161,16 +1173,26 @@ export const PackagePlansManager: React.FC<PackagePlansManagerProps> = () => {
                           }`}>
                             {isAllowed ? t('tariffPageUnlockedBadge') : t('tariffPageLockedBadge')}
                           </span>
-                          <input
+                           <input
                             type="checkbox"
                             checked={isAllowed}
-                            onChange={(e) => setFormData({
-                              ...formData,
-                              pagePermissions: {
+                            onChange={(e) => {
+                              const checked = e.target.checked;
+                              const updatedPerms = {
                                 ...formData.pagePermissions,
-                                [page.key]: e.target.checked
+                                [page.key]: checked,
+                              };
+                              if (page.key === 'quickIntake') {
+                                (updatedPerms as any).quickintake = checked;
                               }
-                            })}
+                              if (page.key === 'materiaMedica') {
+                                (updatedPerms as any).materiamedica = checked;
+                              }
+                              setFormData({
+                                ...formData,
+                                pagePermissions: updatedPerms
+                              });
+                            }}
                             className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
                           />
                         </div>

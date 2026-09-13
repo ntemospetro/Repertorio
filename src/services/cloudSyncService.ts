@@ -308,3 +308,31 @@ export async function cloudSavePaymentLog(paymentLog: any): Promise<void> {
     console.warn(`[CloudSync] Failed to save payment log ${paymentLog.id}:`, err);
   }
 }
+
+/**
+ * Save a single package plan directly to Firestore in the background.
+ */
+export async function cloudSavePackagePlan(plan: PackagePlan): Promise<void> {
+  const db = getDb();
+  if (!db || !plan?.id) return;
+  try {
+    const ref = doc(db, 'packages', plan.id);
+    await setDoc(ref, sanitizeForFirestore(plan), { merge: true });
+  } catch (err) {
+    console.warn(`[CloudSync] Failed to save package plan ${plan.id} to Firestore:`, err);
+  }
+}
+
+/**
+ * Delete a package plan from Firestore.
+ */
+export async function cloudDeletePackagePlan(planId: string): Promise<void> {
+  const db = getDb();
+  if (!db || !planId) return;
+  try {
+    const ref = doc(db, 'packages', planId);
+    await deleteDoc(ref);
+  } catch (err) {
+    console.warn(`[CloudSync] Failed to delete package plan ${planId} from Firestore:`, err);
+  }
+}
