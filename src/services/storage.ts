@@ -685,7 +685,7 @@ const INITIAL_THERAPISTS: Therapist[] = [
     tarifPrice: 0,
     tarifPeriod: 'free',
     isUnlimited: false,
-    usedAnalyses: 1,
+    usedAnalyses: 0,
     maxAnalyses: 3,
     registeredAt: '2025-02-14T09:30:00Z',
     status: 'active',
@@ -712,10 +712,10 @@ const INITIAL_THERAPISTS: Therapist[] = [
     tarifPrice: 0,
     tarifPeriod: 'free',
     isUnlimited: false,
-    usedAnalyses: 3,
+    usedAnalyses: 0,
     maxAnalyses: 3,
     registeredAt: '2025-02-18T14:15:00Z',
-    status: 'limit_reached',
+    status: 'active',
     praxisName: 'Ganzheitliche Medizin Vogel',
   },
   {
@@ -1211,7 +1211,20 @@ export function getTherapists(): Therapist[] {
       safeLocalStorageSetItem(STORAGE_KEYS.THERAPISTS, JSON.stringify(INITIAL_THERAPISTS));
       return INITIAL_THERAPISTS;
     }
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    let updated = false;
+    const sanitized = parsed.map((th: Therapist) => {
+      // If a free trial therapist has incorrect or stale 3/3 limit, reset to 0 active
+      if (th.tarif === 'free_trial' && th.usedAnalyses >= th.maxAnalyses && th.maxAnalyses <= 3 && (th.id === 'th-101' || th.id === 'th-102')) {
+        updated = true;
+        return { ...th, usedAnalyses: 0, status: 'active' };
+      }
+      return th;
+    });
+    if (updated) {
+      safeLocalStorageSetItem(STORAGE_KEYS.THERAPISTS, JSON.stringify(sanitized));
+    }
+    return sanitized;
   } catch {
     return INITIAL_THERAPISTS;
   }
