@@ -859,6 +859,43 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
       {/* Main Intake Card: Single Full-Width Voice & Text Recording Hub */}
       <div className="w-full animate-in fade-in duration-200">
         <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs flex flex-col space-y-4 relative overflow-hidden">
+          {isHahnemannWizardOpen ? (
+            <ComplaintQuestionsWizardModal
+              isOpen={true}
+              inline={true}
+              onClose={() => {
+                setIsHahnemannWizardOpen(false);
+                setPreloadedHahnemannAnalysis(null);
+              }}
+              chiefComplaint={symptomText || activeHauptbeschwerde || ''}
+              initialCaseType="akut"
+              preloadedAnalysis={preloadedHahnemannAnalysis}
+              initialMatrix={buildCurrentMatrix()}
+              onTransferToAnamnese={(data) => {
+                setHahnemannData(data);
+                setIsHahnemannWizardOpen(false);
+                setPreloadedHahnemannAnalysis(null);
+                setIsClarificationApplied(true);
+                const matrix = data.matrix;
+                setVariableOverrides(prev => ({
+                  ...prev,
+                  causa: matrix.causa || prev.causa,
+                  modalitaeten: matrix.modalitaeten || prev.modalitaeten,
+                  begleitsymptome: (matrix.begleitsymptome && matrix.begleitsymptome.length > 0) 
+                    ? matrix.begleitsymptome.join(', ') 
+                    : prev.begleitsymptome,
+                  hauptbeschwerde: matrix.lokalisierung 
+                    ? (matrix.empfindung ? `${matrix.lokalisierung} - ${matrix.empfindung}` : matrix.lokalisierung) 
+                    : prev.hauptbeschwerde,
+                }));
+
+                if (data.summaryText) {
+                  setSymptomText(prev => prev ? `${prev}\n\n[${t('hahnemannOrganonTitle')}]\n${data.summaryText}` : data.summaryText);
+                }
+              }}
+            />
+          ) : (
+            <>
           {/* Header Row: HAUPTBESCHWERDE & LEITSYMPTOM * on left, Eingabe löschen on right */}
           <div className="flex items-center justify-between gap-2">
             <label className="text-xs sm:text-sm font-bold text-slate-800 uppercase tracking-wider">
@@ -1086,43 +1123,8 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
             )}
           </div>
 
-          {/* Hahnemann Organon §§ 83-104 Anamnesis Launch or Completed Banner or Inline Wizard */}
-          {isHahnemannWizardOpen ? (
-            <ComplaintQuestionsWizardModal
-              isOpen={true}
-              inline={true}
-              onClose={() => {
-                setIsHahnemannWizardOpen(false);
-                setPreloadedHahnemannAnalysis(null);
-              }}
-              chiefComplaint={symptomText || activeHauptbeschwerde || ''}
-              initialCaseType="akut"
-              preloadedAnalysis={preloadedHahnemannAnalysis}
-              initialMatrix={buildCurrentMatrix()}
-              onTransferToAnamnese={(data) => {
-                setHahnemannData(data);
-                setIsHahnemannWizardOpen(false);
-                setPreloadedHahnemannAnalysis(null);
-                setIsClarificationApplied(true);
-                const matrix = data.matrix;
-                setVariableOverrides(prev => ({
-                  ...prev,
-                  causa: matrix.causa || prev.causa,
-                  modalitaeten: matrix.modalitaeten || prev.modalitaeten,
-                  begleitsymptome: (matrix.begleitsymptome && matrix.begleitsymptome.length > 0) 
-                    ? matrix.begleitsymptome.join(', ') 
-                    : prev.begleitsymptome,
-                  hauptbeschwerde: matrix.lokalisierung 
-                    ? (matrix.empfindung ? `${matrix.lokalisierung} - ${matrix.empfindung}` : matrix.lokalisierung) 
-                    : prev.hauptbeschwerde,
-                }));
-
-                if (data.summaryText) {
-                  setSymptomText(prev => prev ? `${prev}\n\n[${t('hahnemannOrganonTitle')}]\n${data.summaryText}` : data.summaryText);
-                }
-              }}
-            />
-          ) : (symptomText.trim().length > 0 || hahnemannData) && (
+          {/* Hahnemann Organon §§ 83-104 Anamnesis Launch or Completed Banner */}
+          {(symptomText.trim().length > 0 || hahnemannData) && (
             !hahnemannData ? (
               <div className="w-full space-y-1.5 animate-in fade-in duration-200">
                 <button
@@ -1193,6 +1195,8 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
               {t('acuteQuestionsDisclaimer')}
             </span>
           </div>
+            </>
+          )}
         </div>
       </div>
 
