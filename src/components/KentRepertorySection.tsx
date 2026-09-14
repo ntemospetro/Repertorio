@@ -9,6 +9,8 @@ import {
   CheckCircle2,
   FileText,
   HelpCircle,
+  Info,
+  X,
 } from 'lucide-react';
 import { LanguageCode } from '../types';
 import { Hahnemann6Pillars } from '../services/hahnemannEngineService';
@@ -35,6 +37,7 @@ export const KentRepertorySection: React.FC<KentRepertorySectionProps> = ({
   const { t, language } = useTranslation();
   const currentLang = language || 'de';
   const [isExpanded, setIsExpanded] = useState<boolean>(defaultExpanded);
+  const [activeOriginPopup, setActiveOriginPopup] = useState<string | null>(null);
 
   const repertorisation = useMemo(() => {
     if (incomingRepertorisation) {
@@ -234,8 +237,20 @@ export const KentRepertorySection: React.FC<KentRepertorySectionProps> = ({
                               <span>{rubric.rubricName}</span>
                             </div>
                           </td>
-                          <td className="p-3 text-slate-600 text-[11px] italic">
-                            «{rubric.symptomOrigin}»
+                          <td className="p-3 text-center border-l border-slate-200">
+                            {rubric.symptomOrigin ? (
+                              <button
+                                type="button"
+                                onClick={() => setActiveOriginPopup(rubric.symptomOrigin)}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-800 text-[11px] font-semibold transition-colors border border-teal-200 cursor-pointer shadow-2xs"
+                                title="Symptom-Inhaltstext anzeigen"
+                              >
+                                <Info className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+                                <span>Info</span>
+                              </button>
+                            ) : (
+                              <span className="text-slate-400">-</span>
+                            )}
                           </td>
                           {remedies.map((rem: KentRemedySummary) => {
                             const grade = rubric.grades[rem.key] || 0;
@@ -345,6 +360,39 @@ export const KentRepertorySection: React.FC<KentRepertorySectionProps> = ({
               )}
             </>
           )}
+        </div>
+      )}
+
+      {/* Origin Text Popup Modal */}
+      {activeOriginPopup && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200 space-y-4 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2 text-teal-800 font-bold text-sm">
+                <Info className="w-4 h-4 text-teal-600" />
+                <span>Symptom-Inhaltstext</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveOriginPopup(null)}
+                className="p-1.5 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="text-sm text-slate-700 italic bg-slate-50 p-4 rounded-xl border border-slate-200/80 leading-relaxed">
+              «{activeOriginPopup}»
+            </div>
+            <div className="flex justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => setActiveOriginPopup(null)}
+                className="px-4 py-2 rounded-xl bg-teal-800 hover:bg-teal-900 text-white text-xs font-bold transition-colors cursor-pointer shadow-xs"
+              >
+                Schließen
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
