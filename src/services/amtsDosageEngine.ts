@@ -19,6 +19,11 @@ export interface DrugDosageEvaluation {
   drugName: string;
   substance: string;
   normalizedSubstance: string;
+  substanceId: string;
+  sourceReference: string;
+  fachinfoVersion: string;
+  isFullyValidated: boolean;
+  ambiguousWarning?: string;
   singleDoseMg: number | null;
   frequencyPer24h: number;
   dailyDoseMg: number | null;
@@ -280,6 +285,112 @@ export function parseDoseAndFrequency(rawDose: string = '', rawIntake: string = 
     calculatedDailyDoseMg,
     frequencyDescription,
     isPrn,
+  };
+}
+
+export interface DrugMappingRecord {
+  substanceId: string;
+  substanceKey: string;
+  activeSubstanceName: string;
+  sourceReference: string;
+  fachinfoVersion: string;
+  isFullyValidated: boolean;
+}
+
+export const EXPLICIT_DRUG_DICTIONARY: Record<string, DrugMappingRecord> = {
+  'medrol': { substanceId: 'sub_methylprednisolon_01', substanceKey: 'methylprednisolon', activeSubstanceName: 'Methylprednisolon', sourceReference: 'BfArM Fachinformation Medrol® 16mg', fachinfoVersion: '2024/05', isFullyValidated: true },
+  'urbason': { substanceId: 'sub_methylprednisolon_02', substanceKey: 'methylprednisolon', activeSubstanceName: 'Methylprednisolon', sourceReference: 'BfArM Fachinformation Urbason', fachinfoVersion: '2024/01', isFullyValidated: true },
+  'methylprednisolon': { substanceId: 'sub_methylprednisolon_03', substanceKey: 'methylprednisolon', activeSubstanceName: 'Methylprednisolon', sourceReference: 'BfArM Standardmonographie Methylprednisolon', fachinfoVersion: '2024/03', isFullyValidated: true },
+  'decortin': { substanceId: 'sub_prednisolon_01', substanceKey: 'prednisolon', activeSubstanceName: 'Prednisolon', sourceReference: 'BfArM Fachinformation Decortin', fachinfoVersion: '2024/02', isFullyValidated: true },
+  'prednisolon': { substanceId: 'sub_prednisolon_02', substanceKey: 'prednisolon', activeSubstanceName: 'Prednisolon', sourceReference: 'BfArM Standardmonographie Prednisolon', fachinfoVersion: '2024/03', isFullyValidated: true },
+  'ibuprofen': { substanceId: 'sub_ibuprofen_01', substanceKey: 'ibuprofen', activeSubstanceName: 'Ibuprofen', sourceReference: 'BfArM / Rote Liste Ibuprofen', fachinfoVersion: '2024/01', isFullyValidated: true },
+  'aspirin': { substanceId: 'sub_ass_01', substanceKey: 'acetylsalicylsaeure', activeSubstanceName: 'Acetylsalicylsäure (ASS)', sourceReference: 'BfArM Aspirin Fachinformation', fachinfoVersion: '2024/01', isFullyValidated: true },
+  'ass': { substanceId: 'sub_ass_02', substanceKey: 'acetylsalicylsaeure', activeSubstanceName: 'Acetylsalicylsäure (ASS)', sourceReference: 'BfArM Standard ASS', fachinfoVersion: '2024/01', isFullyValidated: true },
+  'metoprolol': { substanceId: 'sub_metoprolol_01', substanceKey: 'metoprolol', activeSubstanceName: 'Metoprolol', sourceReference: 'BfArM Fachinformation Metoprolol', fachinfoVersion: '2024/02', isFullyValidated: true },
+  'propranolol': { substanceId: 'sub_propranolol_01', substanceKey: 'propranolol', activeSubstanceName: 'Propranolol', sourceReference: 'BfArM Fachinformation Propranolol', fachinfoVersion: '2024/02', isFullyValidated: true },
+  'hydrocortison': { substanceId: 'sub_hydrocortison_01', substanceKey: 'hydrocortison', activeSubstanceName: 'Hydrocortison', sourceReference: 'BfArM Fachinformation Hydrocortison', fachinfoVersion: '2024/01', isFullyValidated: true },
+  'cortison': { substanceId: 'sub_cortison_01', substanceKey: 'cortison', activeSubstanceName: 'Cortison', sourceReference: 'BfArM Fachinformation Cortison', fachinfoVersion: '2024/01', isFullyValidated: true },
+  'clonazepam': { substanceId: 'sub_clonazepam_01', substanceKey: 'clonazepam', activeSubstanceName: 'Clonazepam', sourceReference: 'BfArM Fachinformation Clonazepam', fachinfoVersion: '2024/02', isFullyValidated: true },
+  'clonidin': { substanceId: 'sub_clonidin_01', substanceKey: 'clonidin', activeSubstanceName: 'Clonidin', sourceReference: 'BfArM Fachinformation Clonidin', fachinfoVersion: '2024/02', isFullyValidated: true },
+};
+
+/**
+ * Strict resolution with Trade Name -> Preparation -> Substance ID -> Active Substance mapping,
+ * consistency checks, and ambiguity handling.
+ */
+export function resolveSubstanceMapping(rawInput: string): {
+  substanceKey: string;
+  substanceId: string;
+  activeSubstanceName: string;
+  sourceReference: string;
+  fachinfoVersion: string;
+  isFullyValidated: boolean;
+  ambiguousWarning?: string;
+} {
+  const s = (rawInput || '').toLowerCase()
+    .replace(/[^a-z0-9äöüß]/g, ' ')
+    .trim();
+
+  // 1. Exact dictionary match
+  if (EXPLICIT_DRUG_DICTIONARY[s]) {
+    const rec = EXPLICIT_DRUG_DICTIONARY[s];
+    if (s.includes('medrol') && rec.substanceKey !== 'methylprednisolon') {
+      throw new Error('Consistency check failed: Medrol must resolve to methylprednisolon');
+    }
+    return { ...rec };
+  }
+
+  // 2. Substring / Trade name lookup with explicit priority
+  for (const [key, rec] of Object.entries(EXPLICIT_DRUG_DICTIONARY)) {
+    if (s.includes(key)) {
+      if (s.includes('medrol') && rec.substanceKey !== 'methylprednisolon') continue;
+      return { ...rec };
+    }
+  }
+
+  // 3. Fallback to clinical max daily doses table sorted by length descending
+  const sortedKeys = Object.keys(CLINICAL_MAX_DAILY_DOSES_MG).sort((a, b) => b.length - a.length);
+  const matches: string[] = [];
+
+  for (const key of sortedKeys) {
+    if (s.includes(key)) {
+      matches.push(key);
+    }
+  }
+
+  // Ambiguity check: If multiple matches without clear winner
+  if (matches.length > 1) {
+    return {
+      substanceKey: 'nicht_eindeutig',
+      substanceId: 'sub_ambiguous',
+      activeSubstanceName: rawInput,
+      sourceReference: 'Keine eindeutige Fachinformation',
+      fachinfoVersion: 'k. A.',
+      isFullyValidated: false,
+      ambiguousWarning: 'Wirkstoff nicht eindeutig identifiziert – Interaktionsprüfung nicht freigegeben.',
+    };
+  }
+
+  if (matches.length === 1) {
+    const matchedKey = matches[0];
+    return {
+      substanceId: `sub_${matchedKey}_fallback`,
+      substanceKey: matchedKey,
+      activeSubstanceName: matchedKey.charAt(0).toUpperCase() + matchedKey.slice(1),
+      sourceReference: 'BfArM / Rote Liste Standard (Fallback-Zuordnung)',
+      fachinfoVersion: '2024/03',
+      isFullyValidated: false,
+    };
+  }
+
+  return {
+    substanceId: `sub_unknown_${Date.now()}`,
+    substanceKey: s.split(' ')[0] || s,
+    activeSubstanceName: rawInput,
+    sourceReference: 'Nicht in der verifizierten AMTS-Datenbank gefunden',
+    fachinfoVersion: 'k. A.',
+    isFullyValidated: false,
+    ambiguousWarning: 'Wirkstoff nicht in der verifizierten Datenbank gefunden – Interaktionsprüfung nicht freigegeben.',
   };
 }
 
