@@ -931,7 +931,7 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
                               key={oIdx}
                               onClick={() => {
                                 if (analysisResult?.auswahl_typ === 'single') {
-                                  setSelectedOptions([opt]);
+                                  setSelectedOptions(prev => prev.includes(opt) ? [] : [opt]);
                                 } else {
                                   setSelectedOptions(prev =>
                                     prev.includes(opt) ? prev.filter(x => x !== opt) : [...prev, opt]
