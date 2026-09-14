@@ -70,6 +70,7 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
   const [analysisResult, setAnalysisResult] = useState<HahnemannAnalysisResult | null>(null);
   const [clarifyingAnswers, setClarifyingAnswers] = useState<Record<string, string>>({});
   const [customClarifyingInput, setCustomClarifyingInput] = useState<Record<string, string>>({});
+  const [pendingReflection, setPendingReflection] = useState<string | null>(null);
   const [snapshotHistory, setSnapshotHistory] = useState<Array<{
     analysisResult: HahnemannAnalysisResult | null;
     conversationHistory: Array<{ question: string; answer: string }>;
@@ -222,9 +223,17 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
     setClarifyingAnswers(lastState.clarifyingAnswers);
   };
 
-  const handleSendAnswer = async (answerTextToSend?: string) => {
+  const handleSendAnswer = (answerTextToSend?: string) => {
     const textToSubmit = (answerTextToSend !== undefined ? answerTextToSend : currentAnswer).trim();
     if (!textToSubmit || !analysisResult || isProcessing) return;
+
+    // Organon strict reflection and interpretation prohibition (§§ 83–84):
+    // Reflect back to patient before finalizing into structured info (Level 2)
+    setPendingReflection(textToSubmit);
+  };
+
+  const executeFinalSubmission = async (textToSubmit: string) => {
+    if (!analysisResult || isProcessing) return;
 
     // Save snapshot for Back button
     setSnapshotHistory(prev => [
@@ -245,7 +254,6 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
     ];
     setConversationHistory(updatedHistory);
 
-    // Only set isLastStep if all 6 pillars are fulfilled or safety limit of 8 steps is reached
     const isLastStep = all6PillarsFilled || updatedHistory.length >= 8;
 
     try {
@@ -786,128 +794,172 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
                 )}
               </div>
 
-              {/* VERBINDLICHES FREITEXTFELD (MANDATORY FREE-TEXT FIELD) MIT VOICE-BUTTON */}
-              <div className="space-y-2 pt-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-teal-700" />
-                    {t('hahnemannMandatoryFreeText')}
-                  </span>
-                  <span className="text-[11px] text-slate-500 font-medium">
-                    {t('hahnemannFreeTextRequired')}
-                  </span>
-                </div>
+              {/* ORGANON REFLECTION & CONFIRMATION DIALOG (§§ 83–84) */}
+              {pendingReflection ? (
+                <div className="p-5 rounded-xl bg-amber-50/95 border-2 border-amber-300 space-y-3 text-xs text-amber-950 shadow-md animate-in fade-in duration-200">
+                  <div className="flex items-center gap-2 font-bold text-amber-900 border-b border-amber-200 pb-2 text-sm">
+                    <ShieldAlert className="w-5 h-5 text-amber-700 shrink-0" />
+                    <span>Organon-Überprüfung & Spiegelung (§§ 83–84):</span>
+                  </div>
+                  <p className="font-medium text-slate-900 leading-relaxed text-sm sm:text-base">
+                    „Ich habe verstanden: <span className="italic font-bold text-teal-950 bg-white px-2.5 py-1 rounded-md border border-amber-200 block my-2">„{pendingReflection}“</span>. Ist das richtig?“
+                  </p>
+                  <p className="text-xs text-slate-600 leading-normal">
+                    Gemäß Hahnemanns striktem Interpretationsverbot dürfen Angaben niemals ungeprüft als Tatsache angenommen werden. Bitte bestätigen Sie diese Angabe, oder korrigieren Sie sie bei Bedarf mit Ihren eigenen Worten.
+                  </p>
 
-                <div className="relative flex items-end gap-2">
-                  <textarea
-                    value={currentAnswer}
-                    onChange={(e) => setCurrentAnswer(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        const combined = selectedOptions.length > 0
-                          ? (currentAnswer.trim() ? `${selectedOptions.join(', ')}. ${currentAnswer.trim()}` : selectedOptions.join(', '))
-                          : currentAnswer.trim();
-                        handleSendAnswer(combined);
-                      }
-                    }}
-                    disabled={isProcessing}
-                    placeholder={t('hahnemannMandatoryFreeTextPlaceholder')}
-                    rows={2}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-teal-600 focus:border-transparent text-xs sm:text-sm text-slate-800 placeholder-slate-400 resize-none shadow-2xs"
-                  />
-
-                  {/* Direct Voice Input Button */}
-                  <div className="shrink-0 pb-0.5">
-                    <VoiceInputButton
-                      size="sm"
-                      context="question_answer"
-                      value={currentAnswer}
-                      onChange={(spokenText) => {
-                        setCurrentAnswer(spokenText);
+                  <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-amber-200">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const stmt = pendingReflection;
+                        setPendingReflection(null);
+                        executeFinalSubmission(stmt);
                       }}
-                    />
+                      className="px-4 py-2.5 rounded-xl bg-teal-700 text-white font-bold hover:bg-teal-800 transition-colors shadow-xs cursor-pointer flex items-center gap-2 text-xs sm:text-sm"
+                    >
+                      <Check className="w-4 h-4" />
+                      <span>Ja, das ist richtig (Als gesichert übernehmen)</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCurrentAnswer(pendingReflection);
+                        setPendingReflection(null);
+                      }}
+                      className="px-4 py-2.5 rounded-xl bg-white text-slate-700 font-bold border border-slate-300 hover:bg-slate-50 transition-colors cursor-pointer text-xs sm:text-sm"
+                    >
+                      <span>Nein / Korrigieren / Eigene Beschreibung</span>
+                    </button>
                   </div>
                 </div>
-
-                {/* Live Extraction Preview (Erkannte Extraktion / Live-Vorschau) */}
-                {currentAnswer.trim().length > 1 && (() => {
-                  const previewExt = extractSymptomsDeterministically(currentAnswer, language);
-                  return (
-                    <div className="p-3 rounded-xl bg-teal-50/90 border border-teal-200 space-y-1.5 text-xs text-slate-800 shadow-xs animate-in fade-in duration-200 mt-2">
-                      <div className="flex items-center gap-1.5 font-bold text-teal-900 border-b border-teal-200 pb-1">
+              ) : (
+                <div className="space-y-4">
+                  {/* VERBINDLICHES FREITEXTFELD (MANDATORY FREE-TEXT FIELD) MIT VOICE-BUTTON */}
+                  <div className="space-y-2 pt-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                         <Sparkles className="w-3.5 h-3.5 text-teal-700" />
-                        <span>Erkannte Extraktion (Live-Vorschau nach Organon §§ 83–104):</span>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
-                        <div><strong className="text-teal-950">Hauptbeschwerde:</strong> {previewExt.hauptbeschwerde || 'Noch nicht angegeben'}</div>
-                        <div><strong className="text-teal-950">Causa:</strong> {previewExt.causa || 'Noch nicht angegeben'}</div>
-                        <div><strong className="text-teal-950">Modalitäten:</strong> {previewExt.modalitaeten || 'Noch nicht angegeben'}</div>
-                        <div><strong className="text-teal-950">Begleitsymptome:</strong> {previewExt.begleitsymptome || 'Noch nicht angegeben'}</div>
+                        {t('hahnemannMandatoryFreeText')}
+                      </span>
+                      <span className="text-[11px] text-slate-500 font-medium">
+                        {t('hahnemannFreeTextRequired')}
+                      </span>
+                    </div>
+
+                    <div className="relative flex items-end gap-2">
+                      <textarea
+                        value={currentAnswer}
+                        onChange={(e) => setCurrentAnswer(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            const combined = selectedOptions.length > 0
+                              ? (currentAnswer.trim() ? `${selectedOptions.join(', ')}. ${currentAnswer.trim()}` : selectedOptions.join(', '))
+                              : currentAnswer.trim();
+                            handleSendAnswer(combined);
+                          }
+                        }}
+                        disabled={isProcessing}
+                        placeholder={t('hahnemannMandatoryFreeTextPlaceholder')}
+                        rows={2}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-teal-600 focus:border-transparent text-xs sm:text-sm text-slate-800 placeholder-slate-400 resize-none shadow-2xs"
+                      />
+
+                      {/* Direct Voice Input Button */}
+                      <div className="shrink-0 pb-0.5">
+                        <VoiceInputButton
+                          size="sm"
+                          context="question_answer"
+                          value={currentAnswer}
+                          onChange={(spokenText) => {
+                            setCurrentAnswer(spokenText);
+                          }}
+                        />
                       </div>
                     </div>
-                  );
-                })()}
 
-                <div className="pt-0.5">
-                  <span className="text-[11px] text-slate-400">
-                    {selectedOptions.length > 0 
-                      ? t('hahnemannOptionsSelectedAndFreeText', { count: selectedOptions.length })
-                      : t('hahnemannSelectOptionsOrFreeText')}
-                  </span>
-                </div>
-              </div>
-
-              {/* VORDEFINIERTE ANKLICKBARE OPTIONEN (Auswahlkästen) */}
-              {activeOptions && activeOptions.length > 0 && (
-                <div className="space-y-3 pt-3 border-t border-teal-100">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                      <CheckSquare className="w-3.5 h-3.5 text-teal-700" />
-                      {t('hahnemannSelectionBoxesTitle')}
-                    </span>
-                    {selectedOptions.length > 0 && (
-                      <span className="text-[11px] font-semibold text-teal-800 bg-teal-100 px-2 py-0.5 rounded-full border border-teal-200">
-                        {t('hahnemannOptionsSelectedCount', { count: selectedOptions.length })}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    {activeOptions.map((opt, oIdx) => {
-                      const isSelected = selectedOptions.includes(opt);
+                    {/* Live Extraction Preview (Erkannte Extraktion / Live-Vorschau) */}
+                    {currentAnswer.trim().length > 1 && (() => {
+                      const previewExt = extractSymptomsDeterministically(currentAnswer, language);
                       return (
-                        <div
-                          key={oIdx}
-                          onClick={() => {
-                            if (analysisResult?.auswahl_typ === 'single') {
-                              setSelectedOptions([opt]);
-                            } else {
-                              setSelectedOptions(prev =>
-                                prev.includes(opt) ? prev.filter(x => x !== opt) : [...prev, opt]
-                              );
-                            }
-                          }}
-                          className={`p-3 rounded-xl border-2 transition-all cursor-pointer flex items-start gap-3 select-none ${
-                            isSelected
-                              ? 'border-teal-600 bg-teal-50/90 text-teal-950 shadow-xs ring-1 ring-teal-600/30'
-                              : 'border-slate-200 bg-white hover:border-teal-300 hover:bg-slate-50/90 text-slate-800'
-                          }`}
-                        >
-                          <div className={`mt-0.5 w-4 h-4 rounded-md border flex items-center justify-center shrink-0 transition-colors ${
-                            isSelected
-                              ? 'bg-teal-700 border-teal-700 text-white'
-                              : 'border-slate-300 bg-white'
-                          }`}>
-                            {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                        <div className="p-3 rounded-xl bg-teal-50/90 border border-teal-200 space-y-1.5 text-xs text-slate-800 shadow-xs animate-in fade-in duration-200 mt-2">
+                          <div className="flex items-center gap-1.5 font-bold text-teal-900 border-b border-teal-200 pb-1">
+                            <Sparkles className="w-3.5 h-3.5 text-teal-700" />
+                            <span>Erkannte Extraktion (Live-Vorschau nach Organon §§ 83–104):</span>
                           </div>
-                          <span className={`text-xs leading-snug ${isSelected ? 'font-bold' : 'font-medium'}`}>
-                            {opt}
-                          </span>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                            <div><strong className="text-teal-950">Hauptbeschwerde:</strong> {previewExt.hauptbeschwerde || 'Noch nicht angegeben'}</div>
+                            <div><strong className="text-teal-950">Causa:</strong> {previewExt.causa || 'Noch nicht angegeben'}</div>
+                            <div><strong className="text-teal-950">Modalitäten:</strong> {previewExt.modalitaeten || 'Noch nicht angegeben'}</div>
+                            <div><strong className="text-teal-950">Begleitsymptome:</strong> {previewExt.begleitsymptome || 'Noch nicht angegeben'}</div>
+                          </div>
                         </div>
                       );
-                    })}
+                    })()}
+
+                    <div className="pt-0.5">
+                      <span className="text-[11px] text-slate-400">
+                        {selectedOptions.length > 0 
+                          ? t('hahnemannOptionsSelectedAndFreeText', { count: selectedOptions.length })
+                          : t('hahnemannSelectOptionsOrFreeText')}
+                      </span>
+                    </div>
                   </div>
+
+                  {/* VORDEFINIERTE ANKLICKBARE OPTIONEN (Auswahlkästen) */}
+                  {activeOptions && activeOptions.length > 0 && (
+                    <div className="space-y-3 pt-3 border-t border-teal-100">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                          <CheckSquare className="w-3.5 h-3.5 text-teal-700" />
+                          {t('hahnemannSelectionBoxesTitle')}
+                        </span>
+                        {selectedOptions.length > 0 && (
+                          <span className="text-[11px] font-semibold text-teal-800 bg-teal-100 px-2 py-0.5 rounded-full border border-teal-200">
+                            {t('hahnemannOptionsSelectedCount', { count: selectedOptions.length })}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        {activeOptions.map((opt, oIdx) => {
+                          const isSelected = selectedOptions.includes(opt);
+                          return (
+                            <div
+                              key={oIdx}
+                              onClick={() => {
+                                if (analysisResult?.auswahl_typ === 'single') {
+                                  setSelectedOptions([opt]);
+                                } else {
+                                  setSelectedOptions(prev =>
+                                    prev.includes(opt) ? prev.filter(x => x !== opt) : [...prev, opt]
+                                  );
+                                }
+                              }}
+                              className={`p-3 rounded-xl border-2 transition-all cursor-pointer flex items-start gap-3 select-none ${
+                                isSelected
+                                  ? 'border-teal-600 bg-teal-50/90 text-teal-950 shadow-xs ring-1 ring-teal-600/30'
+                                  : 'border-slate-200 bg-white hover:border-teal-300 hover:bg-slate-50/90 text-slate-800'
+                              }`}
+                            >
+                              <div className={`mt-0.5 w-4 h-4 rounded-md border flex items-center justify-center shrink-0 transition-colors ${
+                                isSelected
+                                  ? 'bg-teal-700 border-teal-700 text-white'
+                                  : 'border-slate-300 bg-white'
+                              }`}>
+                                {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                              </div>
+                              <span className={`text-xs leading-snug ${isSelected ? 'font-bold' : 'font-medium'}`}>
+                                {opt}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

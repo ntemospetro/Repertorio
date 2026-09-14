@@ -4,6 +4,10 @@ import {
   getTherapists, 
   deleteTherapist, 
   resetTherapistQuota, 
+  resetTherapistFeatureQuota,
+  resetAllTherapistsQuotas,
+  getTherapistUsageCount,
+  getTariffAccessForTherapist,
   upgradeTherapistToPro,
   setActiveTherapistId,
   createTherapist,
@@ -581,6 +585,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <option value="limit_reached">{t('adminFilterLimit')}</option>
                 </select>
               </div>
+
+              <button
+                onClick={() => {
+                  if (window.confirm('Möchten Sie wirklich die Kontingente und Nutzungszähler ALLER Therapeuten plattformweit auf 0 zurücksetzen?')) {
+                    resetAllTherapistsQuotas();
+                    setTherapists(getTherapists());
+                    showToast('Alle Therapeuten-Kontingente wurden erfolgreich zurückgesetzt.');
+                  }
+                }}
+                className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-md text-xs font-semibold flex items-center gap-1.5 border border-rose-200 transition-colors cursor-pointer"
+                title="Plattformweit alle Kontingente und Zähler aller Therapeuten zurücksetzen"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Alle Kontingente zurücksetzen</span>
+              </button>
             </div>
           </div>
 

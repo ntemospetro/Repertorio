@@ -119,6 +119,7 @@ export interface Therapist {
   maxAnalyses: number; // default 3 for free_trial
   usedTokens?: number;
   maxTokens?: number; // default 25000 for free_trial limit
+  featureUsage?: Record<string, number>; // e.g. { quick_intake: number, med_research: number, ... }
   registeredAt: string; // ISO date string
   status: 'active' | 'limit_reached' | 'locked' | 'upgraded';
   balanceEur?: number; // Current remaining token balance in EUR

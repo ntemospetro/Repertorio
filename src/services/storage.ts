@@ -1590,6 +1590,50 @@ export function resetTherapistQuota(therapistId: string): Therapist | null {
   });
 }
 
+export function resetTherapistFeatureQuota(therapistId: string, actionType?: TherapistUsageActionType | 'all_quotas'): Therapist | null {
+  if (!therapistId) return null;
+  const actionTypes: TherapistUsageActionType[] = ['med_research', 'materia_search', 'repertorium_search', 'quick_intake', 'risk_analysis', 'reports', 'ai_request'];
+  
+  if (!actionType || actionType === 'all_quotas') {
+    actionTypes.forEach(act => {
+      try {
+        localStorage.removeItem(`homoeo_usage_${therapistId}_${act}`);
+      } catch (e) {}
+    });
+    return updateTherapist(therapistId, {
+      usedAnalyses: 0,
+      usedTokens: 0,
+      status: 'active',
+    });
+  } else {
+    try {
+      localStorage.removeItem(`homoeo_usage_${therapistId}_${actionType}`);
+      window.dispatchEvent(new Event('homoeo_storage_updated'));
+    } catch (e) {}
+    return getTherapists().find(t => t.id === therapistId) || null;
+  }
+}
+
+export function resetAllTherapistsQuotas(): void {
+  const therapists = getTherapists();
+  const actionTypes: TherapistUsageActionType[] = ['med_research', 'materia_search', 'repertorium_search', 'quick_intake', 'risk_analysis', 'reports', 'ai_request'];
+  
+  const updated = therapists.map(th => {
+    actionTypes.forEach(act => {
+      try {
+        localStorage.removeItem(`homoeo_usage_${th.id}_${act}`);
+      } catch (e) {}
+    });
+    return {
+      ...th,
+      usedAnalyses: 0,
+      usedTokens: 0,
+      status: (th.tarif === 'pro_unlimited' || th.isUnlimited ? 'upgraded' : 'active') as 'active' | 'limit_reached' | 'locked' | 'upgraded'
+    };
+  });
+  saveTherapists(updated);
+}
+
 export function upgradeTherapistToPro(therapistId: string): Therapist | null {
   return assignPackageToTherapist(therapistId, 'pro_unlimited', false);
 }

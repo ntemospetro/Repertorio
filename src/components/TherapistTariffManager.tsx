@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Therapist, PackagePlan } from '../types';
-import { getPackagePlans, assignPackageToTherapist } from '../services/storage';
+import { getPackagePlans, assignPackageToTherapist, getTherapistUsageCount, getTariffAccessForTherapist } from '../services/storage';
 import { useTranslation } from '../i18n/LanguageContext';
 import { 
   Sparkles, 
@@ -408,6 +408,65 @@ export const TherapistTariffManager: React.FC<TherapistTariffManagerProps> = ({
             <span>{errorMessage}</span>
           </div>
         )}
+      </div>
+
+      {/* DETAILED FEATURE QUOTAS & USAGE BREAKDOWN */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm space-y-5">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+          <div>
+            <h3 className="text-base font-bold text-slate-900">Funktions-Kontingente & aktuelle Nutzung</h3>
+            <p className="text-xs text-slate-500">Detaillierte Übersicht aller verfügbaren Features und Ihres aktuellen Verbrauchs im Tarif.</p>
+          </div>
+          <div className="text-xs font-semibold px-3 py-1 rounded-full bg-teal-50 text-teal-800 border border-teal-200">
+            {therapist.tarifLabel || 'Aktiv'}
+          </div>
+        </div>
+
+        {(() => {
+          const access = getTariffAccessForTherapist(therapist);
+          const limits = access.featureLimits;
+          const featuresList = [
+            { key: 'quick_intake', label: 'Akutaufnahmen (Quick Intake)', limit: limits.unlimitedQuickIntake ? -1 : (limits.maxQuickIntake ?? 3), used: getTherapistUsageCount(therapist.id, 'quick_intake') },
+            { key: 'med_research', label: 'Medikamenten-Recherchen', limit: limits.unlimitedMedResearch ? -1 : (limits.maxMedResearch ?? 10), used: getTherapistUsageCount(therapist.id, 'med_research') },
+            { key: 'materia_search', label: 'Materia Medica Suchen', limit: limits.unlimitedMateriaMedicaSearch ? -1 : (limits.maxMateriaMedicaSearch ?? 25), used: getTherapistUsageCount(therapist.id, 'materia_search') },
+            { key: 'repertorium_search', label: 'Repertorium Suchen', limit: limits.unlimitedRepertoriumSearch ? -1 : (limits.maxRepertoriumSearch ?? 25), used: getTherapistUsageCount(therapist.id, 'repertorium_search') },
+            { key: 'risk_analysis', label: 'Risiko-Analysen', limit: limits.unlimitedRiskAnalyses ? -1 : (limits.maxRiskAnalyses ?? 5), used: getTherapistUsageCount(therapist.id, 'risk_analysis') },
+            { key: 'reports', label: 'PDF-Berichte & Export', limit: limits.unlimitedReports ? -1 : (limits.maxReports ?? 10), used: getTherapistUsageCount(therapist.id, 'reports') },
+            { key: 'ai_request', label: 'KI-Spezialanfragen (AI Requests)', limit: limits.unlimitedAiRequests ? -1 : (limits.maxAiRequests ?? 50), used: getTherapistUsageCount(therapist.id, 'ai_request') },
+          ];
+
+          return (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {featuresList.map(f => {
+                const isInf = access.isUnlimitedAll || f.limit < 0;
+                const pct = isInf ? 0 : Math.min(100, Math.round((f.used / f.limit) * 100));
+                const reached = !isInf && f.used >= f.limit;
+                return (
+                  <div key={f.key} className="p-4 rounded-xl border border-slate-200/80 bg-slate-50/50 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-slate-800 text-xs sm:text-sm">{f.label}</span>
+                      <span className={`font-mono text-xs font-bold px-2 py-0.5 rounded ${reached ? 'bg-rose-100 text-rose-800' : 'bg-teal-100 text-teal-800'}`}>
+                        {f.used} / {isInf ? '∞' : f.limit}
+                      </span>
+                    </div>
+                    {!isInf && (
+                      <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full ${reached ? 'bg-rose-500' : 'bg-teal-600'}`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between text-[11px] text-slate-500">
+                      <span>{isInf ? 'Unbegrenzte Nutzung' : `${Math.max(0, f.limit - f.used)} verbleibend`}</span>
+                      {reached && <span className="text-rose-600 font-bold">Limit erreicht</span>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
       </div>
 
       {/* NAVIGATION TABS FOR SETTINGS / BILLING */}

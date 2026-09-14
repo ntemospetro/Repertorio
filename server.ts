@@ -1234,7 +1234,7 @@ Antworte AUSSCHLIESSLICH mit einem validen JSON-Objekt im folgenden Format (ohne
       const prompt = `
 Du bist die zentrale Logik-Engine für eine professionelle homöopathische Anamnese streng nach den Prinzipien von Samuel Hahnemann und den Paragraphen 83 bis 104 des Organon der Heilkunst.
 
-### LEITLINIEN AUS DEM ORGANON DER HEILKUNST (§§ 83–104):
+### LEITLINIEN AUS DER ORGANON DER HEILKUNST (§§ 83–104):
 - § 83: Vorurteilslose Beobachtung und treue Aufnahme des Krankheitsbildes ohne Spekulationen.
 - § 84: Der Patient schildert seine Beschwerden; die Begleiter berichten. Der Arzt hört aufmerksam zu, ohne zu unterbrechen.
 - §§ 85–90: Gezieltes Nachfragen zur Präzisierung. Jedes Einzelsymptom wird isoliert abgefragt. Niemals Suggestivfragen stellen, die dem Patienten die Antwort in den Mund legen.
@@ -1245,14 +1245,12 @@ Du bist die zentrale Logik-Engine für eine professionelle homöopathische Anamn
 - §§ 100–102: Zusammenhängende / epidemische Erkrankungen: Erfassung des Gesamtbildes durch Verknüpfung der Symptome.
 - §§ 103–104: Vollständiges Fixieren des Krankheitsbildes (Totalität der Symptome als Fundament des Simile).
 
-### STRIKTE ANWEISUNG: BERÜCKSICHTIGUNG DES KONKRETEN PATIENTENSYMPTOMS & EXTRAKTION
-1. Analysiere ZUERST die aktuelle Benutzereingabe ("${text.replace(/"/g, '\\"')}") sowie die bestehende Matrix.
-2. Wenn der Patient in seiner Eingabe bereits ein Symptom (z.B. Kopfschmerzen, Halsschmerzen, Husten, Magenschmerzen), eine Lokalisation, eine Empfindung (z.B. klopfend, pulsierend, stechend, brennend), einen Auslöser/Causa (z.B. kalter Wind, Zugluft, Durchnässung, Schreck, Ärger) oder Modalitäten genannt hat:
-   - Extrahiere diese Fakten SOFORT in die entsprechenden Felder von "wichtige_symptom_fragmente"!
-   - Frage NIEMALS nach einer Säule, die der Patient bereits genannt hat oder die in der bestehenden Matrix bereits vorhanden ist.
-3. Die nächste Frage ("naechste_frage") MUSS das konkrete Symptom des Patienten IMMER namentlich aufgreifen (z. B. "Zu Ihren Kopfschmerzen: ...", "Bezüglich Ihrer Halsschmerzen: ...", in der Zielsprache).
-   - Es ist STRENG VERBOTEN, eine unpersönliche, abstrakte Allgemeinfrage wie "Woher kommen die Symptome?" oder "Gab es einen Auslöser?" ohne Bezug zum konkreten Symptom zu stellen.
-   - Frage immer gezielt nach der nächsten TATSÄCHLICH NOCH FEHLENDEN Säule bezogen auf dieses konkrete Symptom!
+### STRIKTE ANWEISUNG: ADAPTIVE NAVIGATIONS-LOGIK & KEINE ERFINDUNGEN
+1. Du bist kein generativer Interviewer, sondern ein adaptiver Navigator durch den Hahnemann-Katalog.
+2. Analysiere ZUERST die aktuelle Benutzereingabe ("${text.replace(/"/g, '\\"')}") sowie die bestehende Matrix.
+3. Wenn der Patient in seiner Eingabe bereits Fakten genannt hat, extrahiere diese treu. WICHTIG: Formuliere niemals kausale Festlegungen (z.B. nicht "Causa = Zugluft", sondern "Vom Patienten bestätigter vorausgehender Umstand").
+4. Die nächste Frage ("naechste_frage") MUSS das konkrete Symptom des Patienten IMMER namentlich aufgreifen und darf niemals eine Antwort auf diese nächste Frage vorwegnehmen oder erfinden.
+5. Bearbeite die Bereiche systematisch (Causa -> Lokalisation -> Sensation -> Modalitäten -> Begleiterscheinungen -> Gemüt) und prüfe, ob alle Details innerhalb eines Bereichs geklärt sind, bevor du zum nächsten wechselst.
 
 ### STRIKTE UNTERSCHEIDUNG: AKUT VS. CHRONISCH:
 Aktueller Fall-Typ: "${caseType === 'chronisch' ? 'CHRONISCHER FALL (§§ 83–98 Organon)' : 'AKUTER FALL (§ 99 Organon)'}"
@@ -1263,8 +1261,8 @@ ${caseType === 'chronisch' ? `
 - Bei akuten Beschwerden erfragst du den unmittelbaren Auslöser (Causa: Kälte, Zugluft, Durchnässung, Schreck, Zorn, Überanstrengung, Speisen etc.) und die aktuellen akuten Symptome samt raschem/stetigem Beginn, falls noch nicht geschildert.
 `}
 
-### URSÄCHLICHER ZUSAMMENHANG BEI MEHREREN BESCHWERDEN:
-Bei der Aufnahme mehrerer Beschwerden (z. B. Fieber und Kopfschmerzen, Husten und Halsschmerzen) prüfst du IMMER zuerst, ob ein ursächlicher Zusammenhang besteht. Hinterfrage, ob beide durch denselben Auslöser/Infekt hervorgerufen wurden, um sie als zusammenhängenden Komplex zu erfassen.
+### URSÄCHLICHER ZUSAMMENHANG & BEZIEHUNG BEI MEHREREN BESCHWERDEN:
+„Wenn mehrere Beschwerden genannt werden, darf keine dieser Beschwerden automatisch als Leitsymptom, Begleitsymptom, Folge oder Ursache klassifiziert werden. Zuerst muss die Beziehung zwischen den Beschwerden geklärt werden. Insbesondere ist zunächst zu klären, ob die Beschwerden gleichzeitig oder nacheinander aufgetreten sind. Bei einem zeitlichen Nacheinander sind zuerst Reihenfolge und zeitlicher Abstand zu ermitteln. Eine zeitliche Abfolge darf nicht automatisch als kausaler Zusammenhang oder Begleitsymptom interpretiert werden.“
 
 ### HOMÖOPATHISCHE STRUKTUR FÜR JEDES SYMPTOM (Bestehender Stand vor aktueller Eingabe):
 1. Causa (Auslöser oder Beginn): ${hasCausa ? "Erfasst: " + currentMatrix.causa : "Falls in Eingabe genannt -> extrahieren, sonst erfragen"}
