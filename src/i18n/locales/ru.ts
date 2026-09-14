@@ -1966,8 +1966,6 @@ export const ru = {
   hahnemannPillarShortLokalisation: "Локализация",
   hahnemannPillarShortSensation: "Ощущение",
   hahnemannPillarShortModalitaeten: "Модальности",
-  hahnemannPillarShortBesserung: "Улучшение",
-  hahnemannPillarShortVerschlechterung: "Ухудшение",
   hahnemannPillarShortBegleit: "Сопутств.",
   hahnemannPillarShortGemuet: "Психика",
   hahnemannNoHallucinationsNotice: "Без вымышленных симптомов: Фиксируются только факты, явно высказанные пациентом.",
@@ -3244,6 +3242,5 @@ export const ru = {
   adminConfigSecurityPinDesc: "Дополнительный барьер безопасности перед входом администратора (По умолчанию: 360).",
   anamnesisStepBetter: "Столп 4.1 – КОГДА: Улучшение (> Облегчение)",
   anamnesisStepWorse: "Столп 4.2 – КОГДА: Ухудшение (< Утяжеление)",
-  anamnesisStepPillarCausa: "Столп 3 – ОТ ЧЕГО? (Causa и триггер)",
-  hahnemannBackBtn: "Назад"
+  anamnesisStepPillarCausa: "Столп 3 – ОТ ЧЕГО? (Causa и триггер)"
 };

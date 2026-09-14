@@ -1966,8 +1966,6 @@ export const it = {
   hahnemannPillarShortLokalisation: "Localizzazione",
   hahnemannPillarShortSensation: "Sensazione",
   hahnemannPillarShortModalitaeten: "Modalità",
-  hahnemannPillarShortBesserung: "Miglioramento",
-  hahnemannPillarShortVerschlechterung: "Peggioramento",
   hahnemannPillarShortBegleit: "Concomitanti",
   hahnemannPillarShortGemuet: "Stato d'animo",
   hahnemannNoHallucinationsNotice: "Nessun sintomo allucinato: Vengono registrati solo i fatti espressi esplicitamente dal paziente.",
@@ -3244,6 +3242,5 @@ export const it = {
   adminConfigSecurityPinDesc: "Barriera di sicurezza aggiuntiva prima del login amministratore (Predefinito: 360).",
   anamnesisStepBetter: "Pilastro 4.1 – QUANDO: Miglioramento (> Sollievo)",
   anamnesisStepWorse: "Pilastro 4.2 – QUANDO: Peggioramento (< Aggravamento)",
-  anamnesisStepPillarCausa: "Pilastro 3 – DA COSA? (Causa & Scatenante)",
-  hahnemannBackBtn: "Indietro"
+  anamnesisStepPillarCausa: "Pilastro 3 – DA COSA? (Causa & Scatenante)"
 };

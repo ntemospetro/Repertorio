@@ -1887,11 +1887,9 @@ export const de = {
   hahnemannPillarCausa: "1. Causa (Auslöser oder Beginn)",
   hahnemannPillarLokalisierung: "2. Lokalisierung (Ort / Gewebe)",
   hahnemannPillarEmpfindung: "3. Empfindung (Sensation / Schmerzcharakter)",
-  hahnemannPillarBesserung: "4. Besserung (Amelioration)",
-  hahnemannPillarVerschlechterung: "5. Verschlechterung (Aggravation)",
-  hahnemannPillarModalitaeten: "Modalitäten (Besserung / Verschlechterung)",
-  hahnemannPillarBegleit: "6. Begleitsymptome (Concomitants)",
-  hahnemannPillarGemuet: "7. Gemüt (Psychischer Zustand)",
+  hahnemannPillarModalitaeten: "4. Modalitäten (Verschlechterung / Besserung)",
+  hahnemannPillarBegleit: "5. Begleitsymptome (Concomitants)",
+  hahnemannPillarGemuet: "6. Gemüt (Psychischer Zustand)",
   hahnemannNotSpecifiedYet: "Noch nicht genannt",
   hahnemannIgnoredData: "Gefilterte / Ignorierte Nebensächlichkeiten",
   hahnemannIgnoredDataDesc: "Nicht-medizinische Fragmente, Drittpersonen oder Raumbeschreibungen wurden herausgefiltert.",
@@ -1973,8 +1971,6 @@ export const de = {
   hahnemannPillarShortCausa: "Causa",
   hahnemannPillarShortLokalisation: "Lokalisation",
   hahnemannPillarShortSensation: "Sensation",
-  hahnemannPillarShortBesserung: "Besserung",
-  hahnemannPillarShortVerschlechterung: "Verschlechterung",
   hahnemannPillarShortModalitaeten: "Modalitäten",
   hahnemannPillarShortBegleit: "Begleit",
   hahnemannPillarShortGemuet: "Gemüt",
@@ -3253,6 +3249,5 @@ export const de = {
   adminConfigSecurityPinDesc: "Zusätzlicher Schutzwall vor dem Administrator-Login (Standard: 360).",
   anamnesisStepBetter: "Säule 4.1 – WANN: Besserung (> Linderung)",
   anamnesisStepWorse: "Säule 4.2 – WANN: Verschlimmerung (< Verschlechterung)",
-  anamnesisStepPillarCausa: "Säule 3 – WODURCH? (Causa & Auslöser)",
-  hahnemannBackBtn: "Zurück"
+  anamnesisStepPillarCausa: "Säule 3 – WODURCH? (Causa & Auslöser)"
 };

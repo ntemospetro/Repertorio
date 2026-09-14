@@ -1966,8 +1966,6 @@ export const el = {
   hahnemannPillarShortLokalisation: "Εντόπιση",
   hahnemannPillarShortSensation: "Αίσθηση",
   hahnemannPillarShortModalitaeten: "Τροποποιητικοί",
-  hahnemannPillarShortBesserung: "Βελτίωση",
-  hahnemannPillarShortVerschlechterung: "Επιδείνωση",
   hahnemannPillarShortBegleit: "Συνοδά",
   hahnemannPillarShortGemuet: "Ψυχισμός",
   hahnemannNoHallucinationsNotice: "Χωρίς υποθετικά συμπτώματα: Καταγράφονται μόνο γεγονότα που δήλωσε ρητά ο ασθενής.",
@@ -3244,6 +3242,5 @@ export const el = {
   adminConfigSecurityPinDesc: "Πρόσθετη πύλη ασφαλείας πριν από τη σύνδεση διαχειριστή (Προεπιλογή: 360).",
   anamnesisStepBetter: "Στήλη 4.1 – ΠΟΤΕ: Βελτίωση (> Ανακούφιση)",
   anamnesisStepWorse: "Στήλη 4.2 – ΠΟΤΕ: Επιδείνωση (< Χειροτέρευση)",
-  anamnesisStepPillarCausa: "Στήλη 3 – ΑΠΟ ΤΙ? (Causa & Εκκίνησις)",
-  hahnemannBackBtn: "Πίσω"
+  anamnesisStepPillarCausa: "Στήλη 3 – ΑΠΟ ΤΙ? (Causa & Εκκίνησις)"
 };

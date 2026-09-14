@@ -1887,11 +1887,9 @@ export const en = {
   hahnemannPillarCausa: "1. Causa (Trigger / Cause)",
   hahnemannPillarLokalisierung: "2. Localization (Location / Tissue)",
   hahnemannPillarEmpfindung: "3. Sensation (Sensory quality / Pain character)",
-  hahnemannPillarBesserung: "4. Amelioration (Better from)",
-  hahnemannPillarVerschlechterung: "5. Aggravation (Worse from)",
-  hahnemannPillarModalitaeten: "Modalities (Amelioration / Aggravation)",
-  hahnemannPillarBegleit: "6. Concomitants (Accompanying symptoms)",
-  hahnemannPillarGemuet: "7. Mind (Psychological / Emotional state)",
+  hahnemannPillarModalitaeten: "4. Modalities (Better / Worse)",
+  hahnemannPillarBegleit: "5. Concomitants (Accompanying symptoms)",
+  hahnemannPillarGemuet: "6. Mind (Psychological / Emotional state)",
   hahnemannNotSpecifiedYet: "Not mentioned yet",
   hahnemannIgnoredData: "Filtered / Ignored Irrelevant Data",
   hahnemannIgnoredDataDesc: "Non-medical fragments, third-party names, or descriptions of room objects were filtered out.",
@@ -1973,8 +1971,6 @@ export const en = {
   hahnemannPillarShortCausa: "Causa",
   hahnemannPillarShortLokalisation: "Localization",
   hahnemannPillarShortSensation: "Sensation",
-  hahnemannPillarShortBesserung: "Amelioration",
-  hahnemannPillarShortVerschlechterung: "Aggravation",
   hahnemannPillarShortModalitaeten: "Modalities",
   hahnemannPillarShortBegleit: "Concomitants",
   hahnemannPillarShortGemuet: "Mind",
@@ -3252,6 +3248,5 @@ export const en = {
   adminConfigSecurityPinDesc: "Additional security gate before administrator login (Default: 360).",
   anamnesisStepBetter: "Pillar 4.1 – WHEN: Improvement (> Relief)",
   anamnesisStepWorse: "Pillar 4.2 – WHEN: Aggravation (< Worsening)",
-  anamnesisStepPillarCausa: "Pillar 3 – FROM WHAT? (Causa & Trigger)",
-  hahnemannBackBtn: "Back"
+  anamnesisStepPillarCausa: "Pillar 3 – FROM WHAT? (Causa & Trigger)"
 };

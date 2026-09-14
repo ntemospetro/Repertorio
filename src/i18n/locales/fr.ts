@@ -1966,8 +1966,6 @@ export const fr = {
   hahnemannPillarShortLokalisation: "Localisation",
   hahnemannPillarShortSensation: "Sensation",
   hahnemannPillarShortModalitaeten: "Modalités",
-  hahnemannPillarShortBesserung: "Amélioration",
-  hahnemannPillarShortVerschlechterung: "Aggravation",
   hahnemannPillarShortBegleit: "Concomitants",
   hahnemannPillarShortGemuet: "Psychisme",
   hahnemannNoHallucinationsNotice: "Aucun symptôme halluciné : Seules les déclarations formulées explicitement par le patient sont enregistrées.",
@@ -3244,6 +3242,5 @@ export const fr = {
   adminConfigSecurityPinDesc: "Barrière de sécurité supplémentaire avant la connexion administrateur (Par défaut : 360).",
   anamnesisStepBetter: "Pilier 4.1 – QUAND : Amélioration (> Soulagement)",
   anamnesisStepWorse: "Pilier 4.2 – QUAND : Aggravation (< Aggravation)",
-  anamnesisStepPillarCausa: "Pilier 3 – PAR QUOI ? (Causa & Déclencheur)",
-  hahnemannBackBtn: "Retour"
+  anamnesisStepPillarCausa: "Pilier 3 – PAR QUOI ? (Causa & Déclencheur)"
 };
