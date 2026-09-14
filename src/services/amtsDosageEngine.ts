@@ -284,52 +284,14 @@ export function parseDoseAndFrequency(rawDose: string = '', rawIntake: string = 
 }
 
 /**
- * Normalizes drug name or substance to match standard database key
+ * Normalizes drug name or substance to match standard database key via strict resolveSubstanceMapping
  */
 export function normalizeSubstanceKey(raw: string): string {
-  const s = raw.toLowerCase()
-    .replace(/[^a-z0-9äöüß]/g, ' ')
-    .trim();
-
-  // Direct matches
-  for (const key of Object.keys(CLINICAL_MAX_DAILY_DOSES_MG)) {
-    if (s.includes(key)) {
-      return key;
-    }
-  }
-
-  // Common aliases
-  if (s.includes('aspirin') || s.includes('acetylsalicyl')) return 'acetylsalicylsaeure';
-  if (s.includes('beloc') || s.includes('metoprol')) return 'metoprolol';
-  if (s.includes('concor')) return 'bisoprolol';
-  if (s.includes('norvasc')) return 'amlodipin';
-  if (s.includes('delix')) return 'ramipril';
-  if (s.includes('atid') || s.includes('atandor')) return 'candesartan';
-  if (s.includes('diovan')) return 'valsartan';
-  if (s.includes('xarelto')) return 'rivaroxaban';
-  if (s.includes('eliquis')) return 'apixaban';
-  if (s.includes('lixiana')) return 'edoxaban';
-  if (s.includes('pradaxa')) return 'dabigatran';
-  if (s.includes('plavix')) return 'clopidogrel';
-  if (s.includes('lasix')) return 'furosemid';
-  if (s.includes('torem')) return 'torasemid';
-  if (s.includes('cipramil')) return 'citalopram';
-  if (s.includes('cipralex')) return 'escitalopram';
-  if (s.includes('zoloft')) return 'sertralin';
-  if (s.includes('trevilor')) return 'venlafaxin';
-  if (s.includes('cymbalta')) return 'duloxetin';
-  if (s.includes('lyrica')) return 'pregabalin';
-  if (s.includes('neurontin')) return 'gabapentin';
-  if (s.includes('voltaren')) return 'diclofenac';
-  if (s.includes('ben-u-ron') || s.includes('acetaminophen')) return 'paracetamol';
-  if (s.includes('medrol') || s.includes('urbason')) return 'methylprednisolon';
-  if (s.includes('decortin')) return 'prednisolon';
-
-  return s.split(' ')[0] || s;
+  return resolveSubstanceMapping(raw).substanceKey;
 }
 
 /**
- * Full AMTS v5.0 Quantitative Check for an entire medication list.
+ * Full AMTS v5.0 Quantitative Check for an entire medication list with strict ID mapping and traceability.
  */
 export function evaluateAmtsMedications(
   meds: Array<{ name: string; dosierung?: string; einnahmeart?: string; wirkstoff?: string; singleDoseMg?: number; frequencyPerDay?: number; dosageText?: string }>,
@@ -353,7 +315,14 @@ export function evaluateAmtsMedications(
   for (const m of meds) {
     const rawName = m.name || '';
     const rawSubstance = m.wirkstoff || rawName;
-    const normalizedKey = normalizeSubstanceKey(rawSubstance || rawName);
+    const resolved = resolveSubstanceMapping(`${rawName} ${rawSubstance}`);
+    const normalizedKey = resolved.substanceKey;
+    const substanceId = resolved.substanceId;
+    const sourceReference = resolved.sourceReference;
+    const fachinfoVersion = resolved.fachinfoVersion;
+    const isFullyValidated = resolved.isFullyValidated;
+    const ambiguousWarning = resolved.ambiguousWarning;
+
     uniqueSubstancesSet.add(normalizedKey);
 
     // Fallback search in name if dosierung is empty
@@ -383,7 +352,11 @@ export function evaluateAmtsMedications(
     let clinicalRiskSummary = 'Dosis im üblichen klinischen Bereich.';
     let emergencySign = 'Keine akute Überdosierung erkennbar.';
 
-    if (refData && parsed.calculatedDailyDoseMg !== null) {
+    if (ambiguousWarning) {
+      status = 'NICHT_BEURTEILBAR';
+      clinicalRiskSummary = `⚠️ ${ambiguousWarning} [Quelle: ${sourceReference}, Stand: ${fachinfoVersion}]`;
+      emergencySign = 'Interaktionsprüfung wegen unklarer Wirkstoffidentität gesperrt.';
+    } else if (refData && parsed.calculatedDailyDoseMg !== null) {
       const maxMg = refData.maxMg;
       const dailyMg = parsed.calculatedDailyDoseMg;
 
@@ -395,7 +368,7 @@ export function evaluateAmtsMedications(
           highestPercentageExceeded = percentageExceeded;
         }
 
-        clinicalRiskSummary = `MASSIVE ÜBERDOSIERUNG: Berechnete Tagesdosis von ${dailyMg} mg/Tag übersteigt die klinische Standard-Höchstdosis (${maxMg} mg/Tag) um +${percentageExceeded}%. ${refData.reason}.`;
+        clinicalRiskSummary = `MASSIVE ÜBERDOSIERUNG: Berechnete Tagesdosis von ${dailyMg} mg/Tag übersteigt die klinische Standard-Höchstdosis (${maxMg} mg/Tag) um +${percentageExceeded}%. ${refData.reason}. [Quelle: ${sourceReference}, Stand: ${fachinfoVersion}]`;
         emergencySign = `Lebensgefahr durch akute Wirkstoffüberlastung (${refData.reason})!`;
 
         if (refData.organ !== 'allgemein') {
@@ -403,20 +376,25 @@ export function evaluateAmtsMedications(
         }
       } else {
         status = 'NORMAL';
-        clinicalRiskSummary = `Tagesdosis ${dailyMg} mg/Tag liegt innerhalb der maximalen Referenzdosis (${maxMg} mg/Tag).`;
+        clinicalRiskSummary = `Tagesdosis ${dailyMg} mg/Tag liegt innerhalb der maximalen Referenzdosis (${maxMg} mg/Tag). [Quelle: ${sourceReference}, Stand: ${fachinfoVersion}]`;
       }
     } else if (!refData && parsed.calculatedDailyDoseMg !== null) {
       status = 'NICHT_BEURTEILBAR';
-      clinicalRiskSummary = `Tagesdosis von ${parsed.calculatedDailyDoseMg} mg berechnet (${parsed.frequencyDescription}), jedoch keine eindeutige deutsche Referenz-Höchstdosis hinterlegt.`;
+      clinicalRiskSummary = `Tagesdosis von ${parsed.calculatedDailyDoseMg} mg berechnet, jedoch keine eindeutige deutsche Referenz-Höchstdosis hinterlegt. [Quelle: ${sourceReference}]`;
     } else {
       status = 'NICHT_BEURTEILBAR';
-      clinicalRiskSummary = `Unvollständige Dosierungsangabe (Einzeldosis oder Einnahmefrequenz nicht quantifizierbar).`;
+      clinicalRiskSummary = `Unvollständige Dosierungsangabe oder nicht quantifizierbar. [Quelle: ${sourceReference}]`;
     }
 
     evaluations.push({
       drugName: m.name,
       substance: rawSubstance,
       normalizedSubstance: normalizedKey,
+      substanceId,
+      sourceReference,
+      fachinfoVersion,
+      isFullyValidated,
+      ambiguousWarning,
       singleDoseMg: parsed.singleDoseValue,
       frequencyPer24h: parsed.frequencyPer24h,
       dailyDoseMg: parsed.calculatedDailyDoseMg,
