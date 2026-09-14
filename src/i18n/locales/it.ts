@@ -1907,7 +1907,7 @@ export const it = {
   recognizedSymptomsTitle: "Sintomi rilevati",
   recognizedSymptomsSubtitle: "Singoli sintomi clinici frammentati e assegnati automaticamente",
   acuteVoiceAnalysisTitle: "ANAMNESI ACUTA E DESCRIZIONE DEI SINTOMI **",
-  acuteVoiceAnalysisSubtitle: "Inserisci il testo dei sintomi o registra a voce. Sintomi guida, causa, modalità e sintomi concomitanti vengono rilevati in tempo reale.",
+  acuteVoiceAnalysisSubtitle: "I sintomi segnalati vengono estratti dalla dichiarazione del paziente. Sintomo principale, causa, modalità e concomitanti vengono chiariti e confermati solo tramite un'anamnesi mirata.",
   hahnemannStartWizardBtn: "Avvia analisi a 6 pilastri di Hahnemann (Caselle di selezione)",
   noRecognizedSymptomsYet: "Nessun sintomo ancora rilevato. Parla o scrivi i tuoi disturbi.",
   clearHauptbeschwerdeBtn: "Cancella inserimento",
@@ -1966,6 +1966,8 @@ export const it = {
   hahnemannPillarShortLokalisation: "Localizzazione",
   hahnemannPillarShortSensation: "Sensazione",
   hahnemannPillarShortModalitaeten: "Modalità",
+  hahnemannPillarShortBesserung: "Miglioramento",
+  hahnemannPillarShortVerschlechterung: "Peggioramento",
   hahnemannPillarShortBegleit: "Concomitanti",
   hahnemannPillarShortGemuet: "Stato d'animo",
   hahnemannNoHallucinationsNotice: "Nessun sintomo allucinato: Vengono registrati solo i fatti espressi esplicitamente dal paziente.",
@@ -3242,5 +3244,6 @@ export const it = {
   adminConfigSecurityPinDesc: "Barriera di sicurezza aggiuntiva prima del login amministratore (Predefinito: 360).",
   anamnesisStepBetter: "Pilastro 4.1 – QUANDO: Miglioramento (> Sollievo)",
   anamnesisStepWorse: "Pilastro 4.2 – QUANDO: Peggioramento (< Aggravamento)",
-  anamnesisStepPillarCausa: "Pilastro 3 – DA COSA? (Causa & Scatenante)"
+  anamnesisStepPillarCausa: "Pilastro 3 – DA COSA? (Causa & Scatenante)",
+  hahnemannBackBtn: "Indietro"
 };

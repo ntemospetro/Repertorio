@@ -17,7 +17,7 @@ import {
   deduplicateRepeatedPhrases
 } from '../services/speechService';
 import { AcuteClarificationModal } from './AcuteClarificationModal';
-import { extractRecognizedSymptoms, RecognizedSymptom } from '../services/symptomExtractionService';
+import { extractRecognizedSymptoms, extractExtractionResult, RecognizedSymptom } from '../services/symptomExtractionService';
 import { AcuteVariableModal, AcuteVariableType } from './AcuteVariableModal';
 import { 
   formatClinicalVariableForDisplay, 
@@ -53,7 +53,9 @@ import {
   Info, 
   ShieldAlert, 
   SlidersHorizontal, 
-  ChevronRight, 
+  ChevronRight,
+  ChevronUp,
+  ChevronDown, 
   Pill, 
   CheckCircle2, 
   BookOpen, 
@@ -102,10 +104,39 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
   const [diffResult, setDiffResult] = useState<DifferentialDiagnosisResult | null>(null);
   const [showExcludedInView, setShowExcludedInView] = useState<boolean>(false);
 
-  // Extracted symptoms categorized in real-time
-  const recognizedSymptoms: RecognizedSymptom[] = useMemo(() => {
-    return extractRecognizedSymptoms(symptomText, language);
+  // Extracted symptoms and timeline in real-time
+  const extractionResult = useMemo(() => {
+    return extractExtractionResult(symptomText, language);
   }, [symptomText, language]);
+  const recognizedSymptoms = extractionResult.symptoms;
+  const recognizedTimeline = extractionResult.timeline;
+
+  const [customSymptomOrder, setCustomSymptomOrder] = useState<string[]>([]);
+  
+  const orderedSymptoms = useMemo(() => {
+    if (!recognizedSymptoms || recognizedSymptoms.length === 0) return [];
+    if (customSymptomOrder.length === 0) return recognizedSymptoms;
+    const map = new Map(recognizedSymptoms.map(s => [s.id, s]));
+    const result: RecognizedSymptom[] = [];
+    customSymptomOrder.forEach(id => {
+      if (map.has(id)) {
+        result.push(map.get(id)!);
+        map.delete(id);
+      }
+    });
+    map.forEach(s => result.push(s));
+    return result;
+  }, [recognizedSymptoms, customSymptomOrder]);
+
+  const handleMoveSymptom = (index: number, direction: 'up' | 'down') => {
+    const newOrder = [...orderedSymptoms];
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= newOrder.length) return;
+    const temp = newOrder[index];
+    newOrder[index] = newOrder[targetIndex];
+    newOrder[targetIndex] = temp;
+    setCustomSymptomOrder(newOrder.map(s => s.id));
+  };
 
   // Classical Homeopathic Expert State
   const [expertResult, setExpertResult] = useState<HomeopathicExpertResult | null>(null);
@@ -980,26 +1011,77 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
               )}
             </div>
 
-            {recognizedSymptoms.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 pt-1.5 border-t border-slate-200/60">
-                {recognizedSymptoms.map((sym) => (
-                  <div
-                    key={sym.id}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-xs text-slate-800 shadow-2xs"
-                  >
-                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider ${
-                      sym.category === 'leit' ? 'bg-amber-100 text-amber-900 border border-amber-200' :
-                      sym.category === 'causa' ? 'bg-blue-100 text-blue-900 border border-blue-200' :
-                      sym.category === 'modalitaet' ? 'bg-purple-100 text-purple-900 border border-purple-200' :
-                      sym.category === 'empfindung' ? 'bg-rose-100 text-rose-900 border border-rose-200' :
-                      sym.category === 'gemuet' ? 'bg-indigo-100 text-indigo-900 border border-indigo-200' :
-                      'bg-teal-100 text-teal-900 border border-teal-200'
-                    }`}>
-                      {sym.categoryLabel}
+            {orderedSymptoms.length > 0 && (
+              <div className="pt-2 border-t border-slate-200/60 space-y-2">
+                {orderedSymptoms.length > 1 && (
+                  <div className="text-[11px] font-medium text-slate-600 flex items-center justify-between bg-teal-50/60 px-2.5 py-1.5 rounded-lg border border-teal-100">
+                    <span>
+                      {language === 'de' ? 'Chronologische Reihenfolge anpassen (Reihenfolge bei Nacheinander):' : 'Adjust chronological order:'}
                     </span>
-                    <span className="font-semibold text-slate-900">{sym.label}</span>
                   </div>
-                ))}
+                )}
+                <div className="flex flex-col gap-1.5">
+                  {orderedSymptoms.map((sym, idx) => (
+                    <div
+                      key={sym.id}
+                      className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-xs text-slate-800 shadow-2xs"
+                    >
+                      <div className="flex items-center gap-2">
+                        {orderedSymptoms.length > 1 && (
+                          <span className="w-5 h-5 rounded-full bg-teal-100 text-teal-800 font-bold text-[10px] flex items-center justify-center shrink-0">
+                            {idx + 1}
+                          </span>
+                        )}
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider ${
+                          sym.category === 'leit' ? 'bg-amber-100 text-amber-900 border border-amber-200' :
+                          sym.category === 'causa' ? 'bg-blue-100 text-blue-900 border border-blue-200' :
+                          sym.category === 'modalitaet' ? 'bg-purple-100 text-purple-900 border border-purple-200' :
+                          sym.category === 'empfindung' ? 'bg-rose-100 text-rose-900 border border-rose-200' :
+                          sym.category === 'gemuet' ? 'bg-indigo-100 text-indigo-900 border border-indigo-200' :
+                          'bg-teal-100 text-teal-900 border border-teal-200'
+                        }`}>
+                          {sym.categoryLabel}
+                        </span>
+                        <span className="font-semibold text-slate-900">{sym.label}</span>
+                      </div>
+
+                      {orderedSymptoms.length > 1 && (
+                        <div className="flex items-center gap-0.5">
+                          <button
+                            type="button"
+                            disabled={idx === 0}
+                            onClick={() => handleMoveSymptom(idx, 'up')}
+                            className="p-1 rounded hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent text-slate-600 transition-colors"
+                            title={language === 'de' ? 'Nach oben verschieben' : 'Move up'}
+                          >
+                            <ChevronUp className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={idx === orderedSymptoms.length - 1}
+                            onClick={() => handleMoveSymptom(idx, 'down')}
+                            className="p-1 rounded hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent text-slate-600 transition-colors"
+                            title={language === 'de' ? 'Nach unten verschieben' : 'Move down'}
+                          >
+                            <ChevronDown className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {recognizedTimeline && (
+              <div className="mt-2.5 p-2.5 rounded-lg bg-blue-50/85 border border-blue-200 text-xs text-blue-950 flex items-start gap-2">
+                <Clock className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold block text-[11px] uppercase tracking-wider text-blue-900 mb-0.5">
+                    {language === 'de' ? 'Erkannter zeitlicher Verlauf' : 'Recognized Timeline'}
+                  </span>
+                  <span>{recognizedTimeline}</span>
+                </div>
               </div>
             )}
           </div>

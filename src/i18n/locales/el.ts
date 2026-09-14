@@ -1907,7 +1907,7 @@ export const el = {
   recognizedSymptomsTitle: "Αναγνωρισμένα συμπτώματα",
   recognizedSymptomsSubtitle: "Αυτόματα κατακερματισμένα και αντιστοιχισμένα κλινικά συμπτώματα",
   acuteVoiceAnalysisTitle: "ΟΞΕΙΑ ΛΗΨΗ & ΠΕΡΙΓΡΑΦΗ ΣΥΜΠΤΩΜΑΤΩΝ **",
-  acuteVoiceAnalysisSubtitle: "Εισαγάγετε κείμενο συμπτωμάτων ή ηχογραφήστε με τη φωνή. Βασικά συμπτώματα, αιτία, τροποποιητές και συνοδά συμπτώματα αναγνωρίζονται σε πραγματικό χρόνο.",
+  acuteVoiceAnalysisSubtitle: "Τα αναφερόμενα συμπτώματα καταγράφονται από τη δήλωση του ασθενούς. Το κύριο σύμπτωμα, η αιτία, οι τροποποιητές και τα συνοδά συμπτώματα διευκρινίζονται και επιβεβαιώνονται αποκλειστικά μέσω στοχευμένης αναμνηστικής εξέτασης.",
   hahnemannStartWizardBtn: "Έναρξη ανάλυσης 6 πυλώνων Hahnemann (Πλαίσια επιλογής)",
   noRecognizedSymptomsYet: "Δεν έχουν εντοπιστεί ακόμη συμπτώματα. Μιλήστε ή πληκτρολογήστε τα συμπτώματά σας.",
   clearHauptbeschwerdeBtn: "Καθαρισμός καταχώρισης",
@@ -1966,6 +1966,8 @@ export const el = {
   hahnemannPillarShortLokalisation: "Εντόπιση",
   hahnemannPillarShortSensation: "Αίσθηση",
   hahnemannPillarShortModalitaeten: "Τροποποιητικοί",
+  hahnemannPillarShortBesserung: "Βελτίωση",
+  hahnemannPillarShortVerschlechterung: "Επιδείνωση",
   hahnemannPillarShortBegleit: "Συνοδά",
   hahnemannPillarShortGemuet: "Ψυχισμός",
   hahnemannNoHallucinationsNotice: "Χωρίς υποθετικά συμπτώματα: Καταγράφονται μόνο γεγονότα που δήλωσε ρητά ο ασθενής.",
@@ -3242,5 +3244,6 @@ export const el = {
   adminConfigSecurityPinDesc: "Πρόσθετη πύλη ασφαλείας πριν από τη σύνδεση διαχειριστή (Προεπιλογή: 360).",
   anamnesisStepBetter: "Στήλη 4.1 – ΠΟΤΕ: Βελτίωση (> Ανακούφιση)",
   anamnesisStepWorse: "Στήλη 4.2 – ΠΟΤΕ: Επιδείνωση (< Χειροτέρευση)",
-  anamnesisStepPillarCausa: "Στήλη 3 – ΑΠΟ ΤΙ? (Causa & Εκκίνησις)"
+  anamnesisStepPillarCausa: "Στήλη 3 – ΑΠΟ ΤΙ? (Causa & Εκκίνησις)",
+  hahnemannBackBtn: "Πίσω"
 };

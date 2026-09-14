@@ -1907,7 +1907,7 @@ export const es = {
   recognizedSymptomsTitle: "Síntomas reconocidos",
   recognizedSymptomsSubtitle: "Síntomas clínicos individuales fragmentados y asignados automáticamente",
   acuteVoiceAnalysisTitle: "INGRESO AGUDO Y DESCRIPCIÓN DE SÍNTOMAS **",
-  acuteVoiceAnalysisSubtitle: "Introduzca el texto del síntoma o grabe con la voz. Síntomas clave, causa, modalidades y síntomas concomitantes se detectan en tiempo real.",
+  acuteVoiceAnalysisSubtitle: "Los síntomas reportados se capturan de la declaración del paciente. El síntoma principal, la causa, las modalidades y los concomitantes se aclaran y confirman únicamente mediante anamnesis dirigida.",
   hahnemannStartWizardBtn: "Iniciar análisis de 6 pilares de Hahnemann (Casillas de selección)",
   noRecognizedSymptomsYet: "Aún no se han detectado síntomas. Hable o escriba sus síntomas.",
   clearHauptbeschwerdeBtn: "Borrar entrada",
@@ -1966,6 +1966,8 @@ export const es = {
   hahnemannPillarShortLokalisation: "Localización",
   hahnemannPillarShortSensation: "Sensación",
   hahnemannPillarShortModalitaeten: "Modalidades",
+  hahnemannPillarShortBesserung: "Mejoría",
+  hahnemannPillarShortVerschlechterung: "Empeoramiento",
   hahnemannPillarShortBegleit: "Concomitantes",
   hahnemannPillarShortGemuet: "Ánimo",
   hahnemannNoHallucinationsNotice: "Sin síntomas alucinados: Solo se registran hechos expresados explícitamente por el paciente.",
@@ -3242,5 +3244,6 @@ export const es = {
   adminConfigSecurityPinDesc: "Barrera de seguridad adicional antes del inicio de sesión del administrador (Predeterminado: 360).",
   anamnesisStepBetter: "Pilar 4.1 – CUÁNDO: Mejoría (> Alivio)",
   anamnesisStepWorse: "Pilar 4.2 – CUÁNDO: Empeoramiento (< Empeoramiento)",
-  anamnesisStepPillarCausa: "Pilar 3 – POR QUÉ? (Causa y desencadenante)"
+  anamnesisStepPillarCausa: "Pilar 3 – POR QUÉ? (Causa y desencadenante)",
+  hahnemannBackBtn: "Volver"
 };

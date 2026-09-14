@@ -1221,15 +1221,16 @@ Antworte AUSSCHLIESSLICH mit einem validen JSON-Objekt im folgenden Format (ohne
       const hasCausa = Boolean(currentMatrix?.causa && currentMatrix.causa !== "Noch nicht genannt" && currentMatrix.causa.trim().length > 0);
       const hasLokalisierung = Boolean(currentMatrix?.lokalisierung && currentMatrix.lokalisierung !== "Noch nicht genannt" && currentMatrix.lokalisierung.trim().length > 0);
       const hasEmpfindung = Boolean(currentMatrix?.empfindung && currentMatrix.empfindung !== "Noch nicht genannt" && currentMatrix.empfindung.trim().length > 0);
-      const hasModalitaeten = Boolean(currentMatrix?.modalitaeten && currentMatrix.modalitaeten !== "Noch nicht genannt" && currentMatrix.modalitaeten.trim().length > 0);
+      const hasBesserung = Boolean(currentMatrix?.modalitaeten_besserung && currentMatrix.modalitaeten_besserung !== "Noch nicht genannt" && currentMatrix.modalitaeten_besserung.trim().length > 0);
+      const hasVerschlechterung = Boolean(currentMatrix?.modalitaeten_verschlechterung && currentMatrix.modalitaeten_verschlechterung !== "Noch nicht genannt" && currentMatrix.modalitaeten_verschlechterung.trim().length > 0);
       const hasBegleitsymptome = Boolean(Array.isArray(currentMatrix?.begleitsymptome) && currentMatrix.begleitsymptome.length > 0);
       const hasGemuet = Boolean(currentMatrix?.gemuet && currentMatrix.gemuet !== "Noch nicht genannt" && currentMatrix.gemuet.trim().length > 0);
 
-      const all6PillarsFilled = hasCausa && hasLokalisierung && hasEmpfindung && hasModalitaeten && hasBegleitsymptome && hasGemuet;
+      const all7PillarsFilled = hasCausa && hasLokalisierung && hasEmpfindung && hasBesserung && hasVerschlechterung && hasBegleitsymptome && hasGemuet;
       
-      // Loop protection: avoid endless question loops while ensuring all 6 pillars are asked
-      const maxStepsReached = conversationHistory.length >= 7;
-      const mustComplete = forceComplete || all6PillarsFilled || (maxStepsReached && hasGemuet && hasModalitaeten && hasEmpfindung && hasCausa);
+      // Loop protection: avoid endless question loops while ensuring all 7 pillars are asked
+      const maxStepsReached = conversationHistory.length >= 8;
+      const mustComplete = forceComplete || all7PillarsFilled || (maxStepsReached && hasGemuet && hasBesserung && hasVerschlechterung && hasEmpfindung && hasCausa);
 
       const prompt = `
 Du bist die zentrale Logik-Engine für eine professionelle homöopathische Anamnese streng nach den Prinzipien von Samuel Hahnemann und den Paragraphen 83 bis 104 des Organon der Heilkunst.
@@ -1272,16 +1273,17 @@ ${caseType === 'chronisch' ? `
 1. Causa (Auslöser oder Beginn): ${hasCausa ? "Erfasst: " + currentMatrix.causa : "Falls in Eingabe genannt -> extrahieren, sonst erfragen"}
 2. Lokalisation (Ort und Strahlungsoptionen / Ausstrahlung): ${hasLokalisierung ? "Erfasst: " + currentMatrix.lokalisierung : "Falls in Eingabe genannt -> extrahieren, sonst erfragen"}
 3. Sensation (Qualität der Beschwerde / Schmerzcharakter): ${hasEmpfindung ? "Erfasst: " + currentMatrix.empfindung : "Falls in Eingabe genannt -> extrahieren, sonst erfragen"}
-4. Modalitäten (Verschlechterung oder Besserung durch Wärme, Kälte, Ruhe, Bewegung, Druck, Tageszeit): ${hasModalitaeten ? "Erfasst: " + currentMatrix.modalitaeten : "Falls in Eingabe genannt -> extrahieren, sonst erfragen"}
-5. Begleitsymptome und das Gemüt (Concomitants wie Durst, Schweiß, Temperaturverlangen UND psychischer Zustand / Gemütsverfassung wie Unruhe, Reizbarkeit, Furcht, Apathie): ${hasBegleitsymptome && hasGemuet ? "Erfasst: Begleit=" + currentMatrix.begleitsymptome.join(", ") + " | Gemüt=" + currentMatrix.gemuet : "Falls in Eingabe genannt -> extrahieren, sonst erfragen"}
+4. Besserung (Amelioration - Wodurch gebessert?): ${hasBesserung ? "Erfasst: " + currentMatrix.modalitaeten_besserung : "Falls in Eingabe genannt -> extrahieren, sonst separat erfragen"}
+5. Verschlechterung (Aggravation - Wodurch verschlechtert?): ${hasVerschlechterung ? "Erfasst: " + currentMatrix.modalitaeten_verschlechterung : "Falls in Eingabe genannt -> extrahieren, sonst separat erfragen"}
+6. Begleitsymptome (Concomitants): ${hasBegleitsymptome ? "Erfasst: " + currentMatrix.begleitsymptome.join(", ") : "Falls in Eingabe genannt -> extrahieren, sonst erfragen"}
+7. Gemüt (Psychischer Zustand): ${hasGemuet ? "Erfasst: " + currentMatrix.gemuet : "Falls in Eingabe genannt -> extrahieren, sonst erfragen"}
 
 ### VERMEIDUNG HALLUZINIERTER SYMPTOME & MINIMAL-EINGABEN:
 - Erfasse jeden Patienten absolut individuell und vermeide halluzinierte Symptome! Nimm nur auf, was der Patient explizit geäußert hat. Füge keine hypothetischen Symptome hinzu, die nicht genannt wurden.
-- WENN DER PATIENT NUR EIN EINZELNES WORT ODER KURZES SYMPTOM EINGIBT (z. B. "Fieber", "Kopfschmerzen", "Halsschmerzen", "Bauchschmerzen"):
-  * Trage in "wichtige_symptom_fragmente" NUR die Lokalisation ein (z. B. "Fieber" bzw. "Kopfschmerzen").
-  * Setze "causa", "empfindung", "modalitaeten" und "gemuet" zwingend auf null und "begleitsymptome" auf []!
-  * Erfinde KEINESFALLS Auslöser (wie Meerwasser, Sonnenhitze, Kälte) oder Modalitäten (wie Besserung durch Wärme), wenn diese vom Patienten nicht genannt wurden!
-  * Frage in "naechste_frage" nach der ersten tatsächlich noch fehlenden Säule (z. B. Causa / Auslöser).
+- WENN BESTIMMTE KATEGORIEN (wie Causa, Leitsymptom, Modalitäten, Begleitsymptome) VOM PATIENTEN IN DER INITIALEN AUSSAGE NICHT EXPLIZIT GENANNT WURDEN:
+  * Trage sie NICHT voreilig ein (keine automatische Klassifizierung als Leitsymptom, Begleitsymptom oder Causa).
+  * Setze ungenannte Bereiche (causa, modalitaeten, etc.) auf "null" bzw. "leer" und lasse sie als "Noch nicht geklärt" behandeln.
+  * Erfinde keine Auslöser, Synonyme (z.B. Fieber != erhöhte Temperatur) oder Diagnosen aus einer zeitlichen Abfolge!
 
 ### VORDEFINIERTE ANKLICKBARE OPTIONEN:
 Für die Fragen generierst du im Pop-up stets 4 bis 6 vordefinierte, treffende homöopathische anklickbare Optionen passend zum individuellen Symptom des Patienten. (Der Anwender erhält im Frontend dazu stets ein verbindliches Freitextfeld).

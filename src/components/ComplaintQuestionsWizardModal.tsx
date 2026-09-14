@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   X, 
   Sparkles, 
@@ -22,7 +22,10 @@ import {
   ShieldAlert,
   Radio,
   FileText,
-  ArrowLeft
+  ArrowLeft,
+  ChevronUp,
+  ChevronDown,
+  GripVertical
 } from 'lucide-react';
 import { useTranslation } from '../i18n/LanguageContext';
 import { VoiceInputButton } from './VoiceInputButton';
@@ -70,6 +73,19 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
   const [analysisResult, setAnalysisResult] = useState<HahnemannAnalysisResult | null>(null);
   const [clarifyingAnswers, setClarifyingAnswers] = useState<Record<string, string>>({});
   const [customClarifyingInput, setCustomClarifyingInput] = useState<Record<string, string>>({});
+  const [activeClarifyingIndex, setActiveClarifyingIndex] = useState(0);
+
+  const clarifyingQuestions = useMemo(() => {
+    return (analysisResult?.sich_ergebende_fragen && analysisResult.sich_ergebende_fragen.length > 0)
+      ? analysisResult.sich_ergebende_fragen.slice(0, 3)
+      : [];
+  }, [analysisResult?.sich_ergebende_fragen]);
+
+  const hasClarifyingQuestions = clarifyingQuestions.length > 0;
+  const isCompletedStatus = analysisResult?.analyse_status === 'completed';
+  const isClarifyingStep = isCompletedStatus && hasClarifyingQuestions && activeClarifyingIndex < clarifyingQuestions.length;
+  const isFinalStep = isCompletedStatus && (!hasClarifyingQuestions || activeClarifyingIndex >= clarifyingQuestions.length);
+  const isMainQuestionStep = !isCompletedStatus && Boolean(analysisResult?.naechste_frage);
   const [pendingReflection, setPendingReflection] = useState<string | null>(null);
   const [snapshotHistory, setSnapshotHistory] = useState<Array<{
     analysisResult: HahnemannAnalysisResult | null;
@@ -81,6 +97,54 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
 
   const initialParsedRef = useRef(false);
   const initialAnalysisRef = useRef<HahnemannAnalysisResult | null>(null);
+
+  const [customSequenceItems, setCustomSequenceItems] = useState<string[]>([]);
+  const [isCustomSequenceActive, setIsCustomSequenceActive] = useState<boolean>(false);
+
+  const isSequenceQuestion = useMemo(() => {
+    const q = analysisResult?.naechste_frage || '';
+    const isForegroundQuestion = /vordergrund|hauptbeschwerde|schwerpunkt|dominant/i.test(q);
+    const hasSequenceKeywords = /nacheinander|reihenfolge|zuerst|danach|zeitlicher ablauf/i.test(q);
+    return hasSequenceKeywords && !isForegroundQuestion;
+  }, [analysisResult?.naechste_frage]);
+
+  const customSequenceLabel = language === 'de'
+    ? `Individuelle Reihenfolge: ${customSequenceItems.map((item, idx) => `${idx + 1}. ${item}`).join(', ')}`
+    : `Custom sequence: ${customSequenceItems.map((item, idx) => `${idx + 1}. ${item}`).join(', ')}`;
+
+  useEffect(() => {
+    if (isSequenceQuestion) {
+      const qText = analysisResult?.naechste_frage || '';
+      const matches = qText.match(/(?:Magenschmerzen|Kopfschmerzen|Fieber|Erbrechen|Bauchschmerzen|Knieschmerzen|Husten|Halsweh|Schwindel|Übelkeit)/gi);
+      if (matches && matches.length > 0) {
+        const unique = Array.from(new Set(matches.map(m => m.charAt(0).toUpperCase() + m.slice(1).toLowerCase())));
+        setCustomSequenceItems(unique);
+      } else {
+        const parts = chiefComplaint.split(/,|\s+und\s+|\s+sowie\s+/i).map(p => p.trim()).filter(p => p.length > 2);
+        setCustomSequenceItems(parts.length > 0 ? parts : ['Magenschmerzen', 'Kopfschmerzen', 'Fieber']);
+      }
+      setIsCustomSequenceActive(false);
+    }
+  }, [isSequenceQuestion, analysisResult?.naechste_frage, chiefComplaint]);
+
+  useEffect(() => {
+    if (isSequenceQuestion && isCustomSequenceActive) {
+      setSelectedOptions(prev => [
+        ...prev.filter(o => !o.startsWith('Individuelle Reihenfolge') && !o.startsWith('Custom sequence')),
+        customSequenceLabel
+      ]);
+    }
+  }, [customSequenceItems, isCustomSequenceActive, isSequenceQuestion, customSequenceLabel]);
+
+  const moveSequenceItem = (index: number, direction: 'up' | 'down') => {
+    const newArr = [...customSequenceItems];
+    const targetIdx = direction === 'up' ? index - 1 : index + 1;
+    if (targetIdx < 0 || targetIdx >= newArr.length) return;
+    const temp = newArr[index];
+    newArr[index] = newArr[targetIdx];
+    newArr[targetIdx] = temp;
+    setCustomSequenceItems(newArr);
+  };
 
   // Initialize analysis on modal open with chief complaint text, existing matrix and selected caseType
   useEffect(() => {
@@ -162,6 +226,8 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
     lokalisierung: analysisResult?.wichtige_symptom_fragmente?.lokalisierung || initialMatrix?.lokalisierung || null,
     empfindung: analysisResult?.wichtige_symptom_fragmente?.empfindung || initialMatrix?.empfindung || null,
     modalitaeten: analysisResult?.wichtige_symptom_fragmente?.modalitaeten || initialMatrix?.modalitaeten || null,
+    modalitaeten_besserung: analysisResult?.wichtige_symptom_fragmente?.modalitaeten_besserung || initialMatrix?.modalitaeten_besserung || null,
+    modalitaeten_verschlechterung: analysisResult?.wichtige_symptom_fragmente?.modalitaeten_verschlechterung || initialMatrix?.modalitaeten_verschlechterung || null,
     begleitsymptome: (analysisResult?.wichtige_symptom_fragmente?.begleitsymptome && analysisResult.wichtige_symptom_fragmente.begleitsymptome.length > 0)
       ? analysisResult.wichtige_symptom_fragmente.begleitsymptome
       : (initialMatrix?.begleitsymptome || []),
@@ -174,7 +240,8 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
   const hasCausa = Boolean(matrix.causa && matrix.causa !== 'Noch nicht genannt' && matrix.causa.trim().length > 0);
   const hasLokalisierung = Boolean(matrix.lokalisierung && matrix.lokalisierung !== 'Noch nicht genannt' && matrix.lokalisierung.trim().length > 0);
   const hasEmpfindung = Boolean(matrix.empfindung && matrix.empfindung !== 'Noch nicht genannt' && matrix.empfindung.trim().length > 0);
-  const hasModalitaeten = Boolean(matrix.modalitaeten && matrix.modalitaeten !== 'Noch nicht genannt' && matrix.modalitaeten.trim().length > 0);
+  const hasBesserung = Boolean(matrix.modalitaeten_besserung && matrix.modalitaeten_besserung !== 'Noch nicht genannt' && matrix.modalitaeten_besserung.trim().length > 0);
+  const hasVerschlechterung = Boolean(matrix.modalitaeten_verschlechterung && matrix.modalitaeten_verschlechterung !== 'Noch nicht genannt' && matrix.modalitaeten_verschlechterung.trim().length > 0);
   const hasBegleitsymptome = Boolean(Array.isArray(matrix.begleitsymptome) && matrix.begleitsymptome.length > 0);
   const hasGemuet = Boolean(matrix.gemuet && matrix.gemuet !== 'Noch nicht genannt' && matrix.gemuet.trim().length > 0);
 
@@ -182,12 +249,13 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
     hasCausa,
     hasLokalisierung,
     hasEmpfindung,
-    hasModalitaeten,
+    hasBesserung,
+    hasVerschlechterung,
     hasBegleitsymptome,
     hasGemuet,
   ].filter(Boolean).length;
 
-  const all6PillarsFilled = hasCausa && hasLokalisierung && hasEmpfindung && hasModalitaeten && hasBegleitsymptome && hasGemuet;
+  const all7PillarsFilled = hasCausa && hasLokalisierung && hasEmpfindung && hasBesserung && hasVerschlechterung && hasBegleitsymptome && hasGemuet;
 
   // Toggle caseType: Akut (§ 99) vs Chronisch (§§ 83–98)
   const handleSwitchCaseType = async (newType: CaseType) => {
@@ -254,7 +322,7 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
     ];
     setConversationHistory(updatedHistory);
 
-    const isLastStep = all6PillarsFilled || updatedHistory.length >= 8;
+    const isLastStep = all7PillarsFilled || updatedHistory.length >= 9;
 
     try {
       const nextResult = await runHahnemannAnalysis(
@@ -319,10 +387,21 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
 
     if (cat === 'gemuet' || id.includes('gemuet') || id.includes('mind') || id.includes('psyc')) {
       updatedMatrix.gemuet = cleanAnswer;
-    } else if (cat === 'modalitaeten' || id.includes('modalitaet') || id.includes('modali')) {
-      updatedMatrix.modalitaeten = updatedMatrix.modalitaeten 
-        ? `${updatedMatrix.modalitaeten}; ${cleanAnswer}` 
-        : cleanAnswer;
+    } else if (cat === 'modalitaeten' || id.includes('modalitaet') || id.includes('modali') || id.includes('besser') || id.includes('verschlecht')) {
+      if (id.includes('besser') || analysisResult.naechste_frage.toLowerCase().includes('besser')) {
+        updatedMatrix.modalitaeten_besserung = updatedMatrix.modalitaeten_besserung 
+          ? `${updatedMatrix.modalitaeten_besserung}; ${cleanAnswer}` 
+          : cleanAnswer;
+      } else if (id.includes('verschlecht') || analysisResult.naechste_frage.toLowerCase().includes('verschlecht') || analysisResult.naechste_frage.toLowerCase().includes('verstärk')) {
+        updatedMatrix.modalitaeten_verschlechterung = updatedMatrix.modalitaeten_verschlechterung 
+          ? `${updatedMatrix.modalitaeten_verschlechterung}; ${cleanAnswer}` 
+          : cleanAnswer;
+      } else {
+        updatedMatrix.modalitaeten = updatedMatrix.modalitaeten 
+          ? `${updatedMatrix.modalitaeten}; ${cleanAnswer}` 
+          : cleanAnswer;
+      }
+      updatedMatrix.modalitaeten = `Besserung: ${updatedMatrix.modalitaeten_besserung || '—'} | Verschlechterung: ${updatedMatrix.modalitaeten_verschlechterung || '—'}`;
     } else if (cat === 'begleitsymptome' || id.includes('begleit') || id.includes('concomit')) {
       if (!updatedMatrix.begleitsymptome.includes(cleanAnswer)) {
         updatedMatrix.begleitsymptome.push(cleanAnswer);
@@ -549,13 +628,14 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
           </div>
         </div>
 
-        {/* 6-Pillar Stepper Progress Line */}
+        {/* 7-Pillar Stepper Progress Line */}
         <div className="px-6 py-2 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-1 overflow-x-auto text-[11px]">
           {[
             { key: 'causa', label: t('hahnemannPillarShortCausa'), isFilled: Boolean(matrix.causa && matrix.causa !== 'Noch nicht genannt'), icon: Activity },
             { key: 'lok', label: t('hahnemannPillarShortLokalisation'), isFilled: Boolean(matrix.lokalisierung && matrix.lokalisierung !== 'Noch nicht genannt'), icon: MapPin },
             { key: 'empf', label: t('hahnemannPillarShortSensation'), isFilled: Boolean(matrix.empfindung && matrix.empfindung !== 'Noch nicht genannt'), icon: Flame },
-            { key: 'mod', label: t('hahnemannPillarShortModalitaeten'), isFilled: Boolean(matrix.modalitaeten && matrix.modalitaeten !== 'Noch nicht genannt'), icon: Sliders },
+            { key: 'besserung', label: t('hahnemannPillarShortBesserung'), isFilled: Boolean(matrix.modalitaeten_besserung && matrix.modalitaeten_besserung !== 'Noch nicht genannt'), icon: Sliders },
+            { key: 'verschlechterung', label: t('hahnemannPillarShortVerschlechterung'), isFilled: Boolean(matrix.modalitaeten_verschlechterung && matrix.modalitaeten_verschlechterung !== 'Noch nicht genannt'), icon: Sliders },
             { key: 'begleit', label: t('hahnemannPillarShortBegleit'), isFilled: Boolean(matrix.begleitsymptome && matrix.begleitsymptome.length > 0), icon: HeartPulse },
             { key: 'gemuet', label: t('hahnemannPillarShortGemuet'), isFilled: Boolean(matrix.gemuet && matrix.gemuet !== 'Noch nicht genannt'), icon: Brain },
           ].map((pillar, idx) => {
@@ -585,178 +665,180 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
         <div className="flex-1 overflow-y-auto p-6 space-y-5">
 
           {/* SECTION 1: WAS BISHER VERSTANDEN WURDE (Hahnemann-Symptomstruktur) */}
-          <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
-              <div>
-                <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                  <Layers className="w-4 h-4 text-teal-700" />
-                  {t('hahnemannWhatWasUnderstood')}
-                </h4>
-                <p className="text-xs text-slate-500">
-                  {t('hahnemannUnderstoodSub')}
-                </p>
-              </div>
-
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-teal-50 text-teal-900 border border-teal-200 text-[11px] font-medium self-start sm:self-auto">
-                <Check className="w-3.5 h-3.5 text-teal-700" />
-                {caseType === 'chronisch' ? t('hahnemannCaseTypeChronicShort') : t('hahnemannCaseTypeAcuteShort')}
-              </span>
-            </div>
-
-            {/* Separate Chief Complaint / Patient Spontaneous Report */}
-            {chiefComplaint && chiefComplaint.trim().length > 0 && (
-              <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-xl flex items-start gap-3 text-xs">
-                <FileText className="w-4.5 h-4.5 text-teal-700 shrink-0 mt-0.5" />
-                <div className="space-y-1.5 w-full">
-                  <span className="font-bold text-slate-700 block uppercase tracking-wider text-[10px]">
-                    {t('hahnemannPatientOTonTitle')}
-                  </span>
-                  <p className="text-slate-900 font-medium leading-relaxed italic bg-white p-3 rounded-xl border border-slate-200/60 shadow-3xs">
-                    „{chiefComplaint}“
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Prüfung auf ursächlichen Zusammenhang bei mehreren Beschwerden (§§ 83–104) */}
-            {(analysisResult?.mehrere_symptome_erkannt || matrix.ursaechlicher_zusammenhang) && (
-              <div className={`p-3.5 rounded-xl border flex items-start gap-3 text-xs ${
-                matrix.ursaechlicher_zusammenhang && (matrix.ursaechlicher_zusammenhang.toLowerCase().includes('ja') || matrix.ursaechlicher_zusammenhang.toLowerCase().includes('zeitgleich'))
-                  ? 'bg-emerald-50/80 border-emerald-300 text-emerald-950'
-                  : 'bg-sky-50/80 border-sky-300 text-sky-950'
-              }`}>
-                <GitBranch className="w-4 h-4 text-sky-700 shrink-0 mt-0.5" />
-                <div className="space-y-1">
-                  <span className="font-bold block">
-                    {t('hahnemannCausalityCheckTitle')}
-                  </span>
-                  <p className="text-slate-700">
-                    {matrix.ursaechlicher_zusammenhang ? (
-                      <span className="font-semibold text-emerald-800">
-                        {t('hahnemannCausalityConfirmed')}: {matrix.ursaechlicher_zusammenhang}
-                      </span>
-                    ) : (
-                      t('hahnemannCausalityCheckDesc')
-                    )}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Chronischer Fall: Historie & frühere Behandlungen Box */}
-            {caseType === 'chronisch' && (
-              <div className="p-3.5 rounded-xl bg-indigo-50/70 border border-indigo-200 text-xs text-indigo-950 flex items-start gap-3">
-                <History className="w-4 h-4 text-indigo-700 shrink-0 mt-0.5" />
-                <div className="space-y-1">
-                  <span className="font-bold block">
-                    {t('hahnemannChronicHistoryTitle')}
-                  </span>
-                  <p className={matrix.fruehere_behandlungen_und_historie ? 'font-medium text-slate-800' : 'italic text-slate-400'}>
-                    {matrix.fruehere_behandlungen_und_historie || t('hahnemannNotSpecifiedYet')}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Matrix 6-Pillar Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              
-              {/* 1. Causa (Auslöser oder Beginn) */}
-              <div className="p-3 rounded-lg bg-slate-50/80 border border-slate-200/80 space-y-1">
-                <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">
-                  {t('hahnemannPillarCausa')}
-                </span>
-                <p className={`text-xs ${matrix.causa ? 'text-slate-900 font-semibold' : 'text-slate-400 italic'}`}>
-                  {matrix.causa || t('hahnemannNotSpecifiedYet')}
-                </p>
-              </div>
-
-              {/* 2. Lokalisation (Ort & Strahlungsoptionen) */}
-              <div className="p-3 rounded-lg bg-slate-50/80 border border-slate-200/80 space-y-1">
-                <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">
-                  {t('hahnemannPillarLokalisation')}
-                </span>
-                <p className={`text-xs ${matrix.lokalisierung ? 'text-slate-900 font-semibold' : 'text-slate-400 italic'}`}>
-                  {matrix.lokalisierung || t('hahnemannNotSpecifiedYet')}
-                </p>
-                {matrix.strahlungsoptionen && (
-                  <p className="text-[11px] text-teal-800 font-medium">
-                    <span className="font-semibold">{t('hahnemannRadiationLabel')} </span>
-                    {matrix.strahlungsoptionen}
-                  </p>
-                )}
-              </div>
-
-              {/* 3. Sensation (Qualität der Beschwerde) */}
-              <div className="p-3 rounded-lg bg-slate-50/80 border border-slate-200/80 space-y-1">
-                <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">
-                  {t('hahnemannPillarSensation')}
-                </span>
-                <p className={`text-xs ${matrix.empfindung ? 'text-slate-900 font-semibold' : 'text-slate-400 italic'}`}>
-                  {matrix.empfindung || t('hahnemannNotSpecifiedYet')}
-                </p>
-              </div>
-
-              {/* 4. Modalitäten (Verschlechterung / Besserung) */}
-              <div className="p-3 rounded-lg bg-slate-50/80 border border-slate-200/80 space-y-1">
-                <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">
-                  {t('hahnemannPillarModalitaeten')}
-                </span>
-                <p className={`text-xs ${matrix.modalitaeten ? 'text-slate-900 font-semibold' : 'text-slate-400 italic'}`}>
-                  {matrix.modalitaeten || t('hahnemannNotSpecifiedYet')}
-                </p>
-              </div>
-
-              {/* 5. Begleitsymptome (Concomitants) */}
-              <div className="p-3 rounded-lg bg-slate-50/80 border border-slate-200/80 space-y-1">
-                <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">
-                  {t('hahnemannPillarBegleit')}
-                </span>
-                {matrix.begleitsymptome && matrix.begleitsymptome.length > 0 ? (
-                  <ul className="text-xs text-slate-900 font-semibold list-disc list-inside space-y-0.5">
-                    {matrix.begleitsymptome.map((b, i) => (
-                      <li key={i}>{b}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-xs text-slate-400 italic">
-                    {t('hahnemannNotSpecifiedYet')}
-                  </p>
-                )}
-              </div>
-
-              {/* 6. Gemüt (Psychischer Zustand / Seelische Verfassung) */}
-              <div className="p-3 rounded-lg bg-slate-50/80 border border-slate-200/80 space-y-1">
-                <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">
-                  {t('hahnemannPillarGemuet')}
-                </span>
-                <p className={`text-xs ${matrix.gemuet ? 'text-slate-900 font-semibold' : 'text-slate-400 italic'}`}>
-                  {matrix.gemuet || t('hahnemannNotSpecifiedYet')}
-                </p>
-              </div>
-            </div>
-
-            {/* Filterung / Ignorierte Daten falls vorhanden */}
-            {analysisResult?.ignorierte_daten && analysisResult.ignorierte_daten.length > 0 && (
-              <div className="p-3 rounded-lg bg-slate-100/70 border border-slate-200 text-xs flex items-start gap-2.5">
-                <FilterX className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+          {isFinalStep && (
+            <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
                 <div>
-                  <span className="font-semibold text-slate-700 block">
-                    {t('hahnemannIgnoredData')}:
+                  <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                    <Layers className="w-4 h-4 text-teal-700" />
+                    {t('hahnemannWhatWasUnderstood')}
+                  </h4>
+                  <p className="text-xs text-slate-500">
+                    {t('hahnemannUnderstoodSub')}
+                  </p>
+                </div>
+
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-teal-50 text-teal-900 border border-teal-200 text-[11px] font-medium self-start sm:self-auto">
+                  <Check className="w-3.5 h-3.5 text-teal-700" />
+                  {caseType === 'chronisch' ? t('hahnemannCaseTypeChronicShort') : t('hahnemannCaseTypeAcuteShort')}
+                </span>
+              </div>
+
+              {/* Separate Chief Complaint / Patient Spontaneous Report */}
+              {chiefComplaint && chiefComplaint.trim().length > 0 && (
+                <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-xl flex items-start gap-3 text-xs">
+                  <FileText className="w-4.5 h-4.5 text-teal-700 shrink-0 mt-0.5" />
+                  <div className="space-y-1.5 w-full">
+                    <span className="font-bold text-slate-700 block uppercase tracking-wider text-[10px]">
+                      {t('hahnemannPatientOTonTitle')}
+                    </span>
+                    <p className="text-slate-900 font-medium leading-relaxed italic bg-white p-3 rounded-xl border border-slate-200/60 shadow-3xs">
+                      „{chiefComplaint}“
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Prüfung auf ursächlichen Zusammenhang bei mehreren Beschwerden (§§ 83–104) */}
+              {(analysisResult?.mehrere_symptome_erkannt || matrix.ursaechlicher_zusammenhang) && (
+                <div className={`p-3.5 rounded-xl border flex items-start gap-3 text-xs ${
+                  matrix.ursaechlicher_zusammenhang && (matrix.ursaechlicher_zusammenhang.toLowerCase().includes('ja') || matrix.ursaechlicher_zusammenhang.toLowerCase().includes('zeitgleich'))
+                    ? 'bg-emerald-50/80 border-emerald-300 text-emerald-950'
+                    : 'bg-sky-50/80 border-sky-300 text-sky-950'
+                }`}>
+                  <GitBranch className="w-4 h-4 text-sky-700 shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <span className="font-bold block">
+                      {t('hahnemannCausalityCheckTitle')}
+                    </span>
+                    <p className="text-slate-700">
+                      {matrix.ursaechlicher_zusammenhang ? (
+                        <span className="font-semibold text-emerald-800">
+                          {t('hahnemannCausalityConfirmed')}: {matrix.ursaechlicher_zusammenhang}
+                        </span>
+                      ) : (
+                        t('hahnemannCausalityCheckDesc')
+                      )}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Chronischer Fall: Historie & frühere Behandlungen Box */}
+              {caseType === 'chronisch' && (
+                <div className="p-3.5 rounded-xl bg-indigo-50/70 border border-indigo-200 text-xs text-indigo-950 flex items-start gap-3">
+                  <History className="w-4 h-4 text-indigo-700 shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <span className="font-bold block">
+                      {t('hahnemannChronicHistoryTitle')}
+                    </span>
+                    <p className={matrix.fruehere_behandlungen_und_historie ? 'font-medium text-slate-800' : 'italic text-slate-400'}>
+                      {matrix.fruehere_behandlungen_und_historie || t('hahnemannNotSpecifiedYet')}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Matrix 6-Pillar Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                
+                {/* 1. Causa (Auslöser oder Beginn) */}
+                <div className="p-3 rounded-lg bg-slate-50/80 border border-slate-200/80 space-y-1">
+                  <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">
+                    {t('hahnemannPillarCausa')}
                   </span>
-                  <span className="text-slate-600">
-                    {analysisResult.ignorierte_daten.map(item => `"${item}"`).join(', ')}
+                  <p className={`text-xs ${matrix.causa ? 'text-slate-900 font-semibold' : 'text-slate-400 italic'}`}>
+                    {matrix.causa || t('hahnemannNotSpecifiedYet')}
+                  </p>
+                </div>
+
+                {/* 2. Lokalisation (Ort & Strahlungsoptionen) */}
+                <div className="p-3 rounded-lg bg-slate-50/80 border border-slate-200/80 space-y-1">
+                  <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">
+                    {t('hahnemannPillarLokalisation')}
                   </span>
-                  <span className="text-[11px] text-slate-400 block mt-0.5">
-                    {t('hahnemannIgnoredDataDesc')}
+                  <p className={`text-xs ${matrix.lokalisierung ? 'text-slate-900 font-semibold' : 'text-slate-400 italic'}`}>
+                    {matrix.lokalisierung || t('hahnemannNotSpecifiedYet')}
+                  </p>
+                  {matrix.strahlungsoptionen && (
+                    <p className="text-[11px] text-teal-800 font-medium">
+                      <span className="font-semibold">{t('hahnemannRadiationLabel')} </span>
+                      {matrix.strahlungsoptionen}
+                    </p>
+                  )}
+                </div>
+
+                {/* 3. Sensation (Qualität der Beschwerde) */}
+                <div className="p-3 rounded-lg bg-slate-50/80 border border-slate-200/80 space-y-1">
+                  <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">
+                    {t('hahnemannPillarSensation')}
                   </span>
+                  <p className={`text-xs ${matrix.empfindung ? 'text-slate-900 font-semibold' : 'text-slate-400 italic'}`}>
+                    {matrix.empfindung || t('hahnemannNotSpecifiedYet')}
+                  </p>
+                </div>
+
+                {/* 4. Modalitäten (Verschlechterung / Besserung) */}
+                <div className="p-3 rounded-lg bg-slate-50/80 border border-slate-200/80 space-y-1">
+                  <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">
+                    {t('hahnemannPillarModalitaeten')}
+                  </span>
+                  <p className={`text-xs ${matrix.modalitaeten ? 'text-slate-900 font-semibold' : 'text-slate-400 italic'}`}>
+                    {matrix.modalitaeten || t('hahnemannNotSpecifiedYet')}
+                  </p>
+                </div>
+
+                {/* 5. Begleitsymptome (Concomitants) */}
+                <div className="p-3 rounded-lg bg-slate-50/80 border border-slate-200/80 space-y-1">
+                  <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">
+                    {t('hahnemannPillarBegleit')}
+                  </span>
+                  {matrix.begleitsymptome && matrix.begleitsymptome.length > 0 ? (
+                    <ul className="text-xs text-slate-900 font-semibold list-disc list-inside space-y-0.5">
+                      {matrix.begleitsymptome.map((b, i) => (
+                        <li key={i}>{b}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-xs text-slate-400 italic">
+                      {t('hahnemannNotSpecifiedYet')}
+                    </p>
+                  )}
+                </div>
+
+                {/* 6. Gemüt (Psychischer Zustand / Seelische Verfassung) */}
+                <div className="p-3 rounded-lg bg-slate-50/80 border border-slate-200/80 space-y-1">
+                  <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">
+                    {t('hahnemannPillarGemuet')}
+                  </span>
+                  <p className={`text-xs ${matrix.gemuet ? 'text-slate-900 font-semibold' : 'text-slate-400 italic'}`}>
+                    {matrix.gemuet || t('hahnemannNotSpecifiedYet')}
+                  </p>
                 </div>
               </div>
-            )}
-          </div>
+
+              {/* Filterung / Ignorierte Daten falls vorhanden */}
+              {analysisResult?.ignorierte_daten && analysisResult.ignorierte_daten.length > 0 && (
+                <div className="p-3 rounded-lg bg-slate-100/70 border border-slate-200 text-xs flex items-start gap-2.5">
+                  <FilterX className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-semibold text-slate-700 block">
+                      {t('hahnemannIgnoredData')}:
+                    </span>
+                    <span className="text-slate-600">
+                      {analysisResult.ignorierte_daten.map(item => `"${item}"`).join(', ')}
+                    </span>
+                    <span className="text-[11px] text-slate-400 block mt-0.5">
+                      {t('hahnemannIgnoredDataDesc')}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* SECTION 2: DYNAMISCHE EINZELFRAGE-KONTROLLSCHLEIFE */}
-          {analysisResult?.analyse_status !== 'completed' && analysisResult?.naechste_frage ? (
+          {isMainQuestionStep && (
             <div className="bg-linear-to-b from-teal-50/80 to-white rounded-xl border-2 border-teal-600/30 p-5 shadow-sm space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-teal-100 pb-2.5">
                 <div className="flex flex-wrap items-center gap-2">
@@ -908,6 +990,95 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
                     </div>
                   </div>
 
+                  {/* INTERAKTIVE CHRONOLOGISCHE REIHENFOLGE (1, 2, 3...) WENN MEHRERE BESCHWERDEN VORLIEGEN */}
+                  {isSequenceQuestion && customSequenceItems.length > 0 && (
+                    <div className="p-4 rounded-xl bg-teal-50/80 border-2 border-teal-300 space-y-2.5 mb-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-teal-950 flex items-center gap-1.5 uppercase tracking-wide">
+                          <GitBranch className="w-4 h-4 text-teal-700" />
+                          {language === 'de' ? 'Chronologische Reihenfolge flexibel bestimmen (1, 2, 3...):' : 'Define flexible chronological sequence (1, 2, 3...):'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-teal-900 italic">
+                        {language === 'de' ? 'Verschieben Sie die Symptome mit den Pfeilen in die genaue Reihenfolge, in der sie nacheinander auftraten:' : 'Move symptoms using the arrows into the exact sequential order:'}
+                      </p>
+                      <div className="space-y-1.5 pt-1">
+                        {customSequenceItems.map((item, iIdx) => (
+                          <div
+                            key={iIdx}
+                            className="flex items-center justify-between bg-white px-3 py-2 rounded-lg border border-teal-200 text-xs shadow-2xs"
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <span className="w-5 h-5 rounded-full bg-teal-100 text-teal-900 font-bold text-[10px] flex items-center justify-center shrink-0">
+                                {iIdx + 1}
+                              </span>
+                              <span className="font-semibold text-slate-900">{item}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                disabled={iIdx === 0}
+                                onClick={() => {
+                                  moveSequenceItem(iIdx, 'up');
+                                  if (!isCustomSequenceActive) {
+                                    setIsCustomSequenceActive(true);
+                                  }
+                                }}
+                                className="p-1 rounded hover:bg-teal-100 disabled:opacity-30 disabled:hover:bg-transparent text-teal-900 transition-colors"
+                                title={language === 'de' ? 'Nach oben' : 'Move up'}
+                              >
+                                <ChevronUp className="w-4 h-4" />
+                              </button>
+                              <button
+                                type="button"
+                                disabled={iIdx === customSequenceItems.length - 1}
+                                onClick={() => {
+                                  moveSequenceItem(iIdx, 'down');
+                                  if (!isCustomSequenceActive) {
+                                    setIsCustomSequenceActive(true);
+                                  }
+                                }}
+                                className="p-1 rounded hover:bg-teal-100 disabled:opacity-30 disabled:hover:bg-transparent text-teal-900 transition-colors"
+                                title={language === 'de' ? 'Nach unten' : 'Move down'}
+                              >
+                                <ChevronDown className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="pt-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (isCustomSequenceActive) {
+                              setIsCustomSequenceActive(false);
+                              setSelectedOptions(prev => prev.filter(o => !o.startsWith('Individuelle Reihenfolge') && !o.startsWith('Custom sequence')));
+                            } else {
+                              setIsCustomSequenceActive(true);
+                              setSelectedOptions(prev => [
+                                ...prev.filter(o => !o.startsWith('Individuelle Reihenfolge') && !o.startsWith('Custom sequence')),
+                                customSequenceLabel
+                              ]);
+                            }
+                          }}
+                          className={`w-full py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                            isCustomSequenceActive
+                              ? 'bg-teal-700 text-white shadow-sm ring-1 ring-teal-700'
+                              : 'bg-white border-2 border-teal-400 text-teal-950 hover:bg-teal-50'
+                          }`}
+                        >
+                          <Check className={`w-4 h-4 ${isCustomSequenceActive ? 'opacity-100' : 'opacity-40'}`} />
+                          <span>
+                            {isCustomSequenceActive
+                              ? (language === 'de' ? 'Individuelle Reihenfolge (1, 2, 3...) übernommen ✓' : 'Custom sequence selected ✓')
+                              : (language === 'de' ? 'Diese individuelle Reihenfolge (1, 2, 3...) als Antwort übernehmen' : 'Apply this custom sequence as answer')}
+                          </span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   {/* VORDEFINIERTE ANKLICKBARE OPTIONEN (Auswahlkästen) */}
                   {activeOptions && activeOptions.length > 0 && (
                     <div className="space-y-3 pt-3 border-t border-teal-100">
@@ -963,8 +1134,108 @@ export const ComplaintQuestionsWizardModal: React.FC<ComplaintQuestionsWizardMod
                 </div>
               )}
             </div>
-          ) : (
-            /* SECTION 3: ABSCHLUSS & ZUSAMMENFASSUNG */
+          )}
+
+          {/* CLARIFYING QUESTION STEP (BILD F STYLE - ONE BY ONE) */}
+          {isClarifyingStep && clarifyingQuestions[activeClarifyingIndex] && (() => {
+            const q = clarifyingQuestions[activeClarifyingIndex];
+            const currentText = customClarifyingInput[q.id] || '';
+
+            return (
+              <div className="bg-linear-to-b from-teal-50/80 to-white rounded-xl border-2 border-teal-600/30 p-5 shadow-sm space-y-4 animate-in fade-in duration-200">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-teal-100 pb-2.5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-bold uppercase tracking-wider text-teal-900 flex items-center gap-1.5">
+                      <Sparkles className="w-4 h-4 text-teal-700" />
+                      {t('hahnemannArisingQuestionsTitle')} ({activeClarifyingIndex + 1} / {clarifyingQuestions.length})
+                    </span>
+                    <span className="px-2.5 py-0.5 rounded-md bg-teal-100 text-teal-900 text-[11px] font-bold">
+                      {q.kategorie === 'gemuet' ? t('hahnemannPillarGemuet') : q.kategorie === 'modalitaeten' ? t('hahnemannPillarModalitaeten') : q.kategorie === 'begleitsymptome' ? t('hahnemannPillarBegleit') : t('step1Title')}
+                    </span>
+                  </div>
+
+                  {activeClarifyingIndex > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setActiveClarifyingIndex(prev => prev - 1)}
+                      className="text-xs text-teal-800 hover:text-teal-950 underline font-medium cursor-pointer"
+                    >
+                      {t('hahnemannBackBtn') || 'Zurück'}
+                    </button>
+                  )}
+                </div>
+
+                <div className="p-4 rounded-xl bg-white border border-teal-200 shadow-xs space-y-2">
+                  <h5 className="text-sm sm:text-base font-bold text-slate-900 leading-relaxed">
+                    {q.frage}
+                  </h5>
+                  {q.grund && (
+                    <p className="text-xs text-slate-500 italic">
+                      <span className="font-semibold text-slate-600 not-italic">{t('hahnemannClarifyingQuestionRationale')} </span>
+                      {q.grund}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex flex-wrap gap-2">
+                    {q.optionen.map((opt, oIdx) => (
+                      <button
+                        key={oIdx}
+                        type="button"
+                        onClick={() => {
+                          handleAnswerClarifyingQuestion(q.id, opt, q.kategorie);
+                          setActiveClarifyingIndex(prev => prev + 1);
+                        }}
+                        className="text-left text-xs sm:text-sm px-3.5 py-2.5 rounded-xl bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-300 text-slate-800 hover:text-teal-950 transition-all font-medium cursor-pointer shadow-2xs flex-1 min-w-[240px]"
+                      >
+                        {opt}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-2 border-t border-teal-100">
+                    <input
+                      type="text"
+                      value={currentText}
+                      onChange={(e) => setCustomClarifyingInput(prev => ({ ...prev, [q.id]: e.target.value }))}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && currentText.trim()) {
+                          handleAnswerClarifyingQuestion(q.id, currentText, q.kategorie);
+                          setActiveClarifyingIndex(prev => prev + 1);
+                        }
+                      }}
+                      placeholder={t('hahnemannMandatoryFreeTextPlaceholder')}
+                      className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-teal-600 shadow-2xs bg-white"
+                    />
+                    <VoiceInputButton
+                      size="md"
+                      context="question_answer"
+                      value={currentText}
+                      onChange={(val) => setCustomClarifyingInput(prev => ({ ...prev, [q.id]: val }))}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (currentText.trim()) {
+                          handleAnswerClarifyingQuestion(q.id, currentText, q.kategorie);
+                          setActiveClarifyingIndex(prev => prev + 1);
+                        }
+                      }}
+                      disabled={!currentText.trim()}
+                      className="px-4 py-2.5 rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-semibold text-xs sm:text-sm disabled:opacity-50 cursor-pointer shadow-xs flex items-center gap-1.5 transition-all"
+                    >
+                      <Check className="w-4 h-4" />
+                      <span>{t('hahnemannConfirmAnswerBtn')}</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* SECTION 3: ABSCHLUSS & ZUSAMMENFASSUNG */}
+          {isFinalStep && (
             <div className="bg-emerald-50/80 rounded-xl border-2 border-emerald-300 p-5 shadow-xs space-y-4 animate-in fade-in duration-200">
               <div className="flex items-center gap-2.5 text-emerald-900 border-b border-emerald-200 pb-3">
                 <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />

@@ -15,6 +15,8 @@ export interface Hahnemann6Pillars {
   lokalisierung: string | null;
   empfindung: string | null;
   modalitaeten: string | null;
+  modalitaeten_besserung?: string | null;
+  modalitaeten_verschlechterung?: string | null;
   begleitsymptome: string[];
   gemuet: string | null;
   strahlungsoptionen?: string | null;
@@ -414,6 +416,178 @@ const LOCALIZED_QUESTIONS: Record<string, Record<string, LocalizedQuestionData>>
         'Желудочно-кишечный тракт / живот с иррадиацией в спину',
         'Опорно-двигательный аппарат / суставы / конечности',
         'Все тело / системно (жар, озноб)'
+      ]
+    }
+  },
+  modalitaetenBesserung: {
+    de: {
+      rationale: 'Modalitäten – Besserung (§§ 86–88 Organon): Welcher Umstand, welche Position oder äußere Einwirkung bessert die Beschwerde merklich?',
+      question: 'Wodurch werden Ihre Beschwerden merklich gebessert oder gelindert?',
+      options: [
+        'Besserung durch äußere Wärme (Wärmflasche, warme Umschläge)',
+        'Besserung durch Kälte oder kalte Anwendungen',
+        'Besserung durch Vorbeugen, Zusammenkrümmen oder festen Druck',
+        'Besserung durch frische Luft / offenes Fenster',
+        'Besserung durch Ruhe und Liegen',
+        'Besserung durch sanfte Bewegung'
+      ]
+    },
+    en: {
+      rationale: 'Modalities – Amelioration (§§ 86–88 Organon): Which circumstance, position or outer influence noticeably ameliorates the complaint?',
+      question: 'What noticeably ameliorates or relieves your complaints?',
+      options: [
+        'Amelioration from external warmth (hot water bottle, warm compresses)',
+        'Amelioration from cold or cold applications',
+        'Amelioration from bending double, drawing up legs, or firm pressure',
+        'Amelioration from fresh air / open window',
+        'Amelioration from rest and lying down',
+        'Amelioration from gentle motion'
+      ]
+    },
+    es: {
+      rationale: 'Modalidades – Mejoría (§§ 86–88 Organon): ¿Qué circunstancia o influencia exterior mejora notablemente la molestia?',
+      question: '¿Qué mejora o alivia notablemente sus molestias?',
+      options: [
+        'Mejoría por calor externo (bolsa de agua caliente, compresas templadas)',
+        'Mejoría por frío o aplicaciones frías',
+        'Mejoría doblándose, encogiéndose o con presión firme',
+        'Mejoría por aire fresco / ventana abierta',
+        'Mejoría por reposo y estar acostado',
+        'Mejoría por movimiento suave'
+      ]
+    },
+    fr: {
+      rationale: 'Modalités – Amélioration (§§ 86–88 Organon) : Quelle circonstance ou influence extérieure améliore nettement les troubles ?',
+      question: 'Qu\'est-ce qui améliore ou soulage sensiblement vos troubles ?',
+      options: [
+        'Amélioration par la chaleur externe (bouillotte, compresses chaudes)',
+        'Amélioration par le froid ou applications froides',
+        'Amélioration en se pliant en deux, en se recroquevillant ou par pression ferme',
+        'Amélioration par l\'air frais / fenêtre ouverte',
+        'Amélioration par le repos et en étant alloué / couché',
+        'Amélioration par un mouvement doux'
+      ]
+    },
+    it: {
+      rationale: 'Modalità – Miglioramento (§§ 86–88 Organon): Quale circostanza o fattore esterno migliora notevolmente il disturbo?',
+      question: 'Che cosa migliora o allevia notevolmente i vostri disturbi?',
+      options: [
+        'Miglioramento con calore esterno (borsa dell\'acqua calda, impacchi caldi)',
+        'Miglioramento con freddo o applicazioni fredde',
+        'Miglioramento piegandosi in due, rannicchiandosi o con pressione decisa',
+        'Miglioramento con aria fresca / finestra aperta',
+        'Miglioramento con riposo e distendersi',
+        'Miglioramento con movimento leggero'
+      ]
+    },
+    el: {
+      rationale: 'Τροποποιητικοί παράγοντες – Βελτίωση (§§ 86–88 Όργανον): Ποια συνθήκη ή εξωτερική επίδραση βελτιώνει αισθητά το σύμπτωμα;',
+      question: 'Τι βελτιώνει ή ανακουφίζει αισθητά τα ενοχλήματά σας;',
+      options: [
+        'Βελτίωση από εξωτερική θερμότητα (θερμοφόρα, ζεστά επιθέματα)',
+        'Βελτίωση από κρύο ή κρύες εφαρμογές',
+        'Βελτίωση από το σκύψιμο, το μάζεμα των ποδιών ή σταθερή πίεση',
+        'Βελτίωση από καθαρό αέρα / ανοιχτό παράθυρο',
+        'Βελτίωση από ανάπαυση και κατάκλιση',
+        'Βελτίωση από ήπια κίνηση'
+      ]
+    },
+    ru: {
+      rationale: 'Модальности – Улучшение (§§ 86–88 Органон): Какие обстоятельства или факторы заметно улучшают состояние?',
+      question: 'Что заметно улучшает или облегчает ваши жалобы?',
+      options: [
+        'Улучшение от внешнего тепла (грелка, теплие компрессы)',
+        'Улучшение от холода или холодных аппликаций',
+        'Улучшение от сгибания вдвое, подтягивания ног или крепкого давления',
+        'Улучшение от свежего воздуха / открытого окна',
+        'Улучшение от покоя и лежания',
+        'Улучшение от мягкого движения'
+      ]
+    }
+  },
+  modalitaetenVerschlechterung: {
+    de: {
+      rationale: 'Modalitäten – Verschlechterung (§§ 86–88 Organon): Welcher Umstand, welche Erschütterung oder äußere Einwirkung verschlechtert die Beschwerde?',
+      question: 'Wodurch werden Ihre Beschwerden merklich verschlechtert oder verstärkt?',
+      options: [
+        'Verschlechterung durch Berührung, Erschütterung oder geringste Bewegung',
+        'Verschlechterung durch kalten Luftzug oder Kälte',
+        'Verschlechterung durch Hitze oder warme Räume',
+        'Verschlechterung nach dem Essen oder Trinken',
+        'Verschlechterung nachts oder zu bestimmten Tageszeiten',
+        'Weder Besserung noch Verschlechterung durch äußere Einflüsse'
+      ]
+    },
+    en: {
+      rationale: 'Modalities – Aggravation (§§ 86–88 Organon): Which circumstance, jarring or outer influence aggravates the complaint?',
+      question: 'What noticeably aggravates or worsens your complaints?',
+      options: [
+        'Aggravation from touch, jarring, or slightest motion',
+        'Aggravation from cold drafts or cold',
+        'Aggravation from heat or warm rooms',
+        'Aggravation after eating or drinking',
+        'Aggravation at night or at specific times of day',
+        'Neither amelioration nor aggravation from external influences'
+      ]
+    },
+    es: {
+      rationale: 'Modalidades – Empeoramiento (§§ 86–88 Organon): ¿Qué circunstancia o influencia exterior empeora la molestia?',
+      question: '¿Qué empeora o intensifica notablemente sus molestias?',
+      options: [
+        'Empeoramiento por tacto, sacudidas o el menor movimiento',
+        'Empeoramiento por corrientes de aire frío o frío',
+        'Empeoramiento por calor o habitaciones cálidas',
+        'Empeoramiento después de comer o beber',
+        'Empeoramiento por la noche o en horas determinadas',
+        'Ni mejoría ni empeoramiento por influencias externas'
+      ]
+    },
+    fr: {
+      rationale: 'Modalités – Aggravation (§§ 86–88 Organon) : Quelle circonstance, secousse ou influence extérieure aggrave les troubles ?',
+      question: 'Qu\'est-ce qui aggrave ou accentue sensiblement vos troubles ?',
+      options: [
+        'Aggravation par le toucher, les secousses ou le moindre mouvement',
+        'Aggravation par les courants d\'air froid ou le froid',
+        'Aggravation par la chaleur ou les pièces chaudes',
+        'Aggravation après avoir mangé ou bu',
+        'Aggravation la nuit ou à des heures précises',
+        'Ni amélioration ni aggravation par des influences extérieures'
+      ]
+    },
+    it: {
+      rationale: 'Modalità – Peggioramento (§§ 86–88 Organon): Quale circostanza, scossione o fattore esterno peggiorano il disturbo?',
+      question: 'Che cosa peggiora o accentua notevolmente i vostri disturbi?',
+      options: [
+        'Peggioramento con il tatto, scosse o il minimo movimento',
+        'Peggioramento con correnti d\'aria fredda o freddo',
+        'Peggioramento con calore o stanze calde',
+        'Peggioramento dopo aver mangiato o bevuto',
+        'Peggioramento di notte o in determinati orari',
+        'Né miglioramento né peggioramento da fattori esterni'
+      ]
+    },
+    el: {
+      rationale: 'Τροποποιητικοί παράγοντες – Επιδείνωση (§§ 86–88 Όργανον): Ποια συνθήκη, τράνταγμα ή εξωτερική επίδραση επιδεινώνει το σύμπτωμα;',
+      question: 'Τι επιδεινώνει ή εντείνει αισθητά τα ενοχλήματά σας;',
+      options: [
+        'Επιδείνωση από την αφή, τράνταγμα ή ελάχιστη κίνηση',
+        'Επιδείνωση από κρύο ρεύμα αέρα ή κρύο',
+        'Επιδείνωση από ζέστη ή ζεστά δωμάτια',
+        'Επιδείνωση μετά από φαγητό ή ποτό',
+        'Επιδείνωση τη νύχτα ή σε συγκεκριμένες ώρες',
+        'Ούτε βελτίωση ούτε επιδείνωση από εξωτερικές επιδράσεις'
+      ]
+    },
+    ru: {
+      rationale: 'Модальности – Ухудшение (§§ 86–88 Органон): Какие обстоятельства или факторы заметно ухудшают жалобы?',
+      question: 'Что заметно ухудшает или усиливает ваши жалобы?',
+      options: [
+        'Ухудшение от прикосновения, сотрясения или малейшего движения',
+        'Ухудшение от холодного сквозняка или холода',
+        'Ухудшение от тепла или теплых помещений',
+        'Ухудшение после еды или питья',
+        'Ухудшение ночью или в определенное время суток',
+        'Ни улучшения, ни ухудшения от внешних факторов'
       ]
     }
   },
@@ -897,8 +1071,12 @@ export function evaluateHahnemannLocally(
         matrix.lokalisierung = newText.trim();
       } else if (!existingMatrix?.empfindung) {
         matrix.empfindung = newText.trim();
-      } else if (!existingMatrix?.modalitaeten) {
-        matrix.modalitaeten = newText.trim();
+      } else if (!existingMatrix?.modalitaeten_besserung) {
+        matrix.modalitaeten_besserung = newText.trim();
+        matrix.modalitaeten = `Besserung: ${matrix.modalitaeten_besserung} | Verschlechterung: ${matrix.modalitaeten_verschlechterung || '—'}`;
+      } else if (!existingMatrix?.modalitaeten_verschlechterung) {
+        matrix.modalitaeten_verschlechterung = newText.trim();
+        matrix.modalitaeten = `Besserung: ${matrix.modalitaeten_besserung || '—'} | Verschlechterung: ${matrix.modalitaeten_verschlechterung}`;
       } else if (!existingMatrix?.begleitsymptome || existingMatrix.begleitsymptome.length === 0) {
         matrix.begleitsymptome = [newText.trim()];
       } else if (!existingMatrix?.gemuet) {
@@ -911,13 +1089,14 @@ export function evaluateHahnemannLocally(
   const hasCausa = Boolean(matrix.causa && matrix.causa !== 'Noch nicht genannt' && matrix.causa.trim().length > 0);
   const hasLokalisierung = Boolean(matrix.lokalisierung && matrix.lokalisierung !== 'Noch nicht genannt' && matrix.lokalisierung.trim().length > 0);
   const hasEmpfindung = Boolean(matrix.empfindung && matrix.empfindung !== 'Noch nicht genannt' && matrix.empfindung.trim().length > 0);
-  const hasModalitaeten = Boolean(matrix.modalitaeten && matrix.modalitaeten !== 'Noch nicht genannt' && matrix.modalitaeten.trim().length > 0);
+  const hasBesserung = Boolean(matrix.modalitaeten_besserung && matrix.modalitaeten_besserung !== 'Noch nicht genannt' && matrix.modalitaeten_besserung.trim().length > 0);
+  const hasVerschlechterung = Boolean(matrix.modalitaeten_verschlechterung && matrix.modalitaeten_verschlechterung !== 'Noch nicht genannt' && matrix.modalitaeten_verschlechterung.trim().length > 0);
   const hasBegleitsymptome = Boolean(Array.isArray(matrix.begleitsymptome) && matrix.begleitsymptome.length > 0);
   const hasGemuet = Boolean(matrix.gemuet && matrix.gemuet !== 'Noch nicht genannt' && matrix.gemuet.trim().length > 0);
   const hasCausalityCheck = !multipleComplaints || Boolean(matrix.ursaechlicher_zusammenhang);
   const hasChronicHistoryCheck = caseType !== 'chronisch' || Boolean(matrix.fruehere_behandlungen_und_historie);
 
-  const allPillarsCompleted = hasCausa && hasLokalisierung && hasEmpfindung && hasModalitaeten && hasBegleitsymptome && hasGemuet && hasCausalityCheck && hasChronicHistoryCheck;
+  const allPillarsCompleted = hasCausa && hasLokalisierung && hasEmpfindung && hasBesserung && hasVerschlechterung && hasBegleitsymptome && hasGemuet && hasCausalityCheck && hasChronicHistoryCheck;
 
   let nextQuestion = '';
   let rationale = '';
@@ -976,7 +1155,7 @@ export function evaluateHahnemannLocally(
     return baseQ;
   };
 
-  if (forceComplete || allPillarsCompleted || (_history.length >= 6 && hasEmpfindung && hasModalitaeten && hasGemuet)) {
+  if (forceComplete || allPillarsCompleted || (_history.length >= 7 && hasEmpfindung && hasBesserung && hasVerschlechterung && hasGemuet)) {
     status = 'completed';
     nextQuestion = '';
     auswahlOptionen = [];
@@ -1036,13 +1215,20 @@ export function evaluateHahnemannLocally(
     auswahlOptionen = qData.options;
     auswahlTyp = 'single';
     diffRemedies.push('Aconitum napellus', 'Belladonna', 'Bryonia alba', 'Ferrum phosphoricum');
-  } else if (!hasModalitaeten) {
-    const qData = getQ('modalitaeten');
+  } else if (!hasBesserung) {
+    const qData = getQ('modalitaetenBesserung');
     rationale = qData.rationale;
     nextQuestion = personalize(qData.question, 'modalitaeten');
     auswahlOptionen = qData.options;
-    auswahlTyp = 'multiple';
-    diffRemedies.push('Bryonia alba', 'Silicea', 'Belladonna', 'Aconitum napellus');
+    auswahlTyp = 'single';
+    diffRemedies.push('Bryonia alba', 'Silicea', 'Pulsatilla');
+  } else if (!hasVerschlechterung) {
+    const qData = getQ('modalitaetenVerschlechterung');
+    rationale = qData.rationale;
+    nextQuestion = personalize(qData.question, 'modalitaeten');
+    auswahlOptionen = qData.options;
+    auswahlTyp = 'single';
+    diffRemedies.push('Bryonia alba', 'Arsenicum album', 'Nux vomica');
   } else if (!hasBegleitsymptome) {
     const qData = getQ('begleitsymptome');
     rationale = qData.rationale;

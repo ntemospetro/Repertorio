@@ -1907,7 +1907,7 @@ export const ru = {
   recognizedSymptomsTitle: "Распознанные симптомы",
   recognizedSymptomsSubtitle: "Автоматически фрагментированные и сопоставленные клинические симптомы",
   acuteVoiceAnalysisTitle: "ОСТРЫЙ ПРИЕМ И ОПИСАНИЕ СИМПТОМОВ **",
-  acuteVoiceAnalysisSubtitle: "Введите текст симптомов или запишите голосом. Ведущие симптомы, кауза, модальности и сопутствующие признаки определяются в реальном времени.",
+  acuteVoiceAnalysisSubtitle: "Заявленные симптомы фиксируются из слов пациента. Главный симптом, причина, модальности и сопутствующие признаки выясняются и подтверждаются только путем целевого опроса.",
   hahnemannStartWizardBtn: "Запустить анализ 6 столпов Ганемана (Флажки выбора)",
   noRecognizedSymptomsYet: "Симптомы пока не обнаружены. Произнесите или введите жалобы.",
   clearHauptbeschwerdeBtn: "Очистить ввод",
@@ -1966,6 +1966,8 @@ export const ru = {
   hahnemannPillarShortLokalisation: "Локализация",
   hahnemannPillarShortSensation: "Ощущение",
   hahnemannPillarShortModalitaeten: "Модальности",
+  hahnemannPillarShortBesserung: "Улучшение",
+  hahnemannPillarShortVerschlechterung: "Ухудшение",
   hahnemannPillarShortBegleit: "Сопутств.",
   hahnemannPillarShortGemuet: "Психика",
   hahnemannNoHallucinationsNotice: "Без вымышленных симптомов: Фиксируются только факты, явно высказанные пациентом.",
@@ -3242,5 +3244,6 @@ export const ru = {
   adminConfigSecurityPinDesc: "Дополнительный барьер безопасности перед входом администратора (По умолчанию: 360).",
   anamnesisStepBetter: "Столп 4.1 – КОГДА: Улучшение (> Облегчение)",
   anamnesisStepWorse: "Столп 4.2 – КОГДА: Ухудшение (< Утяжеление)",
-  anamnesisStepPillarCausa: "Столп 3 – ОТ ЧЕГО? (Causa и триггер)"
+  anamnesisStepPillarCausa: "Столп 3 – ОТ ЧЕГО? (Causa и триггер)",
+  hahnemannBackBtn: "Назад"
 };

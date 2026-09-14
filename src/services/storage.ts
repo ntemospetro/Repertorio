@@ -2256,18 +2256,22 @@ export function isFeatureLimitReached(
   } else if (feature === 'maxQuickIntakeSymptoms') {
     currentUsage = 0;
   } else {
-    const mapActionType: Record<string, TherapistUsageActionType> = {
-      maxMedResearch: 'med_research',
-      maxMateriaMedicaSearch: 'materia_search',
-      maxRepertoriumSearch: 'repertorium_search',
-      maxQuickIntake: 'quick_intake',
-      maxRiskAnalyses: 'risk_analysis',
-      maxReports: 'reports',
-      maxAiRequests: 'ai_request'
-    };
-    const action = mapActionType[feature];
-    if (action) {
-      currentUsage = getTherapistUsageCount(therapistId, action);
+    if (feature === 'maxQuickIntake') {
+      const therapist = getTherapists().find(t => t.id === therapistId);
+      currentUsage = therapist ? therapist.usedAnalyses : getTherapistUsageCount(therapistId, 'quick_intake');
+    } else {
+      const mapActionType: Record<string, TherapistUsageActionType> = {
+        maxMedResearch: 'med_research',
+        maxMateriaMedicaSearch: 'materia_search',
+        maxRepertoriumSearch: 'repertorium_search',
+        maxRiskAnalyses: 'risk_analysis',
+        maxReports: 'reports',
+        maxAiRequests: 'ai_request'
+      };
+      const action = mapActionType[feature];
+      if (action) {
+        currentUsage = getTherapistUsageCount(therapistId, action);
+      }
     }
   }
 

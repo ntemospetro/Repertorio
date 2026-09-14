@@ -1907,7 +1907,7 @@ export const fr = {
   recognizedSymptomsTitle: "Symptômes reconnus",
   recognizedSymptomsSubtitle: "Symptômes cliniques individuels fragmentés et attribués automatiquement",
   acuteVoiceAnalysisTitle: "PRISE EN CHARGE AIGUË & DESCRIPTION DES SYMPTÔMES **",
-  acuteVoiceAnalysisSubtitle: "Saisissez le texte des symptômes ou enregistrez à la voix. Les symptômes directeurs, la cause, les modalités et les symptômes concomitants sont détectés en temps réel.",
+  acuteVoiceAnalysisSubtitle: "Les symptômes signalés sont extraits de la déclaration du patient. Le symptôme principal, la cause, les modalités et les concomitants ne sont clarifiés et confirmés que par une anamnèse ciblée.",
   hahnemannStartWizardBtn: "Démarrer l'analyse des 6 piliers de Hahnemann (Cases à cocher)",
   noRecognizedSymptomsYet: "Aucun symptôme détecté pour l'instant. Parlez ou saisissez vos plaintes.",
   clearHauptbeschwerdeBtn: "Effacer la saisie",
@@ -1966,6 +1966,8 @@ export const fr = {
   hahnemannPillarShortLokalisation: "Localisation",
   hahnemannPillarShortSensation: "Sensation",
   hahnemannPillarShortModalitaeten: "Modalités",
+  hahnemannPillarShortBesserung: "Amélioration",
+  hahnemannPillarShortVerschlechterung: "Aggravation",
   hahnemannPillarShortBegleit: "Concomitants",
   hahnemannPillarShortGemuet: "Psychisme",
   hahnemannNoHallucinationsNotice: "Aucun symptôme halluciné : Seules les déclarations formulées explicitement par le patient sont enregistrées.",
@@ -3242,5 +3244,6 @@ export const fr = {
   adminConfigSecurityPinDesc: "Barrière de sécurité supplémentaire avant la connexion administrateur (Par défaut : 360).",
   anamnesisStepBetter: "Pilier 4.1 – QUAND : Amélioration (> Soulagement)",
   anamnesisStepWorse: "Pilier 4.2 – QUAND : Aggravation (< Aggravation)",
-  anamnesisStepPillarCausa: "Pilier 3 – PAR QUOI ? (Causa & Déclencheur)"
+  anamnesisStepPillarCausa: "Pilier 3 – PAR QUOI ? (Causa & Déclencheur)",
+  hahnemannBackBtn: "Retour"
 };
