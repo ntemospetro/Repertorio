@@ -789,72 +789,74 @@ export const AcuteIntakeView: React.FC<AcuteIntakeViewProps> = ({
   return (
     <div className="w-full space-y-6">
       {/* Top Header Card (Uniform Falldokumentation Design) */}
-      <div className="w-full bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs relative overflow-hidden">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
-          <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-teal-700 text-white flex items-center justify-center font-bold text-base shadow-xs shrink-0 font-serif">
-              <Mic className="w-6 h-6" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <h1 className="text-xl font-bold text-slate-900 font-serif">
-                  {t('tabQuickIntake')}
-                </h1>
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-50 text-teal-800 border border-teal-200/80 shadow-2xs">
-                  {t('acuteIntakeBadge')}
-                </span>
+      {!isHahnemannWizardOpen && (
+        <div className="w-full bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs relative overflow-hidden">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-teal-700 text-white flex items-center justify-center font-bold text-base shadow-xs shrink-0 font-serif">
+                <Mic className="w-6 h-6" />
               </div>
-              <p className="text-xs text-slate-500 mt-0.5">
-                {t('quickIntakePageSubtitle')}
-              </p>
+              <div>
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <h1 className="text-xl font-bold text-slate-900 font-serif">
+                    {t('tabQuickIntake')}
+                  </h1>
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-50 text-teal-800 border border-teal-200/80 shadow-2xs">
+                    {t('acuteIntakeBadge')}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {t('quickIntakePageSubtitle')}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              {onGoToMateriaMedica && (
+                <button
+                  type="button"
+                  onClick={onGoToMateriaMedica}
+                  className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
+                >
+                  <BookOpen className="w-3.5 h-3.5 text-teal-700" />
+                  <span>{t('tabMateriaMedica')}</span>
+                </button>
+              )}
             </div>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
-            {onGoToMateriaMedica && (
-              <button
-                type="button"
-                onClick={onGoToMateriaMedica}
-                className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
-              >
-                <BookOpen className="w-3.5 h-3.5 text-teal-700" />
-                <span>{t('tabMateriaMedica')}</span>
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Structured 3-Column Meta Grid (Exact match with Falldokumentation's metadata row) */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4 text-xs">
-          <div className="bg-slate-50/70 p-3 rounded-xl border border-slate-100 flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center shrink-0 border border-teal-100/80">
-              <Mic className="w-4 h-4" />
+          {/* Structured 3-Column Meta Grid (Exact match with Falldokumentation's metadata row) */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4 text-xs">
+            <div className="bg-slate-50/70 p-3 rounded-xl border border-slate-100 flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center shrink-0 border border-teal-100/80">
+                <Mic className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <span className="block text-[11px] text-slate-400 font-medium">{t('acuteFeatureVoice')}</span>
+                <span className="font-semibold text-slate-800 text-xs truncate block">{t('acuteFeatureVoiceSub')}</span>
+              </div>
             </div>
-            <div className="min-w-0">
-              <span className="block text-[11px] text-slate-400 font-medium">{t('acuteFeatureVoice')}</span>
-              <span className="font-semibold text-slate-800 text-xs truncate block">{t('acuteFeatureVoiceSub')}</span>
+            <div className="bg-slate-50/70 p-3 rounded-xl border border-slate-100 flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center shrink-0 border border-teal-100/80">
+                <Stethoscope className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <span className="block text-[11px] text-slate-400 font-medium">{t('acuteFeatureAnalysis')}</span>
+                <span className="font-semibold text-slate-800 text-xs truncate block">{t('acuteFeatureAnalysisSub')}</span>
+              </div>
             </div>
-          </div>
-          <div className="bg-slate-50/70 p-3 rounded-xl border border-slate-100 flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center shrink-0 border border-teal-100/80">
-              <Stethoscope className="w-4 h-4" />
-            </div>
-            <div className="min-w-0">
-              <span className="block text-[11px] text-slate-400 font-medium">{t('acuteFeatureAnalysis')}</span>
-              <span className="font-semibold text-slate-800 text-xs truncate block">{t('acuteFeatureAnalysisSub')}</span>
-            </div>
-          </div>
-          <div className="bg-slate-50/70 p-3 rounded-xl border border-slate-100 flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center shrink-0 border border-teal-100/80">
-              <Sparkles className="w-4 h-4" />
-            </div>
-            <div className="min-w-0">
-              <span className="block text-[11px] text-slate-400 font-medium">{t('acuteFeatureRemedies')}</span>
-              <span className="font-semibold text-slate-800 text-xs truncate block">{t('acuteFeatureRemediesSub')}</span>
+            <div className="bg-slate-50/70 p-3 rounded-xl border border-slate-100 flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center shrink-0 border border-teal-100/80">
+                <Sparkles className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <span className="block text-[11px] text-slate-400 font-medium">{t('acuteFeatureRemedies')}</span>
+                <span className="font-semibold text-slate-800 text-xs truncate block">{t('acuteFeatureRemediesSub')}</span>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Main Intake Card: Single Full-Width Voice & Text Recording Hub */}
       <div className="w-full animate-in fade-in duration-200">
