@@ -423,9 +423,12 @@ const FieldRenderer: React.FC<{
   const innerContent = () => {
     // Specialized medication list renderer matching image.png & step 5
     if (field.id === 'medikamente_liste') {
-      const list: MedicationItem[] = Array.isArray(value) && value.length > 0 
+      const rawList: MedicationItem[] = Array.isArray(value) && value.length > 0 
         ? value 
         : [createEmptyMedication()];
+      const savedMeds = rawList.filter(m => m.name && m.name.trim() !== '');
+      const emptyMeds = rawList.filter(m => !m.name || !m.name.trim());
+      const list: MedicationItem[] = emptyMeds.length > 0 ? [...emptyMeds, ...savedMeds] : [createEmptyMedication(), ...savedMeds];
 
       const handleSaveItem = (idx: number, savedItem: MedicationData) => {
         const updated: MedicationItem[] = [...list];
@@ -435,12 +438,10 @@ const FieldRenderer: React.FC<{
           isSaved: true,
           _id: (updated[idx] as any)?._id || (savedItem as any)?._id || `med_${idx}`
         };
-        // Funktions-Verschmelzung: "Αποθήκευση φαρμάκου" übernimmt die ursprüngliche Funktion von "Προσθήκη φαρμάκου"
-        const hasEmpty = updated.some(m => !m.name || !m.name.trim());
-        if (!hasEmpty) {
-          updated.push(createEmptyMedication());
-        }
-        onChange(updated);
+        const saved = updated.filter(m => m.name && m.name.trim() !== '' && m.isSaved);
+        const active = updated.filter(m => (!m.name || !m.name.trim() || !m.isSaved) && m !== updated[idx]);
+        const finalUpdated = [createEmptyMedication(), ...saved, ...active];
+        onChange(finalUpdated);
       };
 
       const handleUpdateMed = (idx: number, updatedItem: MedicationData) => {

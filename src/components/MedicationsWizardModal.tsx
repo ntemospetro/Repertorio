@@ -54,15 +54,11 @@ export const MedicationsWizardModal: React.FC<Props> = ({
           isSaved: m.isSaved !== undefined ? m.isSaved : Boolean(m.name?.trim()),
           _id: (m as any)._id || ('med_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9))
         }));
-        if (autoAddNew) {
-          // Gleichzeitig neue Felder für die Eingabe eines neuen Medikaments öffnen
-          const hasEmpty = mapped.some(m => !m.name || !m.name.trim());
-          setList(hasEmpty ? mapped : [...mapped, createEmptyMedication()]);
-        } else {
-          setList(mapped);
-        }
+        const savedItems = mapped.filter(m => m.name && m.name.trim() !== '');
+        const emptyItems = mapped.filter(m => !m.name || !m.name.trim());
+        setList(emptyItems.length > 0 ? [...emptyItems, ...savedItems] : [createEmptyMedication(), ...savedItems]);
       } else {
-        // Beim Öffnen erscheinen bereits die Felder für das erste Medikament
+        // Beim Öffnen erscheinen bereits die Felder für das erste Medikament oben
         setList([createEmptyMedication()]);
       }
       setShowCloseConfirm(false);
@@ -76,12 +72,11 @@ export const MedicationsWizardModal: React.FC<Props> = ({
     setList(prev => {
       const copy = [...prev];
       copy[index] = { ...copy[index], ...savedMed, isSaved: true };
-      // Funktions-Verschmelzung: "Αποθήκευση φαρμάκου" übernimmt die ursprüngliche Funktion von "Προσθήκη φαρμάκου"
-      const hasEmptyItem = copy.some(m => !m.name || !m.name.trim());
-      if (!hasEmptyItem) {
-        return [...copy, createEmptyMedication()];
-      }
-      return copy;
+      const savedItems = copy.filter(m => m.name && m.name.trim() !== '' && m.isSaved);
+      const activeItems = copy.filter(m => (!m.name || !m.name.trim() || !m.isSaved) && m !== copy[index]);
+      
+      // Always keep active input form at the top (index 0) and saved items below
+      return [createEmptyMedication(), ...savedItems, ...activeItems];
     });
   };
 
