@@ -1978,6 +1978,20 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
               </button>
             )}
 
+            {/* Organon Anamnese-Engine */}
+            <button
+              type="button"
+              id="sidebar-nav-tab-organon"
+              onClick={() => navigateTo('organon')}
+              className="w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center justify-between transition-colors cursor-pointer text-slate-600 hover:bg-slate-200/50 hover:text-slate-900"
+            >
+              <div className="flex items-center gap-3">
+                <Activity className="w-4 h-4 text-teal-600" />
+                <span className="font-bold text-teal-900">Organon</span>
+              </div>
+              <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+            </button>
+
             {/* 3. Repertorium */}
             {!isTabHidden('repertorium') && (
               <button

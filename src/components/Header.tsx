@@ -24,6 +24,7 @@ import {
   User,
   Settings,
   FileText,
+  Activity,
   LogOut
 } from 'lucide-react';
 
@@ -173,6 +174,20 @@ export const Header: React.FC<HeaderProps> = ({
                         : 'bg-teal-500'
                     }`} />
                   )}
+                </button>
+
+                {/* Organon */}
+                <button
+                  id="header-nav-organon"
+                  onClick={() => onViewChange('organon')}
+                  className={`px-3 py-1.5 rounded-full transition-all flex items-center gap-1.5 cursor-pointer ${
+                    currentView === 'organon'
+                      ? 'bg-white text-teal-900 shadow-xs font-bold'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                  }`}
+                >
+                  <Activity className="w-3.5 h-3.5 text-teal-600" />
+                  <span>Organon</span>
                 </button>
 
                 {/* 3. Admin-Panel / Login */}
