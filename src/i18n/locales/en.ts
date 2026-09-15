@@ -2022,6 +2022,7 @@ export const en = {
   kentNomenclatureBadge: "Exact Kent Nomenclature",
   kentStrictInterpretationBadge: "Organon §§ 83–84 compliant",
   adminNavTherapists: "Therapists",
+  adminNavOrganon: "Organon",
   adminNavPackages: "Packages",
   adminNavNameChange: "Name Change",
   adminNavTerms: "Terms & Licensing",

@@ -24,6 +24,7 @@ import {
   User,
   Settings,
   FileText,
+  Activity,
   LogOut
 } from 'lucide-react';
 
@@ -174,6 +175,7 @@ export const Header: React.FC<HeaderProps> = ({
                     }`} />
                   )}
                 </button>
+
 
                 {/* 3. Admin-Panel / Login */}
                 <button

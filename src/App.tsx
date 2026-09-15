@@ -34,6 +34,7 @@ import { AdminLogin } from './components/AdminLogin';
 import { AdminSecurityGate } from './components/AdminSecurityGate';
 import { LandingPage } from './components/LandingPage';
 
+
 function AppContent() {
   const [currentView, setCurrentView] = useState<ActiveView>(() => {
     const nav = initNavigation();
@@ -194,6 +195,8 @@ function AppContent() {
             />
           )
         )}
+
+
 
         {/* VIEW 3: ADMIN-PANEL (Streng geschützt durch Sicherheits-Gate & Login) */}
         {currentView === 'admin' && (

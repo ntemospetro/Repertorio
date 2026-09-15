@@ -14,14 +14,14 @@ export interface AppNavigationState {
   index: number;
   view: ActiveView;
   therapistTab?: 'cases' | 'patients' | 'materiamedica' | 'quickintake' | 'medications' | 'documentation' | 'profile' | 'tariff' | 'repertorium';
-  adminTab?: 'therapists' | 'packages' | 'tokens' | 'stripe' | 'terms' | 'config' | 'requests';
+  adminTab?: 'therapists' | 'packages' | 'tokens' | 'stripe' | 'terms' | 'config' | 'requests' | 'organon';
   modal?: string | null;
   isSentinel?: boolean;
 }
 
 export const VALID_VIEWS: ActiveView[] = ['landing', 'register', 'therapist', 'admin'];
 export const VALID_THERAPIST_TABS = ['cases', 'patients', 'materiamedica', 'quickintake', 'medications', 'documentation', 'profile', 'tariff', 'repertorium'] as const;
-export const VALID_ADMIN_TABS = ['therapists', 'packages', 'tokens', 'stripe', 'terms', 'config', 'requests'] as const;
+export const VALID_ADMIN_TABS = ['therapists', 'packages', 'tokens', 'stripe', 'terms', 'config', 'requests', 'organon'] as const;
 
 let currentIndex = 1;
 let isInitialized = false;
@@ -48,15 +48,17 @@ export function parseHash(hash: string): {
 
   const rawView = segments[0];
   let view: ActiveView = 'landing';
+  let therapistTab: any = undefined;
+  let adminTab: any = undefined;
 
-  if (rawView && VALID_VIEWS.includes(rawView as ActiveView)) {
+  if (rawView === 'organon') {
+    view = 'admin';
+    adminTab = 'organon';
+  } else if (rawView && VALID_VIEWS.includes(rawView as ActiveView)) {
     view = rawView as ActiveView;
   } else {
     view = getStoredActiveView();
   }
-
-  let therapistTab: any = undefined;
-  let adminTab: any = undefined;
 
   if (view === 'therapist') {
     const rawTab = segments[1];
@@ -269,7 +271,7 @@ export function navigateTo(
   view: ActiveView,
   options?: {
     therapistTab?: 'cases' | 'patients' | 'materiamedica' | 'quickintake' | 'medications' | 'documentation' | 'profile' | 'tariff' | 'repertorium';
-    adminTab?: 'therapists' | 'packages' | 'tokens' | 'stripe' | 'terms' | 'config' | 'requests';
+    adminTab?: 'therapists' | 'packages' | 'tokens' | 'stripe' | 'terms' | 'config' | 'requests' | 'organon';
     modal?: string | null;
     replace?: boolean;
   }

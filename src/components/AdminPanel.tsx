@@ -24,6 +24,7 @@ import { AdminConfigEditor } from './AdminConfigEditor';
 import { AdminNameChangeRequests } from './AdminNameChangeRequests';
 import { AdminTokenUsage } from './AdminTokenUsage';
 import { AdminStripeSettings } from './AdminStripeSettings';
+import { OrganonView } from './OrganonView';
 import { COUNTRIES, getCountryFlag, formatCountryWithFlag } from '../data/countries';
 import { getNameChangeRequests } from '../services/storage';
 import { 
@@ -54,6 +55,7 @@ import {
   KeyRound,
   Coins,
   CreditCard,
+  Activity,
   X
 } from 'lucide-react';
 
@@ -67,9 +69,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onLogout,
 }) => {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState<'therapists' | 'packages' | 'tokens' | 'stripe' | 'terms' | 'config' | 'requests'>(() => getStoredAdminTab());
+  const [activeTab, setActiveTab] = useState<'therapists' | 'packages' | 'tokens' | 'stripe' | 'terms' | 'config' | 'requests' | 'organon'>(() => getStoredAdminTab());
 
-  const handleSelectTab = (tab: 'therapists' | 'packages' | 'tokens' | 'stripe' | 'terms' | 'config' | 'requests') => {
+  const handleSelectTab = (tab: 'therapists' | 'packages' | 'tokens' | 'stripe' | 'terms' | 'config' | 'requests' | 'organon') => {
     setActiveTab(tab);
     navigateTo('admin', { adminTab: tab });
   };
@@ -81,7 +83,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   useEffect(() => {
     const handleAdminTabChange = (e: Event) => {
       const tab = (e as CustomEvent).detail;
-      if (tab && ['therapists', 'packages', 'tokens', 'stripe', 'terms', 'config', 'requests'].includes(tab)) {
+      if (tab && ['therapists', 'packages', 'tokens', 'stripe', 'terms', 'config', 'requests', 'organon'].includes(tab)) {
         setActiveTab(tab);
       }
     };
@@ -411,6 +413,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <span>{t('adminNavConfig')}</span>
               </div>
             </button>
+
+            <button
+              id="admin-nav-organon"
+              onClick={() => handleSelectTab('organon')}
+              className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center justify-between transition-colors cursor-pointer ${
+                activeTab === 'organon'
+                  ? 'bg-slate-900 text-white shadow-sm'
+                  : 'text-slate-600 hover:bg-white hover:text-slate-900 hover:shadow-sm border border-transparent'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <Activity className="w-4 h-4 text-teal-400" />
+                <span>{t('adminNavOrganon')}</span>
+              </div>
+            </button>
           </div>
         </div>
         
@@ -510,6 +527,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       {/* Tab 4: Admin Credentials & System Configuration */}
       {activeTab === 'config' && (
         <AdminConfigEditor onShowToast={showToast} />
+      )}
+
+      {activeTab === 'organon' && (
+        <OrganonView />
       )}
 
       {/* Tab: Name Change Requests */}

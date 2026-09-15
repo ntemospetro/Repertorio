@@ -1978,6 +1978,7 @@ export const TherapistPanel: React.FC<TherapistPanelProps> = ({
               </button>
             )}
 
+
             {/* 3. Repertorium */}
             {!isTabHidden('repertorium') && (
               <button

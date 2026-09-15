@@ -2016,6 +2016,7 @@ export const ru = {
   kentNomenclatureBadge: "Точная номенклатура Кента",
   kentStrictInterpretationBadge: "Соответствует Органону §§ 83–84",
   adminNavTherapists: "Терапевты",
+  adminNavOrganon: "Organon",
   adminNavPackages: "Пакеты",
   adminNavNameChange: "Смена имени",
   adminNavTerms: "Условия и лицензия",

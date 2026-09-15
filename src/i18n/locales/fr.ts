@@ -2016,6 +2016,7 @@ export const fr = {
   kentNomenclatureBadge: "Nomenclature exacte de Kent",
   kentStrictInterpretationBadge: "Conforme à l'Organon §§ 83–84",
   adminNavTherapists: "Thérapeutes",
+  adminNavOrganon: "Organon",
   adminNavPackages: "Forfaits",
   adminNavNameChange: "Changement de nom",
   adminNavTerms: "CGU & Licence",

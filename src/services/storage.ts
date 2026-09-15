@@ -2096,10 +2096,10 @@ export function setStoredTherapistTab(tab: string): void {
   } catch (e) {}
 }
 
-export function getStoredAdminTab(): 'therapists' | 'packages' | 'tokens' | 'stripe' | 'terms' | 'config' | 'requests' {
+export function getStoredAdminTab(): 'therapists' | 'packages' | 'tokens' | 'stripe' | 'terms' | 'config' | 'requests' | 'organon' {
   try {
     const saved = localStorage.getItem(STORAGE_KEYS.ADMIN_TAB) || sessionStorage.getItem(STORAGE_KEYS.ADMIN_TAB);
-    if (saved && ['therapists', 'packages', 'tokens', 'stripe', 'terms', 'config', 'requests'].includes(saved)) {
+    if (saved && ['therapists', 'packages', 'tokens', 'stripe', 'terms', 'config', 'requests', 'organon'].includes(saved)) {
       return saved as any;
     }
   } catch (e) {}

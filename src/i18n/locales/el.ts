@@ -2016,6 +2016,7 @@ export const el = {
   kentNomenclatureBadge: "Ακριβής ονοματολογία Kent",
   kentStrictInterpretationBadge: "Συμβατό με Όργανον §§ 83–84",
   adminNavTherapists: "Θεραπευτές",
+  adminNavOrganon: "Organon",
   adminNavPackages: "Πακέτα",
   adminNavNameChange: "Αλλαγή ονόματος",
   adminNavTerms: "Όροι χρήσης & Άδεια",
