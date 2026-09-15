@@ -33,7 +33,6 @@ import { AdminPanel } from './components/AdminPanel';
 import { AdminLogin } from './components/AdminLogin';
 import { AdminSecurityGate } from './components/AdminSecurityGate';
 import { LandingPage } from './components/LandingPage';
-import { OrganonView } from './components/OrganonView';
 
 function AppContent() {
   const [currentView, setCurrentView] = useState<ActiveView>(() => {
@@ -194,11 +193,6 @@ function AppContent() {
               onGoToRegister={() => handleViewChange('register')}
             />
           )
-        )}
-
-        {/* VIEW 4: ORGANON ANAMNESE-ENGINE (BUILD 01) */}
-        {currentView === 'organon' && (
-          <OrganonView />
         )}
 
         {/* VIEW 3: ADMIN-PANEL (Streng geschützt durch Sicherheits-Gate & Login) */}

@@ -475,7 +475,7 @@ export interface FullClinicalAnalysis {
   };
 }
 
-export type ActiveView = 'landing' | 'register' | 'therapist' | 'admin' | 'organon';
+export type ActiveView = 'landing' | 'register' | 'therapist' | 'admin';
 
 export interface SiteConfig {
   logoUrl?: string;

@@ -19,7 +19,7 @@ export interface AppNavigationState {
   isSentinel?: boolean;
 }
 
-export const VALID_VIEWS: ActiveView[] = ['landing', 'register', 'therapist', 'admin', 'organon'];
+export const VALID_VIEWS: ActiveView[] = ['landing', 'register', 'therapist', 'admin'];
 export const VALID_THERAPIST_TABS = ['cases', 'patients', 'materiamedica', 'quickintake', 'medications', 'documentation', 'profile', 'tariff', 'repertorium'] as const;
 export const VALID_ADMIN_TABS = ['therapists', 'packages', 'tokens', 'stripe', 'terms', 'config', 'requests'] as const;
 
