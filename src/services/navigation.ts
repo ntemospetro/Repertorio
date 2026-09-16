@@ -14,14 +14,14 @@ export interface AppNavigationState {
   index: number;
   view: ActiveView;
   therapistTab?: 'cases' | 'patients' | 'materiamedica' | 'quickintake' | 'medications' | 'documentation' | 'profile' | 'tariff' | 'repertorium';
-  adminTab?: 'therapists' | 'packages' | 'tokens' | 'stripe' | 'terms' | 'config' | 'requests' | 'organon';
+  adminTab?: 'therapists' | 'packages' | 'tokens' | 'stripe' | 'terms' | 'config' | 'requests' | 'organon' | 'repertory' | 'import_materia_medica' | 'import_repertorium';
   modal?: string | null;
   isSentinel?: boolean;
 }
 
 export const VALID_VIEWS: ActiveView[] = ['landing', 'register', 'therapist', 'admin'];
 export const VALID_THERAPIST_TABS = ['cases', 'patients', 'materiamedica', 'quickintake', 'medications', 'documentation', 'profile', 'tariff', 'repertorium'] as const;
-export const VALID_ADMIN_TABS = ['therapists', 'packages', 'tokens', 'stripe', 'terms', 'config', 'requests', 'organon'] as const;
+export const VALID_ADMIN_TABS = ['therapists', 'packages', 'tokens', 'stripe', 'terms', 'config', 'requests', 'organon', 'repertory', 'import_materia_medica', 'import_repertorium'] as const;
 
 let currentIndex = 1;
 let isInitialized = false;
@@ -33,7 +33,7 @@ let isInternalNavigation = false;
 export function parseHash(hash: string): {
   view: ActiveView;
   therapistTab?: 'cases' | 'patients' | 'materiamedica' | 'quickintake' | 'medications' | 'documentation' | 'profile' | 'tariff' | 'repertorium';
-  adminTab?: 'therapists' | 'packages' | 'tokens' | 'stripe' | 'terms' | 'config' | 'requests';
+  adminTab?: 'therapists' | 'packages' | 'tokens' | 'stripe' | 'terms' | 'config' | 'requests' | 'organon' | 'repertory' | 'import_materia_medica' | 'import_repertorium';
   modal?: string | null;
 } {
   const cleanHash = hash.replace(/^#\/?/, '');
@@ -271,7 +271,7 @@ export function navigateTo(
   view: ActiveView,
   options?: {
     therapistTab?: 'cases' | 'patients' | 'materiamedica' | 'quickintake' | 'medications' | 'documentation' | 'profile' | 'tariff' | 'repertorium';
-    adminTab?: 'therapists' | 'packages' | 'tokens' | 'stripe' | 'terms' | 'config' | 'requests' | 'organon';
+    adminTab?: 'therapists' | 'packages' | 'tokens' | 'stripe' | 'terms' | 'config' | 'requests' | 'organon' | 'repertory' | 'import_materia_medica' | 'import_repertorium';
     modal?: string | null;
     replace?: boolean;
   }

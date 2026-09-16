@@ -25,6 +25,9 @@ import { AdminNameChangeRequests } from './AdminNameChangeRequests';
 import { AdminTokenUsage } from './AdminTokenUsage';
 import { AdminStripeSettings } from './AdminStripeSettings';
 import { OrganonView } from './OrganonView';
+import { AdminDataImportCenter } from './AdminDataImportCenter';
+import { AdminMateriaMedicaImportModule } from './AdminMateriaMedicaImportModule';
+import { AdminRepertoryImportModule } from './AdminRepertoryImportModule';
 import { COUNTRIES, getCountryFlag, formatCountryWithFlag } from '../data/countries';
 import { getNameChangeRequests } from '../services/storage';
 import { 
@@ -56,7 +59,9 @@ import {
   Coins,
   CreditCard,
   Activity,
-  X
+  X,
+  BookOpen,
+  Database
 } from 'lucide-react';
 
 interface AdminPanelProps {
@@ -69,9 +74,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onLogout,
 }) => {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState<'therapists' | 'packages' | 'tokens' | 'stripe' | 'terms' | 'config' | 'requests' | 'organon'>(() => getStoredAdminTab());
+  const [activeTab, setActiveTab] = useState<'therapists' | 'packages' | 'tokens' | 'stripe' | 'terms' | 'config' | 'requests' | 'organon' | 'import_materia_medica' | 'import_repertorium'>(() => getStoredAdminTab() as any || 'therapists');
 
-  const handleSelectTab = (tab: 'therapists' | 'packages' | 'tokens' | 'stripe' | 'terms' | 'config' | 'requests' | 'organon') => {
+  const handleSelectTab = (tab: 'therapists' | 'packages' | 'tokens' | 'stripe' | 'terms' | 'config' | 'requests' | 'organon' | 'import_materia_medica' | 'import_repertorium') => {
     setActiveTab(tab);
     navigateTo('admin', { adminTab: tab });
   };
@@ -83,7 +88,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   useEffect(() => {
     const handleAdminTabChange = (e: Event) => {
       const tab = (e as CustomEvent).detail;
-      if (tab && ['therapists', 'packages', 'tokens', 'stripe', 'terms', 'config', 'requests', 'organon'].includes(tab)) {
+      if (tab && ['therapists', 'packages', 'tokens', 'stripe', 'terms', 'config', 'requests', 'organon', 'import_materia_medica', 'import_repertorium'].includes(tab)) {
         setActiveTab(tab);
       }
     };
@@ -428,6 +433,40 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <span>{t('adminNavOrganon')}</span>
               </div>
             </button>
+
+            {/* Import Menu Section */}
+            <div className="pt-2 pb-1">
+              <div className="px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                <Layers className="w-3.5 h-3.5 text-teal-500" />
+                <span>Import</span>
+              </div>
+              <div className="pl-3 mt-1 space-y-1 border-l-2 border-slate-200 ml-3">
+                <button
+                  id="admin-nav-import-materia-medica"
+                  onClick={() => handleSelectTab('import_materia_medica')}
+                  className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-2.5 transition-colors cursor-pointer ${
+                    activeTab === 'import_materia_medica'
+                      ? 'bg-slate-900 text-white shadow-sm'
+                      : 'text-slate-600 hover:bg-white hover:text-slate-900 hover:shadow-sm'
+                  }`}
+                >
+                  <Database className="w-3.5 h-3.5 text-teal-400" />
+                  <span>Materia Medica</span>
+                </button>
+                <button
+                  id="admin-nav-import-repertorium"
+                  onClick={() => handleSelectTab('import_repertorium')}
+                  className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-2.5 transition-colors cursor-pointer ${
+                    activeTab === 'import_repertorium'
+                      ? 'bg-slate-900 text-white shadow-sm'
+                      : 'text-slate-600 hover:bg-white hover:text-slate-900 hover:shadow-sm'
+                  }`}
+                >
+                  <BookOpen className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>Repertorium</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
         
@@ -531,6 +570,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
       {activeTab === 'organon' && (
         <OrganonView />
+      )}
+
+      {activeTab === 'import_materia_medica' && (
+        <AdminMateriaMedicaImportModule />
+      )}
+
+      {activeTab === 'import_repertorium' && (
+        <AdminRepertoryImportModule />
       )}
 
       {/* Tab: Name Change Requests */}

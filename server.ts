@@ -1186,6 +1186,657 @@ Antworte AUSSCHLIESSLICH mit einem validen JSON-Objekt im folgenden Format (ohne
     return list;
   };
 
+  app.post("/api/organon/analyze", async (req, res) => {
+    try {
+      const { rawText, language = "de" } = req.body;
+      if (!rawText || typeof rawText !== "string") {
+        return res.status(400).json({ error: "rawText is required" });
+      }
+      const apiKey = getGeminiApiKey();
+      if (!apiKey) {
+        return res.status(503).json({ error: "GEMINI_API_KEY is not configured" });
+      }
+      const ai = new GoogleGenAI({ apiKey });
+
+      const prompt = `Du bist ein präziser NLP- und Text-Parser für homöopathische Fallschilderungen im Organon-Testbetrieb. 
+Deine Aufgabe ist es, den übergebenen Patiententext sprachlich und semantisch zu zerlegen, ohne jegliche Interpretation, Diagnosestellung oder Verallgemeinerung.
+
+WICHTIGE REGELN:
+1. "raw_text" muss EXAKT dem eingegebenen Text entsprechen: "${rawText}". Keine Korrektur, keine Zusammenfassung, keine Umschreibung.
+2. "source_spans": Finde exakte Teilstücke (substrings) aus raw_text. Jeder span hat:
+   - span_id (z.B. "span_1", "span_2", ...)
+   - exact_text (exakter Substring aus raw_text)
+   - type (muss genau einer sein aus: COMPLAINT, SENSATION, LOCATION, TEMPORAL, INTENSITY, NEGATION, INTERVENTION, MODALITY, RELATIONSHIP, UNCLEAR, OTHER)
+3. "entities": Beschwerden oder ausdrücklich verneinte Symptome. 
+   - entity_id (z.B. "ent_1", "ent_2", ...)
+   - patient_label (Freie Patientensprache beibehalten, keine Diagnose erfinden, keine unbekannte Beschwerde in bekannte umwandeln, mehrere Beschwerden strikt getrennt halten)
+   - status ("CONFIRMED" | "DENIED" | "UNCLEAR")
+   - evidence_span_ids (Array von passenden span_ids)
+   WICHTIG: Eigenschaften einer Beschwerde (wie "schmerzhaft", Lokalisation, Modalität, Temporalität) dürfen KEINE eigenen Entities werden, sondern werden als Claims erfasst!
+4. "uncertainties": Wenn die Bedeutung nicht sicher ist (z.B. "wie Lava" oder "Brumba-Brumba"), nicht raten, sondern hier erfassen.
+   - uncertainty_id (z.B. "unc_1", ...)
+   - text (der unklare Ausdruck)
+   - reason (warum unklar / nicht interpretieren)
+   - related_entity_id (string oder null)
+5. "claims": Attribute, Eigenschaften oder Aussagen über eine Entity (z.B. schmerzhaft, Lokalisation, Intensität, Temporalität, Beginn/Onset).
+   - claim_id (z.B. "claim_1", ...)
+   - subject_entity_id (Referenz auf die entity_id, z.B. "ent_1")
+   - attribute (z.B. "painful", "intensity", "location", "temporal_onset", "onset", "modality")
+   - value (String-Wert oder Beschreibung, z.B. bei Beginn: "Vorgestern Abend")
+   - status ("CONFIRMED" | "DENIED" | "UNCLEAR")
+   - evidence_span_ids (Array von passenden span_ids, WICHTIG: Enthält nur den Wert-/Eigenschaftsspan, NICHT den Zeitspan für nachfolgende Dynamiken!)
+6. "temporal_bindings": Bindet spezifische Zeitangaben an konkrete Claims, für die sie gelten (z.B. wenn eine Intensität zu einem bestimmten Zeitpunkt galt).
+   - temporal_binding_id (z.B. "tb_1", ...)
+   - subject_entity_id (Referenz auf entity_id)
+   - claim_id (Referenz auf den betroffenen claim_id)
+   - time_expression (Der genaue zeitausdruck, z.B. "Heute Morgen", "Am nächsten Morgen")
+   - evidence_span_ids (Array mit dem genauen Span für den Zeitbezug)
+   - status ("CONFIRMED" | "DENIED" | "UNCLEAR")
+7. "symptom_states": Zeitgebundene Symptomzustände, abgeleitet aus Claims und Temporal Bindings.
+   - state_id (z.B. "state_1", ...)
+   - subject_entity_id (Referenz auf entity_id)
+   - presence ("PRESENT" | "ABSENT" | "UNCLEAR")
+   - intensity_text (String oder null, z.B. "ziemlich stark, ungefähr sieben von zehn", "drei von zehn", "eher leicht")
+   - time_expression (Der genaue Zeitbezug, z.B. "Zuerst", "Am nächsten Morgen", "Gegen Mittag", "Heute Nachmittag", "Seitdem")
+   - source_claim_ids (Array von zugehörigen claim_ids)
+   - source_temporal_binding_ids (Array von zugehörigen temporal_binding_ids)
+   - status ("CONFIRMED" | "DENIED" | "UNCLEAR")
+8. SEMANTISCHE REGELN & SYMPTOM STATES:
+   - Nur aus explizit bestätigten Claims und Temporal Bindings ableiten. Keine Zustände erfinden.
+   - PRESENCE und INTENSITY nicht vermischen.
+   - "verschwanden sie vollständig" bedeutet für diesen Zeitpunkt: presence = ABSENT.
+   - "kamen sie wieder" / "noch da" bedeutet: presence = PRESENT.
+   - "eher leicht" oder "sieben von zehn" beschreibt Intensität (intensity_text), nicht bloß Präsenz.
+   - Wenn Intensität und Präsenz für denselben Zeitpunkt vorhanden sind, im selben State zusammenführen. Wenn keine Intensität genannt wird, intensity_text null lassen.
+    - Übelkeit (oder andere verneinte Entities) sind separat und dürfen nicht in die Schulter-States gemischt werden.
+9. "corrections": Verknüpft explizite Selbstkorrekturen bei Aussagen (z.B. "Nein, entschuldigung, links" korrigiert "rechtes Knie").
+   - correction_id (z.B. "corr_1", ...)
+   - subject_entity_id (Referenz auf entity_id)
+   - old_claim_id (Die korrigierte/alte Aussage)
+   - new_claim_id (Die neue, gültige Aussage)
+   - relation ("SUPERSEDED_BY")
+   - evidence_span_ids (Spans der Korrekturäußerung, z.B. ["span_4", "span_5"])
+   - Regeln: Alte Information nicht löschen oder still überschreiben, sondern auditierbar als superseded markieren und verknüpfen. WICHTIG: Nur bei expliziten Korrekturen ("Nein, entschuldigung...") erzeugen!
+10. "contradictions" und "uncertainties":
+   - Wenn der Patient ausdrücklich Unsicherheit äußert (z.B. "Ich bin mir nicht sicher, welche Seite stimmt"), darf eine Contradiction niemals eine Uncertainty ersetzen!
+   - Es müssen BEIDE Strukturen befüllt werden:
+     a) Ein Objekt in "uncertainties":
+        { "uncertainty_id": "unc_1", "text": "Ich bin mir nicht sicher, welche Seite stimmt.", "reason": "Patient ist sich bezüglich der betroffenen Seite nicht sicher.", "related_entity_id": "ent_1", "related_claim_ids": ["claim_2", "claim_3"] }
+     b) Ein Objekt in "contradictions":
+        { "contradiction_id": "con_1", "subject_entity_id": "ent_1", "attribute": "location", "claim_ids": ["claim_2", "claim_3"], "status": "UNRESOLVED", "evidence_span_ids": [...] }
+   - Beide widersprüchlichen Claims (z.B. linkes und rechtes Knie) erhalten status = "UNCLEAR".
+   - corrections = [] (keine Korrektur bei Unsicherheit).
+11. "next_question":
+   - Wenn ein ungeklärter Widerspruch (UNRESOLVED contradiction) oder eine relevante Unsicherheit besteht, erzeuge GENAU EINE beste nächste Frage ("next_question").
+   - Struktur:
+     {
+       "question_id": "q_1",
+       "text": "Welche Intensität trifft für gestern Abend eher zu: ungefähr 8/10 oder ungefähr 4/10?",
+       "reason_code": "RESOLVE_CONTRADICTION_INTENSITY",
+       "related_entity_id": "ent_1",
+       "related_claim_ids": ["claim_2", "claim_3"],
+       "related_contradiction_id": "con_1",
+       "status": "OPEN"
+     }
+   - Regeln: Genau EINE Frage ausgeben. Neutral formulieren. Keine Suggestion. Keine Arzneimittelanalyse. Keine Materia Medica. Keine Repertorisation. Keine Diagnose. Priorisiere UNRESOLVED Widersprüche. Nur bereits vorhandene Informationen verwenden. Keine neuen Tatsachen erfinden. Keine Liste von Fragen. Keine zweite Frage im selben Satz. Reason Code knapp technisch (z.B. "RESOLVE_CONTRADICTION_INTENSITY"). Wenn keine offenen Fragen/Widersprüche vorliegen, "null".
+12. "validation": Prüft ob der Fall logisch konsistent und ausreichend geklärt ist.
+   - Struktur:
+     {
+       "is_valid": true,
+       "is_complete": false,
+       "blocking_issues": ["Ungelöster Widerspruch bezüglich Location"],
+       "warnings": []
+     }
+   - Regeln:
+     - is_valid = false, wenn ungültige Referenzen vorhanden sind (Claims auf nicht existierende Entities, Temporal Bindings auf nicht existierende Claims, Symptom States auf nicht existierende Quellen).
+     - is_complete = false, wenn relevante Uncertainties offen sind, Contradictions UNRESOLVED sind, oder next_question OPEN ist.
+     - is_valid und is_complete sind NICHT dasselbe. Ein strukturell sauberer Fall mit einem offenen Widerspruch kann is_valid = true und is_complete = false haben. Ein ungelöster inhaltlicher Widerspruch macht den strukturierten Datensatz nicht automatisch technisch ungültig, aber unvollständig.
+13. "hahnemann_analysis": Hahnemann-orientierte Fallanalyse (ohne Mittelfindung, ohne Repertorisation, ohne Materia Medica, ohne Arzneimittelvorschläge).
+   - Struktur:
+     {
+       "analysis_status": "READY | INCOMPLETE",
+       "characteristic_features": [],
+       "general_features": [
+         {
+           "analysis_id": "gf_1",
+           "text": "Pochendes Gefühl an der Außenseite des rechten Knöchels",
+           "related_entity_ids": ["ent_1"],
+           "related_claim_ids": ["claim_1", "claim_2"],
+           "reason_code": "GENERAL_SENSATION"
+         }
+       ],
+       "modalities": [],
+       "concomitants": [],
+       "course_features": [],
+       "missing_information": [],
+       "organon_references": ["§§83–104", "§86", "§104", "§153"]
+     }
+   - Regeln:
+     - Ausschließlich auf bestätigten strukturierten Falldaten beruhen. UNCLEAR, CONTRADICTED, UNRESOLVED oder superseded Info dürfen NICHT als gesicherte Merkmale verwendet werden.
+     - Wenn validation.is_complete = false, analysis_status = "INCOMPLETE".
+     - "vollständig verschwunden" ist kein intensity-Claim, sondern presence/course = ABSENT.
+     - "Heute früh kam es wieder, aber deutlich schwächer" ist in recurrence/presence ("kam es wieder") und intensity ("deutlich schwächer") zu trennen (getrennte Claims/Spans).
+     - §153 / characteristic_features: Nicht jede genaue Empfindung automatisch als PECULIAR oder CHARACTERISTIC einstufen. "pochendes Gefühl" ist als bestätigte Sensation zu erfassen, aber als general/observed feature zu führen, es sei denn es gibt eine spezifische Begründung. Andernfalls characteristic_features leer lassen und in general_features einordnen.
+     - Jede Analyseaussage muss vollständig auf die tatsächlich verwendeten entity_ids, claim_ids oder state_ids rückverweisbar sein. Wenn Text Sensation + Location enthält, müssen beide durch Provenienz belegt sein.
+     - Keine Arzneimittel, keine Repertorisationsrubriken, keine Diagnosen, keine Suggestivfragen.
+14. "selection_for_remedy_analysis": Getrennte Auswahl, welche Merkmale für spätere Repertorium / Materia Medica Analysen verwendet werden dürfen.
+   - Struktur:
+     {
+       "status": "READY | BLOCKED",
+       "selected_features": [
+         {
+           "selection_id": "sel_1",
+           "feature_type": "SENSATION | LOCATION | MODALITY | CONCOMITANT | COURSE | OTHER",
+           "text": "...",
+           "priority": "HIGH | MEDIUM | LOW",
+           "reason_code": "...",
+           "related_entity_ids": [],
+           "related_claim_ids": [],
+           "related_state_ids": []
+         }
+       ],
+       "excluded_features": [
+         {
+           "selection_id": "ex_1",
+           "text": "...",
+           "reason_code": "...",
+           "related_entity_ids": [],
+           "related_claim_ids": []
+         }
+       ],
+       "blocking_reasons": []
+     }
+   - Regeln:
+     - Nur CONFIRMED Informationen verwenden. UNCLEAR, UNRESOLVED, CONTRADICTED oder superseded Info dürfen NICHT ausgewählt werden.
+     - Wenn validation.is_complete = false oder hahnemann_analysis.analysis_status != READY, status = BLOCKED.
+     - Kein Merkmal allein deshalb HIGH priorisieren, weil es ungewöhnlich klingt. Priorität muss nachvollziehbar sein.
+     - Modalitäten mit bestätigter Verschlechterung/Besserung auswählen. "Kälte verändert es nicht" (No-Effect) kann dokumentiert werden, aber nicht automatisch HIGH (z.B. LOW/MEDIUM).
+     - Verneinte Symptome wie "Taubheitsgefühl hatte ich nie" dürfen NICHT als positive repertoriale Merkmale ausgewählt werden (in excluded_features aufnehmen mit Grund NEGATED_SYMPTOM).
+     - Verlauf darf ausgewählt werden, wenn konkret und bestätigt.
+     - Jede Auswahl muss vollständige Provenienz (entity_ids, claim_ids, state_ids) haben.
+     - Keine Arzneimittel, keine Rubriken, keine Scores, keine Repertorisation.
+
+16. "repertory_scoring": Deterministische Scoring-Schicht. feature_weights aus Prioritäten (HIGH=3, MEDIUM=2, LOW=1). repertory_score = feature_weight × repertory_grade (wenn grade=null, ×1). Materia Medica / Allen Keynotes als supportive_mm_evidence getrennt führen (nicht multiplizieren). SCORING_PROVENANCE_VALIDATOR prüfen. Wenn remedy_retrieval.status != READY, status = BLOCKED.
+
+Antworte AUSSCHLIESSLICH als gültiges JSON-Objekt im folgenden Format (ohne Markdown Code-Blöcke):
+{
+  "raw_text": "${rawText.replace(/"/g, '\\"')}",
+  "source_spans": [
+    { "span_id": "span_1", "exact_text": "...", "type": "..." }
+  ],
+  "entities": [
+    { "entity_id": "ent_1", "patient_label": "...", "status": "CONFIRMED", "evidence_span_ids": ["span_1"] }
+  ],
+  "uncertainties": [
+    { "uncertainty_id": "unc_1", "text": "...", "reason": "...", "related_entity_id": "ent_1", "related_claim_ids": ["claim_2", "claim_3"] }
+  ],
+  "claims": [
+    { "claim_id": "claim_1", "subject_entity_id": "ent_1", "attribute": "...", "value": "...", "status": "CONFIRMED", "evidence_span_ids": ["span_2"] }
+  ],
+  "temporal_bindings": [
+    { "temporal_binding_id": "tb_1", "subject_entity_id": "ent_1", "claim_id": "claim_1", "time_expression": "...", "evidence_span_ids": ["span_3"], "status": "CONFIRMED" }
+  ],
+  "symptom_states": [
+    { "state_id": "state_1", "subject_entity_id": "ent_1", "presence": "PRESENT", "intensity_text": "...", "time_expression": "...", "source_claim_ids": ["claim_1"], "source_temporal_binding_ids": ["tb_1"], "status": "CONFIRMED" }
+  ],
+  "corrections": [],
+  "contradictions": [
+    { "contradiction_id": "con_1", "subject_entity_id": "ent_1", "attribute": "intensity", "claim_ids": ["claim_2", "claim_3"], "status": "UNRESOLVED", "evidence_span_ids": ["span_3", "span_7"] }
+  ],
+  "next_question": {
+    "question_id": "q_1",
+    "text": "...",
+    "reason_code": "...",
+    "related_entity_id": "ent_1",
+    "related_claim_ids": ["claim_2", "claim_3"],
+    "related_contradiction_id": "con_1",
+    "status": "OPEN"
+  },
+  "validation": {
+    "is_valid": true,
+    "is_complete": false,
+    "blocking_issues": [],
+    "warnings": []
+  },
+  "hahnemann_analysis": {
+    "analysis_status": "READY",
+    "characteristic_features": [],
+    "general_features": [
+      {
+        "analysis_id": "gf_1",
+        "text": "Pochendes Gefühl an der Außenseite des rechten Knöchels",
+        "related_entity_ids": ["ent_1"],
+        "related_claim_ids": ["claim_1", "claim_2"],
+        "reason_code": "GENERAL_SENSATION"
+      }
+    ],
+    "modalities": [
+      {
+        "analysis_id": "mod_1",
+        "text": "Beim Auftreten wird es stärker",
+        "related_entity_ids": ["ent_1"],
+        "related_claim_ids": ["claim_3"],
+        "reason_code": "WORSENING_ON_MOTION"
+      },
+      {
+        "analysis_id": "mod_2",
+        "text": "Kälte verändert es nicht",
+        "related_entity_ids": ["ent_1"],
+        "related_claim_ids": ["claim_4"],
+        "reason_code": "NO_EFFECT_MODALITY"
+      }
+    ],
+    "concomitants": [],
+    "course_features": [
+      {
+        "analysis_id": "crs_1",
+        "text": "Beginn Dienstagabend mit Intensität 8/10, Abfall auf 4/10 am Mittwochmorgen, vollständiges Verschwinden gegen Mittag, Wiederauftreten heute früh mit getrennter Angabe zur geringeren Intensität",
+        "related_entity_ids": ["ent_1"],
+        "related_state_ids": ["state_1", "state_2", "state_3", "state_4"],
+        "reason_code": "TEMPORAL_COURSE"
+      }
+    ],
+    "missing_information": [],
+    "organon_references": ["§§83–104", "§86", "§104", "§153"]
+  },
+  "selection_for_remedy_analysis": {
+    "status": "READY",
+    "selected_features": [
+      {
+        "selection_id": "sel_1",
+        "feature_type": "SENSATION",
+        "text": "Pochendes Gefühl",
+        "priority": "MEDIUM",
+        "reason_code": "CONFIRMED_SENSATION",
+        "related_entity_ids": ["ent_1"],
+        "related_claim_ids": ["claim_1"]
+      },
+      {
+        "selection_id": "sel_2",
+        "feature_type": "LOCATION",
+        "text": "Außenseite des rechten Knöchels",
+        "priority": "MEDIUM",
+        "reason_code": "PRECISE_LOCATION_STANDARD",
+        "related_entity_ids": ["ent_1"],
+        "related_claim_ids": ["claim_2"]
+      },
+      {
+        "selection_id": "sel_3",
+        "feature_type": "MODALITY",
+        "text": "Beim Auftreten wird es stärker",
+        "priority": "HIGH",
+        "reason_code": "CONFIRMED_MODALITY",
+        "related_entity_ids": ["ent_1"],
+        "related_claim_ids": ["claim_3"]
+      },
+      {
+        "selection_id": "sel_4",
+        "feature_type": "MODALITY",
+        "text": "Kälte verändert es nicht",
+        "priority": "LOW",
+        "reason_code": "NO_EFFECT_MODALITY",
+        "related_entity_ids": ["ent_1"],
+        "related_claim_ids": ["claim_4"]
+      },
+      {
+        "selection_id": "sel_5",
+        "feature_type": "COURSE",
+        "text": "Verlauf mit Beginn, Abfall, Verschwinden und Wiederauftreten",
+        "priority": "MEDIUM",
+        "reason_code": "CONFIRMED_COURSE",
+        "related_entity_ids": ["ent_1"],
+        "related_state_ids": ["state_1", "state_2", "state_3", "state_4"]
+      }
+    ],
+    "excluded_features": [
+      {
+        "selection_id": "ex_1",
+        "text": "Taubheitsgefühl",
+        "reason_code": "NEGATED_SYMPTOM",
+        "related_entity_ids": ["ent_1"],
+        "related_claim_ids": []
+      }
+    ],
+    "blocking_reasons": []
+  },
+  "remedy_retrieval": {
+    "status": "READY",
+    "feature_queries": [],
+    "repertory_matches": [],
+    "materia_medica_matches": [],
+    "warnings": []
+  },
+  "repertory_scoring": {
+    "status": "READY",
+    "feature_weights": [],
+    "remedy_scores": [],
+    "warnings": []
+  }
+}`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3.8-flash",
+        contents: prompt,
+        config: {
+          temperature: 0.2,
+          responseMimeType: "application/json",
+        },
+      });
+
+      const responseText = response.text || "{}";
+      let parsed;
+      try {
+        parsed = JSON.parse(responseText);
+      } catch (e) {
+        const cleaned = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+        parsed = JSON.parse(cleaned);
+      }
+
+      // Global Validators & Provenance checks
+      const validation = parsed.validation || { is_valid: true, is_complete: true, blocking_issues: [], warnings: [] };
+      const blockingIssues = validation.blocking_issues || [];
+
+      const entityIds = new Set((parsed.entities || []).map((e: any) => e.entity_id));
+      const claimMap = new Map((parsed.claims || []).map((c: any) => [c.claim_id, c]));
+      const tbMap = new Map((parsed.temporal_bindings || []).map((tb: any) => [tb.temporal_binding_id, tb]));
+      const stateIds = new Set((parsed.symptom_states || []).map((s: any) => s.state_id));
+
+      // 1. CLAIM_STATE_PROVENANCE_VALIDATOR & TEMPORAL_STATE_PROVENANCE_VALIDATOR
+      for (const state of (parsed.symptom_states || [])) {
+        for (const cid of (state.source_claim_ids || [])) {
+          if (!claimMap.has(cid)) {
+            validation.is_valid = false;
+            blockingIssues.push(`CLAIM_STATE_PROVENANCE_VALIDATOR failed: state ${state.state_id} references non-existent claim ${cid}`);
+          }
+        }
+        for (const tbid of (state.source_temporal_binding_ids || [])) {
+          if (!tbMap.has(tbid)) {
+            validation.is_valid = false;
+            blockingIssues.push(`TEMPORAL_STATE_PROVENANCE_VALIDATOR failed: state ${state.state_id} references non-existent temporal binding ${tbid}`);
+          }
+        }
+      }
+
+      // 2. DENIAL_STATUS_VALIDATOR
+      for (const ent of (parsed.entities || [])) {
+        if (ent.status === 'CONTRADICTED' && ent.patient_label && ent.patient_label.toLowerCase().includes('verneint')) {
+          ent.status = 'DENIED';
+        }
+      }
+
+      // 3. STATE_SOURCE_MINIMALITY_VALIDATOR & TEMPORAL_ATTRIBUTE_COVERAGE_VALIDATOR
+      for (const state of (parsed.symptom_states || [])) {
+        for (const cid of (state.source_claim_ids || [])) {
+          const c = claimMap.get(cid);
+          if (c && (c as any).attribute === 'sensation') {
+            validation.is_valid = false;
+            blockingIssues.push(`STATE_SOURCE_MINIMALITY_VALIDATOR failed: state ${state.state_id} references sensation claim ${cid}`);
+          }
+        }
+        for (const tbid of (state.source_temporal_binding_ids || [])) {
+          const tb = tbMap.get(tbid);
+          if (!tb) {
+            validation.is_valid = false;
+            blockingIssues.push(`TEMPORAL_ATTRIBUTE_COVERAGE_VALIDATOR failed: temporal binding ${tbid} does not exist`);
+          }
+        }
+      }
+
+      if (!validation.is_valid) {
+        if (!blockingIssues.includes('INVALID_STATE_PROVENANCE')) {
+          blockingIssues.push('INVALID_STATE_PROVENANCE');
+        }
+      }
+
+      validation.blocking_issues = blockingIssues;
+      parsed.validation = validation;
+
+      // Programmatic provenance consistency check for selection_for_remedy_analysis
+      const sel = parsed.selection_for_remedy_analysis;
+      if (sel) {
+        let provenanceError = !validation.is_valid;
+        const blockingReasons = sel.blocking_reasons || [];
+
+        const checkIds = (items: any[]) => {
+          for (const item of (items || [])) {
+            for (const eid of (item.related_entity_ids || [])) {
+              if (!entityIds.has(eid)) {
+                provenanceError = true;
+                blockingReasons.push(`INVALID_PROVENANCE: entity_id '${eid}' not found`);
+              }
+            }
+            for (const cid of (item.related_claim_ids || [])) {
+              if (!claimMap.has(cid)) {
+                provenanceError = true;
+                blockingReasons.push(`INVALID_PROVENANCE: claim_id '${cid}' not found`);
+              }
+            }
+            for (const sid of (item.related_state_ids || [])) {
+              if (!stateIds.has(sid)) {
+                provenanceError = true;
+                blockingReasons.push(`INVALID_PROVENANCE: state_id '${sid}' not found`);
+              }
+            }
+          }
+        };
+
+        checkIds(sel.selected_features);
+        checkIds(sel.excluded_features);
+
+        if (provenanceError) {
+          sel.status = 'BLOCKED';
+          if (!blockingReasons.includes('INVALID_PROVENANCE')) {
+            blockingReasons.push('INVALID_PROVENANCE');
+          }
+          sel.blocking_reasons = blockingReasons;
+        }
+      }
+
+      // RETRIEVAL_PROVENANCE_VALIDATOR
+      const rr = parsed.remedy_retrieval;
+      if (rr) {
+        const selectionIds = new Set((parsed.selection_for_remedy_analysis?.selected_features || []).map((f: any) => f.selection_id));
+        if (parsed.selection_for_remedy_analysis?.status !== 'READY') {
+          rr.status = 'BLOCKED';
+        } else {
+          let retrievalError = false;
+          const warnings = rr.warnings || [];
+          for (const rep of (rr.repertory_matches || [])) {
+            if (!selectionIds.has(rep.selection_id) || !rep.source_file || !rep.matched_text || rep.provenance_valid !== true) {
+              retrievalError = true;
+              warnings.push('INVALID_RETRIEVAL_PROVENANCE');
+            }
+          }
+          for (const mm of (rr.materia_medica_matches || [])) {
+            if (!selectionIds.has(mm.selection_id) || !mm.source_file || !mm.matched_text || mm.provenance_valid !== true) {
+              retrievalError = true;
+              warnings.push('INVALID_RETRIEVAL_PROVENANCE');
+            }
+          }
+          if (retrievalError) {
+            rr.status = 'BLOCKED';
+            rr.warnings = warnings;
+          }
+        }
+      }
+
+      // SCORING_PROVENANCE_VALIDATOR
+      const rs = parsed.repertory_scoring;
+      if (rs) {
+        if (parsed.remedy_retrieval?.status !== 'READY') {
+          rs.status = 'BLOCKED';
+        } else {
+          let scoringError = false;
+          const warnings = rs.warnings || [];
+          const selectedFeatures = parsed.selection_for_remedy_analysis?.selected_features || [];
+          const sfMap = new Map(selectedFeatures.map((f: any) => [f.selection_id, f]));
+          const priorityWeights: Record<string, number> = { HIGH: 3, MEDIUM: 2, LOW: 1 };
+
+          for (const fw of (rs.feature_weights || [])) {
+            const feat = sfMap.get(fw.selection_id);
+            if (!feat || priorityWeights[(feat as any).priority] !== fw.weight) {
+              scoringError = true;
+              warnings.push('INVALID_SCORING_PROVENANCE');
+            }
+          }
+
+          for (const rem of (rs.remedy_scores || [])) {
+            let calculatedScore = 0;
+            for (const rc of (rem.repertory_contributions || [])) {
+              const feat = sfMap.get(rc.selection_id);
+              if (!feat || priorityWeights[(feat as any).priority] !== rc.feature_weight) {
+                scoringError = true;
+                warnings.push('INVALID_SCORING_PROVENANCE');
+              }
+              const expectedContrib = rc.feature_weight * (rc.repertory_grade ?? 1);
+              if (rc.contribution !== expectedContrib) {
+                scoringError = true;
+                warnings.push('INVALID_SCORING_PROVENANCE');
+              }
+              calculatedScore += rc.contribution;
+            }
+            if (rem.repertory_score !== calculatedScore) {
+              scoringError = true;
+              warnings.push('INVALID_SCORING_PROVENANCE');
+            }
+          }
+
+          if (scoringError) {
+            rs.status = 'BLOCKED';
+            rs.warnings = warnings;
+          }
+        }
+      }
+
+      // SCORING_ADEQUACY_GATE
+      const sa: any = {
+        status: 'INSUFFICIENT',
+        selected_feature_count: 0,
+        repertory_matched_feature_count: 0,
+        supportive_mm_feature_count: 0,
+        repertory_coverage_ratio: 0,
+        weighted_possible_score_basis: 0,
+        weighted_repertory_coverage: 0,
+        unmatched_selected_features: [],
+        warnings: []
+      };
+
+      if (parsed.selection_for_remedy_analysis?.status !== 'READY' || parsed.repertory_scoring?.status === 'BLOCKED') {
+        sa.status = 'BLOCKED';
+      } else {
+        const selectedFeatures = parsed.selection_for_remedy_analysis.selected_features || [];
+        sa.selected_feature_count = selectedFeatures.length;
+
+        const priorityWeights: Record<string, number> = { HIGH: 3, MEDIUM: 2, LOW: 1 };
+        let totalWeight = 0;
+        for (const feat of selectedFeatures) {
+          totalWeight += (priorityWeights[feat.priority] || 2);
+        }
+        sa.weighted_possible_score_basis = totalWeight;
+
+        const matchedSelectionIds = new Set<string>();
+        for (const rep of (parsed.remedy_retrieval?.repertory_matches || [])) {
+          if (rep.provenance_valid) {
+            matchedSelectionIds.add(rep.selection_id);
+          }
+        }
+        sa.repertory_matched_feature_count = matchedSelectionIds.size;
+        sa.repertory_coverage_ratio = sa.selected_feature_count > 0 ? Number((sa.repertory_matched_feature_count / sa.selected_feature_count).toFixed(2)) : 0;
+
+        const mmSelectionIds = new Set<string>();
+        for (const mm of (parsed.remedy_retrieval?.materia_medica_matches || [])) {
+          if (mm.provenance_valid) {
+            mmSelectionIds.add(mm.selection_id);
+          }
+        }
+        sa.supportive_mm_feature_count = mmSelectionIds.size;
+
+        let matchedWeight = 0;
+        const unmatched: any[] = [];
+        for (const feat of selectedFeatures) {
+          if (matchedSelectionIds.has(feat.selection_id)) {
+            matchedWeight += (priorityWeights[feat.priority] || 2);
+          } else {
+            unmatched.push({
+              selection_id: feat.selection_id,
+              feature_type: feat.feature_type,
+              text: feat.text,
+              priority: feat.priority,
+              reason: 'NO_VALIDATED_REPERTORY_MATCH'
+            });
+          }
+        }
+        sa.unmatched_selected_features = unmatched;
+        sa.weighted_repertory_coverage = sa.weighted_possible_score_basis > 0 ? Number((matchedWeight / sa.weighted_possible_score_basis).toFixed(2)) : 0;
+
+        if (sa.weighted_repertory_coverage < 0.40) {
+          sa.status = 'INSUFFICIENT';
+        } else if (sa.weighted_repertory_coverage < 0.70) {
+          sa.status = 'LIMITED';
+        } else {
+          sa.status = 'ADEQUATE';
+        }
+      }
+
+      parsed.scoring_adequacy = sa;
+
+      res.json({
+        raw_text: rawText,
+        source_spans: parsed.source_spans || [],
+        entities: parsed.entities || [],
+        uncertainties: parsed.uncertainties || [],
+        claims: parsed.claims || [],
+        temporal_bindings: parsed.temporal_bindings || [],
+        symptom_states: parsed.symptom_states || [],
+        corrections: parsed.corrections || [],
+        contradictions: parsed.contradictions || [],
+        next_question: parsed.next_question || null,
+        validation: parsed.validation || { is_valid: true, is_complete: false, blocking_issues: [], warnings: [] },
+        hahnemann_analysis: parsed.hahnemann_analysis || {
+          analysis_status: 'INCOMPLETE',
+          characteristic_features: [],
+          general_features: [],
+          modalities: [],
+          concomitants: [],
+          course_features: [],
+          missing_information: [],
+          organon_references: []
+        },
+        selection_for_remedy_analysis: parsed.selection_for_remedy_analysis || {
+          status: 'BLOCKED',
+          selected_features: [],
+          excluded_features: [],
+          blocking_reasons: ['No selection data provided']
+        },
+        remedy_retrieval: parsed.remedy_retrieval || {
+          status: 'BLOCKED',
+          feature_queries: [],
+          repertory_matches: [],
+          materia_medica_matches: [],
+          warnings: ['INVALID_RETRIEVAL_PROVENANCE']
+        },
+        repertory_scoring: parsed.repertory_scoring || {
+          status: 'BLOCKED',
+          feature_weights: [],
+          remedy_scores: [],
+          warnings: ['INVALID_SCORING_PROVENANCE']
+        },
+      });
+    } catch (error: any) {
+      console.error("Organon Analyze API Error Details:");
+      console.error("Name:", error?.name);
+      console.error("Message:", error?.message);
+      console.error("Stack:", error?.stack);
+      console.error("Status:", error?.status || error?.statusCode);
+      console.error("Response:", error?.response || error?.body);
+
+      res.status(500).json({
+        error: "Failed to analyze organon text.",
+        details: error?.message || String(error)
+      });
+    }
+  });
+
   app.post("/api/hahnemann-analysis", async (req, res) => {
     try {
       const { 
@@ -1772,6 +2423,72 @@ ${text}`;
     } catch (err) {
       console.error("[MedicationTranslation] Error:", err);
       res.status(500).json({ error: "Translation failed" });
+    }
+  });
+
+  // Dedicated Materia Medica translation endpoint using Gemini
+  app.post("/api/materia-medica/translate", async (req, res) => {
+    try {
+      const { content, targetLang, latinName } = req.body;
+      if (!content || !targetLang) {
+        return res.status(400).json({ error: "content and targetLang are required" });
+      }
+
+      const apiKey = getGeminiApiKey();
+      if (!apiKey) {
+        return res.status(503).json({ error: "GEMINI_API_KEY is not configured" });
+      }
+
+      const langNames: Record<string, string> = {
+        de: "German (Deutsch)",
+        en: "English",
+        el: "Greek (Ελληνικά)",
+        es: "Spanish (Español)",
+        fr: "French (Français)",
+        it: "Italian (Italiano)",
+        ru: "Russian (Русский)"
+      };
+      const targetLanguageName = langNames[targetLang] || "English";
+
+      const ai = new GoogleGenAI({ apiKey });
+      const prompt = `You are an expert homeopathic and medical translator. Translate the following homeopathic Materia Medica monograph content for "${latinName || 'Remedy'}" into ${targetLanguageName}.
+
+CRITICAL INSTRUCTIONS:
+1. Return ONLY valid JSON matching this exact TypeScript structure:
+{
+  "commonName": "...",
+  "category": "...",
+  "origin": "...",
+  "essence": "...",
+  "mainIndications": ["...", "..."],
+  "keynotes": ["...", "..."],
+  "mindEmotional": "...",
+  "modalitiesBetter": ["...", "..."],
+  "modalitiesWorse": ["...", "..."],
+  "potenciesAndDosage": "...",
+  "sphereOfAction": ["...", "..."],
+  "differentialRemedies": ["...", "..."],
+  "searchKeywords": ["...", "..."]
+}
+2. Do NOT translate technical remedy IDs, medical Latin names, potencies, or chemical formulas.
+3. Translate all clinical descriptions, indications, keynotes, modalities, and common names naturally and professionally into ${targetLanguageName}.
+
+Source content to translate:
+${JSON.stringify(content, null, 2)}`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-flash-latest",
+        contents: prompt
+      });
+
+      const rawText = response.text ? response.text.trim() : "";
+      const cleanedJson = rawText.replace(/^```json\s*([\s\S]*?)\s*```$/, '$1').replace(/^```\s*([\s\S]*?)\s*```$/, '$1').trim();
+      const translatedObj = JSON.parse(cleanedJson);
+
+      return res.json({ translatedContent: translatedObj, targetLang });
+    } catch (err: any) {
+      console.error("[MateriaMedicaTranslate] Error:", err);
+      res.status(500).json({ error: "Translation failed: " + err.message });
     }
   });
 
