@@ -266,8 +266,8 @@ export const OrganonView: React.FC = () => {
                   <p className="text-xs text-slate-400 italic">Keine Spans vorhanden.</p>
                 ) : (
                   <div className="space-y-2">
-                    {analysisResult.source_spans.map((span) => (
-                      <div key={span.span_id} className="p-3 rounded-xl bg-slate-50 border border-slate-200/70 text-xs flex items-center justify-between">
+                    {analysisResult.source_spans.map((span, idx) => (
+                      <div key={span.span_id || `span-${idx}`} className="p-3 rounded-xl bg-slate-50 border border-slate-200/70 text-xs flex items-center justify-between">
                         <div>
                           <span className="font-mono text-[10px] text-slate-400 mr-2">[{span.span_id}]</span>
                           <span className="font-semibold text-slate-900">„{span.exact_text}“</span>
@@ -289,8 +289,8 @@ export const OrganonView: React.FC = () => {
                   <p className="text-xs text-slate-400 italic">Keine Entities vorhanden.</p>
                 ) : (
                   <div className="space-y-2">
-                    {analysisResult.entities.map((ent) => (
-                      <div key={ent.entity_id} className="p-3 rounded-xl bg-slate-50 border border-slate-200/70 text-xs space-y-1">
+                    {analysisResult.entities.map((ent, idx) => (
+                      <div key={ent.entity_id || `ent-${idx}`} className="p-3 rounded-xl bg-slate-50 border border-slate-200/70 text-xs space-y-1">
                         <div className="flex items-center justify-between">
                           <span className="font-bold text-slate-900 text-sm">{ent.patient_label}</span>
                           <span className={`px-2 py-0.5 rounded font-bold text-[10px] ${
@@ -319,8 +319,8 @@ export const OrganonView: React.FC = () => {
                   <p className="text-xs text-slate-400 italic">Keine Claims vorhanden.</p>
                 ) : (
                   <div className="space-y-2">
-                    {analysisResult.claims.map((claim) => (
-                      <div key={claim.claim_id} className="p-3 rounded-xl bg-teal-50/50 border border-teal-200/70 text-xs space-y-1">
+                    {analysisResult.claims.map((claim, idx) => (
+                      <div key={claim.claim_id || `claim-${idx}`} className="p-3 rounded-xl bg-teal-50/50 border border-teal-200/70 text-xs space-y-1">
                         <div className="flex items-center justify-between">
                           <span className="font-bold text-teal-900">{claim.attribute}: <span className="font-normal text-slate-700">{claim.value}</span></span>
                           <span className={`px-2 py-0.5 rounded font-bold text-[10px] ${
@@ -349,8 +349,8 @@ export const OrganonView: React.FC = () => {
                   <p className="text-xs text-slate-400 italic">Keine Temporal Bindings vorhanden.</p>
                 ) : (
                   <div className="space-y-2">
-                    {analysisResult.temporal_bindings.map((tb) => (
-                      <div key={tb.temporal_binding_id} className="p-3 rounded-xl bg-indigo-50/50 border border-indigo-200/70 text-xs space-y-1">
+                    {analysisResult.temporal_bindings.map((tb, idx) => (
+                      <div key={tb.temporal_binding_id || `tb-${idx}`} className="p-3 rounded-xl bg-indigo-50/50 border border-indigo-200/70 text-xs space-y-1">
                         <div className="flex items-center justify-between">
                           <span className="font-bold text-indigo-900">Zeitbezug: <span className="text-slate-900">„{tb.time_expression}“</span></span>
                           <span className="px-2 py-0.5 bg-indigo-100 text-indigo-800 rounded font-bold text-[10px]">
@@ -376,8 +376,8 @@ export const OrganonView: React.FC = () => {
                   <p className="text-xs text-slate-400 italic">Keine Symptom States vorhanden.</p>
                 ) : (
                   <div className="space-y-2">
-                    {analysisResult.symptom_states.map((state) => (
-                      <div key={state.state_id} className="p-3 rounded-xl bg-purple-50/50 border border-purple-200/70 text-xs space-y-1">
+                    {analysisResult.symptom_states.map((state, idx) => (
+                      <div key={state.state_id || `state-${idx}`} className="p-3 rounded-xl bg-purple-50/50 border border-purple-200/70 text-xs space-y-1">
                         <div className="flex items-center justify-between">
                           <span className="font-bold text-purple-900">Zeit: <span className="text-slate-900">„{state.time_expression}“</span></span>
                           <span className={`px-2 py-0.5 rounded font-bold text-[10px] ${
@@ -411,8 +411,8 @@ export const OrganonView: React.FC = () => {
                   <p className="text-xs text-slate-400 italic">Keine Korrekturen vorhanden.</p>
                 ) : (
                   <div className="space-y-2">
-                    {analysisResult.corrections.map((corr) => (
-                      <div key={corr.correction_id} className="p-3 rounded-xl bg-rose-50/50 border border-rose-200/70 text-xs space-y-1">
+                    {analysisResult.corrections.map((corr, idx) => (
+                      <div key={corr.correction_id || `corr-${idx}`} className="p-3 rounded-xl bg-rose-50/50 border border-rose-200/70 text-xs space-y-1">
                         <div className="flex items-center justify-between">
                           <span className="font-bold text-rose-900">Korrektur ({corr.relation})</span>
                           <span className="px-2 py-0.5 rounded font-bold text-[10px] bg-rose-100 text-rose-800">
@@ -441,8 +441,8 @@ export const OrganonView: React.FC = () => {
                   <p className="text-xs text-slate-400 italic">Keine Contradictions vorhanden.</p>
                 ) : (
                   <div className="space-y-2">
-                    {analysisResult.contradictions.map((con) => (
-                      <div key={con.contradiction_id} className="p-3 rounded-xl bg-orange-50/50 border border-orange-200/70 text-xs space-y-1">
+                    {analysisResult.contradictions.map((con, idx) => (
+                      <div key={con.contradiction_id || `con-${idx}`} className="p-3 rounded-xl bg-orange-50/50 border border-orange-200/70 text-xs space-y-1">
                         <div className="flex items-center justify-between">
                           <span className="font-bold text-orange-900">Widerspruch ({con.attribute})</span>
                           <span className={`px-2 py-0.5 rounded font-bold text-[10px] ${
@@ -473,8 +473,8 @@ export const OrganonView: React.FC = () => {
                   <p className="text-xs text-slate-400 italic">Keine Unklarheiten registriert.</p>
                 ) : (
                   <div className="space-y-2">
-                    {analysisResult.uncertainties.map((unc) => (
-                      <div key={unc.uncertainty_id} className="p-3 rounded-xl bg-amber-50/50 border border-amber-200/70 text-xs space-y-1">
+                    {analysisResult.uncertainties.map((unc, idx) => (
+                      <div key={unc.uncertainty_id || `unc-${idx}`} className="p-3 rounded-xl bg-amber-50/50 border border-amber-200/70 text-xs space-y-1">
                         <div className="font-bold text-amber-900">{unc.text}</div>
                         <div className="text-amber-800 text-[11px]">{unc.reason}</div>
                         <div className="text-[10px] font-mono text-amber-600">
@@ -545,7 +545,7 @@ export const OrganonView: React.FC = () => {
                         <div className="font-bold text-rose-900 text-[11px]">Blocking Issues:</div>
                         <ul className="list-disc list-inside text-rose-800 space-y-0.5">
                           {analysisResult.validation.blocking_issues.map((issue, idx) => (
-                            <li key={idx}>{issue}</li>
+                            <li key={`issue-${idx}-${issue}`}>{issue}</li>
                           ))}
                         </ul>
                       </div>
@@ -556,7 +556,7 @@ export const OrganonView: React.FC = () => {
                         <div className="font-bold text-amber-900 text-[11px]">Warnings:</div>
                         <ul className="list-disc list-inside text-amber-800 space-y-0.5">
                           {analysisResult.validation.warnings.map((warn, idx) => (
-                            <li key={idx}>{warn}</li>
+                            <li key={`warn-${idx}-${warn}`}>{warn}</li>
                           ))}
                         </ul>
                       </div>
@@ -590,7 +590,7 @@ export const OrganonView: React.FC = () => {
                       <div className="flex flex-wrap items-center gap-1.5">
                         <span className="text-[11px] font-semibold text-slate-600">Methodischer Bezug:</span>
                         {analysisResult.hahnemann_analysis.organon_references.map((ref, idx) => (
-                          <span key={idx} className="px-2 py-0.5 bg-purple-50 text-purple-800 rounded font-mono text-[10px] border border-purple-200">
+                          <span key={`ref-${idx}-${ref}`} className="px-2 py-0.5 bg-purple-50 text-purple-800 rounded font-mono text-[10px] border border-purple-200">
                             {ref}
                           </span>
                         ))}
@@ -895,7 +895,7 @@ export const OrganonView: React.FC = () => {
                                   <div className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">Repertory Contributions:</div>
                                   <div className="space-y-1">
                                     {rem.repertory_contributions.map((rc, idx) => (
-                                      <div key={idx} className="bg-slate-50 p-1.5 rounded font-mono text-[10px] flex items-center justify-between text-slate-700">
+                                      <div key={`rc-${rc.selection_id}-${rc.source_record_id}-${idx}`} className="bg-slate-50 p-1.5 rounded font-mono text-[10px] flex items-center justify-between text-slate-700">
                                         <span>{rc.selection_id} • {rc.source_record_id}</span>
                                         <span>Gewicht {rc.feature_weight} × Grad {rc.repertory_grade ?? 1} = <b>{rc.contribution}</b></span>
                                       </div>
@@ -910,7 +910,7 @@ export const OrganonView: React.FC = () => {
                                   <div className="text-[10px] font-bold text-purple-700 uppercase tracking-wide">Supportive MM Evidence:</div>
                                   <div className="space-y-1">
                                     {rem.supportive_mm_evidence.map((mm, idx) => (
-                                      <div key={idx} className="bg-purple-50/50 p-1.5 rounded text-[10px] text-purple-900">
+                                      <div key={`mm-${mm.selection_id}-${mm.source_record_id}-${idx}`} className="bg-purple-50/50 p-1.5 rounded text-[10px] text-purple-900">
                                         <span className="font-bold">{mm.source} ({mm.source_record_id})</span>: "{mm.matched_text}"
                                       </div>
                                     ))}
@@ -990,10 +990,88 @@ export const OrganonView: React.FC = () => {
                 )}
               </div>
 
-              {/* 17. Vollständiges JSON */}
+              {/* 17. Complaint Matrices & Chronology */}
+              <div className="space-y-3 pt-2 border-t border-slate-200">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+                    <Clock className="w-3.5 h-3.5 text-teal-600" />
+                    <span>18. Beschwerdespezifische Symptommatrizen & Chronologie</span>
+                  </h3>
+                  {analysisResult.complaint_matrices && (
+                    <span className="px-2.5 py-0.5 rounded-full font-bold text-[10px] bg-teal-100 text-teal-800">
+                      {analysisResult.complaint_matrices.length} Beschwerden getrennt
+                    </span>
+                  )}
+                </div>
+
+                {(!analysisResult.complaint_matrices || analysisResult.complaint_matrices.length === 0) ? (
+                  <p className="text-xs text-slate-400 italic">Keine Beschwerdematrizen vorhanden.</p>
+                ) : (
+                  <div className="space-y-3 text-xs">
+                    <div className="space-y-2">
+                      {analysisResult.complaint_matrices.map((comp) => (
+                        <div key={comp.complaint_id} className="bg-teal-50/40 p-3 rounded-xl border border-teal-200/70 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-teal-900 text-sm">{comp.patient_label}</span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="px-2 py-0.5 rounded bg-teal-100 text-teal-900 font-bold text-[10px]">
+                                {comp.temporal_status}
+                              </span>
+                              <span className="px-2 py-0.5 rounded bg-slate-200 text-slate-800 font-bold text-[10px]">
+                                {comp.complaint_type}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] bg-white p-2 rounded-lg border border-teal-100">
+                            <div><span className="text-slate-400 font-mono">Onset:</span> {comp.onset || 'Unbekannt'}</div>
+                            <div><span className="text-slate-400 font-mono">Dauer:</span> {comp.duration || 'Unbekannt'}</div>
+                            <div><span className="text-slate-400 font-mono">Intensität:</span> {comp.intensity || 'Nicht angegeben'}</div>
+                            <div><span className="text-slate-400 font-mono">Verlauf:</span> {comp.course || 'Standard'}</div>
+                          </div>
+
+                          <div className="flex flex-wrap gap-2 text-[10px]">
+                            {comp.location && <span className="px-2 py-0.5 rounded bg-white border border-teal-100 text-teal-900"><b>Lokalisation:</b> {comp.location}</span>}
+                            {comp.sensation && <span className="px-2 py-0.5 rounded bg-white border border-teal-100 text-teal-900"><b>Sensation:</b> {comp.sensation}</span>}
+                            {comp.causa && <span className="px-2 py-0.5 rounded bg-white border border-teal-100 text-teal-900"><b>Causa:</b> {comp.causa}</span>}
+                          </div>
+
+                          {comp.modalities && comp.modalities.length > 0 && (
+                            <div className="text-[10px] text-slate-700">
+                              <b>Modalitäten:</b> {comp.modalities.join(', ')}
+                            </div>
+                          )}
+
+                          <div className="text-[10px] font-mono text-teal-700">
+                            ID: {comp.complaint_id} | Relation to Episode: {comp.relation_to_current_episode || 'NONE'}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {analysisResult.complaint_relations && analysisResult.complaint_relations.length > 0 && (
+                      <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1.5">
+                        <div className="font-bold text-slate-800 uppercase tracking-wide text-[11px]">Inter-Complaint Relations (Zeitliche Bezüge)</div>
+                        <div className="space-y-1">
+                          {analysisResult.complaint_relations.map((rel) => (
+                            <div key={rel.relation_id} className="bg-white p-2 rounded-lg border border-slate-200 flex items-center justify-between text-[11px] shadow-2xs">
+                              <span className="font-mono text-slate-700">{rel.source_complaint_id} → {rel.target_complaint_id}</span>
+                              <span className="px-2 py-0.5 rounded bg-indigo-100 text-indigo-900 font-bold font-mono text-[10px]">
+                                {rel.relation_type} ({rel.status})
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* 19. Vollständiges JSON */}
               <div className="space-y-2">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                  17. Vollständiges JSON der API-Antwort
+                  19. Vollständiges JSON der API-Antwort
                 </h3>
                 <pre className="p-3 bg-slate-900 text-emerald-400 rounded-xl font-mono text-[10px] overflow-x-auto max-h-[300px]">
                   {JSON.stringify(analysisResult, null, 2)}

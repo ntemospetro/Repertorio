@@ -1199,168 +1199,84 @@ Antworte AUSSCHLIESSLICH mit einem validen JSON-Objekt im folgenden Format (ohne
       const ai = new GoogleGenAI({ apiKey });
 
       const prompt = `Du bist ein präziser NLP- und Text-Parser für homöopathische Fallschilderungen im Organon-Testbetrieb. 
-Deine Aufgabe ist es, den übergebenen Patiententext sprachlich und semantisch zu zerlegen, ohne jegliche Interpretation, Diagnosestellung oder Verallgemeinerung.
+Deine Aufgabe ist es, den übergebenen Patiententext sprachlich und semantisch tief zu zerlegen. Patientenaussagen dürfen niemals direkt in medizinische Claims übersetzt werden. Wende konsequent eine allgemeine semantische Analysearchitektur an.
 
-WICHTIGE REGELN:
-1. "raw_text" muss EXAKT dem eingegebenen Text entsprechen: "${rawText}". Keine Korrektur, keine Zusammenfassung, keine Umschreibung.
-2. "source_spans": Finde exakte Teilstücke (substrings) aus raw_text. Jeder span hat:
-   - span_id (z.B. "span_1", "span_2", ...)
-   - exact_text (exakter Substring aus raw_text)
-   - type (muss genau einer sein aus: COMPLAINT, SENSATION, LOCATION, TEMPORAL, INTENSITY, NEGATION, INTERVENTION, MODALITY, RELATIONSHIP, UNCLEAR, OTHER)
-3. "entities": Beschwerden oder ausdrücklich verneinte Symptome. 
-   - entity_id (z.B. "ent_1", "ent_2", ...)
-   - patient_label (Freie Patientensprache beibehalten, keine Diagnose erfinden, keine unbekannte Beschwerde in bekannte umwandeln, mehrere Beschwerden strikt getrennt halten)
-   - status ("CONFIRMED" | "DENIED" | "UNCLEAR")
-   - evidence_span_ids (Array von passenden span_ids)
-   WICHTIG: Eigenschaften einer Beschwerde (wie "schmerzhaft", Lokalisation, Modalität, Temporalität) dürfen KEINE eigenen Entities werden, sondern werden als Claims erfasst!
-4. "uncertainties": Wenn die Bedeutung nicht sicher ist (z.B. "wie Lava" oder "Brumba-Brumba"), nicht raten, sondern hier erfassen.
-   - uncertainty_id (z.B. "unc_1", ...)
-   - text (der unklare Ausdruck)
-   - reason (warum unklar / nicht interpretieren)
-   - related_entity_id (string oder null)
-5. "claims": Attribute, Eigenschaften oder Aussagen über eine Entity (z.B. schmerzhaft, Lokalisation, Intensität, Temporalität, Beginn/Onset).
-   - claim_id (z.B. "claim_1", ...)
-   - subject_entity_id (Referenz auf die entity_id, z.B. "ent_1")
-   - attribute (z.B. "painful", "intensity", "location", "temporal_onset", "onset", "modality")
-   - value (String-Wert oder Beschreibung, z.B. bei Beginn: "Vorgestern Abend")
-   - status ("CONFIRMED" | "DENIED" | "UNCLEAR")
-   - evidence_span_ids (Array von passenden span_ids, WICHTIG: Enthält nur den Wert-/Eigenschaftsspan, NICHT den Zeitspan für nachfolgende Dynamiken!)
-6. "temporal_bindings": Bindet spezifische Zeitangaben an konkrete Claims, für die sie gelten (z.B. wenn eine Intensität zu einem bestimmten Zeitpunkt galt).
-   - temporal_binding_id (z.B. "tb_1", ...)
-   - subject_entity_id (Referenz auf entity_id)
-   - claim_id (Referenz auf den betroffenen claim_id)
-   - time_expression (Der genaue zeitausdruck, z.B. "Heute Morgen", "Am nächsten Morgen")
-   - evidence_span_ids (Array mit dem genauen Span für den Zeitbezug)
-   - status ("CONFIRMED" | "DENIED" | "UNCLEAR")
-7. "symptom_states": Zeitgebundene Symptomzustände, abgeleitet aus Claims und Temporal Bindings.
-   - state_id (z.B. "state_1", ...)
-   - subject_entity_id (Referenz auf entity_id)
-   - presence ("PRESENT" | "ABSENT" | "UNCLEAR")
-   - intensity_text (String oder null, z.B. "ziemlich stark, ungefähr sieben von zehn", "drei von zehn", "eher leicht")
-   - time_expression (Der genaue Zeitbezug, z.B. "Zuerst", "Am nächsten Morgen", "Gegen Mittag", "Heute Nachmittag", "Seitdem")
-   - source_claim_ids (Array von zugehörigen claim_ids)
-   - source_temporal_binding_ids (Array von zugehörigen temporal_binding_ids)
-   - status ("CONFIRMED" | "DENIED" | "UNCLEAR")
-8. SEMANTISCHE REGELN & SYMPTOM STATES:
-   - Nur aus explizit bestätigten Claims und Temporal Bindings ableiten. Keine Zustände erfinden.
-   - PRESENCE und INTENSITY nicht vermischen.
-   - "verschwanden sie vollständig" bedeutet für diesen Zeitpunkt: presence = ABSENT.
-   - "kamen sie wieder" / "noch da" bedeutet: presence = PRESENT.
-   - "eher leicht" oder "sieben von zehn" beschreibt Intensität (intensity_text), nicht bloß Präsenz.
-   - Wenn Intensität und Präsenz für denselben Zeitpunkt vorhanden sind, im selben State zusammenführen. Wenn keine Intensität genannt wird, intensity_text null lassen.
-    - Übelkeit (oder andere verneinte Entities) sind separat und dürfen nicht in die Schulter-States gemischt werden.
-9. "corrections": Verknüpft explizite Selbstkorrekturen bei Aussagen (z.B. "Nein, entschuldigung, links" korrigiert "rechtes Knie").
-   - correction_id (z.B. "corr_1", ...)
-   - subject_entity_id (Referenz auf entity_id)
-   - old_claim_id (Die korrigierte/alte Aussage)
-   - new_claim_id (Die neue, gültige Aussage)
-   - relation ("SUPERSEDED_BY")
-   - evidence_span_ids (Spans der Korrekturäußerung, z.B. ["span_4", "span_5"])
-   - Regeln: Alte Information nicht löschen oder still überschreiben, sondern auditierbar als superseded markieren und verknüpfen. WICHTIG: Nur bei expliziten Korrekturen ("Nein, entschuldigung...") erzeugen!
-10. "contradictions" und "uncertainties":
-   - Wenn der Patient ausdrücklich Unsicherheit äußert (z.B. "Ich bin mir nicht sicher, welche Seite stimmt"), darf eine Contradiction niemals eine Uncertainty ersetzen!
-   - Es müssen BEIDE Strukturen befüllt werden:
-     a) Ein Objekt in "uncertainties":
-        { "uncertainty_id": "unc_1", "text": "Ich bin mir nicht sicher, welche Seite stimmt.", "reason": "Patient ist sich bezüglich der betroffenen Seite nicht sicher.", "related_entity_id": "ent_1", "related_claim_ids": ["claim_2", "claim_3"] }
-     b) Ein Objekt in "contradictions":
-        { "contradiction_id": "con_1", "subject_entity_id": "ent_1", "attribute": "location", "claim_ids": ["claim_2", "claim_3"], "status": "UNRESOLVED", "evidence_span_ids": [...] }
-   - Beide widersprüchlichen Claims (z.B. linkes und rechtes Knie) erhalten status = "UNCLEAR".
-   - corrections = [] (keine Korrektur bei Unsicherheit).
-11. "next_question":
-   - Wenn ein ungeklärter Widerspruch (UNRESOLVED contradiction) oder eine relevante Unsicherheit besteht, erzeuge GENAU EINE beste nächste Frage ("next_question").
-   - Struktur:
-     {
-       "question_id": "q_1",
-       "text": "Welche Intensität trifft für gestern Abend eher zu: ungefähr 8/10 oder ungefähr 4/10?",
-       "reason_code": "RESOLVE_CONTRADICTION_INTENSITY",
-       "related_entity_id": "ent_1",
-       "related_claim_ids": ["claim_2", "claim_3"],
-       "related_contradiction_id": "con_1",
-       "status": "OPEN"
-     }
-   - Regeln: Genau EINE Frage ausgeben. Neutral formulieren. Keine Suggestion. Keine Arzneimittelanalyse. Keine Materia Medica. Keine Repertorisation. Keine Diagnose. Priorisiere UNRESOLVED Widersprüche. Nur bereits vorhandene Informationen verwenden. Keine neuen Tatsachen erfinden. Keine Liste von Fragen. Keine zweite Frage im selben Satz. Reason Code knapp technisch (z.B. "RESOLVE_CONTRADICTION_INTENSITY"). Wenn keine offenen Fragen/Widersprüche vorliegen, "null".
-12. "validation": Prüft ob der Fall logisch konsistent und ausreichend geklärt ist.
-   - Struktur:
-     {
-       "is_valid": true,
-       "is_complete": false,
-       "blocking_issues": ["Ungelöster Widerspruch bezüglich Location"],
-       "warnings": []
-     }
-   - Regeln:
-     - is_valid = false, wenn ungültige Referenzen vorhanden sind (Claims auf nicht existierende Entities, Temporal Bindings auf nicht existierende Claims, Symptom States auf nicht existierende Quellen).
-     - is_complete = false, wenn relevante Uncertainties offen sind, Contradictions UNRESOLVED sind, oder next_question OPEN ist.
-     - is_valid und is_complete sind NICHT dasselbe. Ein strukturell sauberer Fall mit einem offenen Widerspruch kann is_valid = true und is_complete = false haben. Ein ungelöster inhaltlicher Widerspruch macht den strukturierten Datensatz nicht automatisch technisch ungültig, aber unvollständig.
-13. "hahnemann_analysis": Hahnemann-orientierte Fallanalyse (ohne Mittelfindung, ohne Repertorisation, ohne Materia Medica, ohne Arzneimittelvorschläge).
-   - Struktur:
-     {
-       "analysis_status": "READY | INCOMPLETE",
-       "characteristic_features": [],
-       "general_features": [
-         {
-           "analysis_id": "gf_1",
-           "text": "Pochendes Gefühl an der Außenseite des rechten Knöchels",
-           "related_entity_ids": ["ent_1"],
-           "related_claim_ids": ["claim_1", "claim_2"],
-           "reason_code": "GENERAL_SENSATION"
-         }
-       ],
-       "modalities": [],
-       "concomitants": [],
-       "course_features": [],
-       "missing_information": [],
-       "organon_references": ["§§83–104", "§86", "§104", "§153"]
-     }
-   - Regeln:
-     - Ausschließlich auf bestätigten strukturierten Falldaten beruhen. UNCLEAR, CONTRADICTED, UNRESOLVED oder superseded Info dürfen NICHT als gesicherte Merkmale verwendet werden.
-     - Wenn validation.is_complete = false, analysis_status = "INCOMPLETE".
-     - "vollständig verschwunden" ist kein intensity-Claim, sondern presence/course = ABSENT.
-     - "Heute früh kam es wieder, aber deutlich schwächer" ist in recurrence/presence ("kam es wieder") und intensity ("deutlich schwächer") zu trennen (getrennte Claims/Spans).
-     - §153 / characteristic_features: Nicht jede genaue Empfindung automatisch als PECULIAR oder CHARACTERISTIC einstufen. "pochendes Gefühl" ist als bestätigte Sensation zu erfassen, aber als general/observed feature zu führen, es sei denn es gibt eine spezifische Begründung. Andernfalls characteristic_features leer lassen und in general_features einordnen.
-     - Jede Analyseaussage muss vollständig auf die tatsächlich verwendeten entity_ids, claim_ids oder state_ids rückverweisbar sein. Wenn Text Sensation + Location enthält, müssen beide durch Provenienz belegt sein.
-     - Keine Arzneimittel, keine Repertorisationsrubriken, keine Diagnosen, keine Suggestivfragen.
-14. "selection_for_remedy_analysis": Getrennte Auswahl, welche Merkmale für spätere Repertorium / Materia Medica Analysen verwendet werden dürfen.
-   - Struktur:
-     {
-       "status": "READY | BLOCKED",
-       "selected_features": [
-         {
-           "selection_id": "sel_1",
-           "feature_type": "SENSATION | LOCATION | MODALITY | CONCOMITANT | COURSE | OTHER",
-           "text": "...",
-           "priority": "HIGH | MEDIUM | LOW",
-           "reason_code": "...",
-           "related_entity_ids": [],
-           "related_claim_ids": [],
-           "related_state_ids": []
-         }
-       ],
-       "excluded_features": [
-         {
-           "selection_id": "ex_1",
-           "text": "...",
-           "reason_code": "...",
-           "related_entity_ids": [],
-           "related_claim_ids": []
-         }
-       ],
-       "blocking_reasons": []
-     }
-   - Regeln:
-     - Nur CONFIRMED Informationen verwenden. UNCLEAR, UNRESOLVED, CONTRADICTED oder superseded Info dürfen NICHT ausgewählt werden.
-     - Wenn validation.is_complete = false oder hahnemann_analysis.analysis_status != READY, status = BLOCKED.
-     - Kein Merkmal allein deshalb HIGH priorisieren, weil es ungewöhnlich klingt. Priorität muss nachvollziehbar sein.
-     - Modalitäten mit bestätigter Verschlechterung/Besserung auswählen. "Kälte verändert es nicht" (No-Effect) kann dokumentiert werden, aber nicht automatisch HIGH (z.B. LOW/MEDIUM).
-     - Verneinte Symptome wie "Taubheitsgefühl hatte ich nie" dürfen NICHT als positive repertoriale Merkmale ausgewählt werden (in excluded_features aufnehmen mit Grund NEGATED_SYMPTOM).
-     - Verlauf darf ausgewählt werden, wenn konkret und bestätigt.
-     - Jede Auswahl muss vollständige Provenienz (entity_ids, claim_ids, state_ids) haben.
-     - Keine Arzneimittel, keine Rubriken, keine Scores, keine Repertorisation.
+VERARBEITUNGS-REIHENFOLGE:
+1. Sprachliche Zerlegung & atomare Propositionen (jeder Satz in kleinste überprüfbare Bedeutungen teilen).
+2. Semantische Objekttypen bestimmen (PERSON, ACTION, EVENT, STATE, SYMPTOM, SIGN, LOCATION, TIME, CONDITION, INTERVENTION, OBSERVATION, PATIENT_INTERPRETATION, SYSTEM_INFERENCE). EVENT != SYMPTOM, ACTION != MODALITY.
+3. Semantische Rollen & Attribute trennen (wer, was, wo, wann, wie, Dauer, Intensität, Geschwindigkeit, etc. präzise dem tatsächlichen Zielobjekt zuordnen).
+4. Modifier-Scope & Negations-Scope bestimmen (Wörter wie kaum, sehr, stark, nicht wirken nur auf ihr exaktes Zielobjekt).
+5. Unabhängige Dimensionen für Presence, Intensität, Häufigkeit und Sicherheit (CERTAINTY: CERTAIN, UNCERTAIN, SUSPECTED).
+6. Beobachtung vs. Interpretation trennen (DIRECT_OBSERVATION, PATIENT_INTERPRETATION, LINGUISTIC_IMPLICATION).
+7. Zeitachse & Kausalität trennen (BEFORE, AFTER, DURING. Zeitliche Reihenfolge ist niemals automatisch Kausalität. Kausalitätsstatus: UNKNOWN, POSSIBLE, PATIENT_SUSPECTED, PATIENT_CONFIRMED, CONTRADICTED).
+8. Modalität von Ursache trennen (MODALITY_AGGRAVATION / AMELIORATION bei bestehenden Symptomen vs. Ursache).
+9. Evidence Grounding & Gegenprüfung (Doppelprüfung vor jeder Bestätigung: Ist die Bedeutung wirklich im Text? Ist Scope korrekt? Kein Überinterpretieren!).
+10. Offene Informationsslots bestimmen und genau eine nächste Frage nach dem Ein-Frage-Prinzip ableiten.
 
-16. "repertory_scoring": Deterministische Scoring-Schicht. feature_weights aus Prioritäten (HIGH=3, MEDIUM=2, LOW=1). repertory_score = feature_weight × repertory_grade (wenn grade=null, ×1). Materia Medica / Allen Keynotes als supportive_mm_evidence getrennt führen (nicht multiplizieren). SCORING_PROVENANCE_VALIDATOR prüfen. Wenn remedy_retrieval.status != READY, status = BLOCKED.
+GRUNDREGELN DER SEMANTISCHEN SCHICHT:
+1. Ein Ereignis ist nicht automatisch ein Symptom. Eine Aktivität ist nicht automatisch eine Modalität. Ein vorheriges Ereignis ist nicht automatisch eine Ursache. Zeitliche Reihenfolge ist keine Kausalität.
+2. "semantic_events": Erfasse alle tatsächlichen Ereignisse oder Aktivitäten mit Attributen (event_id, actor, action, event_type, time, location, duration, attributes, evidence_span_ids, status).
+3. "semantic_relations": Modelliere Beziehungen ausdrücklich (relation_id, source_id, target_id, relation_type [Werte: TEMPORAL_BEFORE, TEMPORAL_AFTER, SIMULTANEOUS, SEQUENCE, CONDITION, MODALITY_AGGRAVATION, MODALITY_AMELIORATION, NO_EFFECT, POSSIBLE_CAUSATION, PATIENT_SUSPECTED_CAUSATION, PATIENT_CONFIRMED_CAUSATION, CONTRADICTED_CAUSATION, UNKNOWN_RELATION], status, evidence_span_ids).
+4. "open_slots": Führe relevante fehlende Informationen als offene Slots (slot_id, related_id, field, importance, status, suggested_question).
+5. "raw_text" muss EXAKT dem eingegebenen Text entsprechen: "${rawText}". Keine Korrektur, keine Zusammenfassung, keine Umschreibung.
+6. "source_spans": Finde exakte Teilstücke (substrings) aus raw_text. Jeder span hat span_id, exact_text, type (COMPLAINT, SENSATION, LOCATION, TEMPORAL, INTENSITY, NEGATION, INTERVENTION, MODALITY, RELATIONSHIP, UNCLEAR, OTHER).
+7. "entities": Beschwerden oder ausdrücklich verneinte Symptome (entity_id, patient_label, status, evidence_span_ids).
+8. "uncertainties": Unklare Ausdrücke und deren Begründung.
+9. "claims": Attribute, Eigenschaften oder Aussagen über eine Entity (claim_id, subject_entity_id, attribute, value, status, evidence_span_ids).
+10. "temporal_bindings": Bindet spezifische Zeitangaben an konkrete Claims.
+11. "symptom_states": Zeitgebundene Symptomzustände.
+12. "corrections" und "contradictions": auditierbare Erfassung.
+13. "next_question": Genau eine nächste Frage nach dem Ein-Frage-Prinzip.
+14. "validation" und "hahnemann_analysis": Hahnemann-konforme Fallanalyse ohne Mittelfindung oder Repertorisation.
+15. "selection_for_remedy_analysis" und Scoring.
+16. "complaint_matrices": Jede erkannte Beschwerde erhält eine eigene Matrix mit getrennter Chronologie (complaint_id, patient_label, temporal_status [NEW_CURRENT, CURRENT_ONGOING, CHRONIC_BASELINE, CHRONIC_CHANGED, RECURRENT, HISTORICAL_RESOLVED, UNKNOWN], complaint_type [INDEX_COMPLAINT, CURRENT_ASSOCIATED_COMPLAINT, CHRONIC_BACKGROUND, HISTORICAL, UNKNOWN], onset, duration, course, causa, location, sensation, modalities, concomitants, mind, intensity, frequency, negations, uncertainties, relation_to_current_episode, evidence_span_ids). Chronische Beschwerden niemals automatisch als akute Begleitsymptome werten!
+17. "complaint_relations": Modelliere zeitliche Beziehungen zwischen Beschwerden ausdrücklich (relation_id, source_complaint_id, target_complaint_id, relation_type [SAME_ONSET, BEFORE, AFTER, DURING, OVERLAPPING, UNRELATED_BY_PATIENT, UNKNOWN], status, evidence_span_ids).
 
 Antworte AUSSCHLIESSLICH als gültiges JSON-Objekt im folgenden Format (ohne Markdown Code-Blöcke):
 {
   "raw_text": "${rawText.replace(/"/g, '\\"')}",
+  "complaint_matrices": [
+    {
+      "complaint_id": "comp_1",
+      "patient_label": "Magenschmerzen",
+      "temporal_status": "NEW_CURRENT",
+      "complaint_type": "INDEX_COMPLAINT",
+      "onset": "gestern",
+      "duration": "seit gestern",
+      "course": "akut",
+      "causa": null,
+      "location": "Magen",
+      "sensation": "brennend",
+      "modalities": [],
+      "concomitants": [],
+      "mind": null,
+      "intensity": "stark",
+      "frequency": "anhaltend",
+      "negations": [],
+      "uncertainties": [],
+      "relation_to_current_episode": "INDEX",
+      "evidence_span_ids": ["span_1"]
+    }
+  ],
+  "complaint_relations": [
+    {
+      "relation_id": "crel_1",
+      "source_complaint_id": "comp_1",
+      "target_complaint_id": "comp_2",
+      "relation_type": "BEFORE",
+      "status": "CONFIRMED",
+      "evidence_span_ids": ["span_1", "span_2"]
+    }
+  ],
+  "semantic_events": [
+    { "event_id": "ev_1", "actor": "Patient", "action": "laufen", "event_type": "ACTIVITY", "time": "UNKNOWN", "location": "UNKNOWN", "duration": "UNKNOWN", "attributes": {}, "evidence_span_ids": ["span_1"], "status": "CONFIRMED" }
+  ],
+  "semantic_relations": [
+    { "relation_id": "rel_1", "source_id": "ev_1", "target_id": "ev_2", "relation_type": "TEMPORAL_BEFORE", "status": "CONFIRMED", "evidence_span_ids": ["span_1", "span_2"] }
+  ],
+  "open_slots": [
+    { "slot_id": "slot_1", "related_id": "ev_1", "field": "location", "importance": "HIGH", "status": "OPEN", "suggested_question": "Wo genau fand dies statt?" }
+  ],
   "source_spans": [
     { "span_id": "span_1", "exact_text": "...", "type": "..." }
   ],
@@ -1782,6 +1698,9 @@ Antworte AUSSCHLIESSLICH als gültiges JSON-Objekt im folgenden Format (ohne Mar
 
       res.json({
         raw_text: rawText,
+        semantic_events: parsed.semantic_events || [],
+        semantic_relations: parsed.semantic_relations || [],
+        open_slots: parsed.open_slots || [],
         source_spans: parsed.source_spans || [],
         entities: parsed.entities || [],
         uncertainties: parsed.uncertainties || [],

@@ -228,6 +228,37 @@ export interface OrganonScoringAdequacy {
   warnings: string[];
 }
 
+export interface OrganonComplaintMatrix {
+  complaint_id: string;
+  patient_label: string;
+  temporal_status: 'NEW_CURRENT' | 'CURRENT_ONGOING' | 'CHRONIC_BASELINE' | 'CHRONIC_CHANGED' | 'RECURRENT' | 'HISTORICAL_RESOLVED' | 'UNKNOWN';
+  complaint_type: 'INDEX_COMPLAINT' | 'CURRENT_ASSOCIATED_COMPLAINT' | 'CHRONIC_BACKGROUND' | 'HISTORICAL' | 'UNKNOWN';
+  onset: string | null;
+  duration: string | null;
+  course: string | null;
+  causa: string | null;
+  location: string | null;
+  sensation: string | null;
+  modalities: string[];
+  concomitants: string[];
+  mind: string | null;
+  intensity: string | null;
+  frequency: string | null;
+  negations: string[];
+  uncertainties: string[];
+  relation_to_current_episode: string | null;
+  evidence_span_ids: string[];
+}
+
+export interface OrganonComplaintRelation {
+  relation_id: string;
+  source_complaint_id: string;
+  target_complaint_id: string;
+  relation_type: 'SAME_ONSET' | 'BEFORE' | 'AFTER' | 'DURING' | 'OVERLAPPING' | 'UNRELATED_BY_PATIENT' | 'UNKNOWN';
+  status: string;
+  evidence_span_ids: string[];
+}
+
 export interface OrganonAiAnalysisResult {
   raw_text: string;
   source_spans: OrganonSourceSpan[];
@@ -245,6 +276,8 @@ export interface OrganonAiAnalysisResult {
   remedy_retrieval: OrganonRemedyRetrieval;
   repertory_scoring: OrganonRepertoryScoring;
   scoring_adequacy: OrganonScoringAdequacy;
+  complaint_matrices: OrganonComplaintMatrix[];
+  complaint_relations: OrganonComplaintRelation[];
 }
 
 export async function analyzeOrganonText(rawText: string, language: string = 'de'): Promise<OrganonAiAnalysisResult> {
@@ -306,6 +339,8 @@ export async function analyzeOrganonText(rawText: string, language: string = 'de
     scoring_adequacy: data.scoring_adequacy || {
       is_adequate: false,
       reason: 'Not analyzed'
-    }
+    },
+    complaint_matrices: data.complaint_matrices || [],
+    complaint_relations: data.complaint_relations || []
   };
 }
