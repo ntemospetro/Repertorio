@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { analyzeOrganonText, OrganonAiAnalysisResult } from '../services/organonAiService';
+import { OrganonDynamicQuestionModal } from './OrganonDynamicQuestionModal';
 import { 
   Activity, 
   FileText, 
@@ -10,7 +11,8 @@ import {
   Database, 
   Send,
   Layers,
-  Clock
+  Clock,
+  MessageSquare
 } from 'lucide-react';
 
 // Compatibility types for unused legacy organonPipeline.ts
@@ -64,6 +66,7 @@ export const OrganonView: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [debugStatus, setDebugStatus] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string>('');
+  const [isQuestionModalOpen, setIsQuestionModalOpen] = useState<boolean>(false);
 
   const handleAnalyze = async (textToAnalyze?: string) => {
     const text = textToAnalyze !== undefined ? textToAnalyze : narrationInput;
@@ -245,6 +248,22 @@ export const OrganonView: React.FC = () => {
           ) : (
             <div className="space-y-6 overflow-y-auto max-h-[600px] pr-2">
               
+              {/* Action Banner for Dynamic Questions */}
+              <div className="bg-gradient-to-r from-teal-900 to-slate-900 text-white p-4 rounded-xl flex items-center justify-between shadow-md">
+                <div>
+                  <h4 className="font-bold text-sm">Semantische Grundzerlegung erfolgreich</h4>
+                  <p className="text-xs text-teal-200">Starten Sie nun den dynamischen Einzelfragen-Dialog nach Hahnemann & Bönninghausen.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsQuestionModalOpen(true)}
+                  className="px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs rounded-lg shadow transition-colors flex items-center gap-2 shrink-0 cursor-pointer"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  <span>Dynamische Fallaufnahme starten</span>
+                </button>
+              </div>
+
               {/* 1. Originaltext */}
               <div className="space-y-2">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
@@ -1083,6 +1102,14 @@ export const OrganonView: React.FC = () => {
         </div>
 
       </div>
+
+      <OrganonDynamicQuestionModal
+        isOpen={isQuestionModalOpen}
+        onClose={() => setIsQuestionModalOpen(false)}
+        rawText={analysisResult?.raw_text || narrationInput}
+        initialMatrices={analysisResult?.complaint_matrices || []}
+        initialRelations={analysisResult?.complaint_relations || []}
+      />
     </div>
   );
 };

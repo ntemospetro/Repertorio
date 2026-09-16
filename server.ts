@@ -1430,23 +1430,78 @@ Antworte AUSSCHLIESSLICH als gültiges JSON-Objekt im folgenden Format (ohne Mar
   }
 }`;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-3.8-flash",
-        contents: prompt,
-        config: {
-          temperature: 0.2,
-          responseMimeType: "application/json",
-        },
-      });
+      let response;
+      try {
+        response = await ai.models.generateContent({
+          model: "gemini-3.5-flash-lite",
+          contents: prompt,
+          config: {
+            temperature: 0.2,
+            responseMimeType: "application/json",
+          },
+        });
+      } catch (primaryErr: any) {
+        console.warn("Primary model failed in analyze, trying fallback model:", primaryErr);
+        response = await ai.models.generateContent({
+          model: "gemini-flash-latest",
+          contents: prompt,
+          config: {
+            temperature: 0.2,
+            responseMimeType: "application/json",
+          },
+        });
+      }
 
       const responseText = response.text || "{}";
-      let parsed;
-      try {
-        parsed = JSON.parse(responseText);
-      } catch (e) {
-        const cleaned = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
-        parsed = JSON.parse(cleaned);
-      }
+      const defaultAnalysis = {
+        semantic_events: [],
+        semantic_relations: [],
+        open_slots: [],
+        source_spans: [],
+        entities: [],
+        uncertainties: [],
+        claims: [],
+        temporal_bindings: [],
+        symptom_states: [],
+        corrections: [],
+        contradictions: [],
+        next_question: {
+          question_id: "q_fallback_1",
+          text: "Bitte beschreiben Sie genauer, wie sich die Beschwerden anfühlen und welche Modalitäten (Wetter, Tageszeit, Bewegung) sie beeinflussen.",
+          reason: "Erfassung der Modalitäten nach Hahnemann."
+        },
+        validation: { is_valid: true, is_complete: false, blocking_issues: [], warnings: [] },
+        hahnemann_analysis: {
+          analysis_status: 'INCOMPLETE',
+          characteristic_features: [],
+          general_features: [],
+          modalities: [],
+          concomitants: [],
+          course_features: [],
+          missing_information: [],
+          organon_references: []
+        },
+        selection_for_remedy_analysis: {
+          status: 'READY',
+          selected_features: [],
+          excluded_features: [],
+          blocking_reasons: []
+        },
+        remedy_retrieval: {
+          status: 'READY',
+          feature_queries: [],
+          repertory_matches: [],
+          materia_medica_matches: [],
+          warnings: []
+        },
+        repertory_scoring: {
+          status: 'READY',
+          feature_weights: [],
+          remedy_scores: [],
+          warnings: []
+        }
+      };
+      const parsed = parseAiJson(responseText, defaultAnalysis);
 
       // Global Validators & Provenance checks
       const validation = parsed.validation || { is_valid: true, is_complete: true, blocking_issues: [], warnings: [] };
@@ -1752,6 +1807,109 @@ Antworte AUSSCHLIESSLICH als gültiges JSON-Objekt im folgenden Format (ohne Mar
       res.status(500).json({
         error: "Failed to analyze organon text.",
         details: error?.message || String(error)
+      });
+    }
+  });
+
+  app.post("/api/organon/next-question", async (req, res) => {
+    try {
+      const { rawText, currentMatrices = [], currentRelations = [], questionHistory = [], latestAnswer = null, currentQuestion = null } = req.body;
+      const apiKey = getGeminiApiKey();
+      if (!apiKey) {
+        return res.status(503).json({ error: "GEMINI_API_KEY is not configured" });
+      }
+      const ai = new GoogleGenAI({ apiKey });
+
+      const prompt = `Du bist die homöopathische Fallaufnahme-Frageengine nach Hahnemann und Bönninghausen.
+Originaler O-Ton des Patienten: "${rawText}"
+Bisherige Beschwerdematrizen: ${JSON.stringify(currentMatrices)}
+Bisherige zeitliche Relationen: ${JSON.stringify(currentRelations)}
+Fragehistorie: ${JSON.stringify(questionHistory)}
+Neueste gestellte Frage: "${currentQuestion || 'Initial'}"
+Neueste Patientenantwort: "${latestAnswer || 'Initialer Einstieg'}"
+
+AUFGABE:
+1. Verarbeite die neueste Patientenantwort semantisch (Multi-Information-Extraktion: Wenn der Patient z.B. auf eine Lokalisationsfrage freiwillig auch Sensation und Modalität nennt, aktualisiere alle diese Felder in der entsprechenden Beschwerdematrix).
+2. Aktualisiere und präzisiere die Beschwerdematrizen ("updatedMatrices") und zeitlichen Relationen ("updatedRelations"). Beachte streng: Keine unzulässigen Kausalitätsannahmen, chronische Beschwerden bleiben getrennt, Vermutungen bleiben "PATIENT_SUSPECTED", verneinte Dinge bleiben "DENIED", nicht getestete Dinge bleiben "NOT_PERFORMED" / "UNKNOWN".
+3. Bestimme, ob der Fall für diese strukturierte Aufnahmephase ausreichend geklärt ist ("isFinished": true oder false).
+4. Falls nicht fertig, bestimme **genau eine nächste einzelne Frage** ("nextQuestion") nach dem Ein-Frage-Prinzip, welche die wichtigste verbleibende Unklarheit, Lücke oder den wichtigsten offenen Punkt für die akute oder wichtigste Beschwerde klärt.
+
+Antworte AUSSCHLIESSLICH als gültiges JSON-Objekt ohne Markdown Code-Blöcke:
+{
+  "updatedMatrices": [ ... ],
+  "updatedRelations": [ ... ],
+  "nextQuestion": {
+    "question_id": "q_next_1",
+    "text": "Genau eine einzelne Frage an den Patienten",
+    "target_complaint_id": "comp_1",
+    "target_field": "causa",
+    "reason": "Begründung, warum diese Frage als nächstes wichtig ist"
+  },
+  "isFinished": false,
+  "summary": "Kurze Zusammenfassung, was durch die Antwort aktualisiert wurde"
+}
+`;
+
+      let response;
+      try {
+        response = await ai.models.generateContent({
+          model: "gemini-3.5-flash-lite",
+          contents: prompt,
+          config: {
+            temperature: 0.2,
+            responseMimeType: "application/json",
+          },
+        });
+      } catch (primaryErr: any) {
+        console.warn("Primary model failed, trying fallback model:", primaryErr);
+        response = await ai.models.generateContent({
+          model: "gemini-flash-latest",
+          contents: prompt,
+          config: {
+            temperature: 0.2,
+            responseMimeType: "application/json",
+          },
+        });
+      }
+
+      const responseText = response.text || "{}";
+      const defaultNext = {
+        updatedMatrices: currentMatrices,
+        updatedRelations: currentRelations,
+        nextQuestion: {
+          question_id: "q_fallback_1",
+          text: "Wann genau traten die Beschwerden auf und wodurch werden sie gebessert oder verschlechtert?",
+          reason: "Erfassung der Begleitumstände und Modalitäten nach Organon."
+        },
+        isFinished: false,
+        summary: 'Matrix aktualisiert'
+      };
+      const parsed = parseAiJson(responseText, defaultNext);
+
+      res.json({
+        updatedMatrices: parsed.updatedMatrices || currentMatrices,
+        updatedRelations: parsed.updatedRelations || currentRelations,
+        nextQuestion: parsed.nextQuestion || {
+          question_id: "q_fallback_1",
+          text: "Wann genau traten die Beschwerden auf und wodurch werden sie gebessert oder verschlechtert?",
+          reason: "Erfassung der Begleitumstände und Modalitäten nach Organon."
+        },
+        isFinished: parsed.isFinished || false,
+        summary: parsed.summary || 'Matrix aktualisiert'
+      });
+    } catch (err: any) {
+      console.error("Error in /api/organon/next-question:", err);
+      // Return a graceful fallback instead of hard 500 error so user can continue their workflow
+      res.json({
+        updatedMatrices: req.body.currentMatrices || [],
+        updatedRelations: req.body.currentRelations || [],
+        nextQuestion: {
+          question_id: "q_fallback_error",
+          text: "Können Sie die Modalitäten (Verschlimmerung/Besserung durch Wärme, Kälte, Bewegung etc.) näher beschreiben?",
+          reason: "Automatischer Fallback bei hoher Serverlast."
+        },
+        isFinished: false,
+        summary: "Hinweis: Aufgrund hoher Serverlast wurde ein Standard-Frageimpuls geladen. Sie können fortfahren."
       });
     }
   });
@@ -2099,6 +2257,37 @@ oder
         } catch {}
       }
       return null;
+    }
+  }
+
+  function parseAiJson(text: string, fallbackObj: any): any {
+    if (!text) return fallbackObj;
+    let clean = text.trim();
+    const jsonMatch = clean.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+    if (jsonMatch) {
+      clean = jsonMatch[1].trim();
+    }
+    try {
+      return JSON.parse(clean);
+    } catch (e1) {
+      try {
+        const fixed = clean.replace(/,\s*([}\]])/g, '$1');
+        return JSON.parse(fixed);
+      } catch (e2) {
+        const firstBrace = clean.indexOf('{');
+        const lastBrace = clean.lastIndexOf('}');
+        if (firstBrace !== -1 && lastBrace > firstBrace) {
+          try {
+            const sub = clean.substring(firstBrace, lastBrace + 1);
+            return JSON.parse(sub.replace(/,\s*([}\]])/g, '$1'));
+          } catch (e3) {
+            console.error("Failed to parse AI JSON response. Raw text snippet:", clean.substring(0, 300));
+            return fallbackObj;
+          }
+        }
+        console.error("Failed to parse AI JSON response. Raw text snippet:", clean.substring(0, 300));
+        return fallbackObj;
+      }
     }
   }
 
