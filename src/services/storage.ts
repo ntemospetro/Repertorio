@@ -146,8 +146,12 @@ export function saveRegistrationTrialTranslations(translations: RegistrationTria
 }
 
 export function getLocalizedRegistrationTrial(lang: LanguageCode): RegistrationTrialConfig {
-  const translations = getRegistrationTrialTranslations();
-  return translations[lang] || translations['de'];
+  try {
+    const translations = getRegistrationTrialTranslations();
+    return translations?.[lang] || translations?.['de'] || DEFAULT_REG_TRIAL[lang] || DEFAULT_REG_TRIAL['de'];
+  } catch {
+    return DEFAULT_REG_TRIAL[lang] || DEFAULT_REG_TRIAL['de'];
+  }
 }
 
 // Free Trial Quota Configuration (Analyses, Tokens, or Whichever is First)

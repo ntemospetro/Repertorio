@@ -1358,6 +1358,349 @@ SPRACHE: Alle Fragen, Optionen und Zusammenfassungen in {$targetLanguageName} fo
 }
 
 // =========================================================================
+// ROUTE: ORGANON SEMANTISCHE ANALYSE (/api/organon/analyze)
+// =========================================================================
+if ($route === 'organon/analyze' || $route === 'api/organon/analyze') {
+    $rawText = isset($body['rawText']) ? trim($body['rawText']) : '';
+    $language = isset($body['language']) ? $body['language'] : 'de';
+
+    if (empty($rawText)) {
+        http_response_code(400);
+        echo json_encode(['error' => 'rawText is required']);
+        exit;
+    }
+
+    $apiKey = getGeminiKey();
+    
+    // Default fallback structure
+    $defaultAnalysis = [
+        'raw_text' => $rawText,
+        'semantic_events' => [
+            [
+                'event_id' => 'ev_1',
+                'actor' => 'Patient',
+                'action' => 'Bericht',
+                'event_type' => 'ACTION',
+                'time' => 'UNKNOWN',
+                'location' => 'UNKNOWN',
+                'duration' => 'UNKNOWN',
+                'attributes' => (object)[],
+                'evidence_span_ids' => ['span_1'],
+                'status' => 'CONFIRMED'
+            ]
+        ],
+        'semantic_relations' => [],
+        'open_slots' => [
+            [
+                'slot_id' => 'slot_1',
+                'related_id' => 'comp_1',
+                'field' => 'location',
+                'importance' => 'HIGH',
+                'status' => 'OPEN',
+                'suggested_question' => 'Wo genau spüren Sie das Beschriebene?'
+            ]
+        ],
+        'source_spans' => [
+            [
+                'span_id' => 'span_1',
+                'exact_text' => $rawText,
+                'type' => 'COMPLAINT'
+            ]
+        ],
+        'entities' => [
+            [
+                'entity_id' => 'ent_1',
+                'patient_label' => $rawText,
+                'status' => 'CONFIRMED',
+                'evidence_span_ids' => ['span_1']
+            ]
+        ],
+        'uncertainties' => [],
+        'claims' => [
+            [
+                'claim_id' => 'claim_1',
+                'subject_entity_id' => 'ent_1',
+                'attribute' => 'presence',
+                'value' => 'present',
+                'status' => 'CONFIRMED',
+                'evidence_span_ids' => ['span_1']
+            ]
+        ],
+        'temporal_bindings' => [],
+        'symptom_states' => [
+            [
+                'state_id' => 'state_1',
+                'subject_entity_id' => 'ent_1',
+                'presence' => 'PRESENT',
+                'intensity_text' => 'UNKNOWN',
+                'time_expression' => 'UNKNOWN',
+                'source_claim_ids' => ['claim_1'],
+                'source_temporal_binding_ids' => [],
+                'status' => 'CONFIRMED'
+            ]
+        ],
+        'corrections' => [],
+        'contradictions' => [],
+        'next_question' => [
+            'question_id' => 'q_1',
+            'text' => 'Bitte beschreiben Sie genauer, wie sich die Beschwerden anfühlen und welche Modalitäten (Wärme, Kälte, Bewegung) sie beeinflussen.',
+            'reason_code' => 'ORGANON_MODALITY',
+            'related_entity_id' => 'ent_1',
+            'related_claim_ids' => ['claim_1'],
+            'related_contradiction_id' => null,
+            'status' => 'OPEN'
+        ],
+        'validation' => [
+            'is_valid' => true,
+            'is_complete' => false,
+            'blocking_issues' => [],
+            'warnings' => []
+        ],
+        'hahnemann_analysis' => [
+            'analysis_status' => 'INCOMPLETE',
+            'characteristic_features' => [],
+            'general_features' => [],
+            'modalities' => [],
+            'concomitants' => [],
+            'course_features' => [],
+            'missing_information' => ['Location', 'Sensation', 'Modalities'],
+            'organon_references' => ['§§83–104', '§84']
+        ],
+        'selection_for_remedy_analysis' => [
+            'status' => 'READY',
+            'selected_features' => [],
+            'excluded_features' => [],
+            'blocking_reasons' => []
+        ],
+        'remedy_retrieval' => [
+            'status' => 'READY',
+            'feature_queries' => [],
+            'repertory_matches' => [],
+            'materia_medica_matches' => [],
+            'warnings' => []
+        ],
+        'repertory_scoring' => [
+            'status' => 'READY',
+            'feature_weights' => [],
+            'remedy_scores' => [],
+            'warnings' => []
+        ],
+        'complaint_matrices' => [
+            [
+                'complaint_id' => 'comp_1',
+                'patient_label' => $rawText,
+                'temporal_status' => 'NEW_CURRENT',
+                'complaint_type' => 'INDEX_COMPLAINT',
+                'onset' => 'aktuell',
+                'duration' => 'vorliegend',
+                'course' => 'akut',
+                'causa' => null,
+                'location' => null,
+                'sensation' => null,
+                'modalities' => [],
+                'concomitants' => [],
+                'mind' => null,
+                'intensity' => null,
+                'frequency' => null,
+                'negations' => [],
+                'uncertainties' => [],
+                'relation_to_current_episode' => 'INDEX',
+                'evidence_span_ids' => ['span_1']
+            ]
+        ],
+        'complaint_relations' => []
+    ];
+
+    if (!empty($apiKey)) {
+        $escapedText = addcslashes($rawText, '"\\');
+        $prompt = "Du bist ein präziser NLP- und Text-Parser für homöopathische Fallschilderungen im Organon-Testbetrieb nach Hahnemann (§§ 83-104).
+Deine Aufgabe ist es, den übergebenen Patiententext sprachlich und semantisch tief zu zerlegen.
+Text: \"{$escapedText}\"
+
+Antworte AUSSCHLIESSLICH als gültiges JSON-Objekt ohne Markdown:
+{
+  \"raw_text\": \"{$escapedText}\",
+  \"complaint_matrices\": [
+    {
+      \"complaint_id\": \"comp_1\",
+      \"patient_label\": \"Beschwerdebezeichnung\",
+      \"temporal_status\": \"NEW_CURRENT\",
+      \"complaint_type\": \"INDEX_COMPLAINT\",
+      \"onset\": \"Zeitpunkt\",
+      \"duration\": \"Dauer\",
+      \"course\": \"akut\",
+      \"causa\": null,
+      \"location\": \"Ort\",
+      \"sensation\": \"Empfindung\",
+      \"modalities\": [],
+      \"concomitants\": [],
+      \"mind\": null,
+      \"intensity\": \"Intensität\",
+      \"frequency\": \"Häufigkeit\",
+      \"negations\": [],
+      \"uncertainties\": [],
+      \"relation_to_current_episode\": \"INDEX\",
+      \"evidence_span_ids\": [\"span_1\"]
+    }
+  ],
+  \"complaint_relations\": [],
+  \"semantic_events\": [
+    { \"event_id\": \"ev_1\", \"actor\": \"Patient\", \"action\": \"...\", \"event_type\": \"ACTION\", \"time\": \"UNKNOWN\", \"location\": \"UNKNOWN\", \"duration\": \"UNKNOWN\", \"attributes\": {}, \"evidence_span_ids\": [\"span_1\"], \"status\": \"CONFIRMED\" }
+  ],
+  \"semantic_relations\": [],
+  \"open_slots\": [
+    { \"slot_id\": \"slot_1\", \"related_id\": \"comp_1\", \"field\": \"location\", \"importance\": \"HIGH\", \"status\": \"OPEN\", \"suggested_question\": \"Wo genau spüren Sie das Beschriebene?\" }
+  ],
+  \"source_spans\": [
+    { \"span_id\": \"span_1\", \"exact_text\": \"...\", \"type\": \"COMPLAINT\" }
+  ],
+  \"entities\": [
+    { \"entity_id\": \"ent_1\", \"patient_label\": \"...\", \"status\": \"CONFIRMED\", \"evidence_span_ids\": [\"span_1\"] }
+  ],
+  \"uncertainties\": [],
+  \"claims\": [
+    { \"claim_id\": \"claim_1\", \"subject_entity_id\": \"ent_1\", \"attribute\": \"...\", \"value\": \"...\", \"status\": \"CONFIRMED\", \"evidence_span_ids\": [\"span_1\"] }
+  ],
+  \"temporal_bindings\": [],
+  \"symptom_states\": [
+    { \"state_id\": \"state_1\", \"subject_entity_id\": \"ent_1\", \"presence\": \"PRESENT\", \"intensity_text\": \"...\", \"time_expression\": \"...\", \"source_claim_ids\": [\"claim_1\"], \"source_temporal_binding_ids\": [], \"status\": \"CONFIRMED\" }
+  ],
+  \"corrections\": [],
+  \"contradictions\": [],
+  \"next_question\": {
+    \"question_id\": \"q_1\",
+    \"text\": \"Konkrete nächste Frage\",
+    \"reason_code\": \"ORGANON_MODALITY\",
+    \"related_entity_id\": \"ent_1\",
+    \"related_claim_ids\": [\"claim_1\"],
+    \"related_contradiction_id\": null,
+    \"status\": \"OPEN\"
+  },
+  \"validation\": {
+    \"is_valid\": true,
+    \"is_complete\": false,
+    \"blocking_issues\": [],
+    \"warnings\": []
+  },
+  \"hahnemann_analysis\": {
+    \"analysis_status\": \"READY\",
+    \"characteristic_features\": [],
+    \"general_features\": [],
+    \"modalities\": [],
+    \"concomitants\": [],
+    \"course_features\": [],
+    \"missing_information\": [],
+    \"organon_references\": [\"§§83–104\"]
+  },
+  \"selection_for_remedy_analysis\": {
+    \"status\": \"READY\",
+    \"selected_features\": [],
+    \"excluded_features\": [],
+    \"blocking_reasons\": []
+  },
+  \"remedy_retrieval\": {
+    \"status\": \"READY\",
+    \"feature_queries\": [],
+    \"repertory_matches\": [],
+    \"materia_medica_matches\": [],
+    \"warnings\": []
+  },
+  \"repertory_scoring\": {
+    \"status\": \"READY\",
+    \"feature_weights\": [],
+    \"remedy_scores\": [],
+    \"warnings\": []
+  }
+}";
+
+        $aiRes = callGeminiApi($prompt, false);
+        if ($aiRes) {
+            $parsed = extractJsonFromText($aiRes);
+            if (is_array($parsed) && (isset($parsed['complaint_matrices']) || isset($parsed['entities']) || isset($parsed['raw_text']))) {
+                echo json_encode(array_merge($defaultAnalysis, $parsed), JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+        }
+    }
+
+    echo json_encode($defaultAnalysis, JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+// =========================================================================
+// ROUTE: ORGANON EINZELFRAGEN-DIALOG (/api/organon/next-question)
+// =========================================================================
+if ($route === 'organon/next-question' || $route === 'api/organon/next-question') {
+    $rawText = isset($body['rawText']) ? trim($body['rawText']) : '';
+    $currentMatrices = isset($body['currentMatrices']) && is_array($body['currentMatrices']) ? $body['currentMatrices'] : [];
+    $currentRelations = isset($body['currentRelations']) && is_array($body['currentRelations']) ? $body['currentRelations'] : [];
+    $questionHistory = isset($body['questionHistory']) && is_array($body['questionHistory']) ? $body['questionHistory'] : [];
+    $latestAnswer = isset($body['latestAnswer']) ? trim($body['latestAnswer']) : '';
+    $currentQuestion = isset($body['currentQuestion']) ? trim($body['currentQuestion']) : '';
+
+    $defaultNext = [
+        'updatedMatrices' => $currentMatrices,
+        'updatedRelations' => $currentRelations,
+        'nextQuestion' => [
+            'question_id' => 'q_' . (count($questionHistory) + 1),
+            'text' => 'Wann traten die Beschwerden genau auf und wodurch werden sie gebessert oder verschlechtert?',
+            'reason' => 'Erfassung der Begleitumstände und Modalitäten nach Organon.'
+        ],
+        'isFinished' => false,
+        'summary' => 'Matrix aktualisiert'
+    ];
+
+    $apiKey = getGeminiKey();
+    if (!empty($apiKey)) {
+        $matricesJson = json_encode($currentMatrices, JSON_UNESCAPED_UNICODE);
+        $relationsJson = json_encode($currentRelations, JSON_UNESCAPED_UNICODE);
+        $historyJson = json_encode($questionHistory, JSON_UNESCAPED_UNICODE);
+
+        $prompt = "Du bist der historische homöopathische Anamnese-Assistent nach Hahnemann und Bönninghausen (Organon §§ 83–104).
+Deine Aufgabe ist es, einen dynamischen, schrittweisen Einzelfragen-Dialog auf Grundlage der vorhandenen Symptommatrix zu steuern.
+
+Ursprüngliche Schilderung: \"{$rawText}\"
+Bisherige Frage-Antwort-Historie: {$historyJson}
+Aktuelle Symptommatrizen: {$matricesJson}
+Aktuelle Beschwerderelationen: {$relationsJson}
+Zuletzt gestellte Frage: \"{$currentQuestion}\"
+Letzte Antwort des Patienten: \"{$latestAnswer}\"
+
+REGELN:
+1. Aktualisiere die Matrizen strikt auf Basis der Patientenantwort.
+2. Formuliere GENAU EINE nächste einzelne Frage nach dem Ein-Frage-Prinzip.
+3. Falls alle wesentlichen Aspekte geklärt sind, setze isFinished auf true.
+
+Antworte AUSSCHLIESSLICH als gültiges JSON-Objekt:
+{
+  \"updatedMatrices\": [ ... ],
+  \"updatedRelations\": [ ... ],
+  \"nextQuestion\": {
+    \"question_id\": \"q_next\",
+    \"text\": \"Einzelne Frage\",
+    \"target_complaint_id\": \"comp_1\",
+    \"target_field\": \"modalitaeten\",
+    \"reason\": \"Begründung\"
+  },
+  \"isFinished\": false,
+  \"summary\": \"Zusammenfassung\"
+}";
+
+        $aiRes = callGeminiApi($prompt, false);
+        if ($aiRes) {
+            $parsed = extractJsonFromText($aiRes);
+            if (is_array($parsed) && isset($parsed['nextQuestion'])) {
+                echo json_encode(array_merge($defaultNext, $parsed), JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+        }
+    }
+
+    echo json_encode($defaultNext, JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+// =========================================================================
 // ROUTE 10: 5-SCHRITTE-AKUT-REPERTORISATION (/api/acute-repertorise)
 // =========================================================================
 if ($route === 'acute-repertorise' || $route === 'acute/repertorise') {

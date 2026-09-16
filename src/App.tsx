@@ -33,6 +33,7 @@ import { AdminPanel } from './components/AdminPanel';
 import { AdminLogin } from './components/AdminLogin';
 import { AdminSecurityGate } from './components/AdminSecurityGate';
 import { LandingPage } from './components/LandingPage';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 
 function AppContent() {
@@ -243,10 +244,12 @@ function AppContent() {
 
 export default function App() {
   return (
-    <LanguageProvider>
-      <TerminologyProvider>
-        <AppContent />
-      </TerminologyProvider>
-    </LanguageProvider>
+    <ErrorBoundary>
+      <LanguageProvider>
+        <TerminologyProvider>
+          <AppContent />
+        </TerminologyProvider>
+      </LanguageProvider>
+    </ErrorBoundary>
   );
 }

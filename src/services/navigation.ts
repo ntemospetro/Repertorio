@@ -149,119 +149,138 @@ export function initNavigation(defaultView?: ActiveView): {
   adminTab?: any;
   modal?: string | null;
 } {
-  if (typeof window === 'undefined') {
-    return { view: defaultView || 'landing' };
-  }
+  try {
+    if (typeof window === 'undefined') {
+      return { view: defaultView || 'landing' };
+    }
 
-  // Read initial from hash or storage
-  const parsed = parseHash(window.location.hash);
-  const initialView = parsed.view || defaultView || getStoredActiveView();
-  const initialTherapistTab = parsed.therapistTab || (initialView === 'therapist' ? getStoredTherapistTab() : undefined);
-  const initialAdminTab = parsed.adminTab || (initialView === 'admin' ? getStoredAdminTab() : undefined);
-  const initialModal = parsed.modal;
+    // Read initial from hash or storage
+    const parsed = parseHash(window.location.hash || '');
+    const initialView = parsed.view || defaultView || getStoredActiveView();
+    const initialTherapistTab = parsed.therapistTab || (initialView === 'therapist' ? getStoredTherapistTab() : undefined);
+    const initialAdminTab = parsed.adminTab || (initialView === 'admin' ? getStoredAdminTab() : undefined);
+    const initialModal = parsed.modal;
 
-  const targetHash = buildHash(initialView, initialTherapistTab, initialAdminTab, initialModal);
+    const targetHash = buildHash(initialView, initialTherapistTab, initialAdminTab, initialModal);
 
-  const existingState = window.history.state as AppNavigationState | null;
+    try {
+      const existingState = window.history.state as AppNavigationState | null;
 
-  if (!existingState || existingState.app !== 'homeopilot') {
-    // 1. Establish sentinel anchor at index 0 (same origin, catches root Back press)
-    const sentinelState: AppNavigationState = {
-      app: 'homeopilot',
-      index: 0,
-      isSentinel: true,
-      view: initialView,
-      therapistTab: initialTherapistTab,
-      adminTab: initialAdminTab,
-      modal: null,
-    };
-    window.history.replaceState(sentinelState, '', targetHash);
+      if (!existingState || existingState.app !== 'homeopilot') {
+        // 1. Establish sentinel anchor at index 0 (same origin, catches root Back press)
+        const sentinelState: AppNavigationState = {
+          app: 'homeopilot',
+          index: 0,
+          isSentinel: true,
+          view: initialView,
+          therapistTab: initialTherapistTab,
+          adminTab: initialAdminTab,
+          modal: null,
+        };
+        window.history.replaceState(sentinelState, '', targetHash);
 
-    // 2. Push active working state at index 1
-    currentIndex = 1;
-    const activeState: AppNavigationState = {
-      app: 'homeopilot',
-      index: 1,
+        // 2. Push active working state at index 1
+        currentIndex = 1;
+        const activeState: AppNavigationState = {
+          app: 'homeopilot',
+          index: 1,
+          view: initialView,
+          therapistTab: initialTherapistTab,
+          adminTab: initialAdminTab,
+          modal: initialModal,
+        };
+        window.history.pushState(activeState, '', targetHash);
+      } else {
+        currentIndex = existingState.index || 1;
+      }
+    } catch (histErr) {
+      console.warn('[Navigation] History state API restricted in iframe:', histErr);
+    }
+
+    if (!isInitialized) {
+      isInitialized = true;
+
+      // Listen to browser popstate (Back & Forward buttons)
+      window.addEventListener('popstate', (event) => {
+        try {
+          const state = event.state as AppNavigationState | null;
+
+          // Check if user hit the sentinel (index <= 0) or exited app history
+          if (!state || state.app !== 'homeopilot' || state.index <= 0 || state.isSentinel) {
+            const currentHashParsed = parseHash(window.location.hash || '');
+            const safeView = currentHashParsed.view || initialView;
+            const safeTherapistTab = currentHashParsed.therapistTab || (safeView === 'therapist' ? getStoredTherapistTab() : undefined);
+            const safeAdminTab = currentHashParsed.adminTab || (safeView === 'admin' ? getStoredAdminTab() : undefined);
+            const safeHash = buildHash(safeView, safeTherapistTab, safeAdminTab);
+
+            currentIndex = 1;
+            const restoredState: AppNavigationState = {
+              app: 'homeopilot',
+              index: 1,
+              view: safeView,
+              therapistTab: safeTherapistTab,
+              adminTab: safeAdminTab,
+              modal: null,
+            };
+            try {
+              window.history.pushState(restoredState, '', safeHash);
+            } catch {}
+
+            dispatchNavigationEvents({
+              view: safeView,
+              therapistTab: safeTherapistTab,
+              adminTab: safeAdminTab,
+              modal: null,
+            });
+            return;
+          }
+
+          // Normal in-app Back or Forward navigation
+          currentIndex = state.index;
+          isInternalNavigation = true;
+
+          dispatchNavigationEvents({
+            view: state.view,
+            therapistTab: state.therapistTab,
+            adminTab: state.adminTab,
+            modal: state.modal || null,
+          });
+
+          isInternalNavigation = false;
+        } catch (e) {
+          console.warn('[Navigation] Popstate error handled:', e);
+        }
+      });
+
+      // Also listen to hashchange if user manually edits URL
+      window.addEventListener('hashchange', () => {
+        try {
+          if (isInternalNavigation) return;
+          const current = parseHash(window.location.hash || '');
+          navigateTo(current.view, {
+            therapistTab: current.therapistTab,
+            adminTab: current.adminTab,
+            modal: current.modal,
+            replace: true,
+          });
+        } catch (e) {
+          console.warn('[Navigation] Hashchange error handled:', e);
+        }
+      });
+    }
+
+    return {
       view: initialView,
       therapistTab: initialTherapistTab,
       adminTab: initialAdminTab,
       modal: initialModal,
     };
-    window.history.pushState(activeState, '', targetHash);
-  } else {
-    currentIndex = existingState.index || 1;
+  } catch (outerErr) {
+    console.warn('[Navigation] initNavigation fallback applied:', outerErr);
+    return {
+      view: defaultView || 'landing'
+    };
   }
-
-  if (!isInitialized) {
-    isInitialized = true;
-
-    // Listen to browser popstate (Back & Forward buttons)
-    window.addEventListener('popstate', (event) => {
-      const state = event.state as AppNavigationState | null;
-
-      // Check if user hit the sentinel (index <= 0) or exited app history
-      if (!state || state.app !== 'homeopilot' || state.index <= 0 || state.isSentinel) {
-        // User clicked Back at the root of the app:
-        // PREVENT LEAVING THE APP! Re-anchor securely on current view
-        const currentHashParsed = parseHash(window.location.hash);
-        const safeView = currentHashParsed.view || initialView;
-        const safeTherapistTab = currentHashParsed.therapistTab || (safeView === 'therapist' ? getStoredTherapistTab() : undefined);
-        const safeAdminTab = currentHashParsed.adminTab || (safeView === 'admin' ? getStoredAdminTab() : undefined);
-        const safeHash = buildHash(safeView, safeTherapistTab, safeAdminTab);
-
-        currentIndex = 1;
-        const restoredState: AppNavigationState = {
-          app: 'homeopilot',
-          index: 1,
-          view: safeView,
-          therapistTab: safeTherapistTab,
-          adminTab: safeAdminTab,
-          modal: null,
-        };
-        window.history.pushState(restoredState, '', safeHash);
-
-        dispatchNavigationEvents({
-          view: safeView,
-          therapistTab: safeTherapistTab,
-          adminTab: safeAdminTab,
-          modal: null,
-        });
-        return;
-      }
-
-      // Normal in-app Back or Forward navigation
-      currentIndex = state.index;
-      isInternalNavigation = true;
-
-      dispatchNavigationEvents({
-        view: state.view,
-        therapistTab: state.therapistTab,
-        adminTab: state.adminTab,
-        modal: state.modal || null,
-      });
-
-      isInternalNavigation = false;
-    });
-
-    // Also listen to hashchange if user manually edits URL
-    window.addEventListener('hashchange', () => {
-      if (isInternalNavigation) return;
-      const current = parseHash(window.location.hash);
-      navigateTo(current.view, {
-        therapistTab: current.therapistTab,
-        adminTab: current.adminTab,
-        modal: current.modal,
-        replace: true,
-      });
-    });
-  }
-
-  return {
-    view: initialView,
-    therapistTab: initialTherapistTab,
-    adminTab: initialAdminTab,
-    modal: initialModal,
-  };
 }
 
 /**
@@ -295,27 +314,31 @@ export function navigateTo(
     return;
   }
 
-  if (options?.replace) {
-    const state: AppNavigationState = {
-      app: 'homeopilot',
-      index: currentIndex,
-      view,
-      therapistTab: targetTherapistTab,
-      adminTab: targetAdminTab,
-      modal: targetModal,
-    };
-    window.history.replaceState(state, '', targetHash);
-  } else {
-    currentIndex += 1;
-    const state: AppNavigationState = {
-      app: 'homeopilot',
-      index: currentIndex,
-      view,
-      therapistTab: targetTherapistTab,
-      adminTab: targetAdminTab,
-      modal: targetModal,
-    };
-    window.history.pushState(state, '', targetHash);
+  try {
+    if (options?.replace) {
+      const state: AppNavigationState = {
+        app: 'homeopilot',
+        index: currentIndex,
+        view,
+        therapistTab: targetTherapistTab,
+        adminTab: targetAdminTab,
+        modal: targetModal,
+      };
+      window.history.replaceState(state, '', targetHash);
+    } else {
+      currentIndex += 1;
+      const state: AppNavigationState = {
+        app: 'homeopilot',
+        index: currentIndex,
+        view,
+        therapistTab: targetTherapistTab,
+        adminTab: targetAdminTab,
+        modal: targetModal,
+      };
+      window.history.pushState(state, '', targetHash);
+    }
+  } catch (err) {
+    console.warn('[Navigation] History modification restricted:', err);
   }
 
   dispatchNavigationEvents({
