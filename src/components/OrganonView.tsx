@@ -154,13 +154,16 @@ export const OrganonView: React.FC = () => {
         setCompareResult(result);
         setAnalysisResult((result as any).gemini);
         fetchArbitration((result as any).gemini, (result as any).openai);
+        setActiveTab('arbitrator');
+        setDebugStatus('Gemini & GPT Auswertungen beendet. Strenger Belegprüfer startet Berechnung...');
       } else {
         const fallbackRes = result as OrganonAiAnalysisResult;
         setCompareResult({ engine: 'compare', gemini: fallbackRes, openai: fallbackRes });
         setAnalysisResult(fallbackRes);
         fetchArbitration(fallbackRes, fallbackRes);
+        setActiveTab('arbitrator');
+        setDebugStatus('Auswertung beendet. Strenger Belegprüfer startet Berechnung...');
       }
-      setDebugStatus('Analyse erfolgreich abgeschlossen.');
     } catch (err: any) {
       setErrorMessage(err.message || 'Fehler bei der KI-Analyse');
       setDebugStatus('Fehler aufgetreten.');
