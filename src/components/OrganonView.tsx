@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { analyzeOrganonText, OrganonAiAnalysisResult } from '../services/organonAiService';
 import { OrganonDynamicQuestionModal } from './OrganonDynamicQuestionModal';
+import { useTranslation } from '../i18n/LanguageContext';
 import { 
   Activity, 
   FileText, 
@@ -12,7 +13,9 @@ import {
   Send,
   Layers,
   Clock,
-  MessageSquare
+  MessageSquare,
+  Mic,
+  Square
 } from 'lucide-react';
 
 // Compatibility types for unused legacy organonPipeline.ts
@@ -67,6 +70,7 @@ const safeJoin = (arr: any, separator: string = ', '): string => {
 };
 
 export const OrganonView: React.FC = () => {
+  const { t, language } = useTranslation();
   const [narrationInput, setNarrationInput] = useState<string>('');
   const [analysisResult, setAnalysisResult] = useState<OrganonAiAnalysisResult | null>(null);
   const [compareResult, setCompareResult] = useState<any | null>(null);
@@ -81,6 +85,72 @@ export const OrganonView: React.FC = () => {
   const [isArbitrating, setIsArbitrating] = useState<boolean>(false);
   const [isCorrectingSpelling, setIsCorrectingSpelling] = useState<boolean>(false);
   const [originalNarrationInput, setOriginalNarrationInput] = useState<string>('');
+  const [isRecording, setIsRecording] = useState<boolean>(false);
+  const [recognitionInstance, setRecognitionInstance] = useState<any>(null);
+
+  const handleToggleRecording = () => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert(t('organonSpeechNotSupported'));
+      return;
+    }
+
+    if (isRecording && recognitionInstance) {
+      try {
+        recognitionInstance.stop();
+      } catch {}
+      setIsRecording(false);
+      setRecognitionInstance(null);
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+
+      const langMap: Record<string, string> = {
+        de: 'de-DE',
+        en: 'en-US',
+        fr: 'fr-FR',
+        el: 'el-GR',
+        it: 'it-IT',
+        ru: 'ru-RU',
+        es: 'es-ES',
+      };
+      recognition.lang = langMap[language] || 'de-DE';
+
+      recognition.onstart = () => {
+        setIsRecording(true);
+      };
+
+      recognition.onresult = (event: any) => {
+        let transcript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript;
+        }
+        setNarrationInput(prev => (prev ? prev + ' ' + transcript : transcript));
+      };
+
+      recognition.onerror = (event: any) => {
+        console.error('Speech recognition error', event.error);
+        setIsRecording(false);
+        setRecognitionInstance(null);
+      };
+
+      recognition.onend = () => {
+        setIsRecording(false);
+        setRecognitionInstance(null);
+      };
+
+      recognition.start();
+      setRecognitionInstance(recognition);
+    } catch (e: any) {
+      console.error('Failed to start speech recognition:', e);
+      alert(t('organonSpeechNotSupported'));
+      setIsRecording(false);
+    }
+  };
 
   const handleCorrectSpelling = async () => {
     if (!narrationInput.trim() || isCorrectingSpelling) return;
@@ -435,12 +505,35 @@ export const OrganonView: React.FC = () => {
         <div>
           <div className="flex items-center gap-2">
             <span className="px-2.5 py-0.5 rounded-full bg-teal-100 text-teal-800 text-xs font-bold tracking-wide uppercase">
-              ORGANON TESTBETRIEB
+              {t('organonTestbetriebBadge')}
             </span>
-            <span className="text-xs text-slate-400 font-mono">gemini-3.8-flash AI Pipeline</span>
+            <span className="text-xs text-slate-400 font-mono">{t('organonPipelineLabel')}</span>
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 mt-1">Organon KI-Zerlegung</h1>
-          <p className="text-sm text-slate-500">Testbetrieb für Textzerlegung, Spans, Entities, Claims & Temporal Bindings</p>
+          <h1 className="text-2xl font-bold text-slate-900 mt-1">{t('organonHeaderTitle')}</h1>
+          <p className="text-sm text-slate-500">{t('organonHeaderSubtitle')}</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={handleToggleRecording}
+            className={`px-4 py-2.5 rounded-xl text-xs font-semibold shadow-xs transition-all flex items-center gap-2 cursor-pointer ${
+              isRecording 
+                ? 'bg-rose-600 hover:bg-rose-700 text-white animate-pulse' 
+                : 'bg-teal-700 hover:bg-teal-800 text-white'
+            }`}
+          >
+            {isRecording ? (
+              <>
+                <Square className="w-4 h-4 fill-current" />
+                <span>{t('organonStopRecording')}</span>
+              </>
+            ) : (
+              <>
+                <Mic className="w-4 h-4" />
+                <span>{t('organonAudioRecordBtn')}</span>
+              </>
+            )}
+          </button>
         </div>
       </div>
 

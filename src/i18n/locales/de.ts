@@ -3250,5 +3250,13 @@ export const de = {
   adminConfigSecurityPinDesc: "Zusätzlicher Schutzwall vor dem Administrator-Login (Standard: 360).",
   anamnesisStepBetter: "Säule 4.1 – WANN: Besserung (> Linderung)",
   anamnesisStepWorse: "Säule 4.2 – WANN: Verschlimmerung (< Verschlechterung)",
-  anamnesisStepPillarCausa: "Säule 3 – WODURCH? (Causa & Auslöser)"
+  anamnesisStepPillarCausa: "Säule 3 – WODURCH? (Causa & Auslöser)",
+  organonHeaderTitle: "Organon KI-Zerlegung",
+  organonHeaderSubtitle: "Testbetrieb für Textzerlegung, Spans, Entities, Claims & Temporal Bindings",
+  organonTestbetriebBadge: "ORGANON TESTBETRIEB",
+  organonPipelineLabel: "gemini-3.8-flash AI Pipeline",
+  organonAudioRecordBtn: "Sprachaufnahme / Diktieren",
+  organonRecordingActive: "Aufnahme läuft... (Sprechen Sie)",
+  organonStopRecording: "Aufnahme stoppen",
+  organonSpeechNotSupported: "Spracherkennung wird von Ihrem Browser nicht unterstützt."
 };

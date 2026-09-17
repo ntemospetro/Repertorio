@@ -3243,5 +3243,13 @@ export const el = {
   adminConfigSecurityPinDesc: "Πρόσθετη πύλη ασφαλείας πριν από τη σύνδεση διαχειριστή (Προεπιλογή: 360).",
   anamnesisStepBetter: "Στήλη 4.1 – ΠΟΤΕ: Βελτίωση (> Ανακούφιση)",
   anamnesisStepWorse: "Στήλη 4.2 – ΠΟΤΕ: Επιδείνωση (< Χειροτέρευση)",
-  anamnesisStepPillarCausa: "Στήλη 3 – ΑΠΟ ΤΙ? (Causa & Εκκίνησις)"
+  anamnesisStepPillarCausa: "Στήλη 3 – ΑΠΟ ΤΙ? (Causa & Εκκίνησις)",
+  organonHeaderTitle: "Αποδομητής ΤΝ Organon",
+  organonHeaderSubtitle: "Λειτουργία δοκιμής για αποδόμηση κειμένου, spans, entities, claims & temporal bindings",
+  organonTestbetriebBadge: "ΔΟΚΙΜΑΣΤΙΚΗ ΛΕΙΤΟΥΡΓΙΑ ORGANON",
+  organonPipelineLabel: "gemini-3.8-flash AI Pipeline",
+  organonAudioRecordBtn: "Ηχογράφηση / Υγόρευση",
+  organonRecordingActive: "Ηχογράφηση σε εξέλιξη... (Μιλήστε)",
+  organonStopRecording: "Διακοπή ηχογράφησης",
+  organonSpeechNotSupported: "Η αναγνώριση ομιλίας δεν υποστηρίζεται από το πρόγραμμα περιήγησής σας."
 };
