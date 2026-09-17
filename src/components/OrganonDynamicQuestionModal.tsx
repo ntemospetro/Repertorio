@@ -232,9 +232,9 @@ export const OrganonDynamicQuestionModal: React.FC<OrganonDynamicQuestionModalPr
                             {comp.causa && <span className="px-2 py-0.5 rounded bg-white border border-teal-100 text-teal-900"><b>Causa:</b> {comp.causa}</span>}
                           </div>
 
-                          {comp.modalities && comp.modalities.length > 0 && (
+                          {comp.modalities && (Array.isArray(comp.modalities) ? comp.modalities.length > 0 : Boolean(comp.modalities)) && (
                             <div className="text-[11px] text-slate-700 bg-white/60 p-2 rounded border border-teal-100/50">
-                              <b>Modalitäten:</b> {comp.modalities.join(', ')}
+                              <b>Modalitäten:</b> {Array.isArray(comp.modalities) ? comp.modalities.filter(Boolean).join(', ') : String(comp.modalities)}
                             </div>
                           )}
                         </div>

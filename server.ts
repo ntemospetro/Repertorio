@@ -1188,271 +1188,131 @@ Antworte AUSSCHLIESSLICH mit einem validen JSON-Objekt im folgenden Format (ohne
 
   app.post("/api/organon/analyze", async (req, res) => {
     try {
-      const { rawText, language = "de" } = req.body;
+      const { rawText, language = "de", engine = "gemini", compare = false } = req.body;
       if (!rawText || typeof rawText !== "string") {
         return res.status(400).json({ error: "rawText is required" });
       }
-      const apiKey = getGeminiApiKey();
-      if (!apiKey) {
-        return res.status(503).json({ error: "GEMINI_API_KEY is not configured" });
-      }
-      const ai = new GoogleGenAI({ apiKey });
 
-      const prompt = `Du bist ein präziser NLP- und Text-Parser für homöopathische Fallschilderungen im Organon-Testbetrieb. 
-Deine Aufgabe ist es, den übergebenen Patiententext sprachlich und semantisch tief zu zerlegen. Patientenaussagen dürfen niemals direkt in medizinische Claims übersetzt werden. Wende konsequent eine allgemeine semantische Analysearchitektur an.
+      const prompt = `Du bist ein präziser NLP- und Text-Parser für homöopathische Fallschilderungen nach Samuel Hahnemann.
+Deine Aufgabe ist es, den Patiententext in einer 3-Stufen-Analyse nach folgenden 10 exakten Kategorien zu analysieren:
+1. Causa (Wodurch ausgelöst? Wichtig: Unterscheide streng zwischen bloßen Handlungen/zeitlichem Kontext [z.B. "zur Schule laufen"] und echten Auslösern. Wenn kein ursächliches Ereignis als Auslöser genannt ist, erwähne dies nicht als Causa bzw. kennzeichne es als keine Causa.)
+2. Localisatio (Wo?)
+3. Sensatio (Wie fühlt es sich an?)
+4. Symptoma (Was?)
+5. Modalitates – Besserung (Wann besser?)
+6. Modalitates – Verschlechterung (Wann schlechter?)
+7. Symptomata concomitantia (Was tritt dazu auf?)
+8. Comorbiditas (Welche weiteren Erkrankungen?)
+9. Mens (Was verändert sich beim Denken?)
+10. Animus (Wie geht es dir emotional?)
 
-VERARBEITUNGS-REIHENFOLGE:
-1. Sprachliche Zerlegung & atomare Propositionen (jeder Satz in kleinste überprüfbare Bedeutungen teilen).
-2. Semantische Objekttypen bestimmen (PERSON, ACTION, EVENT, STATE, SYMPTOM, SIGN, LOCATION, TIME, CONDITION, INTERVENTION, OBSERVATION, PATIENT_INTERPRETATION, SYSTEM_INFERENCE). EVENT != SYMPTOM, ACTION != MODALITY.
-3. Semantische Rollen & Attribute trennen (wer, was, wo, wann, wie, Dauer, Intensität, Geschwindigkeit, etc. präzise dem tatsächlichen Zielobjekt zuordnen).
-4. Modifier-Scope & Negations-Scope bestimmen (Wörter wie kaum, sehr, stark, nicht wirken nur auf ihr exaktes Zielobjekt).
-5. Unabhängige Dimensionen für Presence, Intensität, Häufigkeit und Sicherheit (CERTAINTY: CERTAIN, UNCERTAIN, SUSPECTED).
-6. Beobachtung vs. Interpretation trennen (DIRECT_OBSERVATION, PATIENT_INTERPRETATION, LINGUISTIC_IMPLICATION).
-7. Zeitachse & Kausalität trennen (BEFORE, AFTER, DURING. Zeitliche Reihenfolge ist niemals automatisch Kausalität. Kausalitätsstatus: UNKNOWN, POSSIBLE, PATIENT_SUSPECTED, PATIENT_CONFIRMED, CONTRADICTED).
-8. Modalität von Ursache trennen (MODALITY_AGGRAVATION / AMELIORATION bei bestehenden Symptomen vs. Ursache).
-9. Evidence Grounding & Gegenprüfung (Doppelprüfung vor jeder Bestätigung: Ist die Bedeutung wirklich im Text? Ist Scope korrekt? Kein Überinterpretieren!).
-10. Offene Informationsslots bestimmen und genau eine nächste Frage nach dem Ein-Frage-Prinzip ableiten.
+WICHTIGE REGEL FÜR ALLE KATEGORIEN: Wenn etwas nicht zutrifft oder keinen Einfluss hat (z.B. Handlungen ohne Krankheitswert, fehlende Modalitäten, fehlende psychische Zustände), dann führe es in der jeweiligen Kategorie gar nicht erst auf, sondern lass es weg ("Keine"). Nenne nur das, was tatsächlich zutrifft.
 
-GRUNDREGELN DER SEMANTISCHEN SCHICHT:
-1. Ein Ereignis ist nicht automatisch ein Symptom. Eine Aktivität ist nicht automatisch eine Modalität. Ein vorheriges Ereignis ist nicht automatisch eine Ursache. Zeitliche Reihenfolge ist keine Kausalität.
-2. "semantic_events": Erfasse alle tatsächlichen Ereignisse oder Aktivitäten mit Attributen (event_id, actor, action, event_type, time, location, duration, attributes, evidence_span_ids, status).
-3. "semantic_relations": Modelliere Beziehungen ausdrücklich (relation_id, source_id, target_id, relation_type [Werte: TEMPORAL_BEFORE, TEMPORAL_AFTER, SIMULTANEOUS, SEQUENCE, CONDITION, MODALITY_AGGRAVATION, MODALITY_AMELIORATION, NO_EFFECT, POSSIBLE_CAUSATION, PATIENT_SUSPECTED_CAUSATION, PATIENT_CONFIRMED_CAUSATION, CONTRADICTED_CAUSATION, UNKNOWN_RELATION], status, evidence_span_ids).
-4. "open_slots": Führe relevante fehlende Informationen als offene Slots (slot_id, related_id, field, importance, status, suggested_question).
-5. "raw_text" muss EXAKT dem eingegebenen Text entsprechen: "${rawText}". Keine Korrektur, keine Zusammenfassung, keine Umschreibung.
-6. "source_spans": Finde exakte Teilstücke (substrings) aus raw_text. Jeder span hat span_id, exact_text, type (COMPLAINT, SENSATION, LOCATION, TEMPORAL, INTENSITY, NEGATION, INTERVENTION, MODALITY, RELATIONSHIP, UNCLEAR, OTHER).
-7. "entities": Beschwerden oder ausdrücklich verneinte Symptome (entity_id, patient_label, status, evidence_span_ids).
-8. "uncertainties": Unklare Ausdrücke und deren Begründung.
-9. "claims": Attribute, Eigenschaften oder Aussagen über eine Entity (claim_id, subject_entity_id, attribute, value, status, evidence_span_ids).
-10. "temporal_bindings": Bindet spezifische Zeitangaben an konkrete Claims.
-11. "symptom_states": Zeitgebundene Symptomzustände.
-12. "corrections" und "contradictions": auditierbare Erfassung.
-13. "next_question": Genau eine nächste Frage nach dem Ein-Frage-Prinzip.
-14. "validation" und "hahnemann_analysis": Hahnemann-konforme Fallanalyse ohne Mittelfindung oder Repertorisation.
-15. "selection_for_remedy_analysis" und Scoring.
-16. "complaint_matrices": Jede erkannte Beschwerde erhält eine eigene Matrix mit getrennter Chronologie (complaint_id, patient_label, temporal_status [NEW_CURRENT, CURRENT_ONGOING, CHRONIC_BASELINE, CHRONIC_CHANGED, RECURRENT, HISTORICAL_RESOLVED, UNKNOWN], complaint_type [INDEX_COMPLAINT, CURRENT_ASSOCIATED_COMPLAINT, CHRONIC_BACKGROUND, HISTORICAL, UNKNOWN], onset, duration, course, causa, location, sensation, modalities, concomitants, mind, intensity, frequency, negations, uncertainties, relation_to_current_episode, evidence_span_ids). Chronische Beschwerden niemals automatisch als akute Begleitsymptome werten!
-17. "complaint_relations": Modelliere zeitliche Beziehungen zwischen Beschwerden ausdrücklich (relation_id, source_complaint_id, target_complaint_id, relation_type [SAME_ONSET, BEFORE, AFTER, DURING, OVERLAPPING, UNRELATED_BY_PATIENT, UNKNOWN], status, evidence_span_ids).
+Erstelle in der Antwort zwingend das Feld "three_stage" mit:
+- "stage1": Array mit allen 10 Kategorien (category_key, category_name, core_question, result_text).
+- "stage2": Array mit Prüfungen von Textstellen (text_snippet, examination, adopted_complaint).
+- "stage3": Objekt mit control_notes und clarification_question.
 
 Antworte AUSSCHLIESSLICH als gültiges JSON-Objekt im folgenden Format (ohne Markdown Code-Blöcke):
 {
-  "raw_text": "${rawText.replace(/"/g, '\\"')}",
-  "complaint_matrices": [
-    {
-      "complaint_id": "comp_1",
-      "patient_label": "Magenschmerzen",
-      "temporal_status": "NEW_CURRENT",
-      "complaint_type": "INDEX_COMPLAINT",
-      "onset": "gestern",
-      "duration": "seit gestern",
-      "course": "akut",
-      "causa": null,
-      "location": "Magen",
-      "sensation": "brennend",
-      "modalities": [],
-      "concomitants": [],
-      "mind": null,
-      "intensity": "stark",
-      "frequency": "anhaltend",
-      "negations": [],
-      "uncertainties": [],
-      "relation_to_current_episode": "INDEX",
-      "evidence_span_ids": ["span_1"]
+  "raw_text": "${rawText.replace(/"/g, '\\\\"')}",
+  "three_stage": {
+    "stage1": [
+      { "category_key": "causa", "category_name": "Causa", "core_question": "Wodurch ausgelöst?", "result_text": "..." },
+      { "category_key": "localisatio", "category_name": "Localisatio", "core_question": "Wo?", "result_text": "..." },
+      { "category_key": "sensatio", "category_name": "Sensatio", "core_question": "Wie fühlt es sich an?", "result_text": "..." },
+      { "category_key": "symptoma", "category_name": "Symptoma", "core_question": "Was?", "result_text": "..." },
+      { "category_key": "modalitates_besserung", "category_name": "Modalitates – Besserung", "core_question": "Wann besser?", "result_text": "..." },
+      { "category_key": "modalitates_verschlechterung", "category_name": "Modalitates – Verschlechterung", "core_question": "Wann schlechter?", "result_text": "..." },
+      { "category_key": "symptomata_concomitantia", "category_name": "Symptomata concomitantia", "core_question": "Was tritt dazu auf?", "result_text": "..." },
+      { "category_key": "comorbiditas", "category_name": "Comorbiditas", "core_question": "Welche weiteren Erkrankungen?", "result_text": "..." },
+      { "category_key": "mens", "category_name": "Mens", "core_question": "Was verändert sich beim Denken?", "result_text": "..." },
+      { "category_key": "animus", "category_name": "Animus", "core_question": "Wie geht es dir emotional?", "result_text": "..." }
+    ],
+    "stage2": [
+      { "text_snippet": "...", "examination": "...", "adopted_complaint": "..." }
+    ],
+    "stage3": {
+      "control_notes": "...",
+      "clarification_question": "..."
     }
-  ],
-  "complaint_relations": [
-    {
-      "relation_id": "crel_1",
-      "source_complaint_id": "comp_1",
-      "target_complaint_id": "comp_2",
-      "relation_type": "BEFORE",
-      "status": "CONFIRMED",
-      "evidence_span_ids": ["span_1", "span_2"]
-    }
-  ],
-  "semantic_events": [
-    { "event_id": "ev_1", "actor": "Patient", "action": "laufen", "event_type": "ACTIVITY", "time": "UNKNOWN", "location": "UNKNOWN", "duration": "UNKNOWN", "attributes": {}, "evidence_span_ids": ["span_1"], "status": "CONFIRMED" }
-  ],
-  "semantic_relations": [
-    { "relation_id": "rel_1", "source_id": "ev_1", "target_id": "ev_2", "relation_type": "TEMPORAL_BEFORE", "status": "CONFIRMED", "evidence_span_ids": ["span_1", "span_2"] }
-  ],
-  "open_slots": [
-    { "slot_id": "slot_1", "related_id": "ev_1", "field": "location", "importance": "HIGH", "status": "OPEN", "suggested_question": "Wo genau fand dies statt?" }
-  ],
-  "source_spans": [
-    { "span_id": "span_1", "exact_text": "...", "type": "..." }
-  ],
-  "entities": [
-    { "entity_id": "ent_1", "patient_label": "...", "status": "CONFIRMED", "evidence_span_ids": ["span_1"] }
-  ],
-  "uncertainties": [
-    { "uncertainty_id": "unc_1", "text": "...", "reason": "...", "related_entity_id": "ent_1", "related_claim_ids": ["claim_2", "claim_3"] }
-  ],
-  "claims": [
-    { "claim_id": "claim_1", "subject_entity_id": "ent_1", "attribute": "...", "value": "...", "status": "CONFIRMED", "evidence_span_ids": ["span_2"] }
-  ],
-  "temporal_bindings": [
-    { "temporal_binding_id": "tb_1", "subject_entity_id": "ent_1", "claim_id": "claim_1", "time_expression": "...", "evidence_span_ids": ["span_3"], "status": "CONFIRMED" }
-  ],
-  "symptom_states": [
-    { "state_id": "state_1", "subject_entity_id": "ent_1", "presence": "PRESENT", "intensity_text": "...", "time_expression": "...", "source_claim_ids": ["claim_1"], "source_temporal_binding_ids": ["tb_1"], "status": "CONFIRMED" }
-  ],
+  },
+  "complaint_matrices": [],
+  "complaint_relations": [],
+  "semantic_events": [],
+  "semantic_relations": [],
+  "open_slots": [],
+  "source_spans": [],
+  "entities": [],
+  "uncertainties": [],
+  "claims": [],
+  "temporal_bindings": [],
+  "symptom_states": [],
   "corrections": [],
-  "contradictions": [
-    { "contradiction_id": "con_1", "subject_entity_id": "ent_1", "attribute": "intensity", "claim_ids": ["claim_2", "claim_3"], "status": "UNRESOLVED", "evidence_span_ids": ["span_3", "span_7"] }
-  ],
-  "next_question": {
-    "question_id": "q_1",
-    "text": "...",
-    "reason_code": "...",
-    "related_entity_id": "ent_1",
-    "related_claim_ids": ["claim_2", "claim_3"],
-    "related_contradiction_id": "con_1",
-    "status": "OPEN"
-  },
-  "validation": {
-    "is_valid": true,
-    "is_complete": false,
-    "blocking_issues": [],
-    "warnings": []
-  },
+  "contradictions": [],
+  "next_question": null,
+  "validation": { "is_valid": true, "is_complete": false, "blocking_issues": [], "warnings": [] },
   "hahnemann_analysis": {
     "analysis_status": "READY",
     "characteristic_features": [],
-    "general_features": [
-      {
-        "analysis_id": "gf_1",
-        "text": "Pochendes Gefühl an der Außenseite des rechten Knöchels",
-        "related_entity_ids": ["ent_1"],
-        "related_claim_ids": ["claim_1", "claim_2"],
-        "reason_code": "GENERAL_SENSATION"
-      }
-    ],
-    "modalities": [
-      {
-        "analysis_id": "mod_1",
-        "text": "Beim Auftreten wird es stärker",
-        "related_entity_ids": ["ent_1"],
-        "related_claim_ids": ["claim_3"],
-        "reason_code": "WORSENING_ON_MOTION"
-      },
-      {
-        "analysis_id": "mod_2",
-        "text": "Kälte verändert es nicht",
-        "related_entity_ids": ["ent_1"],
-        "related_claim_ids": ["claim_4"],
-        "reason_code": "NO_EFFECT_MODALITY"
-      }
-    ],
+    "general_features": [],
+    "modalities": [],
     "concomitants": [],
-    "course_features": [
-      {
-        "analysis_id": "crs_1",
-        "text": "Beginn Dienstagabend mit Intensität 8/10, Abfall auf 4/10 am Mittwochmorgen, vollständiges Verschwinden gegen Mittag, Wiederauftreten heute früh mit getrennter Angabe zur geringeren Intensität",
-        "related_entity_ids": ["ent_1"],
-        "related_state_ids": ["state_1", "state_2", "state_3", "state_4"],
-        "reason_code": "TEMPORAL_COURSE"
-      }
-    ],
+    "course_features": [],
     "missing_information": [],
-    "organon_references": ["§§83–104", "§86", "§104", "§153"]
+    "organon_references": ["§§83–104"]
   },
-  "selection_for_remedy_analysis": {
-    "status": "READY",
-    "selected_features": [
-      {
-        "selection_id": "sel_1",
-        "feature_type": "SENSATION",
-        "text": "Pochendes Gefühl",
-        "priority": "MEDIUM",
-        "reason_code": "CONFIRMED_SENSATION",
-        "related_entity_ids": ["ent_1"],
-        "related_claim_ids": ["claim_1"]
-      },
-      {
-        "selection_id": "sel_2",
-        "feature_type": "LOCATION",
-        "text": "Außenseite des rechten Knöchels",
-        "priority": "MEDIUM",
-        "reason_code": "PRECISE_LOCATION_STANDARD",
-        "related_entity_ids": ["ent_1"],
-        "related_claim_ids": ["claim_2"]
-      },
-      {
-        "selection_id": "sel_3",
-        "feature_type": "MODALITY",
-        "text": "Beim Auftreten wird es stärker",
-        "priority": "HIGH",
-        "reason_code": "CONFIRMED_MODALITY",
-        "related_entity_ids": ["ent_1"],
-        "related_claim_ids": ["claim_3"]
-      },
-      {
-        "selection_id": "sel_4",
-        "feature_type": "MODALITY",
-        "text": "Kälte verändert es nicht",
-        "priority": "LOW",
-        "reason_code": "NO_EFFECT_MODALITY",
-        "related_entity_ids": ["ent_1"],
-        "related_claim_ids": ["claim_4"]
-      },
-      {
-        "selection_id": "sel_5",
-        "feature_type": "COURSE",
-        "text": "Verlauf mit Beginn, Abfall, Verschwinden und Wiederauftreten",
-        "priority": "MEDIUM",
-        "reason_code": "CONFIRMED_COURSE",
-        "related_entity_ids": ["ent_1"],
-        "related_state_ids": ["state_1", "state_2", "state_3", "state_4"]
-      }
-    ],
-    "excluded_features": [
-      {
-        "selection_id": "ex_1",
-        "text": "Taubheitsgefühl",
-        "reason_code": "NEGATED_SYMPTOM",
-        "related_entity_ids": ["ent_1"],
-        "related_claim_ids": []
-      }
-    ],
-    "blocking_reasons": []
-  },
-  "remedy_retrieval": {
-    "status": "READY",
-    "feature_queries": [],
-    "repertory_matches": [],
-    "materia_medica_matches": [],
-    "warnings": []
-  },
-  "repertory_scoring": {
-    "status": "READY",
-    "feature_weights": [],
-    "remedy_scores": [],
-    "warnings": []
-  }
+  "selection_for_remedy_analysis": { "status": "READY", "selected_features": [], "excluded_features": [], "blocking_reasons": [] },
+  "remedy_retrieval": { "status": "READY", "feature_queries": [], "repertory_matches": [], "materia_medica_matches": [], "warnings": [] },
+  "repertory_scoring": { "status": "READY", "feature_weights": [], "remedy_scores": [], "warnings": [] }
 }`;
 
-      let response;
-      try {
-        response = await ai.models.generateContent({
-          model: "gemini-3.5-flash-lite",
-          contents: prompt,
-          config: {
-            temperature: 0.2,
-            responseMimeType: "application/json",
-          },
-        });
-      } catch (primaryErr: any) {
-        console.warn("Primary model failed in analyze, trying fallback model:", primaryErr);
-        response = await ai.models.generateContent({
-          model: "gemini-flash-latest",
-          contents: prompt,
-          config: {
-            temperature: 0.2,
-            responseMimeType: "application/json",
-          },
-        });
-      }
+      const runGemini = async () => {
+        const apiKey = getGeminiApiKey();
+        if (!apiKey) throw new Error("GEMINI_API_KEY is not configured");
+        const ai = new GoogleGenAI({ apiKey });
+        let response;
+        try {
+          response = await ai.models.generateContent({
+            model: "gemini-3.5-flash-lite",
+            contents: prompt,
+            config: { temperature: 0.2, responseMimeType: "application/json" },
+          });
+        } catch (e) {
+          response = await ai.models.generateContent({
+            model: "gemini-flash-latest",
+            contents: prompt,
+            config: { temperature: 0.2, responseMimeType: "application/json" },
+          });
+        }
+        return response.text || "{}";
+      };
 
-      const responseText = response.text || "{}";
+      const runOpenAI = async () => {
+        const openAiKey = process.env.OPENAI_API_KEY || process.env.OPENAI_KEY || process.env.OPENAI_SECRET;
+        if (!openAiKey) {
+          console.warn("OPENAI_API_KEY is not configured, falling back to Gemini model for stability.");
+          const resText = await runGemini();
+          return { content: resText, modelUsed: "gemini-3.5-flash-lite (fallback)" };
+        }
+        // Dynamic import or require for openai package
+        const OpenAI = (await import("openai")).default;
+        const openai = new OpenAI({ apiKey: openAiKey });
+
+        const completion = await openai.chat.completions.create({
+          model: "gpt-4o",
+          messages: [
+            { role: "system", content: "You are a precise homeopathic text parser. Output valid JSON only." },
+            { role: "user", content: prompt }
+          ],
+          temperature: 0.2,
+          response_format: { type: "json_object" }
+        });
+        const content = completion.choices[0]?.message?.content || "{}";
+        const modelUsed = completion.model || "gpt-4o";
+        return { content, modelUsed };
+      };
+
       const defaultAnalysis = {
         semantic_events: [],
         semantic_relations: [],
@@ -1467,8 +1327,8 @@ Antworte AUSSCHLIESSLICH als gültiges JSON-Objekt im folgenden Format (ohne Mar
         contradictions: [],
         next_question: {
           question_id: "q_fallback_1",
-          text: "Bitte beschreiben Sie genauer, wie sich die Beschwerden anfühlen und welche Modalitäten (Wetter, Tageszeit, Bewegung) sie beeinflussen.",
-          reason: "Erfassung der Modalitäten nach Hahnemann."
+          text: "Bitte beschreiben Sie genauer, wie sich die Beschwerden anfühlen und welche Modalitäten sie beeinflussen.",
+          reason_code: "MODALITY_CHECK"
         },
         validation: { is_valid: true, is_complete: false, blocking_issues: [], warnings: [] },
         hahnemann_analysis: {
@@ -1487,21 +1347,67 @@ Antworte AUSSCHLIESSLICH als gültiges JSON-Objekt im folgenden Format (ohne Mar
           excluded_features: [],
           blocking_reasons: []
         },
-        remedy_retrieval: {
-          status: 'READY',
-          feature_queries: [],
-          repertory_matches: [],
-          materia_medica_matches: [],
-          warnings: []
-        },
-        repertory_scoring: {
-          status: 'READY',
-          feature_weights: [],
-          remedy_scores: [],
-          warnings: []
-        }
+        remedy_retrieval: { status: 'READY', feature_queries: [], repertory_matches: [], materia_medica_matches: [], warnings: [] },
+        repertory_scoring: { status: 'READY', feature_weights: [], remedy_scores: [], warnings: [] }
       };
+
+      if (compare) {
+        // Run both in parallel
+        let geminiText = "{}";
+        let openaiRes: any = { content: "{}", modelUsed: "gpt-4o" };
+        let geminiError = null;
+        let openaiError = null;
+
+        try {
+          geminiText = await runGemini();
+        } catch (err: any) {
+          geminiError = err.message;
+        }
+
+        try {
+          openaiRes = await runOpenAI();
+        } catch (err: any) {
+          openaiError = err.message;
+        }
+
+        const parsedGemini = parseAiJson(geminiText, defaultAnalysis);
+        const parsedOpenAI = parseAiJson(openaiRes.content || openaiRes, defaultAnalysis);
+
+        return res.json({
+          engine: "compare",
+          gemini: parsedGemini,
+          openai: parsedOpenAI,
+          provider: "openai",
+          model_requested: "gpt-4o",
+          model_used: openaiRes.modelUsed || "gpt-4o",
+          errors: { gemini: geminiError, openai: openaiError }
+        });
+      }
+
+      let responseText = "{}";
+      let actualModelUsed = engine === 'openai' ? 'gpt-4o' : 'gemini-3.5-flash-lite';
+      let usedEngine = engine;
+      if (engine === "openai") {
+        try {
+          const oRes = await runOpenAI();
+          responseText = oRes.content;
+          actualModelUsed = oRes.modelUsed;
+        } catch (openaiErr: any) {
+          console.warn("OpenAI failed, falling back to Gemini:", openaiErr);
+          responseText = await runGemini();
+          usedEngine = "gemini-fallback";
+          actualModelUsed = "gemini-3.5-flash-lite (fallback)";
+        }
+      } else {
+        responseText = await runGemini();
+      }
+
       const parsed = parseAiJson(responseText, defaultAnalysis);
+      parsed.meta_provider = {
+        provider: "openai",
+        model_requested: "gpt-4o",
+        model_used: actualModelUsed
+      };
 
       // Global Validators & Provenance checks
       const validation = parsed.validation || { is_valid: true, is_complete: true, blocking_issues: [], warnings: [] };
@@ -1751,51 +1657,7 @@ Antworte AUSSCHLIESSLICH als gültiges JSON-Objekt im folgenden Format (ohne Mar
 
       parsed.scoring_adequacy = sa;
 
-      res.json({
-        raw_text: rawText,
-        semantic_events: parsed.semantic_events || [],
-        semantic_relations: parsed.semantic_relations || [],
-        open_slots: parsed.open_slots || [],
-        source_spans: parsed.source_spans || [],
-        entities: parsed.entities || [],
-        uncertainties: parsed.uncertainties || [],
-        claims: parsed.claims || [],
-        temporal_bindings: parsed.temporal_bindings || [],
-        symptom_states: parsed.symptom_states || [],
-        corrections: parsed.corrections || [],
-        contradictions: parsed.contradictions || [],
-        next_question: parsed.next_question || null,
-        validation: parsed.validation || { is_valid: true, is_complete: false, blocking_issues: [], warnings: [] },
-        hahnemann_analysis: parsed.hahnemann_analysis || {
-          analysis_status: 'INCOMPLETE',
-          characteristic_features: [],
-          general_features: [],
-          modalities: [],
-          concomitants: [],
-          course_features: [],
-          missing_information: [],
-          organon_references: []
-        },
-        selection_for_remedy_analysis: parsed.selection_for_remedy_analysis || {
-          status: 'BLOCKED',
-          selected_features: [],
-          excluded_features: [],
-          blocking_reasons: ['No selection data provided']
-        },
-        remedy_retrieval: parsed.remedy_retrieval || {
-          status: 'BLOCKED',
-          feature_queries: [],
-          repertory_matches: [],
-          materia_medica_matches: [],
-          warnings: ['INVALID_RETRIEVAL_PROVENANCE']
-        },
-        repertory_scoring: parsed.repertory_scoring || {
-          status: 'BLOCKED',
-          feature_weights: [],
-          remedy_scores: [],
-          warnings: ['INVALID_SCORING_PROVENANCE']
-        },
-      });
+      return res.json({ engine: usedEngine, result: parsed });
     } catch (error: any) {
       console.error("Organon Analyze API Error Details:");
       console.error("Name:", error?.name);
@@ -1808,6 +1670,223 @@ Antworte AUSSCHLIESSLICH als gültiges JSON-Objekt im folgenden Format (ohne Mar
         error: "Failed to analyze organon text.",
         details: error?.message || String(error)
       });
+    }
+  });
+
+  app.post("/api/organon/arbitrate", async (req, res) => {
+    try {
+      const { rawText, geminiResult, openaiResult } = req.body;
+      if (!rawText || typeof rawText !== "string") {
+        return res.status(400).json({ error: "rawText is required" });
+      }
+
+      const apiKey = getGeminiApiKey();
+      if (!apiKey) throw new Error("GEMINI_API_KEY is not configured");
+      const ai = new GoogleGenAI({ apiKey });
+
+      const prompt = `Du bist ein strenger und unbestechlicher BELEGPRÜFER für homöopathische Fallanalysen nach Samuel Hahnemann (Organon der Heilkunst).
+Deine Aufgabe ist es, den unveränderten Originaltext der Patientenschilderung gegen die Analyse von Gemini 3.8 Flash zu prüfen.
+Du bewertest Gemini 3.8 Flash kritisch und baust die Korrekturen auf.
+
+Führe für jede der folgenden 10 Kategorien mit ihrer exakten Kernfrage eine detaillierte Prüfung durch:
+1. Causa | Wodurch ausgelöst?
+2. Localisatio | Wo?
+3. Sensatio | Wie fühlt es sich an?
+4. Symptoma | Was?
+5. Modalitates – Besserung | Wann besser?
+6. Modalitates – Verschlechterung | Wann schlechter?
+7. Symptomata concomitantia | Was tritt dazu auf?
+8. Comorbiditas | Welche weiteren Erkrankungen?
+9. Mens | What verändert sich beim Denken? (Was verändert sich beim Denken?)
+10. Animus | Wie geht es dir emotional?
+
+PRÜFABLAUF PRO KATEGORIE:
+- Nimm das vorgeschlagene Ergebnis von Gemini 3.8 Flash („Alt“).
+- Stelle die Kernfrage für jeden Bestandteil einzeln gegen den Originaltext (z.B. bei Sensatio: Jedes genannte Element einzeln prüfen: „Wie fühlt es sich an? Passt das zum Zitat?“).
+- Erstelle das korrigierte Ergebnis („Neu“) streng nach dem Originaltext, ohne Halluzinationen.
+- Wenn etwas unklar ist, stelle eine direkte Rückfrage: „Habe ich das richtig verstanden so oder ist es so richtig?“
+
+Originaltext:
+"${rawText.replace(/"/g, '\\\\"')}"
+
+Gemini 3.8 Flash Analyse:
+${JSON.stringify(geminiResult || {})}
+
+GPT / Zweit-Analyse:
+${JSON.stringify(openaiResult || {})}
+
+Gib als Antwort AUSSCHLIESSLICH ein gültiges JSON-Objekt (ohne Markdown Code-Blöcke) mit folgender Struktur zurück:
+{
+  "category_evaluations": [
+    {
+      "category": "Causa",
+      "core_question": "Wodurch ausgelöst?",
+      "gemini_alt": "string",
+      "verification_analysis": "string (Prüfung jedes Elements gegen den Text)",
+      "belegpruefer_neu": "string (korrigiertes Ergebnis)",
+      "clarification_check": "string (z.B. 'Habe ich das richtig verstanden so oder ist es so richtig?')"
+    },
+    {
+      "category": "Localisatio",
+      "core_question": "Wo?",
+      "gemini_alt": "string",
+      "verification_analysis": "string",
+      "belegpruefer_neu": "string",
+      "clarification_check": "string"
+    },
+    {
+      "category": "Sensatio",
+      "core_question": "Wie fühlt es sich an?",
+      "gemini_alt": "string",
+      "verification_analysis": "string",
+      "belegpruefer_neu": "string",
+      "clarification_check": "string"
+    },
+    {
+      "category": "Symptoma",
+      "core_question": "Was?",
+      "gemini_alt": "string",
+      "verification_analysis": "string",
+      "belegpruefer_neu": "string",
+      "clarification_check": "string"
+    },
+    {
+      "category": "Modalitates – Besserung",
+      "core_question": "Wann besser?",
+      "gemini_alt": "string",
+      "verification_analysis": "string",
+      "belegpruefer_neu": "string",
+      "clarification_check": "string"
+    },
+    {
+      "category": "Modalitates – Verschlechterung",
+      "core_question": "Wann schlechter?",
+      "gemini_alt": "string",
+      "verification_analysis": "string",
+      "belegpruefer_neu": "string",
+      "clarification_check": "string"
+    },
+    {
+      "category": "Symptomata concomitantia",
+      "core_question": "Was tritt dazu auf?",
+      "gemini_alt": "string",
+      "verification_analysis": "string",
+      "belegpruefer_neu": "string",
+      "clarification_check": "string"
+    },
+    {
+      "category": "Comorbiditas",
+      "core_question": "Welche weiteren Erkrankungen?",
+      "gemini_alt": "string",
+      "verification_analysis": "string",
+      "belegpruefer_neu": "string",
+      "clarification_check": "string"
+    },
+    {
+      "category": "Mens",
+      "core_question": "Was verändert sich beim Denken?",
+      "gemini_alt": "string",
+      "verification_analysis": "string",
+      "belegpruefer_neu": "string",
+      "clarification_check": "string"
+    },
+    {
+      "category": "Animus",
+      "core_question": "Wie geht es dir emotional?",
+      "gemini_alt": "string",
+      "verification_analysis": "string",
+      "belegpruefer_neu": "string",
+      "clarification_check": "string"
+    }
+  ],
+  "audit_protocol": [
+    {
+      "proposed_statement": "string",
+      "decision": "Übernehmen" | "Korrigieren" | "Verwerfen" | "Rückfrage erforderlich",
+      "quote": "string",
+      "reasoning": "string"
+    }
+  ],
+  "corrected_summary": [
+    { "category": "Causa", "result": "string", "quote_or_clarification": "string" },
+    { "category": "Localisatio", "result": "string", "quote_or_clarification": "string" },
+    { "category": "Sensatio", "result": "string", "quote_or_clarification": "string" },
+    { "category": "Symptoma", "result": "string", "quote_or_clarification": "string" },
+    { "category": "Modalitates – Besserung", "result": "string", "quote_or_clarification": "string" },
+    { "category": "Modalitates – Verschlechterung", "result": "string", "quote_or_clarification": "string" },
+    { "category": "Symptomata concomitantia", "result": "string", "quote_or_clarification": "string" },
+    { "category": "Comorbiditas", "result": "string", "quote_or_clarification": "string" },
+    { "category": "Mens", "result": "string", "quote_or_clarification": "string" },
+    { "category": "Animus", "result": "string", "quote_or_clarification": "string" }
+  ],
+  "course_note": "string",
+  "clarification_question": "string"
+}`;
+
+      let response;
+      try {
+        response = await ai.models.generateContent({
+          model: "gemini-3.5-flash-lite",
+          contents: prompt,
+          config: { temperature: 0.1, responseMimeType: "application/json" },
+        });
+      } catch (e) {
+        response = await ai.models.generateContent({
+          model: "gemini-flash-latest",
+          contents: prompt,
+          config: { temperature: 0.1, responseMimeType: "application/json" },
+        });
+      }
+
+      const text = response.text || "{}";
+      const parsed = parseAiJson(text, {});
+      return res.json({ engine: "belegpruefer", result: parsed });
+    } catch (error: any) {
+      console.error("Organon Belegpruefer API Error:", error);
+      res.status(500).json({ error: "Failed to perform Belegprüfung.", details: error?.message });
+    }
+  });
+
+  app.post("/api/organon/correct-spelling", async (req, res) => {
+    try {
+      const { rawText } = req.body;
+      if (!rawText || typeof rawText !== "string") {
+        return res.status(400).json({ error: "rawText is required" });
+      }
+
+      const apiKey = getGeminiApiKey();
+      if (!apiKey) throw new Error("GEMINI_API_KEY is not configured");
+      const ai = new GoogleGenAI({ apiKey });
+
+      const prompt = `Du bist ein professioneller homöopathischer Assistent und Lektor.
+Korrigiere den folgenden Patiententext hinsichtlich Rechtschreibung, Grammatik, Satzbau und sprachlicher Klarheit.
+Bewahre dabei exakt den inhaltlichen Sinn, die medizinischen/homöopathischen Aussagen und den Ton des Patienten. Verändere oder erfinde keine medizinischen Fakten, sondern korrigiere nur Grammatik, Rechtschreibung und schwer verständliches Wortdurcheinander, damit der Text Sinn ergibt und für die homöopathische Analyse sauber lesbar ist.
+
+Antworte AUSSCHLIESSLICH mit dem korrigierten Text, ohne Erklärungen, ohne Anführungszeichen und ohne Markdown-Code-Blöcke.
+
+Text:
+"${rawText}"`;
+
+      let response;
+      try {
+        response = await ai.models.generateContent({
+          model: "gemini-3.5-flash-lite",
+          contents: prompt,
+          config: { temperature: 0.1 },
+        });
+      } catch (e) {
+        response = await ai.models.generateContent({
+          model: "gemini-flash-latest",
+          contents: prompt,
+          config: { temperature: 0.1 },
+        });
+      }
+
+      const correctedText = (response.text || rawText).replace(/^["']|["']$/g, "").trim();
+      return res.json({ correctedText });
+    } catch (error: any) {
+      console.error("Organon Spelling Correction Error:", error);
+      res.status(500).json({ error: "Failed to correct spelling.", details: error?.message });
     }
   });
 
@@ -2267,24 +2346,37 @@ oder
     if (jsonMatch) {
       clean = jsonMatch[1].trim();
     }
+    // Remove potential leading non-json text if any
+    const firstBrace = clean.indexOf('{');
+    const lastBrace = clean.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace > firstBrace) {
+      clean = clean.substring(firstBrace, lastBrace + 1);
+    }
+
     try {
       return JSON.parse(clean);
     } catch (e1) {
       try {
-        const fixed = clean.replace(/,\s*([}\]])/g, '$1');
+        // Fix trailing commas and unescaped newlines/control chars inside strings
+        const fixed = clean
+          .replace(/,\s*([}\]])/g, '$1')
+          .replace(/[\u0000-\u001F]+/g, (match) => {
+            if (match === '\n') return '\\n';
+            if (match === '\r') return '\\r';
+            if (match === '\t') return '\\t';
+            return '';
+          });
         return JSON.parse(fixed);
       } catch (e2) {
-        const firstBrace = clean.indexOf('{');
-        const lastBrace = clean.lastIndexOf('}');
-        if (firstBrace !== -1 && lastBrace > firstBrace) {
-          try {
-            const sub = clean.substring(firstBrace, lastBrace + 1);
-            return JSON.parse(sub.replace(/,\s*([}\]])/g, '$1'));
-          } catch (e3) {
-            console.error("Failed to parse AI JSON response. Raw text snippet:", clean.substring(0, 300));
-            return fallbackObj;
+        try {
+          // Fallback evaluation if safe
+          // eslint-disable-next-line no-new-func
+          const evaluated = new Function(`return ${clean}`)();
+          if (evaluated && typeof evaluated === 'object') {
+            return evaluated;
           }
-        }
+        } catch {}
+
         console.error("Failed to parse AI JSON response. Raw text snippet:", clean.substring(0, 300));
         return fallbackObj;
       }

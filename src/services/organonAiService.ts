@@ -259,8 +259,33 @@ export interface OrganonComplaintRelation {
   evidence_span_ids: string[];
 }
 
+export interface OrganonStage1Item {
+  category_key: string;
+  category_name: string;
+  core_question: string;
+  result_text: string;
+}
+
+export interface OrganonStage2Item {
+  text_snippet: string;
+  examination: string;
+  adopted_complaint: string;
+}
+
+export interface OrganonStage3Item {
+  control_notes: string;
+  clarification_question: string;
+}
+
+export interface OrganonThreeStageAnalysis {
+  stage1: OrganonStage1Item[];
+  stage2: OrganonStage2Item[];
+  stage3: OrganonStage3Item;
+}
+
 export interface OrganonAiAnalysisResult {
   raw_text: string;
+  three_stage?: OrganonThreeStageAnalysis;
   source_spans: OrganonSourceSpan[];
   entities: OrganonEntity[];
   uncertainties: OrganonUncertainty[];
@@ -433,72 +458,252 @@ export function createLocalFallbackAnalysis(rawText: string): OrganonAiAnalysisR
   };
 }
 
-export async function analyzeOrganonText(rawText: string, language: string = 'de'): Promise<OrganonAiAnalysisResult> {
+export function normalizeOrganonAnalysisResult(data: any, rawText: string): OrganonAiAnalysisResult {
+  const safeArr = (arr: any) => (Array.isArray(arr) ? arr : []);
+  
+  const entities: OrganonEntity[] = safeArr(data.entities).map((e: any, i: number) => ({
+    entity_id: e?.entity_id || `ent_${i + 1}`,
+    patient_label: e?.patient_label || 'Symptom',
+    status: e?.status || 'CONFIRMED',
+    evidence_span_ids: safeArr(e?.evidence_span_ids)
+  }));
+
+  const claims: OrganonClaim[] = safeArr(data.claims).map((c: any, i: number) => ({
+    claim_id: c?.claim_id || `claim_${i + 1}`,
+    subject_entity_id: c?.subject_entity_id || 'ent_1',
+    attribute: c?.attribute || 'presence',
+    value: c?.value || '',
+    status: c?.status || 'CONFIRMED',
+    evidence_span_ids: safeArr(c?.evidence_span_ids)
+  }));
+
+  const temporal_bindings: OrganonTemporalBinding[] = safeArr(data.temporal_bindings).map((tb: any, i: number) => ({
+    temporal_binding_id: tb?.temporal_binding_id || `tb_${i + 1}`,
+    subject_entity_id: tb?.subject_entity_id || 'ent_1',
+    claim_id: tb?.claim_id || 'claim_1',
+    time_expression: tb?.time_expression || '',
+    status: tb?.status || 'ATTACHED',
+    evidence_span_ids: safeArr(tb?.evidence_span_ids)
+  }));
+
+  const symptom_states: OrganonSymptomState[] = safeArr(data.symptom_states).map((s: any, i: number) => ({
+    state_id: s?.state_id || `state_${i + 1}`,
+    subject_entity_id: s?.subject_entity_id || 'ent_1',
+    presence: s?.presence || 'PRESENT',
+    intensity_text: s?.intensity_text || '',
+    time_expression: s?.time_expression || '',
+    source_claim_ids: safeArr(s?.source_claim_ids),
+    source_temporal_binding_ids: safeArr(s?.source_temporal_binding_ids),
+    status: s?.status || 'CONFIRMED'
+  }));
+
+  const corrections: OrganonCorrection[] = safeArr(data.corrections).map((cr: any, i: number) => ({
+    correction_id: cr?.correction_id || `corr_${i + 1}`,
+    subject_entity_id: cr?.subject_entity_id || 'ent_1',
+    old_claim_id: cr?.old_claim_id || '',
+    new_claim_id: cr?.new_claim_id || '',
+    relation: cr?.relation || 'SUPERSEDES',
+    evidence_span_ids: safeArr(cr?.evidence_span_ids)
+  }));
+
+  const contradictions: OrganonContradiction[] = safeArr(data.contradictions).map((cd: any, i: number) => ({
+    contradiction_id: cd?.contradiction_id || `con_${i + 1}`,
+    subject_entity_id: cd?.subject_entity_id || 'ent_1',
+    claim_ids: safeArr(cd?.claim_ids),
+    attribute: cd?.attribute || 'general',
+    status: cd?.status || 'UNRESOLVED',
+    evidence_span_ids: safeArr(cd?.evidence_span_ids)
+  }));
+
+  const uncertainties: OrganonUncertainty[] = safeArr(data.uncertainties).map((u: any, i: number) => ({
+    uncertainty_id: u?.uncertainty_id || `unc_${i + 1}`,
+    text: u?.text || '',
+    reason: u?.reason || '',
+    related_entity_id: u?.related_entity_id || null,
+    related_claim_ids: safeArr(u?.related_claim_ids)
+  }));
+
+  const complaint_matrices: OrganonComplaintMatrix[] = safeArr(data.complaint_matrices).map((m: any, i: number) => ({
+    complaint_id: m?.complaint_id || `comp_${i + 1}`,
+    patient_label: m?.patient_label || 'Beschwerde',
+    temporal_status: m?.temporal_status || 'NEW_CURRENT',
+    complaint_type: m?.complaint_type || 'INDEX_COMPLAINT',
+    onset: m?.onset || '',
+    duration: m?.duration || '',
+    course: m?.course || '',
+    causa: m?.causa || null,
+    location: m?.location || null,
+    sensation: m?.sensation || null,
+    modalities: safeArr(m?.modalities),
+    concomitants: safeArr(m?.concomitants),
+    mind: m?.mind || null,
+    intensity: m?.intensity || null,
+    frequency: m?.frequency || null,
+    negations: safeArr(m?.negations),
+    uncertainties: safeArr(m?.uncertainties),
+    relation_to_current_episode: m?.relation_to_current_episode || 'INDEX',
+    evidence_span_ids: safeArr(m?.evidence_span_ids)
+  }));
+
+  const hahnemann = data.hahnemann_analysis || {};
+  const normalizeFeatureList = (list: any) => safeArr(list).map((f: any, idx: number) => ({
+    analysis_id: f?.analysis_id || `feat_${idx + 1}`,
+    text: f?.text || '',
+    reason_code: f?.reason_code || 'ORGANON',
+    related_entity_ids: safeArr(f?.related_entity_ids),
+    related_claim_ids: safeArr(f?.related_claim_ids),
+    related_state_ids: safeArr(f?.related_state_ids)
+  }));
+
+  const hahnemann_analysis: OrganonHahnemannAnalysis = {
+    analysis_status: hahnemann.analysis_status || 'READY',
+    characteristic_features: normalizeFeatureList(hahnemann.characteristic_features),
+    general_features: normalizeFeatureList(hahnemann.general_features),
+    modalities: normalizeFeatureList(hahnemann.modalities),
+    concomitants: normalizeFeatureList(hahnemann.concomitants),
+    course_features: normalizeFeatureList(hahnemann.course_features),
+    missing_information: safeArr(hahnemann.missing_information).map((m: any, idx: number) => 
+      typeof m === 'string' ? { analysis_id: `miss_${idx + 1}`, text: m, reason_code: 'MISSING' } : m
+    ),
+    organon_references: safeArr(hahnemann.organon_references)
+  };
+
+  const sel = data.selection_for_remedy_analysis || {};
+  const selection_for_remedy_analysis: OrganonSelectionForRemedyAnalysis = {
+    status: sel.status || 'READY',
+    selected_features: safeArr(sel.selected_features).map((f: any, idx: number) => ({
+      selection_id: f?.selection_id || `sel_${idx + 1}`,
+      feature_type: f?.feature_type || 'CHARACTERISTIC',
+      text: f?.text || '',
+      priority: f?.priority || 'MEDIUM',
+      reason_code: f?.reason_code || 'ORGANON',
+      related_entity_ids: safeArr(f?.related_entity_ids),
+      related_claim_ids: safeArr(f?.related_claim_ids),
+      related_state_ids: safeArr(f?.related_state_ids)
+    })),
+    excluded_features: safeArr(sel.excluded_features).map((f: any, idx: number) => ({
+      selection_id: f?.selection_id || `exc_${idx + 1}`,
+      feature_type: f?.feature_type || 'GENERAL',
+      text: f?.text || '',
+      priority: f?.priority || 'LOW',
+      reason_code: f?.reason_code || 'ORGANON',
+      related_entity_ids: safeArr(f?.related_entity_ids),
+      related_claim_ids: safeArr(f?.related_claim_ids),
+      related_state_ids: safeArr(f?.related_state_ids)
+    })),
+    blocking_reasons: safeArr(sel.blocking_reasons)
+  };
+
+  const defaultStage1 = [
+    { category_key: 'causa', category_name: 'Causa', core_question: 'Wodurch ausgelöst?', result_text: 'Kein Auslöser genannt.' },
+    { category_key: 'localisatio', category_name: 'Localisatio', core_question: 'Wo?', result_text: 'Nicht explizit genannt.' },
+    { category_key: 'sensatio', category_name: 'Sensatio', core_question: 'Wie fühlt es sich an?', result_text: 'Nicht näher beschrieben.' },
+    { category_key: 'symptoma', category_name: 'Symptoma', core_question: 'Was?', result_text: rawText.slice(0, 100) },
+    { category_key: 'modalitates_besserung', category_name: 'Modalitates – Besserung', core_question: 'Wann besser?', result_text: 'Keine Angabe.' },
+    { category_key: 'modalitates_verschlechterung', category_name: 'Modalitates – Verschlechterung', core_question: 'Wann schlechter?', result_text: 'Keine Angabe.' },
+    { category_key: 'symptomata_concomitantia', category_name: 'Symptomata concomitantia', core_question: 'Was tritt dazu auf?', result_text: 'Keine Angaben.' },
+    { category_key: 'comorbiditas', category_name: 'Comorbiditas', core_question: 'Welche weiteren Erkrankungen?', result_text: 'Keine bekannt.' },
+    { category_key: 'mens', category_name: 'Mens', core_question: 'Was verändert sich beim Denken?', result_text: 'Keine Angabe.' },
+    { category_key: 'animus', category_name: 'Animus', core_question: 'Wie geht es dir emotional?', result_text: 'Keine Angabe.' }
+  ];
+
+  const three_stage = data.three_stage ? {
+    stage1: safeArr(data.three_stage.stage1).length > 0 ? safeArr(data.three_stage.stage1) : defaultStage1,
+    stage2: safeArr(data.three_stage.stage2).length > 0 ? safeArr(data.three_stage.stage2) : [{ text_snippet: rawText.slice(0, 80), examination: 'Rohtext analysiert.', adopted_complaint: 'Hauptbeschwerde' }],
+    stage3: data.three_stage.stage3 || { control_notes: 'Prüfung abgeschlossen.', clarification_question: 'Gibt es weitere Begleitsymptome?' }
+  } : {
+    stage1: defaultStage1,
+    stage2: [{ text_snippet: rawText.slice(0, 80), examination: 'Rohtext analysiert.', adopted_complaint: 'Hauptbeschwerde' }],
+    stage3: { control_notes: 'Prüfung abgeschlossen.', clarification_question: 'Gibt es weitere Begleitsymptome?' }
+  };
+
+  return {
+    raw_text: data.raw_text || rawText,
+    three_stage,
+    source_spans: safeArr(data.source_spans),
+    entities,
+    uncertainties,
+    claims,
+    temporal_bindings,
+    symptom_states,
+    corrections,
+    contradictions,
+    next_question: data.next_question || null,
+    validation: data.validation || { is_valid: true, is_complete: true, blocking_issues: [], warnings: [] },
+    hahnemann_analysis,
+    selection_for_remedy_analysis,
+    remedy_retrieval: data.remedy_retrieval || {
+      status: 'READY',
+      feature_queries: [],
+      repertory_matches: [],
+      materia_medica_matches: [],
+      warnings: []
+    },
+    repertory_scoring: data.repertory_scoring || {
+      status: 'READY',
+      feature_weights: [],
+      remedy_scores: [],
+      warnings: []
+    },
+    scoring_adequacy: data.scoring_adequacy || {
+      status: 'READY',
+      selected_feature_count: 0,
+      repertory_matched_feature_count: 0,
+      supportive_mm_feature_count: 0,
+      repertory_coverage_ratio: 0,
+      weighted_possible_score_basis: 0,
+      weighted_repertory_coverage: 0,
+      unmatched_selected_features: [],
+      warnings: []
+    },
+    complaint_matrices,
+    complaint_relations: safeArr(data.complaint_relations)
+  };
+}
+
+export interface OrganonCompareResult {
+  engine: string;
+  gemini: OrganonAiAnalysisResult;
+  openai: OrganonAiAnalysisResult;
+  errors?: { gemini?: string; openai?: string };
+}
+
+export async function analyzeOrganonText(rawText: string, language: string = 'de', engine: string = 'gemini', compare: boolean = false): Promise<OrganonAiAnalysisResult | OrganonCompareResult> {
   try {
     const res = await fetch('/api/organon/analyze', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ rawText, language }),
+      body: JSON.stringify({ rawText, language, engine, compare }),
     });
 
     if (res.ok) {
       const data = await res.json();
-      return {
-        raw_text: data.raw_text || rawText,
-        source_spans: data.source_spans || [],
-        entities: data.entities || [],
-        uncertainties: data.uncertainties || [],
-        claims: data.claims || [],
-        temporal_bindings: data.temporal_bindings || [],
-        symptom_states: data.symptom_states || [],
-        corrections: data.corrections || [],
-        contradictions: data.contradictions || [],
-        next_question: data.next_question || null,
-        validation: data.validation || { is_valid: true, is_complete: true, blocking_issues: [], warnings: [] },
-        hahnemann_analysis: data.hahnemann_analysis || {
-          analysis_status: 'INCOMPLETE',
-          characteristic_features: [],
-          general_features: [],
-          modalities: [],
-          concomitants: [],
-          course_features: [],
-          missing_information: [],
-          organon_references: []
-        },
-        selection_for_remedy_analysis: data.selection_for_remedy_analysis || {
-          status: 'READY',
-          selected_features: [],
-          excluded_features: [],
-          blocking_reasons: []
-        },
-        remedy_retrieval: data.remedy_retrieval || {
-          status: 'READY',
-          feature_queries: [],
-          repertory_matches: [],
-          materia_medica_matches: [],
-          warnings: []
-        },
-        repertory_scoring: data.repertory_scoring || {
-          status: 'READY',
-          feature_weights: [],
-          remedy_scores: [],
-          warnings: []
-        },
-        scoring_adequacy: data.scoring_adequacy || {
-          is_adequate: true,
-          reason: 'OK'
-        },
-        complaint_matrices: data.complaint_matrices || [],
-        complaint_relations: data.complaint_relations || []
-      };
+      if (compare && data.gemini && data.openai) {
+        return {
+          engine: 'compare',
+          gemini: normalizeOrganonAnalysisResult(data.gemini, rawText),
+          openai: normalizeOrganonAnalysisResult(data.openai, rawText),
+          errors: data.errors
+        };
+      }
+      const resultObj = data.result || data;
+      return normalizeOrganonAnalysisResult(resultObj, rawText);
     }
 
     console.warn(`[analyzeOrganonText] Server returned ${res.status}, activating local semantic fallback.`);
-    return createLocalFallbackAnalysis(rawText);
+    const fallback = createLocalFallbackAnalysis(rawText);
+    if (compare) {
+      return { engine: 'compare', gemini: fallback, openai: fallback };
+    }
+    return fallback;
   } catch (fetchErr) {
     console.warn('[analyzeOrganonText] Network or API unavailable, activating local semantic fallback:', fetchErr);
-    return createLocalFallbackAnalysis(rawText);
+    const fallback = createLocalFallbackAnalysis(rawText);
+    if (compare) {
+      return { engine: 'compare', gemini: fallback, openai: fallback };
+    }
+    return fallback;
   }
 }

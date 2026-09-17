@@ -742,7 +742,7 @@ export const TherapyRecommendationsView: React.FC<TherapyRecommendationsViewProp
                             </span>
                           )}
                         </div>
-                        {r.keyIndications && (
+                        {Array.isArray(r.keyIndications) && r.keyIndications.length > 0 && (
                           <div className="text-[11px] text-slate-500 mt-0.5">
                             {t('keyIndicationsPrefix')}: {r.keyIndications.join(' • ')}
                           </div>

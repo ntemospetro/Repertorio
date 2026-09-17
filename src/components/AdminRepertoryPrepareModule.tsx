@@ -330,17 +330,17 @@ export const AdminRepertoryPrepareModule: React.FC = () => {
             <div className="space-y-3 bg-rose-50/50 p-4 rounded-xl border border-rose-200">
               <h4 className="text-xs font-bold uppercase tracking-wider text-rose-800">Gefundene Validierungsfehler:</h4>
               <div className="max-h-60 overflow-y-auto space-y-2 pr-2">
-                {preflightResult.unresolved_source_remedy_ids.length > 0 && (
+                {Array.isArray(preflightResult.unresolved_source_remedy_ids) && preflightResult.unresolved_source_remedy_ids.length > 0 && (
                   <div className="text-xs text-rose-900 bg-white p-2.5 rounded-lg border border-rose-200">
                     <strong>Unresolved Source Remedy IDs:</strong> {preflightResult.unresolved_source_remedy_ids.join(', ')}
                   </div>
                 )}
-                {preflightResult.missing_parent_rubrics.length > 0 && (
+                {Array.isArray(preflightResult.missing_parent_rubrics) && preflightResult.missing_parent_rubrics.length > 0 && (
                   <div className="text-xs text-rose-900 bg-white p-2.5 rounded-lg border border-rose-200">
                     <strong>Missing Parent Rubrics:</strong> {preflightResult.missing_parent_rubrics.join(', ')}
                   </div>
                 )}
-                {preflightResult.invalid_grades.length > 0 && (
+                {Array.isArray(preflightResult.invalid_grades) && preflightResult.invalid_grades.length > 0 && (
                   <div className="text-xs text-rose-900 bg-white p-2.5 rounded-lg border border-rose-200">
                     <strong>Invalid Grades:</strong> {preflightResult.invalid_grades.join(', ')} (erlaubt: 1, 2, 3)
                   </div>
