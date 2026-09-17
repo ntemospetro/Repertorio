@@ -480,12 +480,6 @@ export type ActiveView = 'landing' | 'register' | 'therapist' | 'admin' | 'organ
 export interface SiteConfig {
   logoUrl?: string;
   faviconUrl?: string;
-  defaultAiModule?: 'gemini' | 'openai' | 'pgt';
-  enabledAiModules?: {
-    gemini: boolean;
-    openai: boolean;
-    pgt: boolean;
-  };
 }
 
 export interface EmailConfig {
