@@ -59,9 +59,13 @@ export const AdminConfigEditor: React.FC<AdminConfigEditorProps> = ({ onShowToas
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
-  // Site Branding State
+  // Site Branding & AI Module State
   const [logoUrl, setLogoUrl] = useState(siteConfig.logoUrl || '');
   const [faviconUrl, setFaviconUrl] = useState(siteConfig.faviconUrl || '');
+  const [defaultAiModule, setDefaultAiModule] = useState<'gemini' | 'openai' | 'pgt'>(siteConfig.defaultAiModule || 'gemini');
+  const [enabledGemini, setEnabledGemini] = useState<boolean>(siteConfig.enabledAiModules?.gemini ?? true);
+  const [enabledOpenai, setEnabledOpenai] = useState<boolean>(siteConfig.enabledAiModules?.openai ?? true);
+  const [enabledPgt, setEnabledPgt] = useState<boolean>(siteConfig.enabledAiModules?.pgt ?? true);
 
   // Email / SMTP State
   const [sendMethod, setSendMethod] = useState<'api' | 'smtp'>(emailConfig.sendMethod || 'api');
@@ -113,6 +117,10 @@ export const AdminConfigEditor: React.FC<AdminConfigEditorProps> = ({ onShowToas
     setSiteConfig(config);
     setLogoUrl(config.logoUrl || '');
     setFaviconUrl(config.faviconUrl || '');
+    setDefaultAiModule(config.defaultAiModule || 'gemini');
+    setEnabledGemini(config.enabledAiModules?.gemini ?? true);
+    setEnabledOpenai(config.enabledAiModules?.openai ?? true);
+    setEnabledPgt(config.enabledAiModules?.pgt ?? true);
 
     const eConfig = getEmailConfig();
     setEmailConfigState(eConfig);
@@ -230,11 +238,17 @@ export const AdminConfigEditor: React.FC<AdminConfigEditorProps> = ({ onShowToas
     setTimeout(() => {
       const updated = saveSiteConfig({
         logoUrl: logoUrl.trim(),
-        faviconUrl: faviconUrl.trim()
+        faviconUrl: faviconUrl.trim(),
+        defaultAiModule,
+        enabledAiModules: {
+          gemini: enabledGemini,
+          openai: enabledOpenai,
+          pgt: enabledPgt
+        }
       });
       setSiteConfig(updated);
       setIsSavingConfig(false);
-      onShowToast('Seiten-Konfiguration erfolgreich gespeichert');
+      onShowToast('KI-Modul & Seiten-Konfiguration erfolgreich gespeichert');
     }, 300);
   };
 
@@ -1362,6 +1376,117 @@ export const AdminConfigEditor: React.FC<AdminConfigEditorProps> = ({ onShowToas
               </p>
             </div>
 
+            {/* KI-Modul & Auswertungs-Steuerung */}
+            <div className="pt-5 border-t border-slate-200 space-y-4">
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-900 flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-teal-600" />
+                  <span>KI-Modul & Auswertungs-Steuerung (Standard & Aktivierung)</span>
+                </h4>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Wählen Sie das Standard-Auswertungsmodell (z.B. Gemini, OpenAI/GPT oder PGT) und steuern Sie die Aktivierungsschalter für Analysen.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-700 block">
+                  Standard-Auswertungsmodell (Default Engine)
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <label className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${defaultAiModule === 'gemini' ? 'border-teal-600 bg-teal-50/60 shadow-xs' : 'border-slate-200 hover:bg-slate-50'}`}>
+                    <input
+                      type="radio"
+                      name="defaultAiModule"
+                      value="gemini"
+                      checked={defaultAiModule === 'gemini'}
+                      onChange={() => setDefaultAiModule('gemini')}
+                      className="text-teal-600 focus:ring-teal-500"
+                    />
+                    <div>
+                      <div className="text-xs font-bold text-slate-900">Gemini (3.8 Flash)</div>
+                      <div className="text-[10px] text-slate-500">Google AI Pipeline</div>
+                    </div>
+                  </label>
+
+                  <label className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${defaultAiModule === 'openai' ? 'border-indigo-600 bg-indigo-50/60 shadow-xs' : 'border-slate-200 hover:bg-slate-50'}`}>
+                    <input
+                      type="radio"
+                      name="defaultAiModule"
+                      value="openai"
+                      checked={defaultAiModule === 'openai'}
+                      onChange={() => setDefaultAiModule('openai')}
+                      className="text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <div>
+                      <div className="text-xs font-bold text-slate-900">OpenAI / GPT-4o</div>
+                      <div className="text-[10px] text-slate-500">GPT-4o Sol Engine</div>
+                    </div>
+                  </label>
+
+                  <label className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${defaultAiModule === 'pgt' ? 'border-amber-600 bg-amber-50/60 shadow-xs' : 'border-slate-200 hover:bg-slate-50'}`}>
+                    <input
+                      type="radio"
+                      name="defaultAiModule"
+                      value="pgt"
+                      checked={defaultAiModule === 'pgt'}
+                      onChange={() => setDefaultAiModule('pgt')}
+                      className="text-amber-600 focus:ring-amber-500"
+                    />
+                    <div>
+                      <div className="text-xs font-bold text-slate-900">PGT Modul</div>
+                      <div className="text-[10px] text-slate-500">Prozess-Gegenüberstellung</div>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              <div className="space-y-2 pt-2">
+                <label className="text-xs font-bold text-slate-700 block">
+                  Modul-Aktivierungsschalter (Erlaubte Module für Auswertungen)
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-slate-50/50">
+                    <div className="text-xs font-medium text-slate-800">Gemini Modul</div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={enabledGemini}
+                        onChange={(e) => setEnabledGemini(e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-9 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-teal-600"></div>
+                    </label>
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-slate-50/50">
+                    <div className="text-xs font-medium text-slate-800">OpenAI / GPT Modul</div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={enabledOpenai}
+                        onChange={(e) => setEnabledOpenai(e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-9 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+                    </label>
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-slate-50/50">
+                    <div className="text-xs font-medium text-slate-800">PGT Modul</div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={enabledPgt}
+                        onChange={(e) => setEnabledPgt(e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-9 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-600"></div>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div className="pt-3 border-t border-slate-100 flex justify-end">
               <button
                 type="submit"
@@ -1369,7 +1494,7 @@ export const AdminConfigEditor: React.FC<AdminConfigEditorProps> = ({ onShowToas
                 className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer disabled:opacity-60"
               >
                 <Save className="w-4 h-4" />
-                <span>{isSavingConfig ? 'Wird gespeichert...' : 'Branding speichern'}</span>
+                <span>{isSavingConfig ? 'Wird gespeichert...' : 'Einstellungen speichern'}</span>
               </button>
             </div>
           </form>

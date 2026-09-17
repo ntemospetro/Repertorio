@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { analyzeOrganonText, OrganonAiAnalysisResult } from '../services/organonAiService';
 import { OrganonDynamicQuestionModal } from './OrganonDynamicQuestionModal';
+import { getSiteConfig } from '../services/storage';
 import { 
   Activity, 
   FileText, 
@@ -70,7 +71,10 @@ export const OrganonView: React.FC = () => {
   const [narrationInput, setNarrationInput] = useState<string>('');
   const [analysisResult, setAnalysisResult] = useState<OrganonAiAnalysisResult | null>(null);
   const [compareResult, setCompareResult] = useState<any | null>(null);
-  const [selectedEngine, setSelectedEngine] = useState<string>('gemini');
+  const [selectedEngine, setSelectedEngine] = useState<string>(() => {
+    const config = getSiteConfig();
+    return config.defaultAiModule || 'gemini';
+  });
   const [isCompareMode, setIsCompareMode] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'gemini' | 'openai' | 'arbitrator'>('gemini');
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
