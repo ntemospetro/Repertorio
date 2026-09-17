@@ -154,16 +154,13 @@ export const OrganonView: React.FC = () => {
         setCompareResult(result);
         setAnalysisResult((result as any).gemini);
         fetchArbitration((result as any).gemini, (result as any).openai);
-        setActiveTab('arbitrator');
-        setDebugStatus('Gemini & GPT Auswertungen beendet. Strenger Belegprüfer startet Berechnung...');
       } else {
         const fallbackRes = result as OrganonAiAnalysisResult;
         setCompareResult({ engine: 'compare', gemini: fallbackRes, openai: fallbackRes });
         setAnalysisResult(fallbackRes);
         fetchArbitration(fallbackRes, fallbackRes);
-        setActiveTab('arbitrator');
-        setDebugStatus('Auswertung beendet. Strenger Belegprüfer startet Berechnung...');
       }
+      setDebugStatus('Analyse erfolgreich abgeschlossen.');
     } catch (err: any) {
       setErrorMessage(err.message || 'Fehler bei der KI-Analyse');
       setDebugStatus('Fehler aufgetreten.');
@@ -447,10 +444,10 @@ export const OrganonView: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex-1 max-w-[1600px] w-full mx-auto p-4 sm:p-6 lg:p-8 flex flex-col gap-6">
+      <div className="flex-1 max-w-[1800px] w-full mx-auto p-4 sm:p-6 lg:p-8 flex flex-col lg:flex-row gap-6 items-start">
         
-        {/* Top Section: Input Form (Full Width) */}
-        <div className="w-full flex flex-col gap-6">
+        {/* Left Column: Input Form (Patientenschilderung) */}
+        <div className="w-full lg:w-[450px] shrink-0 flex flex-col gap-6 lg:sticky lg:top-6">
           <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-5 flex flex-col">
             <div className="flex items-center justify-between mb-3">
               <label htmlFor="patient-narration-input" className="text-sm font-bold text-slate-900 flex items-center gap-2">
@@ -581,8 +578,8 @@ export const OrganonView: React.FC = () => {
           </div>
         </div>
 
-        {/* Bottom Section: Results Display (Full Width) */}
-        <div className="w-full bg-white rounded-2xl border border-slate-200/80 shadow-xs p-5 flex flex-col gap-6 transition-all">
+        {/* Right Column: Results Display (Gemini, GPT & Belegprüfer) */}
+        <div className="w-full lg:flex-1 bg-white rounded-2xl border border-slate-200/80 shadow-xs p-5 flex flex-col gap-6 transition-all">
           <div className="flex items-center justify-between pb-3 border-b border-slate-200">
             <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
               <Terminal className="w-4 h-4 text-teal-600" />
