@@ -495,10 +495,10 @@ export const OrganonView: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex-1 max-w-[1600px] w-full mx-auto p-4 sm:p-6 lg:p-8 flex flex-col lg:flex-row gap-6">
+      <div className="flex-1 max-w-[1600px] w-full mx-auto p-4 sm:p-6 lg:p-8 flex flex-col gap-6">
         
-        {/* Left Column: Input Form */}
-        <div className="w-full lg:w-7/12 flex flex-col gap-6">
+        {/* Top Section: Input Form (Full Width) */}
+        <div className="w-full flex flex-col gap-6">
           <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-5 flex flex-col">
             <div className="flex items-center justify-between mb-3">
               <label htmlFor="patient-narration-input" className="text-sm font-bold text-slate-900 flex items-center gap-2">
@@ -629,8 +629,8 @@ export const OrganonView: React.FC = () => {
           </div>
         </div>
 
-        {/* Right Column / Results Display */}
-        <div className={`w-full ${compareResult ? 'lg:w-full xl:w-8/12' : 'lg:w-7/12'} bg-white rounded-2xl border border-slate-200/80 shadow-xs p-5 flex flex-col gap-6 transition-all`}>
+        {/* Bottom Section: Results Display (Full Width) */}
+        <div className="w-full bg-white rounded-2xl border border-slate-200/80 shadow-xs p-5 flex flex-col gap-6 transition-all">
           <div className="flex items-center justify-between pb-3 border-b border-slate-200">
             <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
               <Terminal className="w-4 h-4 text-teal-600" />
