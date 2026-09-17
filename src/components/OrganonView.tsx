@@ -442,57 +442,6 @@ export const OrganonView: React.FC = () => {
           <h1 className="text-2xl font-bold text-slate-900 mt-1">Organon KI-Zerlegung</h1>
           <p className="text-sm text-slate-500">Testbetrieb für Textzerlegung, Spans, Entities, Claims & Temporal Bindings</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => handleAnalyze("Seit Dienstagabend habe ich ein pochendes Gefühl an der Außenseite des rechten Knöchels. Anfangs war es ungefähr acht von zehn. Am Mittwochmorgen war es nur noch vier von zehn. Gegen Mittag war es vollständig verschwunden. Heute früh kam es wieder, aber deutlich schwächer. Beim Auftreten wird es stärker. Kälte verändert es nicht. Taubheitsgefühl hatte ich nie.")}
-            className="px-3.5 py-2 bg-purple-700 hover:bg-purple-800 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors flex items-center gap-2 cursor-pointer"
-          >
-            <span>Testfall Hahnemann-Analyse / Knöchel</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => handleAnalyze("Gestern Abend waren die Schmerzen ungefähr acht von zehn. Später habe ich gesagt, sie seien nur vier von zehn gewesen. Ich weiß nicht mehr, welcher Wert stimmt.")}
-            className="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors flex items-center gap-2 cursor-pointer"
-          >
-            <span>Testfall Next Question / Intensität</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => handleAnalyze("Seit Montag habe ich Schmerzen im linken Knie. Später habe ich gesagt, dass die Schmerzen im rechten Knie sind. Ich bin mir nicht sicher, welche Seite stimmt.")}
-            className="px-3.5 py-2 bg-amber-700 hover:bg-amber-800 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors flex items-center gap-2 cursor-pointer"
-          >
-            <span>Testfall Contradictions</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => handleAnalyze("Seit Montag habe ich Schmerzen im rechten Knie. Nein, entschuldigung, links. Gestern waren sie weg. Heute sind sie wieder da.")}
-            className="px-3.5 py-2 bg-rose-700 hover:bg-rose-800 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors flex items-center gap-2 cursor-pointer"
-          >
-            <span>Testfall Corrections / Knie</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => handleAnalyze("Vorgestern Abend bekam ich Schmerzen in der linken Schulter. Zuerst waren sie ziemlich stark, ungefähr sieben von zehn. Am nächsten Morgen waren die Schmerzen noch da, aber nur drei von zehn. Gegen Mittag verschwanden sie vollständig. Heute Nachmittag kamen sie wieder. Seitdem sind sie eher leicht. Übelkeit hatte ich zu keinem Zeitpunkt.")}
-            className="px-3.5 py-2 bg-indigo-700 hover:bg-indigo-800 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors flex items-center gap-2 cursor-pointer"
-          >
-            <span>Testfall Onset / Schulter</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => handleAnalyze("Seit Montagabend habe ich ein dumpfes Ziehen an der Innenseite des linken Oberschenkels. Heute Morgen war es ungefähr fünf von zehn. Beim Treppensteigen wird es stärker. Wärme verändert es nicht.")}
-            className="px-3.5 py-2 bg-teal-700 hover:bg-teal-800 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors flex items-center gap-2 cursor-pointer"
-          >
-            <span>Testfall Temporal Bindings</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => handleAnalyze("Seit heute Morgen habe ich ein Brumba-Brumba-Gefühl an der Außenseite meines linken Fußes. Es ist nicht schmerzhaft. Ich kann nicht genauer erklären, was ich mit Brumba-Brumba meine.")}
-            className="px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors flex items-center gap-2 cursor-pointer"
-          >
-            <span>Testfall Claims</span>
-          </button>
-        </div>
       </div>
 
       <div className="flex-1 max-w-[1600px] w-full mx-auto p-4 sm:p-6 lg:p-8 flex flex-col gap-6">
