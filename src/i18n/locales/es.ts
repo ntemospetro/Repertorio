@@ -3243,13 +3243,5 @@ export const es = {
   adminConfigSecurityPinDesc: "Barrera de seguridad adicional antes del inicio de sesión del administrador (Predeterminado: 360).",
   anamnesisStepBetter: "Pilar 4.1 – CUÁNDO: Mejoría (> Alivio)",
   anamnesisStepWorse: "Pilar 4.2 – CUÁNDO: Empeoramiento (< Empeoramiento)",
-  anamnesisStepPillarCausa: "Pilar 3 – POR QUÉ? (Causa y desencadenante)",
-  organonHeaderTitle: "Descomposición de IA Organon",
-  organonHeaderSubtitle: "Modo de prueba para descomposición de texto, spans, entidades, claims y temporal bindings",
-  organonTestbetriebBadge: "MODO DE PRUEBA ORGANON",
-  organonPipelineLabel: "gemini-3.8-flash AI Pipeline",
-  organonAudioRecordBtn: "Grabación de voz / Dictar",
-  organonRecordingActive: "Grabando... (Hable ahora)",
-  organonStopRecording: "Detener grabación",
-  organonSpeechNotSupported: "El reconocimiento de voz no es compatible con su navegador."
+  anamnesisStepPillarCausa: "Pilar 3 – POR QUÉ? (Causa y desencadenante)"
 };

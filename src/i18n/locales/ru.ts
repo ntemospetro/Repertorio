@@ -3243,13 +3243,5 @@ export const ru = {
   adminConfigSecurityPinDesc: "Дополнительный барьер безопасности перед входом администратора (По умолчанию: 360).",
   anamnesisStepBetter: "Столп 4.1 – КОГДА: Улучшение (> Облегчение)",
   anamnesisStepWorse: "Столп 4.2 – КОГДА: Ухудшение (< Утяжеление)",
-  anamnesisStepPillarCausa: "Столп 3 – ОТ ЧЕГО? (Causa и триггер)",
-  organonHeaderTitle: "ИИ-разбор Organon",
-  organonHeaderSubtitle: "Тестовый режим разбора текста, spans, entities, claims и temporal bindings",
-  organonTestbetriebBadge: "ТЕСТОВЫЙ РЕЖИМ ORGANON",
-  organonPipelineLabel: "gemini-3.8-flash AI Pipeline",
-  organonAudioRecordBtn: "Голосовая запись / Диктовать",
-  organonRecordingActive: "Идет запись... (Говорите)",
-  organonStopRecording: "Остановить запись",
-  organonSpeechNotSupported: "Распознавание речи не поддерживается вашим браузером."
+  anamnesisStepPillarCausa: "Столп 3 – ОТ ЧЕГО? (Causa и триггер)"
 };

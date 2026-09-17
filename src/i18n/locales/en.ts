@@ -3249,13 +3249,5 @@ export const en = {
   adminConfigSecurityPinDesc: "Additional security gate before administrator login (Default: 360).",
   anamnesisStepBetter: "Pillar 4.1 – WHEN: Improvement (> Relief)",
   anamnesisStepWorse: "Pillar 4.2 – WHEN: Aggravation (< Worsening)",
-  anamnesisStepPillarCausa: "Pillar 3 – FROM WHAT? (Causa & Trigger)",
-  organonHeaderTitle: "Organon AI Decomposition",
-  organonHeaderSubtitle: "Test mode for text decomposition, spans, entities, claims & temporal bindings",
-  organonTestbetriebBadge: "ORGANON TEST MODE",
-  organonPipelineLabel: "gemini-3.8-flash AI Pipeline",
-  organonAudioRecordBtn: "Voice Recording / Dictate",
-  organonRecordingActive: "Recording... (Speak now)",
-  organonStopRecording: "Stop Recording",
-  organonSpeechNotSupported: "Speech recognition is not supported by your browser."
+  anamnesisStepPillarCausa: "Pillar 3 – FROM WHAT? (Causa & Trigger)"
 };

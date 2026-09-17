@@ -3243,13 +3243,5 @@ export const it = {
   adminConfigSecurityPinDesc: "Barriera di sicurezza aggiuntiva prima del login amministratore (Predefinito: 360).",
   anamnesisStepBetter: "Pilastro 4.1 – QUANDO: Miglioramento (> Sollievo)",
   anamnesisStepWorse: "Pilastro 4.2 – QUANDO: Peggioramento (< Aggravamento)",
-  anamnesisStepPillarCausa: "Pilastro 3 – DA COSA? (Causa & Scatenante)",
-  organonHeaderTitle: "Decomposizione IA Organon",
-  organonHeaderSubtitle: "Modalità test per scomposizione testo, spans, entità, claims e temporal bindings",
-  organonTestbetriebBadge: "MODALITÀ TEST ORGANON",
-  organonPipelineLabel: "gemini-3.8-flash AI Pipeline",
-  organonAudioRecordBtn: "Registrazione vocale / Detta",
-  organonRecordingActive: "Registrazione in corso... (Parla)",
-  organonStopRecording: "Ferma registrazione",
-  organonSpeechNotSupported: "Il riconoscimento vocale non è supportato dal tuo browser."
+  anamnesisStepPillarCausa: "Pilastro 3 – DA COSA? (Causa & Scatenante)"
 };
